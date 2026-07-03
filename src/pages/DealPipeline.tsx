@@ -54,6 +54,27 @@ const pipelineTabIconClass =
 const premiumScrollbarClass =
   "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-border/80 [&::-webkit-scrollbar-thumb]:bg-brand-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/75";
 
+const dealPipelineTabs = [
+  {
+    id: "summary",
+    label: "Summary",
+    desktopPrefix: "Executive ",
+    icon: LayoutDashboard,
+  },
+  { id: "kanban", label: "Board", desktopPrefix: "Pipeline ", icon: Kanban },
+  { id: "commissions", label: "Commissions", icon: DollarSign },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "timeline", label: "Timeline", icon: CalendarDays },
+  { id: "clawback", label: "Clawback", icon: ShieldAlert },
+  { id: "manage", label: "Manage", icon: Edit3 },
+  {
+    id: "invoices",
+    label: "Invoices",
+    desktopPrefix: "Builder ",
+    icon: FileText,
+  },
+] as const;
+
 const pipelineTabContentClass = cn(
   "mt-4 rounded-[1.25rem] border border-border dark:border-white/10 bg-card dark:bg-background/35 p-2 shadow-inner sm:p-4",
   "data-[state=active]:flex data-[state=active]:flex-col",
@@ -172,71 +193,27 @@ export default function DealPipeline() {
         className="deal-pipeline-module-board relative flex flex-col gap-4 rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] dark:shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
         <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-brand-300/30 dark:border-brand-100/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55)_40%,hsl(var(--background)/0.85))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_18px_46px_rgba(15,23,42,0.10)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
-          <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
-            <LayoutDashboard className={pipelineTabIconClass} />
-            <span className="hidden sm:inline">Executive </span>Summary
-          </TabsTrigger>
-          <TabsTrigger value="kanban" className={pipelineTabTriggerClass}>
-            <Kanban className={pipelineTabIconClass} />
-            <span className="hidden sm:inline">Pipeline </span>Board
-          </TabsTrigger>
-          <TabsTrigger value="commissions" className={pipelineTabTriggerClass}>
-            <DollarSign className={pipelineTabIconClass} />
-            Commissions
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className={pipelineTabTriggerClass}>
-            <BarChart3 className={pipelineTabIconClass} />
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className={pipelineTabTriggerClass}>
-            <CalendarDays className={pipelineTabIconClass} />
-            Timeline
-          </TabsTrigger>
-          <TabsTrigger value="clawback" className={pipelineTabTriggerClass}>
-            <ShieldAlert className={pipelineTabIconClass} />
-            Clawback
-          </TabsTrigger>
-          <TabsTrigger value="manage" className={pipelineTabTriggerClass}>
-            <Edit3 className={pipelineTabIconClass} />
-            Manage
-          </TabsTrigger>
-          <TabsTrigger value="invoices" className={pipelineTabTriggerClass}>
-            <FileText className={pipelineTabIconClass} />
-            <span className="hidden sm:inline">Builder </span>Invoices
-          </TabsTrigger>
+          {dealPipelineTabs.map(({ id, label, desktopPrefix, icon: Icon }) => (
+            <TabsTrigger key={id} value={id} className={pipelineTabTriggerClass}>
+              <Icon className={pipelineTabIconClass} />
+              {desktopPrefix ? <span className="hidden sm:inline">{desktopPrefix}</span> : null}
+              {label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-      {/* Settlement Countdown */}
-      <DashboardThemeFrame as="section" variant="section" className="p-3">
-        <SettlementCountdownCards
-          deals={filteredDeals}
-          onDealClick={handleDealClick}
-        />
-      </DashboardThemeFrame>
-
-      {/* Commission Forecast */}
-      <DashboardThemeFrame as="section" variant="section" className="p-3">
-        <CommissionForecastWidget deals={deals} />
-      </DashboardThemeFrame>
-
-      {/* Linked Finance Files */}
-      <DashboardThemeFrame as="section" variant="section" className="p-3">
-        <LinkedFinanceFilesPanel deals={filteredDeals} />
-      </DashboardThemeFrame>
-
-      {/* Global Pipeline Toolbar */}
-      <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-[1.35rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
-        <PipelineToolbar
-          deals={deals}
-          filters={filters}
-          onFiltersChange={setFilters}
-          filteredCount={filteredDeals.length}
-          isExpanded={filtersExpanded}
-          onExpandedChange={setFiltersExpanded}
-        />
-      </DashboardThemeFrame>
-
-
+        <section className="deal-pipeline-active-content mt-5 w-full overflow-visible">
+          {/* Global Pipeline Toolbar */}
+          <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-[1.35rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
+            <PipelineToolbar
+              deals={deals}
+              filters={filters}
+              onFiltersChange={setFilters}
+              filteredCount={filteredDeals.length}
+              isExpanded={filtersExpanded}
+              onExpandedChange={setFiltersExpanded}
+            />
+          </DashboardThemeFrame>
 
         <TabsContent
           value="summary"
@@ -249,6 +226,21 @@ export default function DealPipeline() {
             onDealClick={handleDealClick}
           />
 
+          {/* Settlement Countdown */}
+          <DashboardThemeFrame as="section" variant="section" className="p-3">
+            <SettlementCountdownCards
+              deals={filteredDeals}
+              onDealClick={handleDealClick}
+            />
+          </DashboardThemeFrame>
+          {/* Commission Forecast */}
+          <DashboardThemeFrame as="section" variant="section" className="p-3">
+            <CommissionForecastWidget deals={deals} />
+          </DashboardThemeFrame>
+          {/* Linked Finance Files */}
+          <DashboardThemeFrame as="section" variant="section" className="p-3">
+            <LinkedFinanceFilesPanel deals={filteredDeals} />
+          </DashboardThemeFrame>
           {/* Risk Control */}
           <DashboardThemeFrame as="section" variant="section" className="p-3">
             <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
@@ -329,6 +321,7 @@ export default function DealPipeline() {
             onUpdatePayment={handleUpdatePayment}
           />
         </TabsContent>
+        </section>
       </Tabs>
     </DashboardThemeFrame>
   );
