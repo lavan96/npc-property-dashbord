@@ -603,8 +603,8 @@ export default function ClientManagement() {
   ];
 
   return (
-    <div className="client-management-page relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
+    <div className="client-management-page relative -mx-3 space-y-5 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
@@ -618,21 +618,21 @@ export default function ClientManagement() {
       />
 
       {/* Header */}
-      <section className="relative overflow-hidden rounded-3xl border border-brand-500/20 bg-white dark:bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 backdrop-blur md:p-6">
+      <section className="relative overflow-visible rounded-3xl border border-brand-500/20 bg-white dark:bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-xl shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 backdrop-blur md:p-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
         <div className="pointer-events-none absolute -right-14 -top-20 h-44 w-44 rounded-full bg-brand-400/10 blur-3xl" />
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-2">
-            <div className="inline-flex items-center rounded-full border border-brand-500/30 bg-brand-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">Premium client workspace</div>
-            <h1 className="bg-gradient-to-r from-card dark:from-background via-brand-700 to-brand-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-brand-100 dark:to-brand-300 md:text-5xl">Client Management</h1>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+            <div className="inline-flex items-center rounded-full border border-brand-500/25 bg-brand-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">Premium client workspace</div>
+            <h1 className="bg-gradient-to-r from-card dark:from-background via-brand-700 to-brand-500 bg-clip-text pb-1 text-[clamp(2rem,3vw,2.875rem)] font-semibold leading-[1.12] tracking-[-0.035em] text-transparent dark:from-white dark:via-brand-100 dark:to-brand-300">Client Management</h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-[15px]">
               Manage clients, properties, and sync with GoHighLevel
             </p>
             <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
           </div>
-          <div className="flex w-full flex-col items-stretch gap-2 rounded-3xl border border-border/60 bg-background/70 p-2 shadow-inner shadow-[0_12px_32px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-black/30 dark:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
+          <div className="flex w-full flex-col items-stretch gap-2 rounded-2xl border border-border/60 bg-background/70 p-1 shadow-inner shadow-[0_12px_32px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-black/30 dark:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className={`flex min-h-11 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 focus-within:ring-2 focus-within:ring-brand-300/30 sm:justify-start ${autoSyncEnabled ? 'border-brand-300/35 bg-brand-400/10 shadow-brand-950/20' : 'border-border/60 bg-background/60 dark:border-white/10 dark:bg-white/[0.04]'}`}>
+          <div className={`flex min-h-10 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 focus-within:ring-2 focus-within:ring-brand-300/30 sm:justify-start ${autoSyncEnabled ? 'border-brand-300/35 bg-brand-400/10 shadow-brand-950/20' : 'border-border/60 bg-background/60 dark:border-white/10 dark:bg-white/[0.04]'}`}>
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
@@ -651,7 +651,7 @@ export default function ClientManagement() {
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
-            className="h-11 flex-1 rounded-2xl border border-brand-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-brand-100 shadow-lg shadow-brand-950/25 transition-all hover:-translate-y-0.5 hover:border-brand-200/55 hover:bg-brand-500/25 hover:text-brand-50 hover:shadow-[0_14px_38px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-brand-300/55 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:text-sm"
+            className="h-10 flex-1 rounded-xl border border-brand-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-brand-100 shadow-lg shadow-brand-950/25 transition-all hover:-translate-y-0.5 hover:border-brand-200/55 hover:bg-brand-500/25 hover:text-brand-50 hover:shadow-[0_14px_38px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-brand-300/55 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:text-sm"
           >
             {isImportingFromGHL ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -669,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-4 text-xs font-semibold text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+            className="h-10 flex-1 rounded-xl border-border/60 bg-background/70 px-4 text-xs font-semibold text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -681,7 +681,7 @@ export default function ClientManagement() {
               onClick={() => setShowAddClientModal(true)} 
               variant="default" 
               size="sm"
-              className="h-12 flex-1 rounded-2xl border border-brand-200/50 bg-gradient-to-r from-brand-300 via-brand-400 to-brand-500 px-5 text-xs font-black text-black shadow-xl shadow-brand-500/30 transition-all hover:-translate-y-1 hover:from-brand-200 hover:via-brand-300 hover:to-brand-400 hover:shadow-[0_18px_46px_rgba(251,191,36,0.32)] focus-visible:ring-2 focus-visible:ring-brand-200/75 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:flex-none sm:text-sm"
+              className="h-11 flex-1 rounded-xl border border-brand-200/50 bg-gradient-to-r from-brand-300 via-brand-400 to-brand-500 px-4 text-xs font-bold text-black shadow-xl shadow-brand-500/30 transition-all hover:-translate-y-0.5 hover:from-brand-200 hover:via-brand-300 hover:to-brand-400 hover:shadow-[0_18px_46px_rgba(251,191,36,0.32)] focus-visible:ring-2 focus-visible:ring-brand-200/75 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:flex-none sm:text-sm"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Add Client</span>
@@ -692,7 +692,7 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-3 text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-brand-300/50 data-[state=open]:bg-brand-500/15 data-[state=open]:text-brand-100 sm:flex-none" aria-label="More actions">
+              <Button variant="outline" size="sm" className="h-10 flex-1 rounded-xl border-border/60 bg-background/70 px-3 text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-brand-300/50 data-[state=open]:bg-brand-500/15 data-[state=open]:text-brand-100 sm:flex-none" aria-label="More actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -722,38 +722,38 @@ export default function ClientManagement() {
       </section>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpiCards.map(({ label, value, icon: Icon, accent, iconSurface, glow, valueClassName, barClassName }) => (
           <Card
             key={label}
-            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-brand-300/50 hover:shadow-2xl hover:shadow-brand-950/35"
+            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-lg shadow-[0_12px_30px_rgba(15,23,42,0.08)] dark:shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/45 hover:shadow-xl hover:shadow-brand-950/35"
           >
             <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-100`} />
             <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/65 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-            <CardHeader className="relative flex flex-row items-start justify-between space-y-0 pb-3">
-              <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">{label}</CardTitle>
-              <div className={`rounded-2xl border p-2.5 shadow-inner transition-transform duration-300 group-hover:scale-105 ${iconSurface}`}>
-                <Icon className={`h-4 w-4 ${accent}`} />
+            <CardHeader className="relative flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">{label}</CardTitle>
+              <div className={`rounded-xl border p-2 shadow-inner transition-transform duration-300 group-hover:scale-105 ${iconSurface}`}>
+                <Icon className={`h-[17px] w-[17px] ${accent}`} />
               </div>
             </CardHeader>
-            <CardContent className="relative space-y-4 pt-0">
-              <div className={`text-3xl font-bold leading-none tracking-tight md:text-4xl ${valueClassName}`}>{value}</div>
+            <CardContent className="relative space-y-3 pt-0">
+              <div className={`text-[34px] font-semibold leading-none tracking-tight md:text-[38px] ${valueClassName}`}>{value}</div>
               <div className="h-px w-full bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
-              <div className={`h-1.5 w-24 rounded-full bg-gradient-to-r ${barClassName} opacity-90 shadow-[0_0_22px_rgba(245,158,11,0.22)] transition-all duration-300 group-hover:w-32 group-hover:opacity-100`} />
+              <div className={`h-1 w-20 rounded-full bg-gradient-to-r ${barClassName} opacity-90 shadow-[0_0_22px_rgba(245,158,11,0.22)] transition-all duration-300 group-hover:w-28 group-hover:opacity-100`} />
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="clients" className="space-y-5 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 backdrop-blur md:p-4">
+      <Tabs defaultValue="clients" className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-2.5 shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 backdrop-blur md:p-3">
         <div className="-mx-3 overflow-x-auto px-3 pb-1 md:mx-0 md:px-0">
-          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-brand-500/20 bg-muted p-1.5 shadow-inner shadow-stone-200/70 backdrop-blur dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] dark:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30">
-            <TabsTrigger value="clients" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Clients</TabsTrigger>
-            <TabsTrigger value="portfolio-reports" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Portfolio</TabsTrigger>
-            <TabsTrigger value="analytics" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Analytics</TabsTrigger>
-            <TabsTrigger value="compare" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Compare</TabsTrigger>
-            <TabsTrigger value="import" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Import</TabsTrigger>
+          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-11 w-auto min-w-max gap-1 rounded-2xl border border-brand-500/20 bg-muted p-1 shadow-inner shadow-stone-200/70 backdrop-blur dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] dark:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30">
+            <TabsTrigger value="clients" className="min-h-10 rounded-xl px-4 py-2 text-[13px] font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Clients</TabsTrigger>
+            <TabsTrigger value="portfolio-reports" className="min-h-10 rounded-xl px-4 py-2 text-[13px] font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Portfolio</TabsTrigger>
+            <TabsTrigger value="analytics" className="min-h-10 rounded-xl px-4 py-2 text-[13px] font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Analytics</TabsTrigger>
+            <TabsTrigger value="compare" className="min-h-10 rounded-xl px-4 py-2 text-[13px] font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Compare</TabsTrigger>
+            <TabsTrigger value="import" className="min-h-10 rounded-xl px-4 py-2 text-[13px] font-semibold text-muted-foreground transition-all duration-200 hover:bg-brand-500/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-300 data-[state=active]:to-brand-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-brand-500/25">Import</TabsTrigger>
           </TabsList>
         </div>
 
@@ -799,7 +799,7 @@ export default function ClientManagement() {
             </Button>
             <ClientFilters filters={filters} onFiltersChange={setFilters} />
             {filteredClients.length > 0 && (
-              <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/55 px-3 text-sm shadow-sm transition-all hover:border-brand-500/35 hover:bg-brand-500/5 focus-within:border-brand-300/50 focus-within:ring-2 focus-within:ring-brand-300/25">
+              <div className="flex min-h-10 items-center gap-2 rounded-xl border border-border/60 bg-background/55 px-3 text-sm shadow-sm transition-all hover:border-brand-500/35 hover:bg-brand-500/5 focus-within:border-brand-300/50 focus-within:ring-2 focus-within:ring-brand-300/25">
                 <Checkbox
                   checked={allSelected}
                   ref={(ref) => {
@@ -896,12 +896,12 @@ export default function ClientManagement() {
           <ClientComparison clients={clients} />
         </TabsContent>
 
-        <TabsContent value="portfolio-reports" className="space-y-5 rounded-2xl border border-brand-400/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.09),transparent_34%),linear-gradient(180deg,rgba(15,15,18,0.78),rgba(0,0,0,0.48))] p-3 shadow-2xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 md:p-5">
-          <div className="relative overflow-hidden rounded-3xl border border-brand-300/20 bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.22))] dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25">
+        <TabsContent value="portfolio-reports" className="space-y-5 rounded-2xl border border-brand-400/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.09),transparent_34%),linear-gradient(180deg,rgba(15,15,18,0.78),rgba(0,0,0,0.48))] p-2.5 shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 md:p-5">
+          <div className="relative overflow-hidden rounded-3xl border border-brand-300/20 bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.22))] dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] p-5 shadow-lg shadow-[0_12px_30px_rgba(15,23,42,0.08)] dark:shadow-black/25">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-brand-300/20 bg-brand-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-100">
+                <div className="inline-flex items-center gap-2 rounded-full border border-brand-300/20 bg-brand-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-brand-100">
                   Portfolio Intelligence
                 </div>
                 <h2 className="text-2xl font-bold tracking-tight text-foreground dark:text-white">Portfolio Performance Reports</h2>
