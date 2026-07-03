@@ -206,13 +206,12 @@ export default function DealPipeline() {
           </TabsTrigger>
         </TabsList>
 
-      {/* Settlement Countdown & At-Risk Panel */}
-      <DashboardThemeFrame as="section" variant="section" className="grid min-h-0 grid-cols-1 gap-4 p-3 lg:grid-cols-2">
+      {/* Settlement Countdown */}
+      <DashboardThemeFrame as="section" variant="section" className="p-3">
         <SettlementCountdownCards
           deals={filteredDeals}
           onDealClick={handleDealClick}
         />
-        <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
       </DashboardThemeFrame>
 
       {/* Commission Forecast */}
@@ -249,6 +248,11 @@ export default function DealPipeline() {
             isLoading={isLoading}
             onDealClick={handleDealClick}
           />
+
+          {/* Risk Control */}
+          <DashboardThemeFrame as="section" variant="section" className="p-3">
+            <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
+          </DashboardThemeFrame>
         </TabsContent>
 
         <TabsContent
