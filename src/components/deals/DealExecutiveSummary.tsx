@@ -151,23 +151,22 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
       <Card className="overflow-hidden rounded-[1.25rem] border-border dark:border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(9,9,11,0.92))] shadow-[0_20px_60px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)]">
         <CardContent className="p-0">
           <div role="region" aria-label="Executive Summary deals table, horizontally scrollable" tabIndex={0} className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-brand-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/70">
-            <Table className="min-w-[880px]" aria-label="Executive Summary deals">
+            <Table className="min-w-[820px] table-fixed" aria-label="Executive Summary deals">
               <TableHeader className="bg-background dark:bg-black/30">
                 <TableRow className="border-brand-100/10 hover:bg-transparent">
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Client</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Type</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Current Stage</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Next Action</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Responsible</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-right text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Value</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Settlement</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Risk</TableHead>
+                  <TableHead className="w-[18%] whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Client</TableHead>
+                  <TableHead className="w-[9%] whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Type</TableHead>
+                  <TableHead className="w-[19%] whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Current Stage</TableHead>
+                  <TableHead className="w-[22%] whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Next Action</TableHead>
+                  <TableHead className="w-[12%] whitespace-nowrap py-4 text-right text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Value</TableHead>
+                  <TableHead className="w-[12%] whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Settlement</TableHead>
+                  <TableHead className="w-[8%] whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Risk</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {deals.length === 0 ? (
                   <TableRow className="border-border dark:border-white/10">
-                    <TableCell colSpan={8} className="p-4">
+                    <TableCell colSpan={7} className="p-4">
                       <NoResultsState title="No deals found" description="Your current search or filters do not return any deals. Reset filters to review the full pipeline." />
                     </TableCell>
                   </TableRow>
@@ -193,13 +192,6 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                         </TableCell>
                         <TableCell className="max-w-[240px] truncate py-4 text-xs text-muted-foreground dark:text-foreground sm:text-sm">
                           {getNextAction(deal)}
-                        </TableCell>
-                        <TableCell className="py-4 text-xs sm:text-sm">
-                          {deal.responsible_person ? (
-                            <span className="block max-w-[180px] break-words rounded-md border border-border dark:border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-foreground dark:text-foreground">{deal.responsible_person}</span>
-                          ) : (
-                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-muted-foreground">—</span>
-                          )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap py-4 text-right text-xs font-bold text-brand-100 sm:text-sm">
                           {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs font-normal text-muted-foreground dark:text-muted-foreground">—</span>}
