@@ -54,22 +54,22 @@ const COLORS = [
 ];
 
 const OVERVIEW_CHART_COLORS = {
-  brand: 'hsl(var(--dashboard-primary-strong))',
+  brand: 'hsl(var(--brand-primary, var(--dashboard-primary-strong)))',
   positive: 'hsl(var(--success))',
   teal: 'hsl(173 80% 38%)',
   neutral: 'hsl(215 16% 47%)',
-  grid: 'hsl(var(--border))',
-  axis: 'hsl(var(--muted-foreground))',
+  grid: 'rgba(255,255,255,0.06)',
+  axis: '#B4ADBF',
   tooltipBorder: 'hsl(var(--dashboard-primary-strong) / 0.24)',
-  tooltipShadow: '0 18px 45px hsl(30 10% 15% / 0.14)',
+  tooltipShadow: '0 18px 45px rgba(0,0,0,0.34)',
 };
 
 const premiumTooltipStyle = {
-  backgroundColor: 'hsl(var(--card) / 0.98)',
+  backgroundColor: 'rgba(15,13,22,0.98)',
   border: `1px solid ${OVERVIEW_CHART_COLORS.tooltipBorder}`,
   borderRadius: '14px',
   boxShadow: OVERVIEW_CHART_COLORS.tooltipShadow,
-  color: 'hsl(var(--foreground))',
+  color: '#F5F2FA',
   padding: '10px 12px',
 };
 
@@ -85,16 +85,16 @@ const chartGridProps = {
   opacity: 0.55,
 };
 
-const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
-const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-200 dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
-const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-[hsl(var(--dashboard-border-strong)/0.55)] before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,hsl(var(--dashboard-primary-soft)/0.14),transparent_30%)] hover:-translate-y-1 hover:border-[hsl(var(--dashboard-primary-strong)/0.38)] hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_hsl(var(--dashboard-border-strong)/0.28)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-[hsl(var(--dashboard-primary-strong)/0.24)] [&_.dashboard-kpi-title+div]:bg-[hsl(var(--dashboard-primary-soft)/0.72)] [&_.dashboard-kpi-title+div]:text-[hsl(var(--dashboard-primary-strong))] dark:[&_.dashboard-kpi-title+div]:border-primary/20 dark:[&_.dashboard-kpi-title+div]:bg-primary/10 dark:[&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
-const EXECUTIVE_KPI_WARNING_CARD = 'border-brand-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-brand-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-brand-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-brand-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-brand-300/15 [&_.dashboard-kpi-title]:text-brand-900/80 dark:[&_.dashboard-kpi-title]:text-brand-100/80 [&_.dashboard-kpi-title+div]:border-brand-400/35 [&_.dashboard-kpi-title+div]:bg-brand-500/15 [&_.dashboard-kpi-title+div]:text-brand-600 dark:[&_.dashboard-kpi-title+div]:text-brand-300';
-const EXECUTIVE_KPI_DATA_CARD = 'border-[hsl(var(--dashboard-primary-strong)/0.2)] bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card))_100%)] after:bg-[radial-gradient(circle_at_top_right,hsl(var(--dashboard-primary-soft)/0.12),transparent_32%)] hover:border-[hsl(var(--dashboard-primary-strong)/0.35)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.94)_0%,rgba(30,41,59,0.76)_54%,rgba(15,23,42,0.94)_100%)]';
-const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-visible bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--dashboard-primary-strong)/0.35)] hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_hsl(var(--dashboard-border-strong)/0.22)] dark:ring-white/10`;
-const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-[hsl(var(--dashboard-surface-muted)/0.55)] via-transparent to-transparent px-4 py-4 md:px-5';
-const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-[hsl(var(--dashboard-primary-strong))] before:shadow-[0_0_14px_hsl(var(--dashboard-primary-strong)/0.45)]';
+const OVERVIEW_SHELL = 'overview-obsidian-shell mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
+const PREMIUM_CARD = 'overview-premium-card rounded-2xl transition-all duration-200';
+const EXECUTIVE_KPI_CARD = 'overview-kpi-card group relative min-w-0 overflow-hidden rounded-[1.35rem] transition-all duration-300 [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-[#B4ADBF] [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-[#F5F2FA] min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-[hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.28)] [&_.dashboard-kpi-title+div]:bg-[hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.12)] [&_.dashboard-kpi-title+div]:text-[hsl(var(--brand-primary,var(--dashboard-primary-strong)))] [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-[#B4ADBF]';
+const EXECUTIVE_KPI_WARNING_CARD = 'overview-kpi-warning';
+const EXECUTIVE_KPI_DATA_CARD = 'overview-kpi-data';
+const CHART_CARD = `${PREMIUM_CARD} overview-chart-card group min-w-0 overflow-visible transition-all duration-300 hover:-translate-y-0.5`;
+const CHART_HEADER = 'overview-chart-header border-b px-4 py-4 md:px-5';
+const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-[#F5F2FA] md:text-base before:h-2 before:w-2 before:rounded-full before:bg-[hsl(var(--brand-primary,var(--dashboard-primary-strong)))] before:shadow-[0_0_14px_hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.34)]';
 const CHART_CONTENT = 'px-3 pb-5 pt-5 md:px-5';
-const OVERVIEW_SECONDARY_ACTION = 'dashboard-luxury-action min-h-10 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+const OVERVIEW_SECONDARY_ACTION = 'overview-glass-button dashboard-luxury-action min-h-10 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 
 type OverviewPieDatum = Record<string, unknown>;
 
@@ -171,12 +171,12 @@ function renderOverviewPieLabel(labelKey: 'type' | 'status', data: { count: numb
       <text
         x={x}
         y={y}
-        fill="hsl(var(--foreground))"
+        fill="#F5F2FA"
         textAnchor={x > props.cx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize={isMobile ? 9 : 11}
         fontWeight="600"
-        style={{ paintOrder: 'stroke', stroke: 'hsl(var(--card))', strokeWidth: 3, textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}
+        style={{ paintOrder: 'stroke', stroke: 'rgba(15,13,22,0.98)', strokeWidth: 3, textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}
       >
         {props[labelKey]} ({percentageValue.toFixed(1)}%)
       </text>
@@ -188,12 +188,12 @@ function OverviewPieLegend({ data, labelKey }: { data: Array<Record<string, any>
   const total = data.reduce((sum, item) => sum + item.count, 0);
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-border/60 bg-muted/25 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]">
+    <div className="overview-pie-legend mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl px-3 py-3">
       {data.map((entry, index) => {
         const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
         const label = entry[labelKey];
         return (
-          <div key={label} className="flex min-w-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/75 px-2.5 py-1.5 text-[10px] shadow-sm dark:border-white/10 dark:bg-background/70 md:text-xs">
+          <div key={label} className="flex min-w-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1.5 text-[10px] shadow-sm md:text-xs">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full md:h-3 md:w-3" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
             <span className="max-w-[9rem] truncate font-medium text-foreground">{label}</span>
             <span className="shrink-0 text-muted-foreground">({entry.count.toLocaleString('en-AU')} · {pct}%)</span>
@@ -222,16 +222,16 @@ function OverviewSection({
   className?: string;
 }) {
   return (
-    <DashboardThemeFrame as="section" variant={accent ? 'sectionAccent' : 'section'} className={className}>
+    <DashboardThemeFrame as="section" variant={accent ? 'sectionAccent' : 'section'} className={cn('overview-section-frame', accent && 'overview-section-accent', className)}>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-5">
         <div className="max-w-3xl">
           <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
-            <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-brand-500 shadow-[0_0_14px_rgba(245,158,11,0.65)]' : 'bg-[hsl(var(--dashboard-primary-strong))]'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-[hsl(var(--brand-highlight,45_90%_56%))] shadow-[0_0_14px_hsl(var(--brand-highlight,45_90%_56%)/0.34)]' : 'bg-[hsl(var(--brand-primary,var(--dashboard-primary-strong)))]'}`} />
             {eyebrow}
           </div>
           <div className="flex min-w-0 items-start gap-3 sm:items-center">
             {icon && (
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accent ? 'border-brand-400/30 bg-brand-500/10 text-brand-600 dark:text-brand-300' : 'dashboard-luxury-icon-tile'}`}>
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accent ? 'border-[hsl(var(--brand-highlight,45_90%_56%)/0.30)] bg-[hsl(var(--brand-highlight,45_90%_56%)/0.10)] text-[hsl(var(--brand-highlight,45_90%_56%))]' : 'dashboard-luxury-icon-tile'}`}>
                 {icon}
               </div>
             )}
@@ -526,11 +526,11 @@ export default function Overview() {
     return (
       <div className={`${OVERVIEW_SHELL} space-y-6`}>
         <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-400/25 bg-brand-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+          <div className="overview-command-badge mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
             <RadioTower className="h-3.5 w-3.5" />
             Command Centre
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#F5F2FA] md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </DashboardThemeFrame>
         <Card className="overflow-hidden rounded-[1.5rem] border-brand-400/40 bg-gradient-to-br from-brand-500/10 via-card to-card shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:border-brand-400/25 dark:from-brand-400/10 dark:via-background/80 dark:to-background">
@@ -563,7 +563,7 @@ export default function Overview() {
       <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
         <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
           <div className="mb-3 h-7 w-40 rounded-full bg-brand-500/10" />
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#F5F2FA] md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </DashboardThemeFrame>
         <div className="grid gap-3 min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-4">
@@ -594,19 +594,19 @@ export default function Overview() {
 
   return (
     <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
-      <DashboardThemeFrame variant="hero">
+      <DashboardThemeFrame variant="hero" className="overview-hero">
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-400/25 bg-brand-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+            <div className="overview-command-badge mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
               <RadioTower className="h-3.5 w-3.5" />
               Command Centre
             </div>
-            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#F5F2FA] md:text-5xl">Overview</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#B4ADBF] md:text-base">
               Property intake dashboard overview and key metrics
             </p>
           </div>
-          <DashboardThemeFrame variant="toolbar" className="lg:w-auto lg:justify-end [&>button]:min-w-[44px] [&>button]:flex-1 sm:[&>button]:flex-none">
+          <DashboardThemeFrame variant="toolbar" className="overview-toolbar lg:w-auto lg:justify-end [&>button]:min-w-[44px] [&>button]:flex-1 sm:[&>button]:flex-none">
             <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className={OVERVIEW_SECONDARY_ACTION}>
               {isExporting ? (
                 <>
@@ -645,7 +645,7 @@ export default function Overview() {
         </div>
 
         {/* Content Statistics */}
-        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-border/60 pt-4 min-[520px]:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 xl:grid-cols-5">
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-white/[0.06] pt-4 min-[520px]:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 xl:grid-cols-5">
           <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
           <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
           <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
@@ -664,7 +664,7 @@ export default function Overview() {
 
       <OverviewSection eyebrow="Portfolio position" title="Commercial and industrial exposure" description="Portfolio modules retain their existing actions while sitting in a clearer asset-position layer." icon={<Building2 className="h-4 w-4" />}>
         {/* Commercial Portfolio KPIs */}
-        <div className="grid min-w-0 gap-4 animate-fade-in [&_.rounded-md]:rounded-xl [&_.rounded-md]:border-border/70 [&_.rounded-md]:bg-muted/25 [&>div]:min-w-0 [&>div]:rounded-2xl [&>div]:border-border/70 [&>div]:bg-card/90 [&>div]:shadow-sm dark:[&>div]:border-white/10 dark:[&>div]:bg-background/80">
+        <div className="overview-portfolio-zone grid min-w-0 gap-4 animate-fade-in [&_.rounded-md]:rounded-xl [&_.rounded-md]:border-border/70 [&_.rounded-md]:bg-muted/25 [&>div]:min-w-0 [&>div]:rounded-2xl [&>div]:border-border/70 [&>div]:bg-card/90 [&>div]:shadow-sm dark:[&>div]:border-white/10 dark:[&>div]:bg-background/80">
           <CommercialPortfolioWidget />
           <IndustrialPortfolioWidget />
         </div>
@@ -773,8 +773,8 @@ export default function Overview() {
                     dataKey="count"
                     stroke={OVERVIEW_CHART_COLORS.brand}
                     strokeWidth={isMobile ? 2 : 3}
-                    dot={isMobile ? false : { fill: OVERVIEW_CHART_COLORS.brand, stroke: 'hsl(var(--card))', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: isMobile ? 5 : 7, fill: OVERVIEW_CHART_COLORS.positive, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                    dot={isMobile ? false : { fill: OVERVIEW_CHART_COLORS.brand, stroke: 'rgba(15,13,22,0.98)', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: isMobile ? 5 : 7, fill: OVERVIEW_CHART_COLORS.positive, stroke: 'rgba(15,13,22,0.98)', strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -816,7 +816,7 @@ export default function Overview() {
         </div>
 
         <div className="pt-1 md:pt-2">
-          <div className="mb-4 flex items-center gap-2 border-t border-border/60 pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
+          <div className="mb-4 flex items-center gap-2 border-t border-white/[0.06] pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl dashboard-luxury-icon-tile">
               <Database className="h-4 w-4" />
             </span>
@@ -899,7 +899,7 @@ export default function Overview() {
           <Button
             variant="outline"
             size="sm"
-            className="dashboard-luxury-action min-h-11 w-full rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0 sm:w-auto"
+            className="overview-glass-button dashboard-luxury-action min-h-11 w-full rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0 sm:w-auto"
             onClick={() => navigate('/listings')}
           >
             View All Listings
@@ -908,7 +908,7 @@ export default function Overview() {
         <CardContent className="p-4 md:p-5">
           <div className="space-y-3 md:space-y-4">
             {recentListings.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 p-8 text-center">
+              <div className="overview-empty-state rounded-2xl border border-dashed p-8 text-center">
                 <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl dashboard-luxury-icon-tile">
                   <FileText className="h-5 w-5" />
                 </div>
@@ -927,7 +927,7 @@ export default function Overview() {
                 <div
                   key={listing.id}
                   className={cn(
-                    "group relative overflow-hidden rounded-2xl border bg-card/80 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md md:p-5",
+                    "overview-activity-row group relative overflow-hidden rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-0.5 md:p-5",
                     isHighConfidence && "border-success/25 bg-gradient-to-br from-success/8 via-card to-card",
                     isLowConfidence && "border-brand-500/35 bg-gradient-to-br from-brand-500/10 via-card to-card"
                   )}
@@ -948,7 +948,7 @@ export default function Overview() {
                             {listing.address || 'Unknown Address'}
                           </h4>
                         </div>
-                        <Badge variant="outline" className="shrink-0 rounded-full border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary md:text-xs">
+                        <Badge variant="outline" className="shrink-0 rounded-full border-[hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.30)] bg-[hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.11)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[hsl(var(--brand-primary,var(--dashboard-primary-strong)))] md:text-xs">
                           {listing.propertyType || 'Unknown'}
                         </Badge>
                         {listing.status && listing.status !== 'Available' && (
@@ -994,7 +994,7 @@ export default function Overview() {
                           )}
                         </div>
                         {listing.price && listing.price > 0 && (
-                          <span className="justify-self-start rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-sm font-bold text-primary md:justify-self-end">
+                          <span className="justify-self-start rounded-full border border-[hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.24)] bg-[hsl(var(--brand-primary,var(--dashboard-primary-strong))/0.08)] px-3 py-1 text-sm font-bold text-[hsl(var(--brand-primary,var(--dashboard-primary-strong)))] md:justify-self-end">
                             {formatCurrency(listing.price)}
                           </span>
                         )}
