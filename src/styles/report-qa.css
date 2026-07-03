@@ -379,6 +379,24 @@
     @apply relative flex min-h-full flex-col gap-4 md:gap-6;
   }
 
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-main,
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-content,
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-page-shell,
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-sidebar-content {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scrollbar-gutter: auto;
+  }
+
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-main::-webkit-scrollbar,
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-content::-webkit-scrollbar,
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-page-shell::-webkit-scrollbar,
+  .dashboard-shell:has(.calendar-page-scrollbar-fix) .dashboard-sidebar-content::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
   .dashboard-page-shell > * {
     @apply min-w-0;
   }

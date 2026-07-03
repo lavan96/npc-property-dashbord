@@ -669,7 +669,7 @@ export default function Calendar() {
   }
 
   return (
-    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "max-w-none [scrollbar-gutter:auto] [&_.dashboard-sidebar-content]:overflow-y-hidden [&_.dashboard-sidebar-content]:pr-2 [&_.dashboard-sidebar-content]:[scrollbar-gutter:auto]")}>
+    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "calendar-page-scrollbar-fix max-w-none [scrollbar-gutter:auto]")}>
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
