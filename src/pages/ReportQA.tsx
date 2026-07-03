@@ -1839,7 +1839,7 @@ export default function ReportQA() {
         </div>
       </DashboardThemeFrame>
 
-      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-4 md:gap-6 lg:grid-cols-3 lg:overflow-hidden lg:pr-0">
+      <div className="report-qa-workspace-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-4 md:gap-5 lg:grid-cols-[minmax(18rem,0.92fr)_minmax(0,1.9fr)] lg:overflow-hidden lg:pr-0 xl:gap-6">
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
         <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[18rem] p-0 md:max-h-[46dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
@@ -2102,8 +2102,8 @@ export default function ReportQA() {
 
 
         {/* Chat Section */}
-        <DashboardThemeFrame as="section" variant="section" className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 p-0", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-5 flex-shrink-0">
+        <DashboardThemeFrame as="section" variant="section" className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 p-0", showReportsPanel ? "" : "lg:col-span-2")}>
+          <CardHeader className="report-qa-chat-header shrink-0 px-3 py-3 pb-3 sm:px-4 sm:py-4 sm:pb-3">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2204,7 +2204,7 @@ export default function ReportQA() {
                     <FileText className="h-4 w-4" />
                   </Button>
                 )}
-                <span className="report-qa-chat-title-icon flex h-10 w-10 items-center justify-center rounded-2xl">
+                <span className="report-qa-chat-title-icon flex h-9 w-9 items-center justify-center rounded-xl">
                   <MessageSquare className="h-5 w-5" />
                 </span>
                 {isEditingMainTitle && conversationId ? (
@@ -2220,7 +2220,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <CardTitle className="report-qa-chat-title text-xl tracking-tight">{getCurrentTitle()}</CardTitle>
+                    <CardTitle className="report-qa-chat-title text-lg tracking-tight">{getCurrentTitle()}</CardTitle>
                     {conversationId && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
                         <Pencil className="h-3 w-3" />
@@ -2230,7 +2230,7 @@ export default function ReportQA() {
                 )}
               </div>
               
-              <div className="report-qa-toolbar flex min-w-0 flex-1 flex-wrap items-center justify-start gap-1.5 sm:justify-end xl:flex-initial">
+              <div className="report-qa-toolbar flex min-w-0 flex-1 flex-wrap items-center justify-start gap-1 sm:justify-end xl:flex-initial">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
                 <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 {conversationId && (
@@ -2296,7 +2296,7 @@ export default function ReportQA() {
                 {conversationId && <Badge variant="outline" className="ml-1 whitespace-nowrap border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] text-primary">Auto-saving</Badge>}
               </div>
             </div>
-            <CardDescription className="report-qa-chat-subtitle hidden sm:block pl-12 text-sm">
+            <CardDescription className="report-qa-chat-subtitle hidden pl-11 text-xs sm:block">
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
                 : 'Ask questions about the uploaded report'}
@@ -2308,9 +2308,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="report-qa-chat-content flex-1 flex flex-col min-h-0 overflow-hidden px-2 pb-2 sm:px-5 sm:pb-4">
+          <CardContent id="chat-main" className="report-qa-chat-content flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 sm:px-4 sm:pb-4">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className="report-qa-message-area mb-2 min-h-0 flex-1 overflow-hidden pr-1 sm:mb-4 sm:pr-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-3 sm:pr-3", messages.length === 0 && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
@@ -2330,8 +2330,8 @@ export default function ReportQA() {
                 </div>
               )}
               {messages.length === 0 ? (
-                <div className="report-qa-empty-state h-full flex items-center justify-center text-center p-4 sm:p-8">
-                  <div className="report-qa-empty-card space-y-5">
+                <div className="report-qa-empty-state flex min-h-[16rem] items-center justify-center p-4 text-center sm:min-h-[20rem] sm:p-6">
+                  <div className="report-qa-empty-card space-y-4">
                     <div className="report-qa-empty-icon-wrap" aria-hidden="true">
                       <MessageSquare className="report-qa-empty-icon" />
                       <Sparkles className="report-qa-empty-sparkle" />
@@ -2683,7 +2683,7 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="report-qa-composer max-h-[min(12.5rem,32dvh)] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
+            <div className="report-qa-composer shrink-0 space-y-2 overflow-hidden border-t pt-3">
               <div className="flex flex-wrap items-end gap-1.5 sm:flex-nowrap sm:gap-2">
                 <Textarea
                   ref={inputRef}
@@ -2707,7 +2707,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="report-qa-composer-input min-h-[52px] max-h-28 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6 sm:flex-1"
+                  className="report-qa-composer-input min-h-[48px] max-h-28 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6 sm:flex-1"
                   aria-label="Prompt message input"
                   rows={1}
                 />
@@ -2766,7 +2766,7 @@ export default function ReportQA() {
                   disabled={isProcessing || isTranscribing}
                   title="Start voice input"
                   aria-label="Start voice input"
-                  className="report-qa-composer-control report-qa-mic-button h-11 w-11 flex-shrink-0"
+                  className="report-qa-composer-control report-qa-mic-button h-10 w-10 flex-shrink-0 sm:h-11 sm:w-11"
                 >
                   {isTranscribing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -2778,7 +2778,7 @@ export default function ReportQA() {
                 <Button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
-                  className="report-qa-composer-control report-qa-send-button h-11 w-11 flex-shrink-0 rounded-2xl"
+                  className="report-qa-composer-control report-qa-send-button h-10 w-10 flex-shrink-0 rounded-2xl sm:h-11 sm:w-11"
                   title="Send message"
                   aria-label="Send message"
                 >
