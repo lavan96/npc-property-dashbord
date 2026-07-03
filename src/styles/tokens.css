@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Property Intake Dashboard Design System
 Clean, modern admin dashboard with confidence-based color coding
 */
