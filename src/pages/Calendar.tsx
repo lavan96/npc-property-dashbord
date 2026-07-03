@@ -43,7 +43,6 @@ import { RecurringPatterns } from '@/components/calendar/RecurringPatterns';
 import { SmartReminders } from '@/components/calendar/SmartReminders';
 import { MiniCalendarNavigator } from '@/components/calendar/MiniCalendarNavigator';
 import { EnhancedEventPreview } from '@/components/calendar/EnhancedEventPreview';
-import { FloatingActions } from '@/components/calendar/FloatingActions';
 import { KeyboardShortcutsHint } from '@/components/calendar/KeyboardShortcutsHint';
 import { CalendarLoadingSkeleton, StatsLoadingSkeleton, SidebarLoadingSkeleton } from '@/components/calendar/CalendarLoadingSkeleton';
 import { BatchActions } from '@/components/calendar/BatchActions';
@@ -641,7 +640,7 @@ export default function Calendar() {
 
   if (error) {
     return (
-      <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "max-w-none")}>
+      <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "calendar-scroll-container max-w-none")}>
         <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Calendar</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">GoHighLevel Calendar Integration</p>
@@ -671,7 +670,7 @@ export default function Calendar() {
   }
 
   return (
-    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "max-w-none")}>
+    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "calendar-scroll-container max-w-none")}>
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
@@ -1471,25 +1470,42 @@ export default function Calendar() {
                     <span className="text-sm font-semibold text-foreground">Tools</span>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">Calendar command sidebar</p>
                   </div>
-                  <div className="flex items-center gap-1 ml-auto">
+                  <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                     <Button size="sm" variant="outline" className="h-10 rounded-xl border-primary/40 bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]" onClick={() => setQuickAddModalOpen(true)}>
                       <Plus className="h-3 w-3 mr-1" />
                       Quick Add
                     </Button>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          aria-label="Collapse calendar tools sidebar"
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10 rounded-xl border border-border text-muted-foreground transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
-                          onClick={() => setSidebarCollapsed(true)}
-                        >
-                          <PanelLeftClose className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">Collapse sidebar</TooltipContent>
-                    </Tooltip>
+                    <div className="flex items-center gap-1.5 rounded-xl border border-border bg-background/55 p-1 shadow-inner shadow-sm dark:shadow-black/20">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            aria-label="Refresh calendar"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-muted-foreground transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={handleRefresh}
+                            disabled={isLoading}
+                          >
+                            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">Refresh calendar</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            aria-label="Collapse calendar tools sidebar"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-muted-foreground transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
+                            onClick={() => setSidebarCollapsed(true)}
+                          >
+                            <PanelLeftClose className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">Collapse sidebar</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                 </div>
 
@@ -1673,15 +1689,6 @@ export default function Calendar() {
         </Card>
         )}
       </div>
-
-      {/* Floating Actions */}
-      <FloatingActions
-        onQuickAdd={() => setQuickAddModalOpen(true)}
-        onRefresh={handleRefresh}
-        onClearSelection={selectedDate ? clearSelection : undefined}
-        hasSelection={!!selectedDate}
-        isRefreshing={isLoading}
-      />
 
       {/* Quick Add Modal */}
       <QuickAddAppointmentModal
