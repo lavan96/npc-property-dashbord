@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, CheckCircle2, Trash2, Archive, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
 import { useChecklistInstanceItems, useChecklistMutations, type ChecklistInstance } from '@/hooks/useChecklists';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
@@ -44,9 +44,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   const progress = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
   const statusClass = instance.status === 'completed'
     ? 'border-success/35 bg-success/10 text-success'
-    : instance.status === 'archived'
-      ? 'border-brand-700/35 bg-brand-950/30 text-brand-200'
-      : 'border-brand-300/40 bg-brand-400/10 text-brand-200';
+    : 'border-brand-300/40 bg-brand-400/10 text-brand-200';
   const progressFillClass = instance.status === 'completed'
     ? '[&>div]:from-success [&>div]:via-success [&>div]:to-success'
     : '[&>div]:from-brand-500 [&>div]:via-brand-300 [&>div]:to-brand-200';
@@ -92,13 +90,6 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
     );
   };
 
-  const handleArchive = () => {
-    mutations.updateInstance.mutate(
-      { id: instance.id, status: 'archived', archived_at: new Date().toISOString() },
-      { onSuccess: onBack },
-    );
-  };
-
   const handleDelete = () => {
     mutations.deleteInstance.mutate(instance.id, { onSuccess: onBack });
   };
@@ -128,15 +119,6 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleArchive}
-              className="min-h-10 justify-center gap-1 border-border/50 bg-background dark:bg-black/30 text-muted-foreground dark:text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/45 hover:bg-brand-400/10 hover:text-brand-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none"
-              disabled={mutations.updateInstance.isPending}
-            >
-              <Archive className="h-3 w-3" /> Archive
-            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="min-h-10 justify-center gap-1 border-destructive/35 bg-destructive/5 text-destructive transition-all duration-200 hover:-translate-y-0.5 hover:border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_10px_24px_rgba(239,68,68,0.12)] focus-visible:ring-2 focus-visible:ring-destructive/45 motion-reduce:transition-none">
