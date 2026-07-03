@@ -1780,20 +1780,20 @@ export default function ReportQA() {
         as="main"
         variant="page"
         className={cn(
-          "report-qa-premium flex h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-2 pb-16 sm:h-[calc(100dvh-8rem)] sm:max-h-[calc(100dvh-8rem)] sm:gap-4 sm:p-4 sm:pb-20 md:h-[calc(100dvh-10rem)] md:max-h-[calc(100dvh-10rem)] md:gap-5 md:p-6 md:pb-0",
+          "report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-3 sm:p-3 sm:pb-16 md:h-[calc(100dvh-8.25rem)] md:max-h-[calc(100dvh-8.25rem)] md:gap-3.5 md:overflow-hidden md:p-4 md:pb-0 xl:h-[calc(100dvh-8.75rem)] xl:max-h-[calc(100dvh-8.75rem)]",
           isFullScreen && "report-qa-fullscreen"
         )}
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 md:flex-row md:items-center">
+      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3 md:flex-row md:items-center md:px-5 md:py-3.5">
         <div className="min-w-0 space-y-1.5">
           <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
             <Sparkles className="h-3 w-3" />
             AI Report Intelligence
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
+            <h1 className="text-lg sm:text-xl md:text-[1.7rem] font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
           </div>
           <p className="report-qa-subtitle max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
             Upload investment reports and ask questions to generate summaries, comparisons and citation-backed insights.
@@ -1839,15 +1839,15 @@ export default function ReportQA() {
         </div>
       </DashboardThemeFrame>
 
-      <div className="report-qa-workspace-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-4 md:gap-5 lg:grid-cols-[minmax(18rem,0.92fr)_minmax(0,1.9fr)] lg:overflow-hidden lg:pr-0 xl:gap-6">
+      <div className="report-qa-workspace-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-3 md:gap-4 lg:grid-cols-[minmax(17rem,0.78fr)_minmax(0,1.72fr)] lg:overflow-hidden lg:pr-0 xl:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.82fr)] xl:gap-5">
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
-        <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[18rem] p-0 md:max-h-[46dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
-          <CardHeader className="report-qa-reports-header pb-5">
+        <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[16rem] p-0 md:max-h-[44dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
+          <CardHeader className="report-qa-reports-header px-3 py-3 pb-3 sm:px-4 sm:py-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
                 <CardTitle className="flex items-center gap-2 text-base tracking-tight">
-                  <span className="report-qa-reports-icon flex h-8 w-8 items-center justify-center rounded-xl">
+                  <span className="report-qa-reports-icon flex h-7 w-7 items-center justify-center rounded-xl">
                     <FileText className="h-4 w-4" />
                   </span>
                   <span>Reports</span>
@@ -1865,11 +1865,11 @@ export default function ReportQA() {
                 onAdd={handleLibraryAdd}
                 existingNames={uploadedReports.map((r) => r.name)}
                 disabled={isUploading}
-                className="report-qa-library-button h-9 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
+                className="report-qa-library-button h-8 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
               />
             </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden px-4 pb-5 sm:px-5">
+          <CardContent className="flex-1 flex flex-col space-y-3 min-h-0 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
             <div className="report-qa-panel-section space-y-2">
               <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                 <span>Document intake</span>
@@ -1891,7 +1891,7 @@ export default function ReportQA() {
             {/* Premium Upload Zone */}
             <div
               className={cn(
-                "report-qa-dropzone group w-full rounded-[1.35rem] border-2 border-dashed px-5 py-7 text-center transition-all cursor-pointer sm:px-6 sm:py-8",
+                "report-qa-dropzone group w-full rounded-[1.15rem] border-2 border-dashed px-4 py-4 text-center transition-all cursor-pointer sm:px-5 sm:py-5",
                 isDragOver ? 'is-drag-over border-primary' : 'border-primary/45 hover:border-primary/75',
                 isUploading && 'is-processing pointer-events-none',
                 isUploadComplete && !isUploading && !hasUploadError && 'is-ready',
@@ -1920,7 +1920,7 @@ export default function ReportQA() {
               />
               {isUploading ? (
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <span className="report-qa-upload-icon flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16">
+                  <span className="report-qa-upload-icon flex h-11 w-11 items-center justify-center rounded-2xl sm:h-12 sm:w-12">
                     <Loader2 className="h-7 w-7 animate-spin text-brand-300" />
                   </span>
                   <p className="text-sm font-semibold text-foreground sm:text-base">Processing report…</p>
@@ -1928,7 +1928,7 @@ export default function ReportQA() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <span className="report-qa-upload-icon flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16">
+                  <span className="report-qa-upload-icon flex h-11 w-11 items-center justify-center rounded-2xl sm:h-12 sm:w-12">
                     {hasUploadError ? (
                       <AlertCircle className="h-7 w-7 text-destructive transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
                     ) : isUploadComplete ? (
@@ -2103,7 +2103,7 @@ export default function ReportQA() {
 
         {/* Chat Section */}
         <DashboardThemeFrame as="section" variant="section" className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 p-0", showReportsPanel ? "" : "lg:col-span-2")}>
-          <CardHeader className="report-qa-chat-header shrink-0 px-3 py-3 pb-3 sm:px-4 sm:py-4 sm:pb-3">
+          <CardHeader className="report-qa-chat-header shrink-0 px-3 py-2.5 pb-2.5 sm:px-4 sm:py-3 sm:pb-2.5">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2308,9 +2308,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="report-qa-chat-content flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 sm:px-4 sm:pb-4">
+          <CardContent id="chat-main" className="report-qa-chat-content flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 sm:px-3 sm:pb-3">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-3 sm:pr-3", messages.length === 0 && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
@@ -2330,8 +2330,8 @@ export default function ReportQA() {
                 </div>
               )}
               {messages.length === 0 ? (
-                <div className="report-qa-empty-state flex min-h-[16rem] items-center justify-center p-4 text-center sm:min-h-[20rem] sm:p-6">
-                  <div className="report-qa-empty-card space-y-4">
+                <div className="report-qa-empty-state flex min-h-[12rem] items-center justify-center p-3 text-center sm:min-h-[15rem] sm:p-4">
+                  <div className="report-qa-empty-card space-y-3">
                     <div className="report-qa-empty-icon-wrap" aria-hidden="true">
                       <MessageSquare className="report-qa-empty-icon" />
                       <Sparkles className="report-qa-empty-sparkle" />
@@ -2683,7 +2683,7 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="report-qa-composer shrink-0 space-y-2 overflow-hidden border-t pt-3">
+            <div className="report-qa-composer shrink-0 space-y-1.5 overflow-hidden border-t pt-2.5">
               <div className="flex flex-wrap items-end gap-1.5 sm:flex-nowrap sm:gap-2">
                 <Textarea
                   ref={inputRef}
@@ -2707,7 +2707,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="report-qa-composer-input min-h-[48px] max-h-28 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6 sm:flex-1"
+                  className="report-qa-composer-input min-h-[44px] max-h-24 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-xl px-3 py-2.5 text-sm leading-5 sm:flex-1"
                   aria-label="Prompt message input"
                   rows={1}
                 />
@@ -2766,7 +2766,7 @@ export default function ReportQA() {
                   disabled={isProcessing || isTranscribing}
                   title="Start voice input"
                   aria-label="Start voice input"
-                  className="report-qa-composer-control report-qa-mic-button h-10 w-10 flex-shrink-0 sm:h-11 sm:w-11"
+                  className="report-qa-composer-control report-qa-mic-button h-9 w-9 flex-shrink-0 sm:h-10 sm:w-10"
                 >
                   {isTranscribing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -2778,7 +2778,7 @@ export default function ReportQA() {
                 <Button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
-                  className="report-qa-composer-control report-qa-send-button h-10 w-10 flex-shrink-0 rounded-2xl sm:h-11 sm:w-11"
+                  className="report-qa-composer-control report-qa-send-button h-9 w-9 flex-shrink-0 rounded-xl sm:h-10 sm:w-10"
                   title="Send message"
                   aria-label="Send message"
                 >
