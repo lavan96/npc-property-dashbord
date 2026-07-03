@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { ClipboardList, LayoutTemplate, Plus, PlayCircle, Trash2, Clock, CheckCircle2, Loader2, Pencil, Upload } from 'lucide-react';
+import { Archive, Check, ClipboardList, LayoutTemplate, Plus, PlayCircle, Trash2, Clock, CheckCircle2, Loader2, Upload, X } from 'lucide-react';
 import { useChecklistTemplates, useChecklistInstances, useChecklistMutations, type ChecklistTemplate, type ChecklistInstance } from '@/hooks/useChecklists';
 import { TemplateBuilder } from '@/components/checklists/TemplateBuilder';
 import { ChecklistInstanceView } from '@/components/checklists/ChecklistInstanceView';
@@ -18,6 +18,7 @@ import { TemplateImportDialog } from '@/components/checklists/TemplateImportDial
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const ChecklistLoadingState = ({ message }: { message: string }) => (
@@ -49,6 +50,66 @@ export default function Checklists() {
   const { data: completedInstances = [] } = useChecklistInstances('completed');
   const { data: archivedInstances = [] } = useChecklistInstances('archived');
   const mutations = useChecklistMutations();
+  const [selectedChecklistIds, setSelectedChecklistIds] = useState<Set<string>>(new Set());
+
+  const visibleInstances = useMemo(() => {
+    if (activeTab === 'active') return activeInstances;
+    if (activeTab === 'completed') return completedInstances;
+    if (activeTab === 'archived') return archivedInstances;
+    return [];
+  }, [activeTab, activeInstances, completedInstances, archivedInstances]);
+
+  const selectedVisibleIds = useMemo(
+    () => visibleInstances.map(instance => instance.id).filter(id => selectedChecklistIds.has(id)),
+    [visibleInstances, selectedChecklistIds],
+  );
+  const hasSelectableVisibleItems = visibleInstances.length > 0 && activeTab !== 'templates';
+  const allVisibleSelected = hasSelectableVisibleItems && selectedVisibleIds.length === visibleInstances.length;
+  const someVisibleSelected = selectedVisibleIds.length > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    setSelectedChecklistIds(new Set());
+  }, [activeTab]);
+
+  useEffect(() => {
+    setSelectedChecklistIds(prev => {
+      const visibleIds = new Set(visibleInstances.map(instance => instance.id));
+      const next = new Set(Array.from(prev).filter(id => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleInstances]);
+
+  const toggleChecklistSelection = (id: string) => {
+    setSelectedChecklistIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllVisible = () => {
+    setSelectedChecklistIds(allVisibleSelected ? new Set() : new Set(visibleInstances.map(instance => instance.id)));
+  };
+
+  const completeChecklists = async (ids: string[], message: string) => {
+    await mutations.bulkUpdateInstances.mutateAsync({ ids, data: { status: 'completed', completed_at: new Date().toISOString() } });
+    setSelectedChecklistIds(new Set());
+    toast.success(message);
+  };
+
+  const archiveChecklists = async (ids: string[], message: string) => {
+    await mutations.bulkUpdateInstances.mutateAsync({ ids, data: { status: 'archived', archived_at: new Date().toISOString() } });
+    setSelectedChecklistIds(new Set());
+    toast.success(message);
+  };
+
+  const deleteSelectedChecklists = async () => {
+    const count = selectedVisibleIds.length;
+    await mutations.bulkDeleteInstances.mutateAsync(selectedVisibleIds);
+    setSelectedChecklistIds(new Set());
+    toast.success(`${count} ${count === 1 ? 'checklist' : 'checklists'} deleted.`);
+  };
 
   // If viewing a template builder
   if (selectedTemplate) {
@@ -171,11 +232,14 @@ export default function Checklists() {
       : instance.status === 'archived'
         ? 'bg-brand-700/10'
         : 'bg-brand-400/10';
+    const isSelected = selectedChecklistIds.has(instance.id);
+    const formattedDate = new Date(instance.created_at).toLocaleDateString();
+    const actionLabel = `${instance.name} checklist dated ${formattedDate}`;
 
     return (
       <Card
         key={instance.id}
-        className={`group relative cursor-pointer overflow-hidden rounded-2xl border bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))] shadow-lg shadow-sm dark:shadow-black/30 outline-none transition-all duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none ${cardInteractionClass}`}
+        className={`group relative cursor-pointer overflow-hidden rounded-2xl border bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))] shadow-lg shadow-sm dark:shadow-black/30 outline-none transition-all duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none ${isSelected ? 'border-cyan-300/80 shadow-[0_0_0_1px_rgba(103,232,249,0.28),0_24px_58px_rgba(34,211,238,0.16)] bg-[linear-gradient(145deg,rgba(22,78,99,0.28),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))]' : cardInteractionClass}`}
         onClick={() => setSelectedInstance(instance)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -192,19 +256,39 @@ export default function Checklists() {
         <CardContent className="relative p-5">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3.5">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-300/20 bg-background/35 dark:bg-black/35 text-xl shadow-inner shadow-brand-950/20">{instance.icon}</span>
+              <div className="flex shrink-0 items-center gap-2" onClick={e => e.stopPropagation()}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => toggleChecklistSelection(instance.id)}
+                  aria-label={`Select ${actionLabel}`}
+                  className="mt-2 border-brand-300/45 bg-black/40 data-[state=checked]:border-cyan-300 data-[state=checked]:bg-cyan-400 data-[state=checked]:text-black"
+                />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-300/20 bg-background/35 dark:bg-black/35 text-xl shadow-inner shadow-brand-950/20">{instance.icon}</span>
+              </div>
               <div className="min-w-0">
                 <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground dark:text-foreground transition-colors group-hover:text-brand-50">{instance.name}</h3>
                 <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">
                   <Clock className="h-3 w-3 text-brand-300/75" />
-                  {new Date(instance.created_at).toLocaleDateString()}
+                  {formattedDate}
                 </p>
               </div>
             </div>
-            <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shadow-sm ${statusClass}`}>
-              {instance.status === 'completed' && <CheckCircle2 className="mr-1 h-3 w-3" />}
-              {instance.status}
-            </Badge>
+            <div className="flex shrink-0 items-center gap-1.5" onClick={e => e.stopPropagation()}>
+              <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shadow-sm ${statusClass}`}>
+                {instance.status === 'completed' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                {instance.status}
+              </Badge>
+              {instance.status === 'in_progress' && (
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full border border-success/20 bg-success/5 text-success hover:bg-success/10 focus-visible:ring-2 focus-visible:ring-success/45" aria-label={`Mark ${actionLabel} as completed`} disabled={mutations.bulkUpdateInstances.isPending} onClick={() => completeChecklists([instance.id], 'Checklist marked as completed.')}>
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {instance.status !== 'archived' && (
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full border border-brand-300/20 bg-brand-400/10 text-brand-100 hover:bg-brand-400/20 focus-visible:ring-2 focus-visible:ring-brand-300/55" aria-label={`Archive ${actionLabel}`} disabled={mutations.bulkUpdateInstances.isPending} onClick={() => archiveChecklists([instance.id], 'Checklist archived.')}>
+                  <Archive className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
           <div className="rounded-xl border border-border dark:border-white/5 bg-background/35 dark:bg-black/35 p-3.5 shadow-inner shadow-sm dark:shadow-black/35">
             <div className="mb-2 flex items-center justify-between">
@@ -218,6 +302,65 @@ export default function Checklists() {
           </div>
         </CardContent>
       </Card>
+    );
+  };
+
+  const renderSelectionToolbar = () => {
+    if (!hasSelectableVisibleItems) return null;
+    const selectedCount = selectedVisibleIds.length;
+    return (
+      <div className="flex flex-col gap-3 rounded-2xl border border-brand-300/15 bg-[linear-gradient(135deg,rgba(14,116,144,0.18),rgba(0,0,0,0.62)_42%,rgba(0,0,0,0.78))] p-3 shadow-[0_18px_45px_rgba(0,0,0,0.24)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/45 bg-black/30 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-foreground transition-colors hover:border-cyan-300/45">
+            <Checkbox
+              checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+              onCheckedChange={handleSelectAllVisible}
+              aria-label="Select all visible checklist cards"
+              className="border-brand-300/45 bg-black/40 data-[state=checked]:border-cyan-300 data-[state=checked]:bg-cyan-400 data-[state=checked]:text-black"
+            />
+            <span>{allVisibleSelected ? 'Clear selection' : 'Select all'}</span>
+          </label>
+          <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-100">
+            {selectedCount} {selectedCount === 1 ? 'selected' : 'selected'}
+          </span>
+        </div>
+        {selectedCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {activeTab === 'active' && (
+              <Button size="sm" className="gap-1 bg-success text-success-foreground hover:bg-success/90" disabled={mutations.bulkUpdateInstances.isPending} onClick={() => completeChecklists(selectedVisibleIds, `${selectedCount} ${selectedCount === 1 ? 'checklist' : 'checklists'} marked as completed.`)}>
+                <Check className="h-3.5 w-3.5" /> Complete selected
+              </Button>
+            )}
+            {activeTab !== 'archived' && (
+              <Button size="sm" variant="outline" className="gap-1 border-brand-300/25 bg-brand-400/10 text-brand-100 hover:bg-brand-400/20" disabled={mutations.bulkUpdateInstances.isPending} onClick={() => archiveChecklists(selectedVisibleIds, `${selectedCount} ${selectedCount === 1 ? 'checklist' : 'checklists'} archived.`)}>
+                <Archive className="h-3.5 w-3.5" /> Archive selected
+              </Button>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1 border-destructive/35 bg-destructive/5 text-destructive hover:bg-destructive/10" disabled={mutations.bulkDeleteInstances.isPending}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete selected
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl border-destructive/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(3,3,3,0.98))] text-foreground shadow-2xl shadow-black/40">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete selected checklists?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground">
+                    This will remove {selectedCount} checklist {selectedCount === 1 ? 'record' : 'records'}. This action cannot be undone. Checklist templates are not affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                  <AlertDialogCancel className="border-border bg-background text-foreground hover:bg-white/5">Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={deleteSelectedChecklists}>Delete selected</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button size="sm" variant="ghost" className="gap-1 text-muted-foreground hover:bg-white/5 hover:text-foreground" onClick={() => setSelectedChecklistIds(new Set())}>
+              <X className="h-3.5 w-3.5" /> Clear
+            </Button>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -265,6 +408,7 @@ export default function Checklists() {
 
         {/* Active Checklists */}
         <TabsContent value="active" className="space-y-4 rounded-2xl border border-border dark:border-white/5 bg-background/55 dark:bg-background/55 p-4 shadow-xl shadow-sm dark:shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+          {renderSelectionToolbar()}
           {instancesLoading ? (
             <ChecklistLoadingState message="Loading..." />
           ) : activeInstances.length === 0 ? (
@@ -289,6 +433,7 @@ export default function Checklists() {
 
         {/* Completed */}
         <TabsContent value="completed" className="space-y-4 rounded-2xl border border-success/10 bg-[linear-gradient(180deg,rgba(6,78,59,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-sm dark:shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+          {renderSelectionToolbar()}
           {completedInstances.length === 0 ? (
             <Card className="overflow-hidden rounded-2xl border-dashed border-success/25 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,7,18,0.96))] shadow-inner shadow-success/20">
               <CardContent className="relative py-14 text-center">
@@ -308,6 +453,7 @@ export default function Checklists() {
 
         {/* Archived */}
         <TabsContent value="archived" className="space-y-4 rounded-2xl border border-brand-700/15 bg-[linear-gradient(180deg,rgba(120,53,15,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-sm dark:shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+          {renderSelectionToolbar()}
           {archivedInstances.length === 0 ? (
             <Card className="overflow-hidden rounded-2xl border-dashed border-brand-700/30 bg-[radial-gradient(circle_at_top,rgba(180,83,9,0.13),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(12,10,9,0.96))] shadow-inner shadow-brand-950/20">
               <CardContent className="relative py-14 text-center">

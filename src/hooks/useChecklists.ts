@@ -276,12 +276,35 @@ export function useChecklistMutations() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const bulkUpdateInstances = useMutation({
+    mutationFn: async ({ ids, data }: { ids: string[]; data: Partial<ChecklistInstance> }) => {
+      return Promise.all(
+        ids.map(id => invoke({ operation: 'update', table: 'checklist_instances', recordId: id, data })),
+      );
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['checklist-instances'] }); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const deleteInstance = useMutation({
     mutationFn: async (id: string) => invoke({ operation: 'delete', table: 'checklist_instances', recordId: id }),
     onSuccess: (_: any, id: string) => {
       qc.invalidateQueries({ queryKey: ['checklist-instances'] });
       logActivityDirect({ actionType: 'checklist_deleted', entityType: 'checklist', entityId: id });
       toast.success('Checklist deleted');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkDeleteInstances = useMutation({
+    mutationFn: async (ids: string[]) => {
+      return Promise.all(
+        ids.map(id => invoke({ operation: 'delete', table: 'checklist_instances', recordId: id })),
+      );
+    },
+    onSuccess: (_: any, ids: string[]) => {
+      qc.invalidateQueries({ queryKey: ['checklist-instances'] });
+      ids.forEach(id => logActivityDirect({ actionType: 'checklist_deleted', entityType: 'checklist', entityId: id }));
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -402,7 +425,7 @@ export function useChecklistMutations() {
     createTemplate, updateTemplate, deleteTemplate,
     createSection, updateSection, deleteSection,
     createItem, updateItem, deleteItem,
-    createInstance, updateInstance, deleteInstance,
+    createInstance, updateInstance, bulkUpdateInstances, deleteInstance, bulkDeleteInstances,
     createInstanceItem, updateInstanceItem,
     generateFromTemplate,
   };
