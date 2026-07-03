@@ -337,3 +337,30 @@ html {
     animation: none !important;
   }
 }
+
+/* Calendar page: scoped premium scrollbar treatment for the inner dashboard scroll surface. */
+@layer utilities {
+  .calendar-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(180, 180, 190, 0.28) transparent;
+    scrollbar-gutter: stable;
+  }
+
+  .calendar-scroll-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .calendar-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .calendar-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(180, 180, 190, 0.26);
+    border-radius: 999px;
+  }
+
+  .calendar-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 210, 0.42);
+  }
+}
