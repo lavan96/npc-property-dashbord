@@ -86,7 +86,7 @@ const premiumSearchInput = "h-11 rounded-2xl border-border dark:border-white/10 
 const premiumActiveFilterBadge = "rounded-full border border-brand-300/35 bg-brand-300/10 px-2.5 py-1 text-xs font-medium text-brand-100 shadow-sm shadow-brand-500/10";
 const premiumActionBase = "min-h-10 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 const premiumReportAction = `${premiumActionBase} border-brand-300/50 bg-gradient-to-r from-brand-300/95 to-brand-500/90 text-brand-950 shadow-brand-500/20 hover:border-brand-100 hover:from-brand-200 hover:to-brand-400 hover:text-brand-950 hover:shadow-lg hover:shadow-brand-500/25 focus-visible:ring-brand-300`;
-const premiumUtilityAction = `${premiumActionBase} border-info/25 bg-info/10 text-info-foreground hover:border-info/45 hover:bg-info/15 hover:text-info-foreground focus-visible:ring-info`;
+const premiumUtilityAction = `${premiumActionBase} border-sky-300/45 bg-sky-950/45 text-sky-50 shadow-sky-500/10 hover:border-sky-300/65 hover:bg-sky-900/55 hover:text-white hover:shadow-lg hover:shadow-sky-500/15 focus-visible:ring-sky-300`;
 const premiumQualityAction = `${premiumActionBase} border-success/25 bg-success/10 text-success-foreground hover:border-success/45 hover:bg-success/15 hover:text-success-foreground focus-visible:ring-success`;
 const premiumAlertAction = `${premiumActionBase} border-brand-300/30 bg-brand-400/10 text-brand-100 hover:border-brand-300/55 hover:bg-brand-400/15 hover:text-brand-50 focus-visible:ring-brand-300`;
 const premiumDangerAction = `${premiumActionBase} border-destructive/35 bg-destructive/10 text-destructive hover:border-destructive/55 hover:bg-destructive/15 hover:text-destructive-foreground focus-visible:ring-destructive`;
@@ -525,9 +525,9 @@ const CallLogs = () => {
       <div className="mx-auto max-w-[1800px] space-y-5 md:space-y-7 pb-20 md:pb-0">
       {/* Header */}
       <DashboardThemeFrame as="header" variant="hero" className="flex flex-col gap-4 border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.12))] p-4 shadow-2xl shadow-sm dark:shadow-black/20 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-        <div className="min-w-0">
+        <div className="min-w-0 overflow-visible">
           <div className="mb-2 inline-flex items-center rounded-full border border-brand-300/25 bg-brand-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-100 shadow-sm shadow-brand-500/10">Voice Intelligence</div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-brand-100 via-foreground to-brand-300 bg-clip-text text-transparent md:text-5xl">
+          <h1 className="overflow-visible pb-1 text-3xl font-bold leading-[1.12] tracking-tight bg-gradient-to-r from-brand-100 via-foreground to-brand-300 bg-clip-text text-transparent md:text-5xl">
             Call Logs
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-foreground/85">Track and analyze voice agent call outcomes</p>
