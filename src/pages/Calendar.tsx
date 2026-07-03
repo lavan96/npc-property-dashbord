@@ -143,8 +143,8 @@ export default function Calendar() {
   useEffect(() => {
     const scrollbarClass = 'calendar-page-scrollbar-clean';
     const styleId = 'calendar-page-scrollbar-clean-style';
-    const previousHtmlScrollbarWidth = document.documentElement.style.scrollbarWidth;
-    const previousBodyScrollbarWidth = document.body.style.scrollbarWidth;
+    const previousHtmlScrollbarWidth = document.documentElement.style.getPropertyValue('scrollbar-width');
+    const previousBodyScrollbarWidth = document.body.style.getPropertyValue('scrollbar-width');
     const previousHtmlMsOverflowStyle = document.documentElement.style.getPropertyValue('-ms-overflow-style');
     const previousBodyMsOverflowStyle = document.body.style.getPropertyValue('-ms-overflow-style');
 
@@ -164,16 +164,16 @@ export default function Calendar() {
 
     document.documentElement.classList.add(scrollbarClass);
     document.body.classList.add(scrollbarClass);
-    document.documentElement.style.scrollbarWidth = 'none';
-    document.body.style.scrollbarWidth = 'none';
+    document.documentElement.style.setProperty('scrollbar-width', 'none');
+    document.body.style.setProperty('scrollbar-width', 'none');
     document.documentElement.style.setProperty('-ms-overflow-style', 'none');
     document.body.style.setProperty('-ms-overflow-style', 'none');
 
     return () => {
       document.documentElement.classList.remove(scrollbarClass);
       document.body.classList.remove(scrollbarClass);
-      document.documentElement.style.scrollbarWidth = previousHtmlScrollbarWidth;
-      document.body.style.scrollbarWidth = previousBodyScrollbarWidth;
+      document.documentElement.style.setProperty('scrollbar-width', previousHtmlScrollbarWidth);
+      document.body.style.setProperty('scrollbar-width', previousBodyScrollbarWidth);
       document.documentElement.style.setProperty('-ms-overflow-style', previousHtmlMsOverflowStyle);
       document.body.style.setProperty('-ms-overflow-style', previousBodyMsOverflowStyle);
       document.getElementById(styleId)?.remove();
