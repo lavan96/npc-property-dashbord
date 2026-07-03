@@ -1,4 +1,4 @@
-import { BarChart3, MapPin, TrendingUp, type LucideIcon } from 'lucide-react';
+import { BarChart3, ChevronRight, MapPin, TrendingUp, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -48,34 +48,41 @@ export function ReportLibraryTabs({ isMobile, quantitativeCount, investmentCount
   };
 
   return (
-    <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-      <DashboardThemeFrame variant="toolbar" className="min-w-max p-1.5 md:min-w-0">
-        <TabsList className={isMobile ? 'inline-flex h-auto w-auto min-w-full gap-2 bg-transparent p-0' : 'grid h-auto w-full grid-cols-3 gap-2 bg-transparent p-0'}>
+    <div className="-mx-4 overflow-x-auto px-4 pb-1 pt-1 md:mx-0 md:overflow-visible md:px-0">
+      <DashboardThemeFrame
+        variant="toolbar"
+        className="min-w-max rounded-[1.6rem] border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(168,85,247,0.16),transparent_34%),linear-gradient(135deg,rgba(0,0,0,0.52),rgba(15,23,42,0.74))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_18px_52px_rgba(0,0,0,0.28)] md:min-w-0 md:p-4"
+      >
+        <TabsList className={isMobile ? 'inline-flex h-auto w-auto min-w-full gap-3 bg-transparent p-0' : 'grid h-auto w-full grid-cols-3 gap-4 bg-transparent p-0 lg:gap-5'}>
           {workspaceTabs.map(({ value, label, mobileLabel, description, icon: Icon }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="group h-auto min-w-[9.5rem] justify-start rounded-xl border border-transparent bg-background/55 p-3 text-left shadow-sm transition-all hover:border-primary/20 hover:bg-background/80 data-[state=active]:border-brand-400/40 data-[state=active]:bg-gradient-to-br data-[state=active]:from-brand-500/15 data-[state=active]:via-background data-[state=active]:to-primary/10 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/10 md:min-w-0 md:p-4"
+              className="group relative h-auto min-h-[96px] min-w-[18rem] overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.025] px-5 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_10px_30px_rgba(0,0,0,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-400/30 hover:bg-white/[0.045] focus-visible:ring-2 focus-visible:ring-purple-300/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-purple-400/60 data-[state=active]:bg-[radial-gradient(circle_at_78%_12%,rgba(190,0,255,0.24),transparent_36%),linear-gradient(135deg,rgba(88,28,135,0.28),rgba(15,23,42,0.72))] data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_30px_rgba(168,85,247,0.24),0_18px_40px_rgba(0,0,0,0.28)] data-[state=active]:ring-1 data-[state=active]:ring-purple-300/25 md:min-w-0 lg:min-h-[104px]"
             >
-              <div className="flex w-full items-start gap-3">
-                <span className="mt-0.5 rounded-lg border border-border/60 bg-card p-2 text-muted-foreground transition-colors group-data-[state=active]:border-brand-400/40 group-data-[state=active]:bg-brand-500/10 group-data-[state=active]:text-brand-700 dark:group-data-[state=active]:text-brand-300">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1 space-y-1">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="font-semibold leading-none">
+              <span className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity duration-200 group-data-[state=active]:opacity-100" />
+              <span className="flex w-full items-start justify-between gap-4">
+                <span className="flex min-w-0 items-start gap-3.5">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] text-muted-foreground shadow-inner transition-all duration-200 group-hover:border-purple-300/25 group-hover:bg-purple-500/10 group-hover:text-purple-200 group-data-[state=active]:border-purple-300/45 group-data-[state=active]:bg-purple-500/18 group-data-[state=active]:text-purple-100 group-data-[state=active]:shadow-[0_0_18px_rgba(168,85,247,0.22)]">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 space-y-2 pt-0.5">
+                    <span className="block text-[15px] font-bold leading-none tracking-tight text-foreground md:text-base">
                       <span className="hidden sm:inline">{label}</span>
                       <span className="sm:hidden">{mobileLabel}</span>
                     </span>
-                    <Badge variant="secondary" className="rounded-full px-2 py-0 text-[11px] font-semibold">
-                      {counts[value]}
-                    </Badge>
-                  </span>
-                  <span className="hidden text-xs font-normal leading-5 text-muted-foreground md:block">
-                    {description}
+                    <span className="block max-w-[14rem] text-[12.5px] font-normal leading-5 text-muted-foreground transition-colors group-data-[state=active]:text-foreground/75 sm:max-w-none">
+                      {description}
+                    </span>
                   </span>
                 </span>
-              </div>
+                <span className="flex shrink-0 flex-col items-end gap-3">
+                  <Badge variant="secondary" className="flex h-7 min-w-7 items-center justify-center rounded-full border border-white/10 bg-black/25 px-2 text-xs font-bold text-foreground shadow-inner transition-colors group-data-[state=active]:border-purple-300/40 group-data-[state=active]:bg-purple-300/15 group-data-[state=active]:text-purple-50">
+                    {counts[value]}
+                  </Badge>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/55 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-purple-200/80 group-data-[state=active]:text-purple-100" aria-hidden="true" />
+                </span>
+              </span>
             </TabsTrigger>
           ))}
         </TabsList>
