@@ -12,6 +12,12 @@ import { evaluateGoldenCorpusRun } from './goldenCorpusRunEvaluator';
 import { buildGoldenRegressionSummary } from './goldenRegressionSummary';
 import { saveGoldenRegressionSummary } from './goldenRegressionPersistence';
 import { loadGoldenCorpusImportQualitySnapshot } from './goldenCorpusImportSnapshot';
+import { buildGoldenRunHistoryInputFromSummary } from './goldenRunHistorySummary';
+import {
+  getLatestGoldenRunBaselines,
+  saveGoldenRunHistory,
+} from './goldenRunHistoryPersistence';
+import { compareGoldenRunToBaseline } from './goldenRunBaselineComparison';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -25,6 +31,7 @@ import type {
 import type { PdfImportQualityGateReport } from '../qualityGates/pdfImportQualityGateTypes';
 import type { PdfImportFailureTriageSummary } from '../failureTriage/pdfImportFailureTriageTypes';
 import type { SaveGoldenRegressionSummaryResult } from './goldenRegressionTypes';
+import type { GoldenRunHistoryRecord } from './goldenRunHistoryTypes';
 import {
   GOLDEN_CORPUS_ORCHESTRATOR_VERSION,
   type GoldenCorpusOrchestratorMode,
@@ -45,6 +52,9 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   build_summary: 'Build regression summary',
   evaluate_triage: 'Evaluate failure triage',
   persist_summary: 'Persist regression summary',
+  load_baseline: 'Load baseline run',
+  compare_baseline: 'Compare to baseline',
+  save_history: 'Save run history',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -129,6 +139,10 @@ function baseResult(
     triageSummary: null,
     persistenceResult: null,
     persisted: false,
+    baselineComparison: null,
+    historyPersistenceResult: null,
+    historyRecord: null,
+    historySaved: false,
     warnings: [],
     failures: [],
     generatedAt,
@@ -409,38 +423,145 @@ export async function orchestrateGoldenCorpusRun(
     createGoldenCorpusOrchestratorStep('load_snapshot', 'pass', 'Import snapshot loaded.'),
   );
 
-  // evaluate_only (default)
+  // Persist the latest summary (Phase 8D). evaluate_only leaves it read-only.
   if (request.persist !== true) {
     pure.mode = 'evaluate_only';
     pure.persisted = false;
     pure.persistenceResult = null;
     pure.steps = replaceStep(pure.steps, skippedStep('persist_summary', 'Persistence not requested (evaluate_only).'));
-    return pure;
-  }
-
-  // evaluate_and_persist
-  pure.mode = 'evaluate_and_persist';
-  if (!pure.goldenRegressionSummary) {
-    pure.persisted = false;
-    pure.persistenceResult = null;
-    pure.steps = replaceStep(pure.steps, createGoldenCorpusOrchestratorStep('persist_summary', 'fail', 'No summary to persist.'));
-    pure.failures = uniq([...pure.failures, 'persistence_summary_missing']);
-    pure.status = 'failed';
-    return pure;
-  }
-
-  const saveResult = await saveGoldenRegressionSummary(importId, pure.goldenRegressionSummary);
-  pure.persistenceResult = saveResult;
-  if (saveResult.kind === 'ok') {
-    pure.persisted = true;
-    pure.steps = replaceStep(pure.steps, createGoldenCorpusOrchestratorStep('persist_summary', 'pass', 'Golden regression summary persisted.'));
   } else {
-    pure.persisted = false;
-    pure.steps = replaceStep(pure.steps, createGoldenCorpusOrchestratorStep('persist_summary', 'fail', saveResult.message));
-    pure.failures = uniq([...pure.failures, 'persistence_failed']);
-    pure.status = 'failed';
+    pure.mode = 'evaluate_and_persist';
+    if (!pure.goldenRegressionSummary) {
+      pure.persisted = false;
+      pure.persistenceResult = null;
+      pure.steps = replaceStep(pure.steps, createGoldenCorpusOrchestratorStep('persist_summary', 'fail', 'No summary to persist.'));
+      pure.failures = uniq([...pure.failures, 'persistence_summary_missing']);
+      pure.status = 'failed';
+    } else {
+      const saveResult = await saveGoldenRegressionSummary(importId, pure.goldenRegressionSummary);
+      pure.persistenceResult = saveResult;
+      if (saveResult.kind === 'ok') {
+        pure.persisted = true;
+        pure.steps = replaceStep(pure.steps, createGoldenCorpusOrchestratorStep('persist_summary', 'pass', 'Golden regression summary persisted.'));
+      } else {
+        pure.persisted = false;
+        pure.steps = replaceStep(pure.steps, createGoldenCorpusOrchestratorStep('persist_summary', 'fail', saveResult.message));
+        pure.failures = uniq([...pure.failures, 'persistence_failed']);
+        pure.status = 'failed';
+      }
+    }
   }
+
+  // Phase 9C — baseline comparison + history persistence (independent of persist).
+  const wantSaveHistory = request.saveHistory === true;
+  const wantCompareBaseline = request.compareBaseline ?? wantSaveHistory;
+  if (wantSaveHistory || wantCompareBaseline) {
+    await applyGoldenRunHistoryPhase(pure, request, importId);
+  }
+
   return pure;
+}
+
+function baselineStepStatus(outcome: string): GoldenCorpusOrchestratorStepStatus {
+  if (outcome === 'improved' || outcome === 'stable') return 'pass';
+  return 'warning'; // degraded | no_baseline | unknown
+}
+
+/**
+ * Phase 9C history phase (async-only): optionally loads the previous baseline for
+ * the corpus, compares the current run, and saves it to the history ledger. Never
+ * throws; failures surface as steps/warnings/failures. A history-save failure when
+ * `saveHistory` is requested fails the run; a baseline that cannot be loaded or is
+ * absent is non-blocking (warning only).
+ */
+async function applyGoldenRunHistoryPhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  importId: string,
+): Promise<void> {
+  const wantSave = request.saveHistory === true;
+  const wantCompare = request.compareBaseline ?? wantSave;
+  const summary = result.goldenRegressionSummary;
+  const corpusId = result.corpusId ?? (request.corpusId || null);
+
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+  const addFailure = (code: string) => { result.failures = uniq([...result.failures, code]); };
+  const appendStep = (step: GoldenCorpusOrchestratorStep) => { result.steps = [...result.steps, step]; };
+
+  if (wantCompare) {
+    let baseline: GoldenRunHistoryRecord | null = null;
+    let baselineLoadFailed = false;
+
+    if (corpusId) {
+      const baselineRes = await getLatestGoldenRunBaselines({ corpusId });
+      if (baselineRes.kind === 'error') {
+        baselineLoadFailed = true;
+        addWarning('baseline_load_failed');
+        appendStep(createGoldenCorpusOrchestratorStep('load_baseline', 'warning', baselineRes.message));
+      } else {
+        baseline = baselineRes.baselines.find((b) => b.corpusId === corpusId) ?? baselineRes.baselines[0] ?? null;
+        appendStep(createGoldenCorpusOrchestratorStep(
+          'load_baseline',
+          baseline ? 'pass' : 'warning',
+          baseline ? `Baseline run ${baseline.runId} loaded.` : 'No previous baseline run found.',
+        ));
+      }
+    } else {
+      appendStep(skippedStep('load_baseline', 'No corpus ID to load a baseline.'));
+    }
+
+    if (summary && !baselineLoadFailed) {
+      const current = buildGoldenRunHistoryInputFromSummary({
+        summary,
+        triageSummary: result.triageSummary,
+        orchestratorVersion: result.version,
+      });
+      const comparison = compareGoldenRunToBaseline({ current, baseline, corpusId });
+      result.baselineComparison = comparison;
+      appendStep(createGoldenCorpusOrchestratorStep(
+        'compare_baseline',
+        baselineStepStatus(comparison.outcome),
+        `Baseline outcome: ${comparison.outcome}.`,
+        { outcome: comparison.outcome, reasons: comparison.reasons },
+      ));
+      if (comparison.outcome === 'no_baseline') addWarning('no_baseline_found');
+      if (comparison.outcome === 'degraded') addWarning('baseline_regression_detected');
+    } else {
+      appendStep(skippedStep('compare_baseline', summary ? 'Baseline unavailable.' : 'No summary to compare.'));
+    }
+  }
+
+  if (wantSave) {
+    if (!summary) {
+      appendStep(createGoldenCorpusOrchestratorStep('save_history', 'fail', 'No summary to save to history.'));
+      addFailure('history_summary_missing');
+      result.status = 'failed';
+    } else {
+      const input = buildGoldenRunHistoryInputFromSummary({
+        summary,
+        triageSummary: result.triageSummary,
+        orchestratorVersion: result.version,
+        baselineComparison: result.baselineComparison,
+      });
+      const saveRes = await saveGoldenRunHistory(importId, input);
+      result.historyPersistenceResult = saveRes;
+      if (saveRes.kind === 'ok') {
+        result.historySaved = true;
+        result.historyRecord = saveRes.record;
+        appendStep(createGoldenCorpusOrchestratorStep('save_history', 'pass', 'Golden run history saved.'));
+      } else {
+        result.historySaved = false;
+        appendStep(createGoldenCorpusOrchestratorStep('save_history', 'fail', saveRes.message));
+        addFailure('history_persistence_failed');
+        result.status = 'failed';
+      }
+    }
+  }
+
+  // A clean run that only accrued history warnings drops to completed_with_warnings.
+  if (result.status === 'completed' && result.warnings.length > 0) {
+    result.status = 'completed_with_warnings';
+  }
 }
 
 export type { GoldenCorpusOrchestratorMode };
