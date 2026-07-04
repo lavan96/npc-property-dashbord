@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local-only PDF import testing artifacts (Phase 7 baselines, private PDFs/screenshots)
+audit-output/
