@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import {
   getGoldenCorpusConsoleStatusLabel,
   getGoldenCorpusConsoleStatusTone,
+  getGoldenRunBaselineOutcomeLabel,
+  getGoldenRunBaselineOutcomeTone,
   type GoldenCorpusOrchestratorResult,
   type GoldenCorpusOrchestratorStepStatus,
 } from '@/lib/reportTemplate/ingestion/goldenCorpus';
@@ -68,6 +70,14 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
             <Badge variant={result.persisted ? 'default' : 'outline'}>
               {result.persisted ? 'Persisted' : 'Not persisted'}
             </Badge>
+            <Badge variant={result.historySaved ? 'default' : 'outline'}>
+              {result.historySaved ? 'History saved' : 'History not saved'}
+            </Badge>
+            {result.baselineComparison && (
+              <Badge variant={getGoldenRunBaselineOutcomeTone(result.baselineComparison.outcome)}>
+                Baseline: {getGoldenRunBaselineOutcomeLabel(result.baselineComparison.outcome)}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0 grid gap-x-8 gap-y-0 md:grid-cols-2">
@@ -149,6 +159,30 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
             )}
             {result.persistenceResult.kind === 'error' && (
               <p className="text-xs text-destructive break-all">{result.persistenceResult.message}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {result.historyPersistenceResult && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">History ledger</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            <Row label="Result">
+              <Badge variant={result.historyPersistenceResult.kind === 'ok' ? 'default' : 'destructive'}>
+                {result.historyPersistenceResult.kind}
+              </Badge>
+            </Row>
+            {result.historyPersistenceResult.kind === 'ok' && (
+              <Row label="History ID">
+                <span className="font-mono text-xs">{text(result.historyPersistenceResult.historyId)}</span>
+              </Row>
+            )}
+            {result.historyPersistenceResult.kind === 'error' && (
+              <>
+                <Separator className="my-2" />
+                <p className="text-xs text-destructive break-all">{result.historyPersistenceResult.message}</p>
+              </>
             )}
           </CardContent>
         </Card>

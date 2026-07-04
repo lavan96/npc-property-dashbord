@@ -23,6 +23,10 @@ export interface GoldenCorpusConsoleFormState {
   runBatchId: string;
   operatorDecision: GoldenRegressionOperatorDecision;
   notesText: string;
+  /** Phase 9C — persist this run into the history ledger when persisting. */
+  saveHistory: boolean;
+  /** Phase 9C — compare this run against the previous baseline for the corpus. */
+  compareBaseline: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -56,6 +60,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     runBatchId: '',
     operatorDecision: 'not_reviewed',
     notesText: '',
+    saveHistory: true,
+    compareBaseline: true,
     ...overrides,
   };
 }
@@ -124,6 +130,8 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     operatorDecision: form.operatorDecision,
     notes: parseGoldenCorpusConsoleNotes(form.notesText),
     persist: mode === 'evaluate_and_persist',
+    saveHistory: mode === 'evaluate_and_persist' && form.saveHistory,
+    compareBaseline: form.compareBaseline,
   };
 }
 

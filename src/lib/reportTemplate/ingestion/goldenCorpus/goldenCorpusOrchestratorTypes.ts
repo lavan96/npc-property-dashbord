@@ -18,6 +18,11 @@ import type {
 } from './goldenCorpusRunTypes';
 import type { PdfImportQualityGateReport } from '../qualityGates/pdfImportQualityGateTypes';
 import type { PdfImportFailureTriageSummary } from '../failureTriage/pdfImportFailureTriageTypes';
+import type {
+  GoldenRunBaselineComparison,
+  GoldenRunHistoryRecord,
+  SaveGoldenRunHistoryResult,
+} from './goldenRunHistoryTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -37,7 +42,10 @@ export type GoldenCorpusOrchestratorStepId =
   | 'evaluate_quality_gates'
   | 'build_summary'
   | 'evaluate_triage'
-  | 'persist_summary';
+  | 'persist_summary'
+  | 'load_baseline'
+  | 'compare_baseline'
+  | 'save_history';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -65,6 +73,14 @@ export interface GoldenCorpusOrchestratorRequest {
   operatorDecision?: GoldenRegressionOperatorDecision;
   notes?: string[];
   persist?: boolean;
+  /** Persist this run into the Phase 9C `pdf_import_golden_runs` history ledger. */
+  saveHistory?: boolean;
+  /**
+   * Compare this run against the previous baseline run for the same corpus.
+   * Defaults to `saveHistory` when omitted (a saved run is compared before it
+   * becomes the next baseline).
+   */
+  compareBaseline?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -92,6 +108,12 @@ export interface GoldenCorpusOrchestratorResult {
 
   persistenceResult: SaveGoldenRegressionSummaryResult | null;
   persisted: boolean;
+
+  // Phase 9C — regression history + baseline comparison.
+  baselineComparison: GoldenRunBaselineComparison | null;
+  historyPersistenceResult: SaveGoldenRunHistoryResult | null;
+  historyRecord: GoldenRunHistoryRecord | null;
+  historySaved: boolean;
 
   warnings: string[];
   failures: string[];

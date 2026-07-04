@@ -10,3 +10,7 @@ export * from './goldenCorpusOrchestratorTypes';
 export * from './goldenCorpusImportSnapshot';
 export * from './goldenCorpusOrchestrator';
 export * from './goldenCorpusConsoleState';
+export * from './goldenRunHistoryTypes';
+export * from './goldenRunHistorySummary';
+export * from './goldenRunHistoryPersistence';
+export * from './goldenRunBaselineComparison';

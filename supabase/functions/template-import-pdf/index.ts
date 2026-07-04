@@ -1,5 +1,5 @@
 // Template PDF importer.
-// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | list_recent_imports | get_linked_import | fail | save_visual_quality | get_visual_quality | save_visual_repair_audit | get_visual_repair_audit
+// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | list_recent_imports | get_linked_import | fail | save_visual_quality | get_visual_quality | save_visual_repair_audit | get_visual_repair_audit | save_golden_run_history | list_golden_run_history | get_golden_run_history | get_latest_golden_run_baselines
 //
 // upload_asset accepts base64 PNG/JPG, stores in `template-import-assets`
 // (creates the bucket on first use) and returns the public URL. finalize
@@ -583,6 +583,139 @@ async function userHasAdminRole(admin: any, userId: string | null): Promise<bool
     return false;
   }
 }
+
+// ---------- Phase 9C: golden run history helpers ----------
+const GOLDEN_RUN_TABLE = 'pdf_import_golden_runs';
+const GOLDEN_RUN_GATE_STATUSES = ['pass', 'warning', 'fail', 'blocked', 'not_evaluated'];
+const GOLDEN_RUN_OPERATOR_DECISIONS = [
+  'accepted', 'accepted_with_warnings', 'rejected', 'needs_rerun', 'not_reviewed',
+];
+
+function grStr(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const s = String(value).trim();
+  return s === '' ? null : s;
+}
+function grNum(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+function grInt(value: unknown): number | null {
+  const n = grNum(value);
+  return n === null ? null : Math.trunc(n);
+}
+function grBool(value: unknown): boolean | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'boolean') return value;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return null;
+}
+function grCount(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
+}
+function grArr(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+function grObj(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+/** Map a camelCase history input payload to snake_case table columns. */
+function goldenRunInputToColumns(history: any, importId: string, createdBy: string | null) {
+  return {
+    run_id: grStr(history.runId),
+    run_batch_id: grStr(history.runBatchId),
+    corpus_id: grStr(history.corpusId),
+    category: grStr(history.category),
+    import_id: importId,
+    template_id: grStr(history.templateId),
+    source_filename: grStr(history.sourceFilename),
+    engine_version: grStr(history.engineVersion),
+    orchestrator_version: grStr(history.orchestratorVersion),
+    summary_version: grStr(history.summaryVersion),
+    import_status: grStr(history.importStatus),
+    run_status: grStr(history.runStatus),
+    run_decision: grStr(history.runDecision),
+    quality_gate_status: grStr(history.qualityGateStatus),
+    operator_decision: grStr(history.operatorDecision),
+    import_page_count: grInt(history.importPageCount),
+    template_page_count: grInt(history.templatePageCount),
+    visual_qa_score: grNum(history.visualQaScore),
+    repair_final_score: grNum(history.repairFinalScore),
+    export_vs_source_score: grNum(history.exportVsSourceScore),
+    editor_vs_source_score: grNum(history.editorVsSourceScore),
+    export_vs_editor_score: grNum(history.exportVsEditorScore),
+    visual_qa_manual_review_required: grBool(history.visualQaManualReviewRequired),
+    repair_requires_fallback: grBool(history.repairRequiresFallback),
+    repair_requires_manual_review: grBool(history.repairRequiresManualReview),
+    ai_reconciliation_status: grStr(history.aiReconciliationStatus),
+    ai_reconciliation_recommendation: grStr(history.aiReconciliationRecommendation),
+    export_parity_status: grStr(history.exportParityStatus),
+    export_parity_mode: grStr(history.exportParityMode),
+    warning_count: grCount(history.warningCount),
+    failure_count: grCount(history.failureCount),
+    warnings: grArr(history.warnings),
+    failures: grArr(history.failures),
+    gate_summary: grObj(history.gateSummary),
+    triage_summary: grObj(history.triageSummary),
+    golden_regression_summary: grObj(history.goldenRegressionSummary),
+    baseline_comparison: history.baselineComparison ?? null,
+    created_by: createdBy,
+  };
+}
+
+/** Map a snake_case table row (minus the embedded owner join) to a camelCase record. */
+function goldenRunRowToCamel(row: any) {
+  return {
+    id: row.id ?? null,
+    runId: row.run_id ?? null,
+    runBatchId: row.run_batch_id ?? null,
+    corpusId: row.corpus_id ?? null,
+    category: row.category ?? null,
+    importId: row.import_id ?? null,
+    templateId: row.template_id ?? null,
+    sourceFilename: row.source_filename ?? null,
+    engineVersion: row.engine_version ?? null,
+    orchestratorVersion: row.orchestrator_version ?? null,
+    summaryVersion: row.summary_version ?? null,
+    importStatus: row.import_status ?? null,
+    runStatus: row.run_status ?? null,
+    runDecision: row.run_decision ?? null,
+    qualityGateStatus: row.quality_gate_status ?? null,
+    operatorDecision: row.operator_decision ?? null,
+    importPageCount: row.import_page_count ?? null,
+    templatePageCount: row.template_page_count ?? null,
+    visualQaScore: row.visual_qa_score ?? null,
+    repairFinalScore: row.repair_final_score ?? null,
+    exportVsSourceScore: row.export_vs_source_score ?? null,
+    editorVsSourceScore: row.editor_vs_source_score ?? null,
+    exportVsEditorScore: row.export_vs_editor_score ?? null,
+    visualQaManualReviewRequired: row.visual_qa_manual_review_required ?? null,
+    repairRequiresFallback: row.repair_requires_fallback ?? null,
+    repairRequiresManualReview: row.repair_requires_manual_review ?? null,
+    aiReconciliationStatus: row.ai_reconciliation_status ?? null,
+    aiReconciliationRecommendation: row.ai_reconciliation_recommendation ?? null,
+    exportParityStatus: row.export_parity_status ?? null,
+    exportParityMode: row.export_parity_mode ?? null,
+    warningCount: row.warning_count ?? 0,
+    failureCount: row.failure_count ?? 0,
+    warnings: Array.isArray(row.warnings) ? row.warnings : [],
+    failures: Array.isArray(row.failures) ? row.failures : [],
+    gateSummary: grObj(row.gate_summary),
+    triageSummary: grObj(row.triage_summary),
+    goldenRegressionSummary: grObj(row.golden_regression_summary),
+    baselineComparison: row.baseline_comparison ?? null,
+    createdBy: row.created_by ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+  };
+}
+
+const GOLDEN_RUN_SELECT =
+  'id,run_id,run_batch_id,corpus_id,category,import_id,template_id,source_filename,engine_version,orchestrator_version,summary_version,import_status,run_status,run_decision,quality_gate_status,operator_decision,import_page_count,template_page_count,visual_qa_score,repair_final_score,export_vs_source_score,editor_vs_source_score,export_vs_editor_score,visual_qa_manual_review_required,repair_requires_fallback,repair_requires_manual_review,ai_reconciliation_status,ai_reconciliation_recommendation,export_parity_status,export_parity_mode,warning_count,failure_count,warnings,failures,gate_summary,triage_summary,golden_regression_summary,baseline_comparison,created_by,created_at,updated_at';
 
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();
@@ -1207,6 +1340,116 @@ Deno.serve(async (req) => {
         .eq('id', importId);
       if (upErr) return json({ error: upErr.message }, 400);
       return json({ ok: true });
+    }
+
+    // ---------- Phase 9C: golden run history ledger ----------
+    if (operation === 'save_golden_run_history') {
+      const importId = body.import_id as string;
+      const history = body.history;
+      if (!importId || !history || typeof history !== 'object') {
+        return json({ error: 'import_id and history required' }, 400);
+      }
+      const { data: rec, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id')
+        .eq('id', importId)
+        .single();
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (rec?.user_id && authedUserId && rec.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const columns = goldenRunInputToColumns(history, importId, authedUserId ?? null);
+      if (!columns.run_id) return json({ error: 'history.runId is required' }, 400);
+      if (!columns.corpus_id) return json({ error: 'history.corpusId is required' }, 400);
+      if (!columns.category) return json({ error: 'history.category is required' }, 400);
+      if (!columns.quality_gate_status || !GOLDEN_RUN_GATE_STATUSES.includes(columns.quality_gate_status)) {
+        return json({ error: 'history.qualityGateStatus is invalid' }, 400);
+      }
+      if (!columns.operator_decision || !GOLDEN_RUN_OPERATOR_DECISIONS.includes(columns.operator_decision)) {
+        return json({ error: 'history.operatorDecision is invalid' }, 400);
+      }
+
+      const { data: inserted, error: insErr } = await admin
+        .from(GOLDEN_RUN_TABLE)
+        .insert(columns)
+        .select(GOLDEN_RUN_SELECT)
+        .single();
+      if (insErr) { logDbError('save_golden_run_history', insErr); return json({ error: insErr.message }, 400); }
+      return json({ ok: true, history_id: (inserted as any).id, history: goldenRunRowToCamel(inserted) });
+    }
+
+    if (operation === 'list_golden_run_history') {
+      if (!authedUserId && auth.userId !== 'service_role') return json({ error: 'unauthorized' }, 401);
+      const corpusId = grStr(body.corpus_id);
+      const importId = grStr(body.import_id);
+      const rawLimit = Number(body.limit);
+      const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(200, Math.trunc(rawLimit))) : 50;
+      const isAdmin = authedUserId ? await userHasAdminRole(admin, authedUserId) : false;
+      const restrict = !isAdmin && auth.userId !== 'service_role';
+
+      let query = admin
+        .from(GOLDEN_RUN_TABLE)
+        .select(`${GOLDEN_RUN_SELECT},template_imports!inner(user_id)`)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (corpusId) query = query.eq('corpus_id', corpusId);
+      if (importId) query = query.eq('import_id', importId);
+      if (restrict) query = query.eq('template_imports.user_id', authedUserId);
+
+      const { data, error } = await query;
+      if (error) { logDbError('list_golden_run_history', error); return json({ error: error.message }, 400); }
+      return json({ ok: true, history: (data ?? []).map(goldenRunRowToCamel) });
+    }
+
+    if (operation === 'get_golden_run_history') {
+      if (!authedUserId && auth.userId !== 'service_role') return json({ error: 'unauthorized' }, 401);
+      const historyId = grStr(body.history_id);
+      if (!historyId) return json({ error: 'history_id required' }, 400);
+
+      const { data: row, error } = await admin
+        .from(GOLDEN_RUN_TABLE)
+        .select(`${GOLDEN_RUN_SELECT},template_imports!inner(user_id)`)
+        .eq('id', historyId)
+        .maybeSingle();
+      if (error) return json({ error: error.message }, 404);
+      if (!row) return json({ error: 'not found' }, 404);
+
+      const ownerId = (row as any).template_imports?.user_id ?? null;
+      const isAdmin = authedUserId ? await userHasAdminRole(admin, authedUserId) : false;
+      if (ownerId && authedUserId && ownerId !== authedUserId && !isAdmin && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+      return json({ ok: true, history: goldenRunRowToCamel(row) });
+    }
+
+    if (operation === 'get_latest_golden_run_baselines') {
+      if (!authedUserId && auth.userId !== 'service_role') return json({ error: 'unauthorized' }, 401);
+      const corpusId = grStr(body.corpus_id);
+      const isAdmin = authedUserId ? await userHasAdminRole(admin, authedUserId) : false;
+      const restrict = !isAdmin && auth.userId !== 'service_role';
+
+      let query = admin
+        .from(GOLDEN_RUN_TABLE)
+        .select(`${GOLDEN_RUN_SELECT},template_imports!inner(user_id)`)
+        .order('created_at', { ascending: false });
+      if (corpusId) query = query.eq('corpus_id', corpusId);
+      if (restrict) query = query.eq('template_imports.user_id', authedUserId);
+      query = query.limit(corpusId ? 1 : 500);
+
+      const { data, error } = await query;
+      if (error) { logDbError('get_latest_golden_run_baselines', error); return json({ error: error.message }, 400); }
+
+      // Dedupe to the latest run per corpus (rows already ordered created_at desc).
+      const seen = new Set<string>();
+      const baselines: unknown[] = [];
+      for (const row of (data ?? []) as any[]) {
+        const cid = row.corpus_id;
+        if (cid && seen.has(cid)) continue;
+        if (cid) seen.add(cid);
+        baselines.push(goldenRunRowToCamel(row));
+      }
+      return json({ ok: true, baselines });
     }
 
 
