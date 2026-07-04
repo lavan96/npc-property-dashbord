@@ -1483,6 +1483,101 @@ Deno.serve(async (req) => {
 
 
     // ---------- Phase 8: Diagnostics — list visual-quality reports ----------
+    // ---------- Phase 7F: export-parity persistence ----------
+    if (operation === 'save_export_parity') {
+      const importId = body.import_id as string;
+      const summary = body.summary;
+      if (!importId || !summary || typeof summary !== 'object') {
+        return json({ error: 'import_id and summary are required' }, 400);
+      }
+      await ensureArtifactBucket(admin);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const summaryPath = `${importId}/export-parity/export-parity.json`;
+      const folder = `${importId}/export-parity`;
+
+      const { error: uploadErr } = await admin.storage
+        .from(ARTIFACT_BUCKET)
+        .upload(summaryPath, new TextEncoder().encode(JSON.stringify(summary)), {
+          contentType: 'application/json',
+          upsert: true,
+        });
+      if (uploadErr) {
+        logDbError('save_export_parity.upload', uploadErr);
+        return json({ error: uploadErr.message }, 400);
+      }
+
+      const s = summary as any;
+      const currentMeta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
+      const nextMeta = {
+        ...currentMeta,
+        export_parity_artifact_path: summaryPath,
+        export_parity_summary: {
+          status: s.status ?? null,
+          mode: s.mode ?? null,
+          editorVsSourceScore: s.editorVsSourceScore ?? null,
+          exportVsSourceScore: s.exportVsSourceScore ?? null,
+          exportVsEditorScore: s.exportVsEditorScore ?? null,
+          manualReviewRequired: !!s.manualReviewRequired,
+          sourcePageCount: s.sourcePageCount ?? null,
+          editorPageCount: s.editorPageCount ?? null,
+          exportedPageCount: s.exportedPageCount ?? null,
+          problemCount: Array.isArray(s.problems) ? s.problems.length : 0,
+          pageCount: Array.isArray(s.pages) ? s.pages.length : 0,
+          generatedAt: s.generatedAt ?? null,
+          persistedAt: new Date().toISOString(),
+        },
+      };
+
+      const { error: updateErr } = await admin
+        .from('template_imports')
+        .update({ meta: nextMeta })
+        .eq('id', importId);
+      if (updateErr) {
+        logDbError('save_export_parity.update_meta', updateErr);
+        return json({ error: updateErr.message }, 400);
+      }
+
+      return json({ ok: true, summary_path: summaryPath, artifactPaths: { summary: summaryPath, folder } });
+    }
+
+    if (operation === 'get_export_parity') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const meta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
+      const summaryPath = (meta.export_parity_artifact_path as string | null | undefined)
+        ?? `${importId}/export-parity/export-parity.json`;
+
+      const summary = await readJsonArtifact(admin, summaryPath);
+      if (!summary) return json(null);
+
+      return json({
+        importId,
+        summary,
+        artifactPaths: { summary: summaryPath, folder: `${importId}/export-parity` },
+      });
+    }
+
     if (operation === 'list_visual_quality') {
       const limit = Math.min(Number(body.limit) || 50, 200);
       const onlyWithReport = body.only_with_report !== false;
@@ -1520,6 +1615,19 @@ Deno.serve(async (req) => {
           visual_quality: vq,
           cdir_fidelity_summary: meta.cdir_fidelity_summary ?? null,
           provider_attempts: Array.isArray(meta.provider_attempts) ? meta.provider_attempts : null,
+          export_parity_artifact_path: meta.export_parity_artifact_path ?? null,
+          export_parity: (meta.export_parity_summary && typeof meta.export_parity_summary === 'object')
+            ? {
+                status: meta.export_parity_summary.status ?? null,
+                mode: meta.export_parity_summary.mode ?? null,
+                editorVsSourceScore: meta.export_parity_summary.editorVsSourceScore ?? null,
+                exportVsSourceScore: meta.export_parity_summary.exportVsSourceScore ?? null,
+                exportVsEditorScore: meta.export_parity_summary.exportVsEditorScore ?? null,
+                manualReviewRequired: meta.export_parity_summary.manualReviewRequired ?? null,
+                problemCount: meta.export_parity_summary.problemCount ?? null,
+                persistedAt: meta.export_parity_summary.persistedAt ?? null,
+              }
+            : null,
         };
       });
 
