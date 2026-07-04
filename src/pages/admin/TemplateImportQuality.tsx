@@ -8,7 +8,8 @@
  * full per-page rasters / scores / warnings.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, ShieldAlert, Sparkles, Eye, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, ShieldAlert, Sparkles, Eye, AlertTriangle, ClipboardCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -460,14 +461,27 @@ export default function TemplateImportQuality() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!row.visual_quality_artifact_path}
-                          onClick={() => setReviewing(row.id)}
-                        >
-                          <Eye className="h-3 w-3 mr-1" /> Review
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!row.visual_quality_artifact_path}
+                            onClick={() => setReviewing(row.id)}
+                          >
+                            <Eye className="h-3 w-3 mr-1" /> Review
+                          </Button>
+                          <Button asChild variant="ghost" size="sm" title="Open in Golden Regression console">
+                            <Link
+                              to={`/admin/pdf-golden-regression?importId=${encodeURIComponent(row.id)}${
+                                row.golden_regression?.corpusId
+                                  ? `&corpusId=${encodeURIComponent(row.golden_regression.corpusId)}`
+                                  : ''
+                              }`}
+                            >
+                              <ClipboardCheck className="h-3 w-3 mr-1" /> Golden
+                            </Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
