@@ -9,3 +9,4 @@ export * from './goldenRegressionDisplay';
 export * from './goldenCorpusOrchestratorTypes';
 export * from './goldenCorpusImportSnapshot';
 export * from './goldenCorpusOrchestrator';
+export * from './goldenCorpusConsoleState';
