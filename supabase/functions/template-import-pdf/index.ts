@@ -594,7 +594,20 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
-    const body = await req.json().catch(() => ({}));
+    let body = await req.json().catch(() => ({}));
+    // Contract normalisation: several frontend callers (visual-quality +
+    // repair-audit persistence) invoke this function as
+    // `invokeSecureFunction(fn, { body: { operation, ... } })`. invokeSecureFunction
+    // forwards its 2nd argument verbatim, so the operation payload arrives nested
+    // under a `body` key — `{ body: { operation, ... }, session_token }` — and the
+    // dispatch below would never see `operation` (→ "unknown operation", and no
+    // visual QA / repair audit ever persisted). Unwrap that envelope while keeping
+    // the top-level auth fields (session_token, user_id) intact. Callers that pass
+    // the payload directly are unaffected (they already carry a top-level operation).
+    if (body && typeof body === 'object' && !body.operation && body.body && typeof body.body === 'object') {
+      const { body: wrapped, ...envelope } = body as Record<string, unknown>;
+      body = { ...(wrapped as Record<string, unknown>), ...envelope };
+    }
     const operation = body.operation as string;
 
     // Custom-auth verification (session token or custom HS256 JWT). The old
@@ -1382,6 +1395,11 @@ Deno.serve(async (req) => {
         ? (payload as any).summary
         : {};
 
+      const repair = (payload as any)?.repair && typeof (payload as any).repair === 'object'
+        ? (payload as any).repair
+        : {};
+      const repairSummary = repair?.summary && typeof repair.summary === 'object' ? repair.summary : {};
+
       const currentMeta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
       const nextMeta = {
         ...currentMeta,
@@ -1389,18 +1407,18 @@ Deno.serve(async (req) => {
         visual_repair_summary: {
           version: summary.version ?? null,
           importId: summary.importId ?? importId,
-          templateId: summary.templateId ?? null,
+          templateId: (payload as any)?.templateId ?? summary.templateId ?? null,
           visualQaScore: summary.visualQaScore ?? null,
           finalScore: summary.finalScore ?? null,
           scoreDelta: summary.scoreDelta ?? null,
           visualQaPersisted: summary.visualQaPersisted ?? null,
-          repairStatus: summary.repairStatus ?? null,
+          repairStatus: summary.repairStatus ?? repair?.status ?? null,
           canRunRepairLoop: summary.canRunRepairLoop ?? null,
           eligiblePageCount: summary.eligiblePageCount ?? null,
-          totalApplied: summary.totalApplied ?? null,
-          passesAttempted: summary.passesAttempted ?? null,
-          patchesAccepted: summary.patchesAccepted ?? null,
-          patchesRejected: summary.patchesRejected ?? null,
+          totalApplied: summary.totalApplied ?? repair?.totalApplied ?? null,
+          passesAttempted: summary.passesAttempted ?? repairSummary?.passesAttempted ?? null,
+          patchesAccepted: summary.patchesAccepted ?? repairSummary?.patchesAccepted ?? null,
+          patchesRejected: summary.patchesRejected ?? repairSummary?.patchesRejected ?? null,
           requiresFallback: summary.requiresFallback ?? null,
           requiresManualReview: summary.requiresManualReview ?? null,
           problemCount: summary.problemCount ?? null,
@@ -1445,8 +1463,10 @@ Deno.serve(async (req) => {
       }
 
       const meta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
-      const auditPath = meta.visual_repair_artifact_path as string | null | undefined;
-      if (!auditPath) return json(null);
+      // Prefer the persisted meta path; fall back to the deterministic audit path
+      // so a saved artifact is still discoverable if the meta pointer is missing.
+      const auditPath = (meta.visual_repair_artifact_path as string | null | undefined)
+        ?? `${importId}/repair/repair-loop.json`;
 
       const payload = await readJsonArtifact(admin, auditPath);
       if (!payload) return json(null);

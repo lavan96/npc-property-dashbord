@@ -228,6 +228,19 @@ describe('visual repair audit persistence', () => {
     );
   });
 
+  it('returns kind error when the backend rejects the save', async () => {
+    vi.mocked(invokeSecureFunction).mockResolvedValueOnce({
+      data: { error: 'forbidden' },
+      error: { message: 'forbidden' },
+    } as any);
+
+    const payload = buildVisualRepairAuditPayload(orchestrationResult());
+    const result = await saveVisualRepairAudit('import_123', payload);
+
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') expect(result.message).toContain('forbidden');
+  });
+
   it('loads a persisted repair audit through template-import-pdf', async () => {
     const payload = buildVisualRepairAuditPayload(orchestrationResult());
 
@@ -245,10 +258,38 @@ describe('visual repair audit persistence', () => {
 
     const result = await loadVisualRepairAudit('import_123');
 
+    expect(invokeSecureFunction).toHaveBeenCalledWith(
+      'template-import-pdf',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          operation: 'get_visual_repair_audit',
+          import_id: 'import_123',
+        }),
+      }),
+    );
     expect(result.kind).toBe('ok');
     if (result.kind === 'ok') {
       expect(result.payload.artifactPaths.summary).toBe('import_123/repair/repair-loop.json');
       expect(result.payload.payload.summary.finalScore).toBe(0.86);
     }
+  });
+
+  it('returns kind missing when no repair audit exists (backend returns null)', async () => {
+    vi.mocked(invokeSecureFunction).mockResolvedValueOnce({ data: null, error: null } as any);
+
+    const result = await loadVisualRepairAudit('import_123');
+
+    expect(result.kind).toBe('missing');
+  });
+
+  it('treats an unknown-operation backend error as missing (backward compatibility)', async () => {
+    vi.mocked(invokeSecureFunction).mockResolvedValueOnce({
+      data: { error: 'unknown operation: get_visual_repair_audit' },
+      error: { message: 'unknown operation: get_visual_repair_audit' },
+    } as any);
+
+    const result = await loadVisualRepairAudit('import_123');
+
+    expect(result.kind).toBe('missing');
   });
 });
