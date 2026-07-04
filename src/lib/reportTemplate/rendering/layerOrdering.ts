@@ -7,11 +7,12 @@
  * editor, the renderer, and the Visual QA capture can agree on a stable
  * bottom→top stack:
  *
- *   page_background < source_raster < image < shape < table < text < editor_control
+ *   page_background < source_raster < image < shape < table < text < unknown < editor_control
  *
- * `unknown` sits just below text so unclassified content never hides text or
- * editor chrome. `editor_control` is intentionally the highest rank and must be
- * excluded from any exported/captured render (selection handles, guides, etc.).
+ * `unknown` sits just above text (below editor chrome) so unclassified content is
+ * never accidentally hidden behind classified content. `editor_control` is
+ * intentionally the highest rank and must be excluded from any exported/captured
+ * render (selection handles, guides, etc.).
  *
  * Pure and dependency-free so any surface can import it.
  */
@@ -33,13 +34,27 @@ const LAYER_RANKS: Record<RenderLayerKind, number> = {
   shape: 30,
   table: 40,
   text: 50,
-  unknown: 45,
-  editor_control: 60,
+  unknown: 60,
+  editor_control: 100,
 };
 
 /** Lower rank paints first (further back). Unrecognised kinds fall back to `unknown`. */
 export function getLayerRank(kind: RenderLayerKind): number {
   return LAYER_RANKS[kind] ?? LAYER_RANKS.unknown;
+}
+
+/**
+ * Read an explicit numeric z-index from a block if present (`zIndex`, `z_index`,
+ * or `style.zIndex`). Used only to order blocks *within* the same inferred layer;
+ * it never lets a block jump layers. Missing/invalid → 0 (neutral).
+ */
+function readBlockZIndex(block: unknown): number {
+  if (!block || typeof block !== 'object') return 0;
+  const b = block as Record<string, unknown>;
+  const style = (b.style && typeof b.style === 'object') ? (b.style as Record<string, unknown>) : null;
+  const raw = b.zIndex ?? b.z_index ?? style?.zIndex;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /**
@@ -92,13 +107,20 @@ export function inferBlockLayerKind(block: unknown): RenderLayerKind {
 }
 
 /**
- * Stable-sort blocks bottom→top by inferred layer kind. Equal-rank blocks keep
- * their authored order (stable), so this only re-stacks across layer classes and
- * never reshuffles content that is already at the same level.
+ * Stable-sort blocks bottom→top by inferred layer kind. Within a layer, an
+ * explicit numeric z-index (if present) is honoured; ties fall back to the
+ * authored order (stable). A block's z-index never lets it cross into another
+ * layer — layer rank always dominates — so source rasters stay below overlays
+ * and text stays above backgrounds/images/shapes/tables regardless of z-index.
  */
 export function sortBlocksForRender<T>(blocks: T[]): T[] {
   return blocks
-    .map((block, index) => ({ block, index, rank: getLayerRank(inferBlockLayerKind(block)) }))
-    .sort((a, b) => (a.rank - b.rank) || (a.index - b.index))
+    .map((block, index) => ({
+      block,
+      index,
+      rank: getLayerRank(inferBlockLayerKind(block)),
+      z: readBlockZIndex(block),
+    }))
+    .sort((a, b) => (a.rank - b.rank) || (a.z - b.z) || (a.index - b.index))
     .map((entry) => entry.block);
 }

@@ -48,24 +48,71 @@ re-implemented per surface.
 
 ## 4. Fixes implemented
 
-Phase 7D adds two shared, dependency-free, unit-tested primitives as the foundation
-for the above (building blocks; deliberately **not** wired into the editor yet to avoid
-a risky editor rewrite — wiring is a scoped follow-up):
+Phase 7D adds three shared, dependency-free, unit-tested primitives, and wires the
+one that is safe to wire (see §4a):
 
 - **`src/lib/reportTemplate/rendering/pageGeometry.ts`** — one definition of the page box
   and rect math: `normalizePageSize` (rejects non-finite / non-positive sizes),
   `getPageAspectRatio`, `pageBounds`, `scaleRect`, and `fitRectToPage` (clamps content
-  inside the page, never producing negative extents). Directly targets *page scaling
-  mismatch*, *raster/page-bounds mismatch*, and *image crop/fit drift*.
-  Tests: `src/lib/reportTemplate/__tests__/pageGeometry.spec.ts`.
+  inside the page, never producing negative extents). Targets *page scaling mismatch*,
+  *raster/page-bounds mismatch*, and *image crop/fit drift*.
+  Tests: `__tests__/pageGeometry.spec.ts`.
 
-- **`src/lib/reportTemplate/rendering/layerOrdering.ts`** — a coarse render-layer taxonomy
-  (`page_background < source_raster < image < shape < table < text < editor_control`, with
-  `unknown` below text) plus `inferBlockLayerKind` and a stable `sortBlocksForRender`.
-  Directly targets *inconsistent layer ordering* and *editor chrome in capture*
-  (`editor_control` is a distinct, top-most, capture-excluded kind). Complements
-  `paintOrder.ts` (which ranks within a layer) rather than replacing it.
-  Tests: `src/lib/reportTemplate/__tests__/layerOrdering.spec.ts`.
+- **`src/lib/reportTemplate/rendering/layerOrdering.ts`** — a render-layer taxonomy
+  (`page_background:0 < source_raster:10 < image:20 < shape:30 < table:40 < text:50 <
+  unknown:60 < editor_control:100`) with `inferBlockLayerKind`, `getLayerRank`, and a
+  stable `sortBlocksForRender` that honours a numeric `zIndex`/`z_index`/`style.zIndex`
+  *within* a layer but never lets a block cross layers. Targets *inconsistent layer
+  ordering* and *editor chrome in capture* (`editor_control` is a distinct, top-most,
+  capture-excluded kind). Complements `paintOrder.ts` (which ranks within a layer)
+  rather than replacing it. Tests: `__tests__/layerOrdering.spec.ts`.
+
+- **`src/lib/reportTemplate/rendering/fontNormalization.ts`** — `normalizePdfFontFamily`
+  (strips subset prefixes like `ABCDEE+` and style suffixes, canonicalises common faces),
+  `buildFontStack` (CSS-safe stacks), and `resolveTemplateFontFamily` (→ a curated family,
+  unknown/empty → `Inter`). Targets *browser font fallback mismatch*.
+  Tests: `__tests__/fontNormalization.spec.ts`.
+
+### 4a. Renderer integration (7D.5) — wired only where safe
+
+The production renderer (`htmlRenderer.ts` / `pdfRenderer.ts`) is covered by the CI
+**golden-render isolation guard** — any byte change to its output fails CI. It also
+already contains the equivalent of most of these utilities, so wiring them there would
+be duplication *and* would break the guard. Integration was therefore limited to the
+one safe, non-golden surface:
+
+- **Wired:** `EditorialCanvas.tsx` now derives its display page size via
+  `normalizePageSize(page.size, { width: 595, height: 842 })`, replacing the ad-hoc
+  `page.size.width || 595` / `page.size.height || 842`. Byte-identical for valid sizes;
+  additionally rejects negative/partial-invalid sizes. Editor-display only — the export
+  path is untouched.
+
+- **Not wired — equivalent logic already exists (documented, not duplicated):**
+  - *Layer/paint ordering:* `htmlRenderer.ts` and `EditorialCanvas.tsx` already stack via
+    the shared `paintOrder.ts` (`sortBlocksForPaint` / `sortOverlaysForPaint`, with an
+    explicit "never re-implement" note). `layerOrdering.ts` is the higher-level classifier
+    for future/editor use; it is intentionally **not** substituted into the golden renderer.
+  - *Page size in the export renderer:* reads schema-guaranteed `page.size` (defaulted to
+    595×842) directly. `normalizePageSize` there would be a no-op for valid input and a
+    golden-output risk otherwise.
+  - *Source-raster / background bounds:* the renderer fills the page box with CSS
+    `background-size: 100% 100%` (`imageFit: 'fill'`) — already equivalent to `pageBounds`.
+  - *Fonts:* the golden renderer passes `fontFamily` through verbatim. The correct place to
+    apply `resolveTemplateFontFamily` is the **import/ingestion** boundary (where raw PDF
+    font names first enter the template), so the normalisation happens once and the golden
+    export stays byte-stable. That ingestion wiring is the recommended next step; it is
+    deliberately out of scope here to avoid changing golden output.
+
+### 4b. Visual QA capture surface (7D.6) — verified correctly scoped
+
+`generatedRenderCapture.ts` captures **page content only** and needs no patch:
+- it targets `.tpl-page` nodes specifically (`querySelectorAll('.tpl-page')`) and runs
+  `html2canvas` on each individual page element;
+- when given a template it renders into a **hidden, isolated iframe** containing only
+  `renderTemplateToHtml(template)` output — no editor DOM at all;
+- so modal chrome, the editor toolbar, buttons, selection/resize handles, debug panels,
+  and scrollbars (all siblings/ancestors of `.tpl-page`, never inside it) are excluded;
+- capture background defaults to white to match PDF page rendering.
 
 ## 5. Manual validation flow
 
@@ -81,10 +128,16 @@ Import PDF
 
 ## 6. Known remaining defects
 
-- Font fallback still relies on browser/renderer substitution; no advance-width
-  reconciliation yet (deferred — likely Phase 7D.4+).
-- The two new primitives are not yet consumed by `EditorialCanvas` / `htmlRenderer` /
-  `generatedRenderCapture`; wiring them in (behind the existing paint-order contract)
-  is the next targeted step.
-- Editor-control exclusion from the Visual QA capture is defined as a layer kind but not
-  yet enforced in `generatedRenderCapture.ts`.
+- **Font normalisation is not yet applied at ingestion.** `fontNormalization.ts` exists and
+  is tested, but the golden renderer still passes template `fontFamily` values through
+  verbatim. Applying `resolveTemplateFontFamily` when the CDIR/template is first built from
+  a PDF import (not at render time) is the recommended next step; it keeps golden export
+  byte-stable while fixing *browser font fallback mismatch*. No advance-width reconciliation
+  is attempted (a larger, separate effort).
+- **`layerOrdering.ts` / `pageGeometry` rect helpers are not consumed by the golden
+  renderer** — by design, because `paintOrder.ts` and the schema-valid page sizes are the
+  equivalent existing logic and the renderer is golden-guarded. They are available for the
+  editor and for the ingestion pipeline; `normalizePageSize` is wired into the editor canvas.
+- **Editor-control exclusion** is defined as a layer kind (`editor_control`, rank 100) and is
+  already achieved in practice by the capture targeting `.tpl-page` only; the taxonomy makes
+  it explicit for any future capture path that renders from raw blocks.

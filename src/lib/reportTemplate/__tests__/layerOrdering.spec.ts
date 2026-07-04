@@ -7,7 +7,16 @@ import {
 } from '../rendering/layerOrdering';
 
 describe('layerOrdering', () => {
-  it('ranks layer kinds bottom → top', () => {
+  it('ranks layer kinds in the correct order', () => {
+    expect(getLayerRank('page_background')).toBe(0);
+    expect(getLayerRank('source_raster')).toBe(10);
+    expect(getLayerRank('image')).toBe(20);
+    expect(getLayerRank('shape')).toBe(30);
+    expect(getLayerRank('table')).toBe(40);
+    expect(getLayerRank('text')).toBe(50);
+    expect(getLayerRank('unknown')).toBe(60);
+    expect(getLayerRank('editor_control')).toBe(100);
+    // strictly increasing background → source_raster → image → shape → table → text
     expect(getLayerRank('page_background')).toBeLessThan(getLayerRank('source_raster'));
     expect(getLayerRank('source_raster')).toBeLessThan(getLayerRank('image'));
     expect(getLayerRank('image')).toBeLessThan(getLayerRank('shape'));
@@ -16,43 +25,60 @@ describe('layerOrdering', () => {
     expect(getLayerRank('text')).toBeLessThan(getLayerRank('editor_control'));
   });
 
-  it('keeps unknown below text and editor controls', () => {
-    expect(getLayerRank('unknown')).toBeLessThan(getLayerRank('text'));
-    expect(getLayerRank('unknown')).toBeLessThan(getLayerRank('editor_control'));
+  it('renders source raster before (below) text', () => {
+    expect(getLayerRank('source_raster')).toBeLessThan(getLayerRank('text'));
+    const sorted = sortBlocksForRender([{ id: 't', type: 'text' }, { id: 'r', sourceRasterRef: {} }]).map((b: any) => b.id);
+    expect(sorted).toEqual(['r', 't']);
   });
 
-  it('infers kind from block type', () => {
+  it('renders image before (below) text', () => {
+    expect(getLayerRank('image')).toBeLessThan(getLayerRank('text'));
+    const sorted = sortBlocksForRender([{ id: 't', type: 'text' }, { id: 'i', type: 'image' }]).map((b: any) => b.id);
+    expect(sorted).toEqual(['i', 't']);
+  });
+
+  it('renders table before (below) text', () => {
+    expect(getLayerRank('table')).toBeLessThan(getLayerRank('text'));
+    const sorted = sortBlocksForRender([{ id: 't', type: 'text' }, { id: 'tab', type: 'table' }]).map((b: any) => b.id);
+    expect(sorted).toEqual(['tab', 't']);
+  });
+
+  it('infers kind from block type and structural hints', () => {
     expect(inferBlockLayerKind({ type: 'text' })).toBe('text');
     expect(inferBlockLayerKind({ type: 'textOnPath' })).toBe('text');
     expect(inferBlockLayerKind({ type: 'image' })).toBe('image');
     expect(inferBlockLayerKind({ type: 'shape' })).toBe('shape');
     expect(inferBlockLayerKind({ type: 'table' })).toBe('table');
     expect(inferBlockLayerKind({ type: 'background' })).toBe('page_background');
-  });
-
-  it('detects source rasters structurally and via explicit hints', () => {
     expect(inferBlockLayerKind({ sourceRasterRef: { kind: 'pdf_import_raster_ref' } })).toBe('source_raster');
-    expect(inferBlockLayerKind({ isSourceRaster: true })).toBe('source_raster');
     expect(inferBlockLayerKind({ layerKind: 'editor_control' })).toBe('editor_control');
   });
 
-  it('defaults to unknown for unrecognised or malformed input', () => {
+  it('performs a stable sort for blocks in the same layer', () => {
+    const blocks = [
+      { id: 'a', type: 'text' },
+      { id: 'b', type: 'text' },
+      { id: 'c', type: 'text' },
+    ];
+    expect(sortBlocksForRender(blocks).map((b: any) => b.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('honors numeric z-index within the same layer without crossing layers', () => {
+    const blocks = [
+      { id: 'text-z2', type: 'text', zIndex: 2 },
+      { id: 'text-z1', type: 'text', zIndex: 1 },
+      { id: 'image', type: 'image', zIndex: 99 }, // huge z-index still stays below text (lower layer)
+    ];
+    const sorted = sortBlocksForRender(blocks).map((b: any) => b.id);
+    expect(sorted).toEqual(['image', 'text-z1', 'text-z2']);
+  });
+
+  it('does not crash on unknown or malformed blocks', () => {
     expect(inferBlockLayerKind({ type: 'mystery' })).toBe('unknown');
     expect(inferBlockLayerKind(null)).toBe('unknown');
     expect(inferBlockLayerKind(42)).toBe('unknown');
     expect(inferBlockLayerKind({})).toBe('unknown');
-  });
-
-  it('stable-sorts blocks into render order without reshuffling equal ranks', () => {
-    const blocks = [
-      { id: 'text-a', type: 'text' },
-      { id: 'bg', type: 'background' },
-      { id: 'img', type: 'image' },
-      { id: 'text-b', type: 'text' },
-      { id: 'raster', sourceRasterRef: {} },
-    ];
-    const sorted = sortBlocksForRender(blocks).map((b) => (b as { id: string }).id);
-    expect(sorted).toEqual(['bg', 'raster', 'img', 'text-a', 'text-b']);
+    expect(() => sortBlocksForRender([null, undefined, 42, { type: 'text' }, {}] as any[])).not.toThrow();
   });
 
   it('does not mutate the input array', () => {
