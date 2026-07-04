@@ -5,3 +5,4 @@ export * from './goldenCorpusRunEvaluator';
 export * from './goldenRegressionTypes';
 export * from './goldenRegressionSummary';
 export * from './goldenRegressionPersistence';
+export * from './goldenRegressionDisplay';

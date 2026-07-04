@@ -1628,6 +1628,33 @@ Deno.serve(async (req) => {
                 persistedAt: meta.export_parity_summary.persistedAt ?? null,
               }
             : null,
+          golden_regression: (meta.golden_regression_summary && typeof meta.golden_regression_summary === 'object')
+            ? {
+                version: meta.golden_regression_summary.version ?? null,
+                runId: meta.golden_regression_summary.runId ?? null,
+                runBatchId: meta.golden_regression_summary.runBatchId ?? null,
+                corpusId: meta.golden_regression_summary.corpusId ?? null,
+                category: meta.golden_regression_summary.category ?? null,
+                qualityGateStatus: meta.golden_regression_summary.qualityGateStatus ?? null,
+                operatorDecision: meta.golden_regression_summary.operatorDecision ?? null,
+                runStatus: meta.golden_regression_summary.runStatus ?? null,
+                runDecision: meta.golden_regression_summary.runDecision ?? null,
+                warningCount: Array.isArray(meta.golden_regression_summary.warnings)
+                  ? meta.golden_regression_summary.warnings.length
+                  : null,
+                failureCount: Array.isArray(meta.golden_regression_summary.failures)
+                  ? meta.golden_regression_summary.failures.length
+                  : null,
+                warnings: Array.isArray(meta.golden_regression_summary.warnings)
+                  ? meta.golden_regression_summary.warnings.slice(0, 5)
+                  : [],
+                failures: Array.isArray(meta.golden_regression_summary.failures)
+                  ? meta.golden_regression_summary.failures.slice(0, 5)
+                  : [],
+                generatedAt: meta.golden_regression_summary.generatedAt ?? null,
+                persistedAt: meta.golden_regression_summary.persistedAt ?? null,
+              }
+            : null,
         };
       });
 
@@ -1662,6 +1689,24 @@ Deno.serve(async (req) => {
           acc[mode] = (acc[mode] ?? 0) + 1;
           return acc;
         }, {}),
+        golden: {
+          total: filtered.filter((r) => !!r.golden_regression).length,
+          pass: filtered.filter((r) => r.golden_regression?.qualityGateStatus === 'pass').length,
+          warning: filtered.filter((r) => r.golden_regression?.qualityGateStatus === 'warning').length,
+          fail: filtered.filter((r) => r.golden_regression?.qualityGateStatus === 'fail').length,
+          blocked: filtered.filter((r) => r.golden_regression?.qualityGateStatus === 'blocked').length,
+          not_evaluated: filtered.filter((r) => r.golden_regression?.qualityGateStatus === 'not_evaluated').length,
+          needs_review: filtered.filter((r) => {
+            const g = r.golden_regression;
+            if (!g) return false;
+            return (
+              ['warning', 'fail', 'blocked', 'not_evaluated'].includes(String(g.qualityGateStatus)) ||
+              ['rejected', 'needs_rerun', 'not_reviewed'].includes(String(g.operatorDecision)) ||
+              (Number(g.warningCount) || 0) > 0 ||
+              (Number(g.failureCount) || 0) > 0
+            );
+          }).length,
+        },
       };
 
       return json({ rows: filtered, stats });
