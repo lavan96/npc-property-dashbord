@@ -20,6 +20,7 @@ import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTempla
 import type { ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { CdirLayer } from '@/lib/reportTemplate/ingestion/cdir';
 import type { VisualQaReviewSummary, VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import type { ReconciliationPolicyDecision, ReconciliationRecommendation, AiReconciliationAuditSummary } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 interface Props {
   open: boolean;
@@ -52,6 +53,11 @@ interface Props {
   onApplyRepair?: () => Promise<void> | void;
   applyRepairAvailable?: boolean;
   applyRepairBusy?: boolean;
+  // Phase 7E — AI reconciliation recommendation (user-confirmed).
+  onRunAiReconciliation?: () => Promise<void> | void;
+  reconciliationPolicy?: ReconciliationPolicyDecision | null;
+  aiReconciliationBusy?: boolean;
+  aiReconciliationSummary?: AiReconciliationAuditSummary | null;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -77,7 +83,7 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy, onRunAiReconciliation, reconciliationPolicy, aiReconciliationBusy, aiReconciliationSummary }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
@@ -287,6 +293,54 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
               </Card>
             )}
 
+            {reconciliationPolicy && (
+              <Card className="p-4 border-primary/20 bg-primary/5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Wand2 className="h-4 w-4 text-primary" /> AI reconciliation
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{reconciliationCopy(reconciliationPolicy.recommendation)}</p>
+                  </div>
+                  <Badge variant={reconciliationBadgeVariant(reconciliationPolicy.recommendation)}>
+                    {reconciliationLabel(reconciliationPolicy.recommendation)}
+                  </Badge>
+                </div>
+                {reconciliationPolicy.shouldShowAction && onRunAiReconciliation && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button type="button" size="sm" variant="secondary" onClick={onRunAiReconciliation} disabled={!!aiReconciliationBusy}>
+                      {aiReconciliationBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
+                      {aiReconciliationBusy ? 'Reconciling…' : 'Run AI reconciliation'}
+                    </Button>
+                    <span className="text-[11px] text-muted-foreground">Updates the review draft only — Apply writes the template version.</span>
+                  </div>
+                )}
+                {aiReconciliationSummary && (
+                  <div className="mt-3 rounded-md border bg-background/70 p-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">Last AI reconciliation</span>
+                      <Badge variant={aiReconciliationSummary.status === 'completed' ? 'success' : 'destructive'}>
+                        {aiReconciliationSummary.status === 'completed' ? 'Completed' : 'Failed'}
+                      </Badge>
+                    </div>
+                    {aiReconciliationSummary.status === 'completed' && (
+                      <>
+                        <div className="mt-2 grid gap-2 md:grid-cols-3">
+                          <Row label="Editable elements" value={aiReconciliationSummary.editableElementsCreated == null ? '—' : String(aiReconciliationSummary.editableElementsCreated)} />
+                          <Row label="Layout changes" value={aiReconciliationSummary.layoutChanges == null ? '—' : String(aiReconciliationSummary.layoutChanges)} />
+                          <Row label="Warnings" value={String(aiReconciliationSummary.warnings.length)} />
+                        </div>
+                        <p className="mt-2 text-[11px] font-medium text-primary">Rerun Visual QA before applying the reconciled template.</p>
+                      </>
+                    )}
+                    {aiReconciliationSummary.status === 'failed' && aiReconciliationSummary.errorMessage && (
+                      <p className="mt-2 text-[11px] text-destructive break-words">{aiReconciliationSummary.errorMessage}</p>
+                    )}
+                  </div>
+                )}
+              </Card>
+            )}
+
             {recordedDecision && (
               <Card className="p-4 border-success/30 bg-success/5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -436,6 +490,36 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
       </DialogContent>
     </Dialog>
   );
+}
+
+function reconciliationLabel(recommendation: ReconciliationRecommendation): string {
+  switch (recommendation) {
+    case 'not_needed': return 'Not needed';
+    case 'optional': return 'Optional';
+    case 'recommended': return 'Recommended';
+    case 'manual_review': return 'Manual review';
+    default: return String(recommendation);
+  }
+}
+
+function reconciliationBadgeVariant(recommendation: ReconciliationRecommendation): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (recommendation) {
+    case 'recommended': return 'default';
+    case 'optional': return 'secondary';
+    case 'manual_review': return 'destructive';
+    case 'not_needed':
+    default: return 'outline';
+  }
+}
+
+function reconciliationCopy(recommendation: ReconciliationRecommendation): string {
+  switch (recommendation) {
+    case 'not_needed': return 'Visual quality is already above the high-quality threshold. AI reconciliation is not needed.';
+    case 'optional': return 'Visual quality is acceptable. AI reconciliation may improve layout fidelity.';
+    case 'recommended': return 'Visual quality is below the acceptable threshold. AI reconciliation is recommended before applying.';
+    case 'manual_review': return 'This import needs human review. AI reconciliation can assist, but the result must be checked before applying.';
+    default: return '';
+  }
 }
 
 function Metric({ label, value, tone = 'normal' }: { label: string; value: string; tone?: 'normal' | 'warning' }) {
