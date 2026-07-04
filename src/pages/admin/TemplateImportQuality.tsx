@@ -54,6 +54,37 @@ interface ImportRow {
     durationMs: number;
     error?: { kind: string; message: string };
   }> | null;
+  // Phase 7F — export parity
+  export_parity_artifact_path: string | null;
+  export_parity: {
+    status: string | null;
+    mode: string | null;
+    editorVsSourceScore: number | null;
+    exportVsSourceScore: number | null;
+    exportVsEditorScore: number | null;
+    manualReviewRequired: boolean | null;
+    problemCount: number | null;
+    persistedAt: string | null;
+  } | null;
+}
+
+/** Compact export-parity badge content for the diagnostics table. */
+function exportParityDisplay(ep: ImportRow['export_parity']): {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+} {
+  if (!ep || !ep.status) return { label: 'Not run', variant: 'outline' };
+  if (ep.status === 'failed') return { label: 'Failed', variant: 'destructive' };
+  if (ep.status === 'manual_required') return { label: 'Manual required', variant: 'secondary' };
+  if (ep.status === 'completed') {
+    const best = [ep.exportVsSourceScore, ep.exportVsEditorScore, ep.editorVsSourceScore]
+      .find((s): s is number => typeof s === 'number' && Number.isFinite(s));
+    return {
+      label: best != null ? `Completed · ${Math.round(best * 100)}%` : 'Completed',
+      variant: best != null ? scoreTone(best) : 'default',
+    };
+  }
+  return { label: ep.status, variant: 'outline' };
 }
 
 
@@ -227,6 +258,7 @@ export default function TemplateImportQuality() {
                   <TableHead className="text-right">Overall</TableHead>
                   <TableHead>Final mode</TableHead>
                   <TableHead className="text-right">Repairs</TableHead>
+                  <TableHead>Export</TableHead>
                   <TableHead>Providers</TableHead>
                   <TableHead>Flags</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -236,13 +268,13 @@ export default function TemplateImportQuality() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="h-4 w-4 mx-auto animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No imports match the current filters.
                     </TableCell>
                   </TableRow>
@@ -272,6 +304,19 @@ export default function TemplateImportQuality() {
                       </TableCell>
                       <TableCell className="text-xs">{vq?.finalMode ?? '—'}</TableCell>
                       <TableCell className="text-right">{vq?.repairPassesApplied ?? 0}</TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const ep = exportParityDisplay(row.export_parity);
+                          return (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Badge variant={ep.variant} className="text-[10px] px-1 py-0">{ep.label}</Badge>
+                              {row.export_parity?.manualReviewRequired && row.export_parity?.status !== 'manual_required' ? (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">Review</Badge>
+                              ) : null}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="text-xs">
                         {row.provider_attempts && row.provider_attempts.length > 0 ? (
                           <div className="flex flex-wrap gap-1" title={row.provider_attempts.map(a => `${a.providerId}: ${a.outcome}${a.error ? ` (${a.error.kind})` : ''} · ${a.durationMs}ms`).join('\n')}>
