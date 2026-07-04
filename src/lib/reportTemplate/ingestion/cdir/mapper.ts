@@ -2,6 +2,7 @@ import { parseTemplate, type Block, type Overlay, type ReportTemplate } from '..
 import { deriveTokensFromExtraction, type FillObservation, type TextObservation } from '../../pdfImport/tokenDerivation';
 import { firstGradientStop, isCssGradient } from '../../cssColor';
 import { ensureCatalogFontFaces } from '../../fontCatalog';
+import { DEFAULT_IMPORT_FONT_STACK } from '../../rendering/fontNormalization';
 import type { CdirDocument, CdirLayer, CdirPage } from './schema';
 import { parseCdirDocument } from './validate';
 
@@ -50,7 +51,7 @@ function layerToOverlay(layer: Exclude<CdirLayer, { kind: 'group' }>, doc: CdirD
       ...base,
       type: 'text',
       content: layer.text,
-      fontFamily: layer.fontFamily ?? firstRun?.fontFamily ?? 'Helvetica',
+      fontFamily: layer.fontFamily ?? firstRun?.fontFamily ?? DEFAULT_IMPORT_FONT_STACK,
       fontSize: layer.fontSize ?? firstRun?.fontSize ?? Math.max(6, Math.round(layer.bounds.height * 0.72)),
       fontWeight: layer.fontWeight === 'bold' || Number(layer.fontWeight) >= 600 ? 'bold' : 'normal',
       fontWeightNumeric: typeof layer.fontWeight === 'number' ? layer.fontWeight : undefined,

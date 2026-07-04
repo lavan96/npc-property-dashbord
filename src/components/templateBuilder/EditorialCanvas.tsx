@@ -21,6 +21,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderTemplateToHtml } from '@/lib/reportTemplate/htmlRenderer';
 import { makeCanvasRenderKey } from '@/lib/reportTemplate/previewCache';
+import { normalizePageSize } from '@/lib/reportTemplate/rendering/pageGeometry';
 import { overlayPaintOrder } from '@/lib/reportTemplate/paintOrder';
 import { screenToPagePoint, PALETTE_DRAG_MIME, parsePaletteDrag } from '@/lib/reportTemplate/overlayDropFactory';
 import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
@@ -87,8 +88,11 @@ function EditorialCanvasImpl({
     handlePaletteDrop,
   } = templateEditorActions();
   const onPaletteDrop = enablePaletteDrop ? handlePaletteDrop : undefined;
-  const pageW = page.size.width || 595;
-  const pageH = page.size.height || 842;
+  // Phase 7D — shared, defensive page-size read. Identical to the previous
+  // `page.size.width || 595` for valid sizes; also rejects negative/partial-invalid
+  // sizes, always falling back to the A4 default pair. Editor-display only; the
+  // export path reads page.size directly and is unaffected.
+  const { width: pageW, height: pageH } = normalizePageSize(page.size, { width: 595, height: 842 });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);

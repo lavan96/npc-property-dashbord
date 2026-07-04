@@ -9,6 +9,7 @@
  *   - 'pixel-perfect' → raster background + ALL overlays locked.
  */
 import type { Overlay } from '@/lib/reportTemplate/templateSchema';
+import { DEFAULT_IMPORT_FONT_STACK } from '@/lib/reportTemplate/rendering/fontNormalization';
 
 type TextOverlay = Extract<Overlay, { type: 'text' }>;
 type ImageOverlay = Extract<Overlay, { type: 'image' }>;
@@ -80,7 +81,7 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
       content: block.text ?? '',
       fontFamily: isCode ? 'Menlo, Consolas, monospace'
         : isFormula ? 'Times, "Times New Roman", serif'
-        : (block.style?.fontFamily ?? 'Helvetica'),
+        : (block.style?.fontFamily ?? DEFAULT_IMPORT_FONT_STACK),
       fontSize: block.style?.fontSize ?? 11,
       // Phase 6E — preserve a numeric weight grade (e.g. 300/600 derived from the
       // source font name) instead of collapsing every weight to bold/normal.
