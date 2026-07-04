@@ -21,6 +21,10 @@ import {
 import { toast } from 'sonner';
 import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { VisualQualityReviewDialog } from '@/components/templateBuilder/VisualQualityReviewDialog';
+import {
+  getGoldenRegressionDisplayState,
+  type GoldenRegressionDisplayTone,
+} from '@/lib/reportTemplate/ingestion/goldenCorpus';
 
 interface VqSummary {
   overallScore: number | null;
@@ -66,6 +70,53 @@ interface ImportRow {
     problemCount: number | null;
     persistedAt: string | null;
   } | null;
+  // Phase 8E — golden regression summary (normalized by list_visual_quality)
+  golden_regression?: GoldenRegressionSummaryRow | null;
+}
+
+interface GoldenRegressionSummaryRow {
+  version: string | null;
+  runId: string | null;
+  runBatchId: string | null;
+  corpusId: string | null;
+  category: string | null;
+  qualityGateStatus: 'pass' | 'warning' | 'fail' | 'blocked' | 'not_evaluated' | string | null;
+  operatorDecision: string | null;
+  runStatus: string | null;
+  runDecision: string | null;
+  warningCount: number | null;
+  failureCount: number | null;
+  warnings: string[];
+  failures: string[];
+  generatedAt: string | null;
+  persistedAt: string | null;
+}
+
+/** Map the display helper's tone to an available shadcn Badge variant. */
+function goldenToneToVariant(
+  tone: GoldenRegressionDisplayTone,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (tone) {
+    case 'success': return 'default';
+    case 'destructive': return 'destructive';
+    case 'warning': return 'secondary';
+    case 'secondary': return 'secondary';
+    default: return 'outline';
+  }
+}
+
+/** Compact golden-regression display for a dashboard row. */
+function goldenDisplayForRow(row: ImportRow) {
+  const g = row.golden_regression ?? null;
+  const disp = getGoldenRegressionDisplayState({
+    qualityGateStatus: g?.qualityGateStatus ?? null,
+    operatorDecision: g?.operatorDecision ?? null,
+    warningCount: g?.warningCount ?? null,
+    failureCount: g?.failureCount ?? null,
+    exportParityStatus: row.export_parity?.status ?? null,
+    manualReviewRequired: row.visual_quality?.manualReviewRequired ?? null,
+  });
+  return { g, disp };
 }
 
 /** Compact export-parity badge content for the diagnostics table. */
@@ -95,6 +146,15 @@ interface StatsResponse {
   avg_score: number | null;
   repair_passes_total: number;
   by_final_mode: Record<string, number>;
+  golden?: {
+    total: number;
+    pass: number;
+    warning: number;
+    fail: number;
+    blocked: number;
+    not_evaluated: number;
+    needs_review: number;
+  } | null;
 }
 
 function pct(n: number | null | undefined): string {
@@ -186,7 +246,7 @@ export default function TemplateImportQuality() {
       </div>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <Card><CardContent className="pt-6">
           <div className="text-xs text-muted-foreground">Imports</div>
           <div className="text-2xl font-bold">{stats?.total ?? '—'}</div>
@@ -214,6 +274,14 @@ export default function TemplateImportQuality() {
         <Card><CardContent className="pt-6">
           <div className="text-xs text-muted-foreground">Final-mode mix</div>
           <div className="text-sm font-semibold truncate">{modeMixLabel}</div>
+        </CardContent></Card>
+        <Card><CardContent className="pt-6">
+          <div className="text-xs text-muted-foreground">Golden runs</div>
+          <div className="text-2xl font-bold">{stats?.golden?.total ?? 0}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">
+            Pass {stats?.golden?.pass ?? 0} · Warn {stats?.golden?.warning ?? 0} ·
+            {' '}Fail {(stats?.golden?.fail ?? 0) + (stats?.golden?.blocked ?? 0)}
+          </div>
         </CardContent></Card>
       </div>
 
@@ -259,6 +327,8 @@ export default function TemplateImportQuality() {
                   <TableHead>Final mode</TableHead>
                   <TableHead className="text-right">Repairs</TableHead>
                   <TableHead>Export</TableHead>
+                  <TableHead>Golden</TableHead>
+                  <TableHead>Action</TableHead>
                   <TableHead>Providers</TableHead>
                   <TableHead>Flags</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -268,13 +338,13 @@ export default function TemplateImportQuality() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                       <Loader2 className="h-4 w-4 mx-auto animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                       No imports match the current filters.
                     </TableCell>
                   </TableRow>
@@ -318,6 +388,40 @@ export default function TemplateImportQuality() {
                         })()}
                       </TableCell>
                       <TableCell className="text-xs">
+                        {(() => {
+                          const { g, disp } = goldenDisplayForRow(row);
+                          if (!g) {
+                            return <Badge variant="outline" className="text-[10px] px-1 py-0">Not run</Badge>;
+                          }
+                          const counts: string[] = [];
+                          if ((g.failureCount ?? 0) > 0) counts.push(`${g.failureCount}F`);
+                          if ((g.warningCount ?? 0) > 0) counts.push(`${g.warningCount}W`);
+                          const suffix = counts.length ? ` · ${counts.join(' ')}` : '';
+                          return (
+                            <div
+                              className="flex flex-col gap-0.5"
+                              title={[...(g.failures ?? []), ...(g.warnings ?? [])].slice(0, 4).join('\n') || undefined}
+                            >
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[130px]">{g.corpusId ?? '—'}</span>
+                              <Badge variant={goldenToneToVariant(disp.tone)} className="text-[10px] px-1 py-0 w-fit">
+                                {disp.label}{suffix}
+                              </Badge>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const { disp } = goldenDisplayForRow(row);
+                          const variant = disp.actionRequired === 'fix' || disp.actionRequired === 'rerun'
+                            ? 'destructive'
+                            : disp.actionRequired === 'review' ? 'secondary' : 'outline';
+                          return (
+                            <Badge variant={variant} className="text-[10px] px-1 py-0">{disp.actionLabel}</Badge>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-xs">
                         {row.provider_attempts && row.provider_attempts.length > 0 ? (
                           <div className="flex flex-wrap gap-1" title={row.provider_attempts.map(a => `${a.providerId}: ${a.outcome}${a.error ? ` (${a.error.kind})` : ''} · ${a.durationMs}ms`).join('\n')}>
                             {row.provider_attempts.map((a, i) => (
@@ -345,6 +449,14 @@ export default function TemplateImportQuality() {
                           <Badge variant="destructive" className="gap-1 ml-1">
                             <AlertTriangle className="h-3 w-3" /> error
                           </Badge>
+                        )}
+                        {row.golden_regression && (row.golden_regression.failureCount ?? 0) > 0 && (
+                          <Badge variant="destructive" className="ml-1 text-[10px] px-1 py-0">Gate fail</Badge>
+                        )}
+                        {row.golden_regression
+                          && (row.golden_regression.failureCount ?? 0) === 0
+                          && (row.golden_regression.warningCount ?? 0) > 0 && (
+                          <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">Gate warn</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
