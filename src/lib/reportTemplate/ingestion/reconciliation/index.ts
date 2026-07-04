@@ -16,3 +16,5 @@ export * from './visualDiff';
 
 export * from './reviewArtifacts';
 export * from './pdfReconcile';
+export * from './reconciliationPolicy';
+export * from './reconciliationAudit';

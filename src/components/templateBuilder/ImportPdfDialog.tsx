@@ -16,7 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { describeAuthError } from '@/lib/secureInvoke';
+import { describeAuthError, invokeSecureFunction } from '@/lib/secureInvoke';
+import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 import { runReferenceImport } from '@/lib/reportTemplate/ingestion/importOrchestrator';
 import { type FidelityMode, type ImportProgress, type ImportResult } from '@/lib/reportTemplate/pdfImport/types';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,7 +25,7 @@ import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportT
 import { loadImportReviewDraft, saveImportReviewDecision, type ImportReviewDecisionRecord, type LoadImportReviewDraftResult } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import { applyRepairedTemplateToRecord, buildVisualRepairAuditPayload, loadVisualQuality, loadVisualRepairAudit, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, runVisualRepairOrchestrationPipeline, saveVisualRepairAudit, type PersistedVisualQuality, type PersistedVisualRepairAudit, type VisualQaReviewSummary, type VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 import { ImportReviewDialog } from './ImportReviewDialog';
-import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { importAssetToReviewArtifacts, summarizeImportAsset, reconcilePdfImportAsset, applyTemplateImportPlan, TemplateDesignAgentReconciliationClient, evaluateReconciliationPolicy, buildAiReconciliationAuditSummary, saveAiReconciliationAuditSummary, type ReconciliationPolicyDecision, type AiReconciliationAuditSummary } from '@/lib/reportTemplate/ingestion/reconciliation';
 import { cn } from '@/lib/utils';
 
 
@@ -85,6 +86,10 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const [repairApplied, setRepairApplied] = useState(false);
   const [reviewDebug, setReviewDebug] = useState<ImportReviewDebugSnapshot | null>(null);
   const [repairDraftReady, setRepairDraftReady] = useState(false);
+  // Phase 7E — AI reconciliation (user-confirmed; updates the review draft only).
+  const [reconciliationBusy, setReconciliationBusy] = useState(false);
+  const [aiReconciliationSummary, setAiReconciliationSummary] = useState<AiReconciliationAuditSummary | null>(null);
+  const [reconciliationDraftReady, setReconciliationDraftReady] = useState(false);
 
   const reset = () => {
     setFile(null);
@@ -113,6 +118,9 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setApplyRepairBusy(false);
     setRepairApplied(false);
     setRepairDraftReady(false);
+    setReconciliationBusy(false);
+    setAiReconciliationSummary(null);
+    setReconciliationDraftReady(false);
   };
 
   const handleClose = (v: boolean) => {
@@ -544,6 +552,108 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     }
   }, [persistedReview, result?.template.id, repairSummary, persistedRepairAudit?.artifactPaths?.summary, onOpenChange, navigate]);
 
+  // Phase 7E — reconciliation policy: advises whether an AI reconciliation pass is
+  // worth offering, based on the Visual QA / Repair signals. Never auto-runs.
+  const reconciliationPolicyDecision = useMemo<ReconciliationPolicyDecision>(() => evaluateReconciliationPolicy({
+    visualQaScore: visualQaSummary?.overallScore ?? null,
+    manualReviewRequired: visualQaSummary?.manualReviewRequired,
+    requiresFallback: repairSummary?.requiresFallback,
+    repairStatus: repairSummary?.repairStatus,
+    repairFinalScore: repairSummary?.finalScore ?? null,
+    repairAppliedPatchCount: repairSummary?.totalApplied ?? null,
+    sourceRasterCount: persistedReview?.renderArtifactManifest?.sourceRasterCount ?? null,
+    problemCount: repairSummary?.problemCount ?? null,
+  }), [visualQaSummary, repairSummary, persistedReview]);
+
+  // User-confirmed AI reconciliation. Updates the in-memory review draft ONLY —
+  // never writes report_templates (that stays an explicit Apply action).
+  const runAiReconciliation = useCallback(async () => {
+    const importId = result?.importId ?? persistedReview?.record.id ?? null;
+    const importAsset = result?.importAsset ?? persistedReview?.importAsset ?? null;
+    const baseTemplate = persistedReview?.draft?.template ?? null;
+    if (!persistedReview || !baseTemplate || !importId || !importAsset) {
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'ai_reconciliation_blocked', aiReconBlockedReason: 'missing_prerequisites' }));
+      toast.error('AI reconciliation needs a loaded review with source assets. Run Visual QA first.');
+      return;
+    }
+
+    const policy = reconciliationPolicyDecision;
+    const startedAt = new Date().toISOString();
+    const visualQaScoreBefore = visualQaSummary?.overallScore ?? null;
+    const repairFinalScoreBefore = repairSummary?.finalScore ?? null;
+    const sourceFilename = persistedReview.draft?.sourceFilename ?? result?.template?.name ?? 'Reconciled PDF import';
+
+    setReconciliationBusy(true);
+    const t = toast.loading('Running AI reconciliation…');
+    try {
+      const recon = await reconcilePdfImportAsset(importAsset, {
+        manifests: persistedReview.importManifests ?? undefined,
+        existingTemplate: baseTemplate,
+        client: new TemplateDesignAgentReconciliationClient(invokeSecureFunction as any),
+        constraints: {
+          mode: 'pdf-import-quality-reconciliation',
+          importId,
+          sourceFilename,
+          visualQaScoreBefore,
+          repairFinalScoreBefore,
+        },
+      });
+      const reconciledTemplate = ensureCatalogFontFaces(applyTemplateImportPlan(recon.plan, {
+        templateName: sourceFilename,
+        baseTemplate,
+      }));
+
+      // Update the review draft only.
+      setPersistedReview((prev) => (prev ? { ...prev, draft: { ...prev.draft, template: reconciledTemplate } } : prev));
+      setReconciliationDraftReady(true);
+      setRepairDraftReady(true);
+      setRepairApplied(false);
+
+      const summary = buildAiReconciliationAuditSummary({
+        status: 'completed',
+        recommendation: policy.recommendation,
+        reason: policy.reason,
+        startedAt,
+        completedAt: new Date().toISOString(),
+        visualQaScoreBefore,
+        repairFinalScoreBefore,
+        visualQaScoreAfter: null,
+        editableElementsCreated: recon.plan?.importSummary?.editableElementsCreated ?? null,
+        layoutChanges: Array.isArray(recon.plan?.pages) ? recon.plan.pages.length : null,
+        warnings: Array.isArray(recon.plan?.warnings) ? recon.plan.warnings.map((w: any) => String(w?.message ?? w)) : [],
+      });
+      setAiReconciliationSummary(summary);
+      const saved = await saveAiReconciliationAuditSummary(importId, summary);
+      setReviewDebug((prev) => ({
+        ...(prev ?? {}),
+        stage: 'ai_reconciliation_completed',
+        aiReconEditableElements: summary.editableElementsCreated,
+        aiReconLayoutChanges: summary.layoutChanges,
+        aiReconAuditSaveKind: saved.kind,
+        aiReconAuditSaveMessage: saved.kind === 'error' ? saved.message : null,
+      }));
+      toast.success('AI reconciliation updated the review draft. Rerun Visual QA before applying.', { id: t });
+    } catch (err) {
+      const message = (err as Error).message;
+      const failed = buildAiReconciliationAuditSummary({
+        status: 'failed',
+        recommendation: policy.recommendation,
+        reason: policy.reason,
+        startedAt,
+        failedAt: new Date().toISOString(),
+        errorMessage: message,
+        visualQaScoreBefore,
+        repairFinalScoreBefore,
+      });
+      setAiReconciliationSummary(failed);
+      try { await saveAiReconciliationAuditSummary(importId, failed); } catch { /* audit persistence is best-effort on failure */ }
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'ai_reconciliation_failed', aiReconError: message }));
+      toast.error(`AI reconciliation failed: ${message}`, { id: t });
+    } finally {
+      setReconciliationBusy(false);
+    }
+  }, [persistedReview, result?.importId, result?.importAsset, result?.template?.name, reconciliationPolicyDecision, visualQaSummary, repairSummary]);
+
   const percent = (() => {
     if (!progress) return 0;
     const total = progress.pagesTotal ?? progress.totalPages ?? 0;
@@ -574,7 +684,11 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const displayedReviewDraft = persistedReview?.draft ?? reviewDraft;
   const visualQaAvailable = Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount);
   const repairAvailable = Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount);
-  const applyRepairAvailable = Boolean(repairDraftReady && repairSummary && persistedReview?.draft?.template && !repairApplied);
+  // Phase 7E — Apply is enabled when a current-session draft (repaired OR
+  // reconciled) is ready; reopened old audits alone never enable Apply.
+  const applyRepairAvailable = Boolean((repairDraftReady || reconciliationDraftReady) && persistedReview?.draft?.template && !repairApplied);
+  // Only surface the reconciliation recommendation once Visual QA and/or Repair has run.
+  const reconciliationPolicy = (visualQaSummary || repairSummary) ? reconciliationPolicyDecision : null;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -868,7 +982,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         open={reviewOpen}
         onOpenChange={setReviewOpen}
         draft={displayedReviewDraft}
-        onRetry={() => { setReviewOpen(false); setResult(null); setPersistedReview(null); setVisualQaSummary(null); setRepairSummary(null); setPersistedRepairAudit(null); setRepairApplied(false); }}
+        onRetry={() => { setReviewOpen(false); setResult(null); setPersistedReview(null); setVisualQaSummary(null); setRepairSummary(null); setPersistedRepairAudit(null); setRepairApplied(false); setAiReconciliationSummary(null); setReconciliationDraftReady(false); }}
         onRunVisualQa={runVisualQa}
         visualQaAvailable={visualQaAvailable}
         visualQaBusy={visualQaBusy}
@@ -884,6 +998,10 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         onApplyRepair={applyRepair}
         applyRepairAvailable={applyRepairAvailable}
         applyRepairBusy={applyRepairBusy}
+        onRunAiReconciliation={runAiReconciliation}
+        reconciliationPolicy={reconciliationPolicy}
+        aiReconciliationBusy={reconciliationBusy}
+        aiReconciliationSummary={aiReconciliationSummary}
         onOpenTemplate={result ? () => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); } : undefined}
         recordedDecision={recordedDecision}
         onRecordDecision={result ? async (decision: ImportReviewDecision, note?: string) => {
