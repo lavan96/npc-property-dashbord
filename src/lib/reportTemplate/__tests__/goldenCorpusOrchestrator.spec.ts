@@ -1,0 +1,232 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import {
+  buildEmptyGoldenCorpusSnapshot,
+  buildGoldenCorpusRunId,
+  orchestrateGoldenCorpusRun,
+  orchestrateGoldenCorpusRunFromSnapshot,
+  type GoldenCorpusImportQualitySnapshot,
+  type GoldenCorpusOrchestratorRequest,
+} from '../ingestion/goldenCorpus';
+import { loadGoldenCorpusImportQualitySnapshot } from '@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot';
+import { saveGoldenRegressionSummary } from '@/lib/reportTemplate/ingestion/goldenCorpus/goldenRegressionPersistence';
+
+vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
+  return { ...actual, loadGoldenCorpusImportQualitySnapshot: vi.fn() };
+});
+vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenRegressionPersistence', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenRegressionPersistence')>();
+  return { ...actual, saveGoldenRegressionSummary: vi.fn() };
+});
+
+const NOW = () => new Date('2026-07-04T00:00:00.000Z');
+
+function snap(
+  overrides: Partial<GoldenCorpusImportQualitySnapshot> = {},
+): GoldenCorpusImportQualitySnapshot {
+  return {
+    ...buildEmptyGoldenCorpusSnapshot('import-1'),
+    templateId: 'template-1',
+    sourceFilename: 'golden-simple-001.pdf',
+    importStatus: 'completed',
+    engineVersion: 'docling-1.0',
+    importPageCount: 1,
+    templatePageCount: 1,
+    visualQaArtifactPath: 'import-1/visual-quality.json',
+    visualQaScore: 0.95,
+    visualQaManualReviewRequired: false,
+    repairArtifactPath: 'import-1/repair/repair-loop.json',
+    repairStatus: 'completed',
+    repairFinalScore: 0.96,
+    repairRequiresFallback: false,
+    repairRequiresManualReview: false,
+    aiReconciliationStatus: null,
+    aiReconciliationRecommendation: 'not_needed',
+    exportParityArtifactPath: 'import-1/export-parity/export-parity.json',
+    exportParityStatus: 'completed',
+    exportParityMode: 'manual',
+    exportVsSourceScore: 0.94,
+    ...overrides,
+  };
+}
+
+function req(overrides: Partial<GoldenCorpusOrchestratorRequest> = {}): GoldenCorpusOrchestratorRequest {
+  return { corpusId: 'golden-simple-001', importId: 'import-1', ...overrides };
+}
+
+function pure(request: GoldenCorpusOrchestratorRequest, snapshot = snap()) {
+  return orchestrateGoldenCorpusRunFromSnapshot({ request, snapshot, now: NOW });
+}
+
+function stepOf(result: ReturnType<typeof pure>, id: string) {
+  return result.steps.find((s) => s.id === id);
+}
+
+describe('orchestrateGoldenCorpusRunFromSnapshot (pure)', () => {
+  it('fails on missing corpusId', () => {
+    const result = pure(req({ corpusId: '' }));
+    expect(result.status).toBe('failed');
+    expect(result.failures).toContain('input_missing_corpus_id');
+    expect(stepOf(result, 'validate_input')?.status).toBe('fail');
+  });
+
+  it('is not_evaluated on missing importId', () => {
+    const result = orchestrateGoldenCorpusRunFromSnapshot({
+      request: req({ importId: '' }),
+      snapshot: buildEmptyGoldenCorpusSnapshot(null),
+      now: NOW,
+    });
+    expect(result.status).toBe('not_evaluated');
+    expect(result.warnings).toContain('input_missing_import_id');
+    expect(result.runEvaluation).toBeNull();
+  });
+
+  it('fails on unknown corpusId', () => {
+    const result = pure(req({ corpusId: 'golden-nope-000' }));
+    expect(result.status).toBe('failed');
+    expect(result.failures).toContain('unknown_corpus_id');
+  });
+
+  it('completes a perfect simple run', () => {
+    const result = pure(req());
+    expect(result.status).toBe('completed');
+    expect(result.runEvaluation).not.toBeNull();
+    expect(result.qualityGateReport?.overallStatus).toBe('pass');
+    expect(result.goldenRegressionSummary?.qualityGateStatus).toBe('pass');
+    expect(result.triageSummary?.outcome).toBe('resolved');
+    expect(result.persisted).toBe(false);
+    expect(stepOf(result, 'persist_summary')?.status).toBe('skipped');
+    expect(stepOf(result, 'evaluate_run')?.status).toBe('pass');
+  });
+
+  it('completes_with_warnings for an allowed-manual-review run (OCR)', () => {
+    const result = pure(
+      req({ corpusId: 'golden-ocr-001' }),
+      snap({ visualQaScore: 0.7, repairFinalScore: 0.7, exportVsSourceScore: 0.8, visualQaManualReviewRequired: true }),
+    );
+    expect(result.status).toBe('completed_with_warnings');
+    expect(result.qualityGateReport?.overallStatus).toBe('warning');
+  });
+
+  it('fails when Visual QA is below threshold', () => {
+    const result = pure(req(), snap({ visualQaScore: 0.5 }));
+    expect(result.qualityGateReport?.overallStatus).toBe('fail');
+    expect(result.status).toBe('failed');
+  });
+
+  it('fails when the Visual QA artifact is missing', () => {
+    const result = pure(req(), snap({ visualQaArtifactPath: null }));
+    expect(result.status).toBe('failed');
+    expect(result.qualityGateReport?.gates.find((g) => g.id === 'visual_quality_artifact_present')?.status).toBe('fail');
+  });
+
+  it('fails when the repair audit is missing', () => {
+    const result = pure(req(), snap({ repairArtifactPath: null }));
+    expect(result.status).toBe('failed');
+  });
+
+  it('does not complete when export parity is missing (8C: artifact fail + status blocked)', () => {
+    const result = pure(req(), snap({ exportParityArtifactPath: null, exportParityStatus: null, exportVsSourceScore: null }));
+    // export_parity_artifact_present → fail, but export_parity_status_acceptable → blocked
+    // (status missing), and blocked outranks fail in the gate resolver, so overall is blocked.
+    expect(result.status).toBe('blocked');
+    expect(result.qualityGateReport?.overallStatus).toBe('blocked');
+    expect(result.qualityGateReport?.gates.find((g) => g.id === 'export_parity_artifact_present')?.status).toBe('fail');
+  });
+
+  it('gives a warning (not fail) when AI reconciliation was recommended but not run', () => {
+    const result = pure(req(), snap({ aiReconciliationRecommendation: 'recommended', aiReconciliationStatus: null }));
+    expect(result.status).toBe('completed_with_warnings');
+    expect(result.qualityGateReport?.gates.find((g) => g.id === 'ai_reconciliation_policy')?.status).toBe('warning');
+  });
+
+  it('produces triage recommendations for a failed repair', () => {
+    const result = pure(req(), snap({ repairStatus: 'failed' }));
+    expect(result.triageSummary).not.toBeNull();
+    const codes = result.triageSummary!.recommendations.map((r) => r.rule.code);
+    expect(codes).toContain('repair_failed');
+    expect(result.triageSummary!.primaryAction).toBe('rerun_repair');
+  });
+
+  it('buildGoldenCorpusRunId is deterministic with now and includes ids + sanitized timestamp', () => {
+    const id = buildGoldenCorpusRunId({ corpusId: 'golden-simple-001', importId: 'import-1', now: NOW });
+    expect(id).toContain('golden-simple-001');
+    expect(id).toContain('import-1');
+    expect(id).toBe('golden-run-golden-simple-001-import-1-2026-07-04T00-00-00-000Z');
+  });
+
+  it('does not persist in the pure function', () => {
+    const result = pure(req());
+    expect(result.persistenceResult).toBeNull();
+    expect(result.persisted).toBe(false);
+    expect(stepOf(result, 'persist_summary')?.status).toBe('skipped');
+  });
+
+  it('honors an operatorDecision override', () => {
+    const result = pure(req({ operatorDecision: 'accepted_with_warnings' }));
+    expect(result.goldenRegressionSummary?.operatorDecision).toBe('accepted_with_warnings');
+  });
+
+  it('carries notes into the summary', () => {
+    const result = pure(req({ notes: ['phase 9a note'] }));
+    expect(result.goldenRegressionSummary?.notes).toContain('phase 9a note');
+  });
+});
+
+describe('orchestrateGoldenCorpusRun (async)', () => {
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+  });
+
+  it('evaluate_only loads the snapshot and does not persist', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false }), now: NOW });
+    expect(result.mode).toBe('evaluate_only');
+    expect(result.persisted).toBe(false);
+    expect(saveGoldenRegressionSummary).not.toHaveBeenCalled();
+    expect(stepOf(result as any, 'load_snapshot')?.status).toBe('pass');
+  });
+
+  it('persist=true saves the summary', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true }), now: NOW });
+    expect(result.mode).toBe('evaluate_and_persist');
+    expect(result.persisted).toBe(true);
+    expect(stepOf(result as any, 'persist_summary')?.status).toBe('pass');
+    expect(saveGoldenRegressionSummary).toHaveBeenCalledTimes(1);
+  });
+
+  it('persist=true handles a save error', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'error', message: 'boom' });
+
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true }), now: NOW });
+    expect(result.status).toBe('failed');
+    expect(result.persisted).toBe(false);
+    expect(result.failures).toContain('persistence_failed');
+  });
+
+  it('blocks on a snapshot load error', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'error', message: 'network' });
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(result.status).toBe('blocked');
+    expect(result.failures).toContain('snapshot_load_failed');
+  });
+
+  it('blocks on a missing snapshot', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'missing' });
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(result.status).toBe('blocked');
+    expect(result.failures).toContain('snapshot_missing');
+  });
+
+  it('is not_evaluated without a network call when importId is missing', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ importId: '' }), now: NOW });
+    expect(result.status).toBe('not_evaluated');
+    expect(loadGoldenCorpusImportQualitySnapshot).not.toHaveBeenCalled();
+  });
+});

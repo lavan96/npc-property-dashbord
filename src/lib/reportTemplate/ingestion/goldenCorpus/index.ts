@@ -6,3 +6,6 @@ export * from './goldenRegressionTypes';
 export * from './goldenRegressionSummary';
 export * from './goldenRegressionPersistence';
 export * from './goldenRegressionDisplay';
+export * from './goldenCorpusOrchestratorTypes';
+export * from './goldenCorpusImportSnapshot';
+export * from './goldenCorpusOrchestrator';
