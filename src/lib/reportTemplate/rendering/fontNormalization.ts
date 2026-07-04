@@ -23,6 +23,15 @@ const FONT_STACKS: Record<string, string> = {
 /** Last-resort family when input is empty/unknown. */
 const FALLBACK_FAMILY = 'Inter';
 
+/**
+ * Fallback stack for imported text that carries no font information at all.
+ * Deliberately matches the stack `pdfImport/fontResolver` emits for Helvetica, so
+ * untyped imported text renders identically to resolved text — and reliably on the
+ * Linux/WeasyPrint export server, where a bare `"Helvetica"` is not an installed
+ * face and silently falls back. Used at the CDIR→template ingestion boundary.
+ */
+export const DEFAULT_IMPORT_FONT_STACK = 'Helvetica, Arial, sans-serif';
+
 /** Lowercased alias → canonical family. */
 const FONT_ALIASES: Record<string, string> = {
   helvetica: 'Arial',

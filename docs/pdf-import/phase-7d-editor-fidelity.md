@@ -97,11 +97,8 @@ one safe, non-golden surface:
     golden-output risk otherwise.
   - *Source-raster / background bounds:* the renderer fills the page box with CSS
     `background-size: 100% 100%` (`imageFit: 'fill'`) — already equivalent to `pageBounds`.
-  - *Fonts:* the golden renderer passes `fontFamily` through verbatim. The correct place to
-    apply `resolveTemplateFontFamily` is the **import/ingestion** boundary (where raw PDF
-    font names first enter the template), so the normalisation happens once and the golden
-    export stays byte-stable. That ingestion wiring is the recommended next step; it is
-    deliberately out of scope here to avoid changing golden output.
+  - *Fonts:* the golden renderer passes `fontFamily` through verbatim, and PDF font
+    normalisation **already happens at the Docling ingestion boundary** — see §4c.
 
 ### 4b. Visual QA capture surface (7D.6) — verified correctly scoped
 
@@ -113,6 +110,39 @@ one safe, non-golden surface:
 - so modal chrome, the editor toolbar, buttons, selection/resize handles, debug panels,
   and scrollbars (all siblings/ancestors of `.tpl-page`, never inside it) are excluded;
 - capture background defaults to white to match PDF page rendering.
+
+### 4c. Font normalisation at ingestion (7D "next step") — already handled
+
+The recommended follow-up was "apply font normalisation at the ingestion boundary."
+Investigation showed the Docling import path — the only path where raw PDF font names
+enter — **already normalises fonts, more thoroughly than the generic
+`fontNormalization.ts` helper:**
+
+- `pdfImport/fontResolver.ts` (`resolveSourceFontFamily`, `resolveFontFamily`,
+  `lookupEmbeddedFamily`, `fontLookupKey`) strips subset prefixes (`^[A-Z]{6}\+`),
+  matches ~15 common faces (Helvetica→`Helvetica, Arial, sans-serif`, Times, Courier,
+  Georgia, Calibri, Roboto, Inter, …), resolves against the Google-Fonts **catalog**,
+  and prefers real embedded `@font-face` programs — with weight/style trimming.
+- `pdfImport/fontFaceBuilder.ts` strips subset tags for embedded faces.
+
+**Evidence:** distinct `fontFamily` values across recent import-created templates are
+already resolved stacks — `"Helvetica, Arial, sans-serif"` (516×), `"Inter, Arial,
+sans-serif"`, `"Menlo, Consolas, monospace"` — with **no subset-prefixed (`ABCDEE+…`)
+names** anywhere. So raw PDF font names do **not** leak to the renderer.
+
+Wiring the generic `resolveTemplateFontFamily` into this path would be a **regression**
+(it would collapse embedded/catalog stacks like `"MyEmbedded", Arial` to `Inter`), so it
+is intentionally **not** wired there. `fontNormalization.ts` remains a lightweight helper
+for surfaces without the catalog.
+
+**The one real gap fixed:** the CDIR→template mappers fell back to a bare literal
+`'Helvetica'` when a text element carried no font info at all. A bare `Helvetica` is not
+an installed face on the Linux/WeasyPrint export server and falls back inconsistently.
+Those fallbacks now use a shared `DEFAULT_IMPORT_FONT_STACK`
+(`'Helvetica, Arial, sans-serif'`, matching what `fontResolver` emits) in
+`cdir/mapper.ts`, `cdir/adapters.ts`, and `docling/mapDoclingToPagePlan.ts` — so untyped
+imported text renders consistently with resolved text. Import-time only; the golden export
+fixtures are unaffected (verified by the golden-render guard).
 
 ## 5. Manual validation flow
 
@@ -128,12 +158,10 @@ Import PDF
 
 ## 6. Known remaining defects
 
-- **Font normalisation is not yet applied at ingestion.** `fontNormalization.ts` exists and
-  is tested, but the golden renderer still passes template `fontFamily` values through
-  verbatim. Applying `resolveTemplateFontFamily` when the CDIR/template is first built from
-  a PDF import (not at render time) is the recommended next step; it keeps golden export
-  byte-stable while fixing *browser font fallback mismatch*. No advance-width reconciliation
-  is attempted (a larger, separate effort).
+- **Font normalisation at ingestion is handled** (see §4c): PDF fonts are already resolved
+  by `pdfImport/fontResolver.ts`, and the bare-`Helvetica` fallback gap is fixed via
+  `DEFAULT_IMPORT_FONT_STACK`. No advance-width reconciliation is attempted (a larger,
+  separate effort), so a substituted face can still shift wrapping vs. the source raster.
 - **`layerOrdering.ts` / `pageGeometry` rect helpers are not consumed by the golden
   renderer** — by design, because `paintOrder.ts` and the schema-valid page sizes are the
   equivalent existing logic and the renderer is golden-guarded. They are available for the

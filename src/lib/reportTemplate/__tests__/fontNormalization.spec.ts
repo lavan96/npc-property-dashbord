@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_IMPORT_FONT_STACK,
   buildFontStack,
   normalizePdfFontFamily,
   resolveTemplateFontFamily,
@@ -43,6 +44,12 @@ describe('fontNormalization', () => {
   it('maps Inter', () => {
     expect(resolveTemplateFontFamily('Inter')).toBe('Inter');
     expect(buildFontStack('Inter')).toBe('Inter, ui-sans-serif, system-ui, sans-serif');
+  });
+
+  it('exposes a Helvetica-consistent default import stack', () => {
+    // Must match the stack pdfImport/fontResolver emits for Helvetica so untyped
+    // imported text renders consistently with resolved text.
+    expect(DEFAULT_IMPORT_FONT_STACK).toBe('Helvetica, Arial, sans-serif');
   });
 
   it('falls back to Inter for unknown/empty', () => {

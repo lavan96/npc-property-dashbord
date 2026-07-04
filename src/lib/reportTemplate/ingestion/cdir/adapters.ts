@@ -5,6 +5,7 @@ import { toRendererHex } from '../../cssColor';
 import type { Block, Overlay, Page, ReportTemplate } from '../../templateSchema';
 import type { CdirDocument, CdirLayer, CdirPage, CdirSourceKind } from './schema';
 import { parseCdirDocument } from './validate';
+import { DEFAULT_IMPORT_FONT_STACK } from '../../rendering/fontNormalization';
 
 /** Parse a computed CSS box-shadow (colour-first form) into the CDIR shape shadow. */
 export function parseBoxShadow(raw: string | undefined, scale = 1): { x: number; y: number; blur: number; spread: number; color: string } | undefined {
@@ -282,7 +283,7 @@ function overlayToLayer(overlay: Overlay): CdirLayer {
       kind: 'text',
       text: overlay.content,
       runs: overlay.runs,
-      fontFamily: String(overlay.fontFamily ?? 'Helvetica'),
+      fontFamily: String(overlay.fontFamily ?? DEFAULT_IMPORT_FONT_STACK),
       fontSize: Number(overlay.fontSize ?? 12),
       fontWeight: overlay.fontWeightNumeric ?? overlay.fontWeight,
       fontStyle: overlay.fontStyle,
@@ -322,7 +323,7 @@ function overlayToLayer(overlay: Overlay): CdirLayer {
     ...common,
     kind: 'text',
     text: overlay.content,
-    fontFamily: String(overlay.fontFamily ?? 'Helvetica'),
+    fontFamily: String(overlay.fontFamily ?? DEFAULT_IMPORT_FONT_STACK),
     fontSize: Number(overlay.fontSize ?? 12),
     color: String(overlay.color ?? '#000000'),
   };
