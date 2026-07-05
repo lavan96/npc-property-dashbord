@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,6 +41,7 @@ import { GoldenRegressionSnapshotPanel } from './GoldenRegressionSnapshotPanel';
 import { GoldenRegressionResultPanel } from './GoldenRegressionResultPanel';
 import { GoldenRegressionQualityGatePanel } from './GoldenRegressionQualityGatePanel';
 import { GoldenRegressionTriagePanel } from './GoldenRegressionTriagePanel';
+import { GoldenRegressionHistoryPanel } from './GoldenRegressionHistoryPanel';
 
 interface GoldenRegressionRunConsoleProps {
   initialCorpusId?: string | null;
@@ -67,8 +69,11 @@ export function GoldenRegressionRunConsole({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmPersistOpen, setConfirmPersistOpen] = useState(false);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   const setField = (field: keyof GoldenCorpusConsoleFormState, value: string) =>
+    setForm((prev) => ({ ...prev, [field]: value }));
+  const setBool = (field: keyof GoldenCorpusConsoleFormState, value: boolean) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const evalValidation = useMemo(() => validateGoldenCorpusConsoleForm(form, 'evaluate_only'), [form]);
@@ -85,11 +90,19 @@ export function GoldenRegressionRunConsole({
       const request = buildGoldenCorpusOrchestratorRequestFromForm(form, mode);
       const orchestratorResult = await orchestrateGoldenCorpusRun({ request });
       setResult(orchestratorResult);
+      if (orchestratorResult.historySaved) setHistoryRefreshKey((k) => k + 1);
       if (mode === 'evaluate_and_persist') {
         if (orchestratorResult.persisted) toast.success('Golden regression summary persisted.');
         else toast.error(`Persistence did not complete (${orchestratorResult.status}).`);
+        if (orchestratorResult.historySaved) toast.success('Run saved to history ledger.');
+        else if (orchestratorResult.historyPersistenceResult?.kind === 'error') {
+          toast.error(`History save failed: ${orchestratorResult.historyPersistenceResult.message}`);
+        }
       } else {
         toast.success(`Evaluated: ${orchestratorResult.status}.`);
+      }
+      if (orchestratorResult.baselineComparison?.outcome === 'degraded') {
+        toast.warning('Baseline regression detected vs previous run.');
       }
     } catch (err) {
       const message = (err as Error).message ?? 'Unexpected orchestrator error.';
@@ -214,6 +227,25 @@ export function GoldenRegressionRunConsole({
               placeholder="One note per line." rows={3} />
           </div>
 
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="compareBaseline" className="text-sm">Compare with latest baseline</Label>
+                <p className="text-xs text-muted-foreground">Read-only: compares against the previous run for this corpus.</p>
+              </div>
+              <Switch id="compareBaseline" checked={form.compareBaseline}
+                onCheckedChange={(v) => setBool('compareBaseline', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="saveHistory" className="text-sm">Save history when persisting</Label>
+                <p className="text-xs text-muted-foreground">Appends a row to <code>pdf_import_golden_runs</code> on Evaluate + Persist.</p>
+              </div>
+              <Switch id="saveHistory" checked={form.saveHistory}
+                onCheckedChange={(v) => setBool('saveHistory', v)} />
+            </div>
+          </div>
+
           {corpusItem && (
             <div className="rounded-md border bg-muted/30 p-3 text-xs">
               <div className="font-medium">{corpusItem.title} · {corpusItem.category}</div>
@@ -292,12 +324,20 @@ export function GoldenRegressionRunConsole({
                 <TabsTrigger value="snapshot">Snapshot</TabsTrigger>
                 <TabsTrigger value="gates">Quality Gates</TabsTrigger>
                 <TabsTrigger value="triage">Triage</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
                 <TabsTrigger value="json">JSON</TabsTrigger>
               </TabsList>
               <TabsContent value="result" className="mt-4"><GoldenRegressionResultPanel result={result} /></TabsContent>
               <TabsContent value="snapshot" className="mt-4"><GoldenRegressionSnapshotPanel snapshot={snapshot} /></TabsContent>
               <TabsContent value="gates" className="mt-4"><GoldenRegressionQualityGatePanel report={result.qualityGateReport} /></TabsContent>
               <TabsContent value="triage" className="mt-4"><GoldenRegressionTriagePanel triage={result.triageSummary} /></TabsContent>
+              <TabsContent value="history" className="mt-4">
+                <GoldenRegressionHistoryPanel
+                  corpusId={result.corpusId}
+                  importId={result.importId}
+                  refreshKey={historyRefreshKey}
+                />
+              </TabsContent>
               <TabsContent value="json" className="mt-4">
                 <pre className="max-h-[480px] overflow-auto rounded-md border bg-muted/30 p-3 text-[11px]">
                   {JSON.stringify(result, null, 2)}
@@ -313,8 +353,10 @@ export function GoldenRegressionRunConsole({
           <DialogHeader>
             <DialogTitle>Persist golden regression summary?</DialogTitle>
             <DialogDescription>
-              This will save the current golden regression result to
+              This will save the latest golden regression summary to
               <code className="mx-1">template_imports.meta.golden_regression_summary</code>
+              and{form.saveHistory ? ' also append a history row to ' : ' (history saving is off, so it will NOT write to) '}
+              <code className="mx-1">pdf_import_golden_runs</code>
               for the selected import. Failing or blocked results may be persisted as evidence. Continue?
             </DialogDescription>
           </DialogHeader>

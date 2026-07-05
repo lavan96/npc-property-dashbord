@@ -10,8 +10,11 @@ import { Separator } from '@/components/ui/separator';
 import {
   getGoldenCorpusConsoleStatusLabel,
   getGoldenCorpusConsoleStatusTone,
+  getGoldenRunBaselineOutcomeLabel,
+  getGoldenRunBaselineOutcomeTone,
   type GoldenCorpusOrchestratorResult,
   type GoldenCorpusOrchestratorStepStatus,
+  type GoldenRunMetricComparison,
 } from '@/lib/reportTemplate/ingestion/goldenCorpus';
 
 interface GoldenRegressionResultPanelProps {
@@ -68,6 +71,14 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
             <Badge variant={result.persisted ? 'default' : 'outline'}>
               {result.persisted ? 'Persisted' : 'Not persisted'}
             </Badge>
+            <Badge variant={result.historySaved ? 'default' : 'outline'}>
+              {result.historySaved ? 'History saved' : 'History not saved'}
+            </Badge>
+            {result.baselineComparison && (
+              <Badge variant={getGoldenRunBaselineOutcomeTone(result.baselineComparison.outcome)}>
+                Baseline: {getGoldenRunBaselineOutcomeLabel(result.baselineComparison.outcome)}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0 grid gap-x-8 gap-y-0 md:grid-cols-2">
@@ -153,6 +164,89 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex flex-wrap items-center gap-2">
+            Regression history
+            <Badge variant={result.historySaved ? 'default' : 'outline'}>
+              {result.historySaved ? 'Saved' : 'Not saved'}
+            </Badge>
+            {result.baselineComparison && (
+              <Badge variant={getGoldenRunBaselineOutcomeTone(result.baselineComparison.outcome)}>
+                {getGoldenRunBaselineOutcomeLabel(result.baselineComparison.outcome)}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-3">
+          <div className="grid gap-x-8 gap-y-0 md:grid-cols-2">
+            <Row label="History saved">{result.historySaved ? 'Yes' : 'No'}</Row>
+            <Row label="History ID">
+              <span className="font-mono text-xs">
+                {text(result.historyPersistenceResult?.kind === 'ok' ? result.historyPersistenceResult.historyId : result.historyRecord?.id)}
+              </span>
+            </Row>
+            <Row label="Current run ID"><span className="font-mono text-xs">{text(result.baselineComparison?.currentRunId ?? result.runId)}</span></Row>
+            <Row label="Previous run ID"><span className="font-mono text-xs">{text(result.baselineComparison?.previousRunId)}</span></Row>
+          </div>
+
+          {result.historyPersistenceResult?.kind === 'error' && (
+            <p className="text-xs text-destructive break-all">
+              History save failed: {result.historyPersistenceResult.message}
+            </p>
+          )}
+
+          {!result.baselineComparison ? (
+            <div className="text-sm text-muted-foreground">No baseline comparison generated.</div>
+          ) : (
+            <>
+              <div className="grid gap-x-8 gap-y-0 md:grid-cols-2">
+                <Row label="Quality gate">
+                  {text(result.baselineComparison.qualityGateStatus.previous)} → {text(result.baselineComparison.qualityGateStatus.current)}{' '}
+                  <MetricBadge outcome={result.baselineComparison.qualityGateStatus.outcome} />
+                </Row>
+                <Row label="Operator decision">
+                  {text(result.baselineComparison.operatorDecision.previous)} → {text(result.baselineComparison.operatorDecision.current)}{' '}
+                  <MetricBadge outcome={result.baselineComparison.operatorDecision.outcome} />
+                </Row>
+                <Row label="Warnings Δ">{result.baselineComparison.warningCountDelta ?? DASH}</Row>
+                <Row label="Failures Δ">{result.baselineComparison.failureCountDelta ?? DASH}</Row>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {result.baselineComparison.metrics.map((m) => (
+                  <MetricCard key={m.metric} metric={m} />
+                ))}
+              </div>
+
+              {result.baselineComparison.messages.length > 0 && (
+                <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-0.5">
+                  {result.baselineComparison.messages.map((msg, i) => <li key={i} className="break-all">{msg}</li>)}
+                </ul>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MetricBadge({ outcome }: { outcome: string }) {
+  const variant = outcome === 'degraded' ? 'destructive'
+    : outcome === 'improved' ? 'default'
+    : outcome === 'stable' ? 'secondary'
+    : 'outline';
+  return <Badge variant={variant} className="text-[10px]">{outcome}</Badge>;
+}
+
+function MetricCard({ metric }: { metric: GoldenRunMetricComparison }) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-2 text-xs">
+      <div className="font-medium">{metric.metric}</div>
+      <div className="text-muted-foreground">{pct(metric.previous)} → {pct(metric.current)}</div>
+      <MetricBadge outcome={metric.outcome} />
     </div>
   );
 }

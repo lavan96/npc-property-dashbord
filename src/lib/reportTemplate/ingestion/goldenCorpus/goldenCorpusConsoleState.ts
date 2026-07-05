@@ -23,6 +23,10 @@ export interface GoldenCorpusConsoleFormState {
   runBatchId: string;
   operatorDecision: GoldenRegressionOperatorDecision;
   notesText: string;
+  /** Phase 9C — append a history row when persisting. */
+  saveHistory: boolean;
+  /** Phase 9C — compare this run against the latest baseline for the corpus. */
+  compareBaseline: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -56,6 +60,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     runBatchId: '',
     operatorDecision: 'not_reviewed',
     notesText: '',
+    saveHistory: true,
+    compareBaseline: true,
     ...overrides,
   };
 }
@@ -124,6 +130,10 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     operatorDecision: form.operatorDecision,
     notes: parseGoldenCorpusConsoleNotes(form.notesText),
     persist: mode === 'evaluate_and_persist',
+    // History rows are only written when persisting; baseline comparison is
+    // read-only and can preview in evaluate-only mode.
+    saveHistory: mode === 'evaluate_and_persist' && form.saveHistory,
+    compareBaseline: form.compareBaseline,
   };
 }
 
