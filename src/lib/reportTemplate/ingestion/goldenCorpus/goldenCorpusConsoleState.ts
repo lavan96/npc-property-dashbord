@@ -27,6 +27,10 @@ export interface GoldenCorpusConsoleFormState {
   saveHistory: boolean;
   /** Phase 9C — compare this run against the latest baseline for the corpus. */
   compareBaseline: boolean;
+  /** Phase 9D — run export parity automation before evaluation. */
+  runExportParity: boolean;
+  /** Phase 9D — persist the export parity summary the runner produces. */
+  persistExportParity: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -62,6 +66,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     notesText: '',
     saveHistory: true,
     compareBaseline: true,
+    runExportParity: false,
+    persistExportParity: true,
     ...overrides,
   };
 }
@@ -100,6 +106,10 @@ export function validateGoldenCorpusConsoleForm(
     warn('templateId', 'template_id_missing', 'Template ID not provided; page-count checks may be limited.');
   }
 
+  if (form.persistExportParity && !form.runExportParity) {
+    warn('persistExportParity', 'export_parity_persist_without_run', 'Persist export parity has no effect unless export parity automation is enabled.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -134,6 +144,10 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     // read-only and can preview in evaluate-only mode.
     saveHistory: mode === 'evaluate_and_persist' && form.saveHistory,
     compareBaseline: form.compareBaseline,
+    // Export parity automation runs in either mode; persistence only when the
+    // runner is enabled (and, being a write, respects the runner toggle only).
+    runExportParity: form.runExportParity,
+    persistExportParity: form.runExportParity && form.persistExportParity,
   };
 }
 

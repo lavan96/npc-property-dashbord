@@ -16,6 +16,7 @@ import {
   type GoldenCorpusOrchestratorStepStatus,
   type GoldenRunMetricComparison,
 } from '@/lib/reportTemplate/ingestion/goldenCorpus';
+import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -226,6 +227,24 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
                 </ul>
               )}
             </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Export parity automation</CardTitle></CardHeader>
+        <CardContent className="pt-0 space-y-2">
+          {result.exportParityRunnerResult ? (
+            <>
+              <AutomatedExportParityPanel result={result.exportParityRunnerResult} />
+              <p className="text-xs text-muted-foreground">
+                {result.exportParityRunnerResult.persisted
+                  ? 'Quality gates were evaluated against the refreshed export parity metadata.'
+                  : 'Export parity was not persisted; quality gates used the existing export parity metadata.'}
+              </p>
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">Export parity automation was not run.</div>
           )}
         </CardContent>
       </Card>

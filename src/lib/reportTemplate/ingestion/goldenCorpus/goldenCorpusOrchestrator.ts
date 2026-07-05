@@ -18,6 +18,7 @@ import {
   saveGoldenRunHistory,
 } from './goldenRunHistoryPersistence';
 import { compareGoldenRunToBaseline } from './goldenRunBaselineComparison';
+import { runExportParityAutomation } from '../exportParity/exportParityRunner';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -32,6 +33,7 @@ import type { PdfImportQualityGateReport } from '../qualityGates/pdfImportQualit
 import type { PdfImportFailureTriageSummary } from '../failureTriage/pdfImportFailureTriageTypes';
 import type { SaveGoldenRegressionSummaryResult } from './goldenRegressionTypes';
 import type { GoldenRunHistoryRecord } from './goldenRunHistoryTypes';
+import type { ExportParityRunnerResult } from '../exportParity/exportParityRunnerTypes';
 import {
   GOLDEN_CORPUS_ORCHESTRATOR_VERSION,
   type GoldenCorpusOrchestratorMode,
@@ -47,6 +49,7 @@ import {
 const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   validate_input: 'Validate input',
   load_snapshot: 'Load import snapshot',
+  run_export_parity: 'Run export parity automation',
   evaluate_run: 'Evaluate golden run',
   evaluate_quality_gates: 'Evaluate quality gates',
   build_summary: 'Build regression summary',
@@ -139,6 +142,7 @@ function baseResult(
     triageSummary: null,
     persistenceResult: null,
     persisted: false,
+    exportParityRunnerResult: null,
     baselineComparison: null,
     historyPersistenceResult: null,
     historyRecord: null,
@@ -389,6 +393,17 @@ function insertBeforeStep(
   return [...steps.slice(0, idx), step, ...steps.slice(idx)];
 }
 
+/** Insert `step` immediately after the step with `afterId` (append if absent). */
+function insertAfterStep(
+  steps: GoldenCorpusOrchestratorStep[],
+  afterId: GoldenCorpusOrchestratorStepId,
+  step: GoldenCorpusOrchestratorStep,
+): GoldenCorpusOrchestratorStep[] {
+  const idx = steps.findIndex((s) => s.id === afterId);
+  if (idx < 0) return [...steps, step];
+  return [...steps.slice(0, idx + 1), step, ...steps.slice(idx + 1)];
+}
+
 function baselineStepStatus(outcome: string): GoldenCorpusOrchestratorStepStatus {
   if (outcome === 'improved' || outcome === 'stable') return 'pass';
   return 'warning'; // degraded | no_baseline | unknown
@@ -548,11 +563,58 @@ export async function orchestrateGoldenCorpusRun(
     return result;
   }
 
-  const pure = orchestrateGoldenCorpusRunFromSnapshot({ request, snapshot: load.snapshot, now });
+  // Phase 9D — optional export parity automation before evaluation. When it
+  // persists a summary we reload the snapshot so quality gates see the fresh
+  // export_parity metadata.
+  let snapshot = load.snapshot;
+  let exportParityRunnerResult: ExportParityRunnerResult | null = null;
+  if (request.runExportParity === true) {
+    exportParityRunnerResult = await runExportParityAutomation({
+      input: {
+        importId,
+        templateId: request.templateId ?? null,
+        mode: 'auto',
+        persist: request.persistExportParity === true,
+        sourceFilename: request.sourceFilename ?? null,
+        notes: request.notes,
+      },
+      now,
+    });
+    if (exportParityRunnerResult.persisted) {
+      const reload = await loadGoldenCorpusImportQualitySnapshot(importId);
+      if (reload.kind === 'ok' && reload.snapshot) snapshot = reload.snapshot;
+    }
+  }
+
+  const pure = orchestrateGoldenCorpusRunFromSnapshot({ request, snapshot, now });
+  pure.exportParityRunnerResult = exportParityRunnerResult;
   pure.steps = withLoadSnapshotStep(
     pure.steps,
     createGoldenCorpusOrchestratorStep('load_snapshot', 'pass', 'Import snapshot loaded.'),
   );
+
+  // Insert the run_export_parity step right after load_snapshot.
+  if (request.runExportParity === true && exportParityRunnerResult) {
+    const r = exportParityRunnerResult;
+    const stepStatus: GoldenCorpusOrchestratorStepStatus =
+      r.status === 'completed' ? 'pass' : r.status === 'failed' ? 'fail' : 'warning';
+    pure.steps = insertAfterStep(pure.steps, 'load_snapshot', createGoldenCorpusOrchestratorStep(
+      'run_export_parity', stepStatus,
+      `Export parity automation: ${r.status} (${r.automationLevel}${r.persisted ? ', persisted' : ''}).`,
+      { status: r.status, automationLevel: r.automationLevel, blockers: r.blockers },
+    ));
+    if (r.persistenceError && request.persistExportParity === true) {
+      pure.failures = uniq([...pure.failures, 'export_parity_persistence_failed']);
+      pure.status = 'failed';
+    } else if (r.status === 'partial') {
+      pure.warnings = uniq([...pure.warnings, 'export_parity_automation_incomplete']);
+    } else if (r.status === 'manual_required' || r.status === 'not_ready' || r.status === 'failed') {
+      pure.warnings = uniq([...pure.warnings, 'export_parity_automation_manual_required']);
+    }
+  } else {
+    pure.steps = insertAfterStep(pure.steps, 'load_snapshot',
+      skippedStep('run_export_parity', 'Export parity automation not requested.'));
+  }
 
   // Phase 9C flags. compareBaseline defaults to saveHistory when omitted.
   const wantSaveHistory = request.saveHistory === true;
