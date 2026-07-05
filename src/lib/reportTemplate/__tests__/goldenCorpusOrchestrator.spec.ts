@@ -13,6 +13,7 @@ import {
   getLatestGoldenRunBaselines,
   saveGoldenRunHistory,
 } from '@/lib/reportTemplate/ingestion/goldenCorpus/goldenRunHistoryPersistence';
+import { runExportParityAutomation } from '@/lib/reportTemplate/ingestion/exportParity/exportParityRunner';
 
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
@@ -25,6 +26,10 @@ vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenRegressionPersistence
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenRunHistoryPersistence', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenRunHistoryPersistence')>();
   return { ...actual, getLatestGoldenRunBaselines: vi.fn(), saveGoldenRunHistory: vi.fn() };
+});
+vi.mock('@/lib/reportTemplate/ingestion/exportParity/exportParityRunner', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/exportParity/exportParityRunner')>();
+  return { ...actual, runExportParityAutomation: vi.fn() };
 });
 
 const NOW = () => new Date('2026-07-04T00:00:00.000Z');
@@ -361,5 +366,110 @@ describe('orchestrateGoldenCorpusRun (Phase 9C history + baseline)', () => {
     vi.mocked(getLatestGoldenRunBaselines).mockClear();
     await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true, compareBaseline: false }), now: NOW });
     expect(getLatestGoldenRunBaselines).not.toHaveBeenCalled();
+  });
+});
+
+function epResult(overrides: Record<string, unknown> = {}) {
+  return {
+    version: 'export-parity-runner-v1',
+    importId: 'import-1',
+    templateId: 'template-1',
+    mode: 'auto',
+    status: 'completed',
+    automationLevel: 'level_2_source_editor',
+    summary: null,
+    pageComparisons: [],
+    evidence: [],
+    scores: { exportVsSourceScore: 0.94, editorVsSourceScore: 0.95, exportVsEditorScore: null, overallScore: 0.945 },
+    blockers: [],
+    warnings: [],
+    notes: [],
+    persisted: false,
+    persistenceError: null,
+    generatedAt: '2026-07-04T00:00:00.000Z',
+    ...overrides,
+  } as any;
+}
+
+describe('orchestrateGoldenCorpusRun (Phase 9D export parity)', () => {
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+    vi.mocked(getLatestGoldenRunBaselines).mockReset();
+    vi.mocked(saveGoldenRunHistory).mockReset();
+    vi.mocked(runExportParityAutomation).mockReset();
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [] });
+    vi.mocked(saveGoldenRunHistory).mockResolvedValue({ kind: 'ok', historyId: 'hist-1', history: { id: 'hist-1' } as any });
+    vi.mocked(runExportParityAutomation).mockResolvedValue(epResult());
+  });
+
+  it('skips run_export_parity when not requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false }), now: NOW });
+    expect(runExportParityAutomation).not.toHaveBeenCalled();
+    expect(stepOf(result as any, 'run_export_parity')?.status).toBe('skipped');
+    expect(result.exportParityRunnerResult).toBeNull();
+  });
+
+  it('runExportParity true calls the runner', async () => {
+    await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true }), now: NOW });
+    expect(runExportParityAutomation).toHaveBeenCalledTimes(1);
+  });
+
+  it('persistExportParity true passes persist:true to the runner', async () => {
+    await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true, persistExportParity: true }), now: NOW });
+    expect(runExportParityAutomation).toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({ persist: true }),
+    }));
+  });
+
+  it('attaches a completed export parity result', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true }), now: NOW });
+    expect(result.exportParityRunnerResult?.status).toBe('completed');
+    expect(stepOf(result as any, 'run_export_parity')?.status).toBe('pass');
+  });
+
+  it('manual_required export parity adds a warning without crashing', async () => {
+    vi.mocked(runExportParityAutomation).mockResolvedValue(epResult({ status: 'manual_required' }));
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true }), now: NOW });
+    expect(result.warnings).toContain('export_parity_automation_manual_required');
+    expect(result.exportParityRunnerResult?.status).toBe('manual_required');
+    expect(stepOf(result as any, 'run_export_parity')?.status).toBe('warning');
+  });
+
+  it('export parity persistence failure fails the run when persistExportParity is true', async () => {
+    vi.mocked(runExportParityAutomation).mockResolvedValue(epResult({ status: 'failed', persistenceError: 'db down' }));
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true, persistExportParity: true }), now: NOW });
+    expect(result.failures).toContain('export_parity_persistence_failed');
+    expect(result.status).toBe('failed');
+  });
+
+  it('reloads the snapshot after export parity is persisted', async () => {
+    vi.mocked(runExportParityAutomation).mockResolvedValue(epResult({ persisted: true }));
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true, persistExportParity: true }), now: NOW });
+    expect(loadGoldenCorpusImportQualitySnapshot).toHaveBeenCalledTimes(2);
+    expect(result.qualityGateReport).not.toBeNull();
+  });
+
+  it('does not reload the snapshot when export parity was not persisted', async () => {
+    vi.mocked(runExportParityAutomation).mockResolvedValue(epResult({ persisted: false }));
+    await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true }), now: NOW });
+    expect(loadGoldenCorpusImportQualitySnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('still returns a structured result when automation is not ready', async () => {
+    vi.mocked(runExportParityAutomation).mockResolvedValue(epResult({ status: 'not_ready', blockers: ['source_evidence_missing'] }));
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true }), now: NOW });
+    expect(result.exportParityRunnerResult?.status).toBe('not_ready');
+    expect(result.warnings).toContain('export_parity_automation_manual_required');
+  });
+
+  it('evaluate_only with export parity persist off does not write the golden summary', async () => {
+    await orchestrateGoldenCorpusRun({ request: req({ persist: false, runExportParity: true, persistExportParity: false }), now: NOW });
+    expect(saveGoldenRegressionSummary).not.toHaveBeenCalled();
+    expect(runExportParityAutomation).toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({ persist: false }),
+    }));
   });
 });

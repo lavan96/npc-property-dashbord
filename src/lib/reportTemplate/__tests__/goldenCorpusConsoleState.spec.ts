@@ -132,3 +132,28 @@ describe('console status/headline helpers', () => {
     expect(getGoldenCorpusConsoleResultHeadline({ status: 'failed' } as any)).toBe('Golden regression failed.');
   });
 });
+
+describe('Phase 9D export parity form options', () => {
+  it('defaults runExportParity false and persistExportParity true', () => {
+    const f = createDefaultGoldenCorpusConsoleFormState();
+    expect(f.runExportParity).toBe(false);
+    expect(f.persistExportParity).toBe(true);
+  });
+
+  it('build request includes runExportParity and gates persistExportParity behind it', () => {
+    const withRun = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ runExportParity: true, persistExportParity: true }), 'evaluate_and_persist');
+    expect(withRun.runExportParity).toBe(true);
+    expect(withRun.persistExportParity).toBe(true);
+
+    const noRun = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ runExportParity: false, persistExportParity: true }), 'evaluate_and_persist');
+    expect(noRun.runExportParity).toBe(false);
+    expect(noRun.persistExportParity).toBe(false);
+  });
+
+  it('warns when persistExportParity is on but runExportParity is off', () => {
+    const r = validateGoldenCorpusConsoleForm(form({ runExportParity: false, persistExportParity: true }), 'evaluate_only');
+    expect(r.issues.some((i) => i.code === 'export_parity_persist_without_run')).toBe(true);
+  });
+});

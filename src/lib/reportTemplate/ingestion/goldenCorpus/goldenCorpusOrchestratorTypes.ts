@@ -23,6 +23,7 @@ import type {
   GoldenRunHistoryRecord,
   SaveGoldenRunHistoryResult,
 } from './goldenRunHistoryTypes';
+import type { ExportParityRunnerResult } from '../exportParity/exportParityRunnerTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -38,6 +39,7 @@ export type GoldenCorpusOrchestratorStatus =
 export type GoldenCorpusOrchestratorStepId =
   | 'validate_input'
   | 'load_snapshot'
+  | 'run_export_parity'
   | 'evaluate_run'
   | 'evaluate_quality_gates'
   | 'build_summary'
@@ -74,6 +76,10 @@ export interface GoldenCorpusOrchestratorRequest {
   notes?: string[];
   /** Persist the latest summary onto template_imports.meta (Phase 8D/9A). */
   persist?: boolean;
+  /** Run the Phase 9D export parity automation before evaluating the run. */
+  runExportParity?: boolean;
+  /** Persist the export parity summary produced by the runner (Phase 9D). */
+  persistExportParity?: boolean;
   /** Append a history row to public.pdf_import_golden_runs (Phase 9C). */
   saveHistory?: boolean;
   /**
@@ -109,6 +115,9 @@ export interface GoldenCorpusOrchestratorResult {
 
   persistenceResult: SaveGoldenRegressionSummaryResult | null;
   persisted: boolean;
+
+  // Phase 9D — automated export parity runner.
+  exportParityRunnerResult: ExportParityRunnerResult | null;
 
   // Phase 9C — regression history + baseline comparison.
   baselineComparison: GoldenRunBaselineComparison | null;

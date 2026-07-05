@@ -42,6 +42,7 @@ import { GoldenRegressionResultPanel } from './GoldenRegressionResultPanel';
 import { GoldenRegressionQualityGatePanel } from './GoldenRegressionQualityGatePanel';
 import { GoldenRegressionTriagePanel } from './GoldenRegressionTriagePanel';
 import { GoldenRegressionHistoryPanel } from './GoldenRegressionHistoryPanel';
+import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 
 interface GoldenRegressionRunConsoleProps {
   initialCorpusId?: string | null;
@@ -244,6 +245,22 @@ export function GoldenRegressionRunConsole({
               <Switch id="saveHistory" checked={form.saveHistory}
                 onCheckedChange={(v) => setBool('saveHistory', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="runExportParity" className="text-sm">Run export parity automation before evaluation</Label>
+                <p className="text-xs text-muted-foreground">Reuses Visual QA evidence to build an export parity summary before quality gates.</p>
+              </div>
+              <Switch id="runExportParity" checked={form.runExportParity}
+                onCheckedChange={(v) => setBool('runExportParity', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistExportParity" className="text-sm">Persist export parity result</Label>
+                <p className="text-xs text-muted-foreground">Writes <code>export_parity_summary</code> to <code>template_imports.meta</code> when the runner can build one.</p>
+              </div>
+              <Switch id="persistExportParity" checked={form.persistExportParity} disabled={!form.runExportParity}
+                onCheckedChange={(v) => setBool('persistExportParity', v)} />
+            </div>
           </div>
 
           {corpusItem && (
@@ -324,6 +341,7 @@ export function GoldenRegressionRunConsole({
                 <TabsTrigger value="snapshot">Snapshot</TabsTrigger>
                 <TabsTrigger value="gates">Quality Gates</TabsTrigger>
                 <TabsTrigger value="triage">Triage</TabsTrigger>
+                <TabsTrigger value="exportParity">Export Parity</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
                 <TabsTrigger value="json">JSON</TabsTrigger>
               </TabsList>
@@ -331,6 +349,7 @@ export function GoldenRegressionRunConsole({
               <TabsContent value="snapshot" className="mt-4"><GoldenRegressionSnapshotPanel snapshot={snapshot} /></TabsContent>
               <TabsContent value="gates" className="mt-4"><GoldenRegressionQualityGatePanel report={result.qualityGateReport} /></TabsContent>
               <TabsContent value="triage" className="mt-4"><GoldenRegressionTriagePanel triage={result.triageSummary} /></TabsContent>
+              <TabsContent value="exportParity" className="mt-4"><AutomatedExportParityPanel result={result.exportParityRunnerResult} /></TabsContent>
               <TabsContent value="history" className="mt-4">
                 <GoldenRegressionHistoryPanel
                   corpusId={result.corpusId}
@@ -353,6 +372,14 @@ export function GoldenRegressionRunConsole({
           <DialogHeader>
             <DialogTitle>Persist golden regression summary?</DialogTitle>
             <DialogDescription>
+              {form.runExportParity && (
+                <span className="block mb-2">
+                  Export parity automation will run <strong>before</strong> golden evaluation
+                  {form.persistExportParity
+                    ? <> and will update <code className="mx-1">export_parity_summary</code> before saving the golden regression result.</>
+                    : <> (persistence off — the export parity summary will not be written).</>}
+                </span>
+              )}
               This will save the latest golden regression summary to
               <code className="mx-1">template_imports.meta.golden_regression_summary</code>
               and{form.saveHistory ? ' also append a history row to ' : ' (history saving is off, so it will NOT write to) '}
