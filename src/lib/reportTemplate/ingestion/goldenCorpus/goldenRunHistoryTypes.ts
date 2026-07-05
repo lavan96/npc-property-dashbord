@@ -98,11 +98,11 @@ export interface GoldenRunHistoryRecord {
   summaryVersion: string | null;
 
   importStatus: string | null;
-  runStatus: GoldenCorpusRunStatus | string | null;
-  runDecision: GoldenCorpusRunDecision | string | null;
+  runStatus: GoldenCorpusRunStatus | null;
+  runDecision: GoldenCorpusRunDecision | null;
 
-  qualityGateStatus: PdfImportQualityGateStatus | string;
-  operatorDecision: GoldenRegressionOperatorDecision | string;
+  qualityGateStatus: PdfImportQualityGateStatus;
+  operatorDecision: GoldenRegressionOperatorDecision;
 
   importPageCount: number | null;
   templatePageCount: number | null;

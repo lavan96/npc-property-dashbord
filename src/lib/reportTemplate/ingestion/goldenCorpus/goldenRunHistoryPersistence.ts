@@ -143,8 +143,8 @@ export async function getGoldenRunHistory(
 }
 
 export async function getLatestGoldenRunBaselines(
-  corpusId?: string | null,
-): Promise<GetGoldenRunBaselinesResult> {
+  options: GetLatestGoldenRunBaselinesOptions = {},
+): Promise<GetLatestGoldenRunBaselinesResult> {
   try {
     const { data, error } = await invokeSecureFunction<{
       ok?: boolean;
