@@ -42,9 +42,9 @@ export type GoldenCorpusOrchestratorStepId =
   | 'evaluate_quality_gates'
   | 'build_summary'
   | 'evaluate_triage'
-  | 'persist_summary'
   | 'load_baseline'
   | 'compare_baseline'
+  | 'persist_summary'
   | 'save_history';
 
 export type GoldenCorpusOrchestratorStepStatus =
@@ -72,11 +72,12 @@ export interface GoldenCorpusOrchestratorRequest {
   runBatchId?: string | null;
   operatorDecision?: GoldenRegressionOperatorDecision;
   notes?: string[];
+  /** Persist the latest summary onto template_imports.meta (Phase 8D/9A). */
   persist?: boolean;
-  /** Persist this run into the Phase 9C `pdf_import_golden_runs` history ledger. */
+  /** Append a history row to public.pdf_import_golden_runs (Phase 9C). */
   saveHistory?: boolean;
   /**
-   * Compare this run against the previous baseline run for the same corpus.
+   * Compare this run against the latest previous baseline for the corpus.
    * Defaults to `saveHistory` when omitted (a saved run is compared before it
    * becomes the next baseline).
    */

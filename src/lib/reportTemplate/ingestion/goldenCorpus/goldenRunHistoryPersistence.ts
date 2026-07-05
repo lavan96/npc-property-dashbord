@@ -2,24 +2,23 @@
  * goldenRunHistoryPersistence — Phase 9C.
  *
  * Client-side invokers for the four secure `template-import-pdf` history
- * operations backed by `public.pdf_import_golden_runs`:
- *   - save_golden_run_history        → saveGoldenRunHistory
- *   - list_golden_run_history        → listGoldenRunHistory
- *   - get_golden_run_history         → getGoldenRunHistory
- *   - get_latest_golden_run_baselines→ getLatestGoldenRunBaselines
- * All ownership/authorization is enforced server-side by the edge function.
+ * operations backed by `public.pdf_import_golden_runs`. All ownership /
+ * authorization is enforced server-side by the edge function; the browser
+ * client never queries the table directly.
  */
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { normalizeGoldenRunHistoryRecord } from './goldenRunHistorySummary';
 import type {
+  GetGoldenRunBaselinesResult,
   GetGoldenRunHistoryResult,
-  GetLatestGoldenRunBaselinesOptions,
-  GetLatestGoldenRunBaselinesResult,
   GoldenRunHistoryInput,
-  ListGoldenRunHistoryOptions,
+  GoldenRunHistoryListOptions,
+  GoldenRunHistoryRecord,
   ListGoldenRunHistoryResult,
   SaveGoldenRunHistoryResult,
 } from './goldenRunHistoryTypes';
+
+export const GOLDEN_RUN_HISTORY_FUNCTION = 'template-import-pdf';
 
 const DEFAULT_HISTORY_LIMIT = 50;
 const MAX_HISTORY_LIMIT = 200;
@@ -35,12 +34,19 @@ function looksMissing(message: string): boolean {
   return /not found|not_found|missing|no rows/i.test(message);
 }
 
+function safeNormalize(raw: unknown) {
+  try {
+    return normalizeGoldenRunHistoryRecord(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function saveGoldenRunHistory(
-  importId: string,
-  history: GoldenRunHistoryInput,
+  historyInput: GoldenRunHistoryInput,
 ): Promise<SaveGoldenRunHistoryResult> {
-  if (!importId) return { kind: 'error', message: 'importId is required' };
-  if (!history) return { kind: 'error', message: 'history is required' };
+  if (!historyInput) return { kind: 'error', message: 'history is required' };
+  if (!historyInput.importId) return { kind: 'error', message: 'importId is required' };
 
   try {
     const { data, error } = await invokeSecureFunction<{
@@ -48,11 +54,11 @@ export async function saveGoldenRunHistory(
       history_id?: string;
       history?: unknown;
       error?: string;
-    }>('template-import-pdf', {
+    }>(GOLDEN_RUN_HISTORY_FUNCTION, {
       body: {
         operation: 'save_golden_run_history',
-        import_id: importId,
-        history,
+        import_id: historyInput.importId,
+        history: historyInput,
       },
     } as any);
 
@@ -63,7 +69,7 @@ export async function saveGoldenRunHistory(
     return {
       kind: 'ok',
       historyId: data.history_id,
-      record: normalizeGoldenRunHistoryRecord(data.history),
+      history: data.history ? safeNormalize(data.history) : null,
     };
   } catch (error) {
     return { kind: 'error', message: errorMessage(error) };
@@ -71,20 +77,20 @@ export async function saveGoldenRunHistory(
 }
 
 export async function listGoldenRunHistory(
-  options: ListGoldenRunHistoryOptions = {},
+  options?: GoldenRunHistoryListOptions,
 ): Promise<ListGoldenRunHistoryResult> {
-  const limit = Math.max(1, Math.min(MAX_HISTORY_LIMIT, Number(options.limit) || DEFAULT_HISTORY_LIMIT));
+  const limit = Math.max(1, Math.min(MAX_HISTORY_LIMIT, Number(options?.limit) || DEFAULT_HISTORY_LIMIT));
 
   try {
     const { data, error } = await invokeSecureFunction<{
       ok?: boolean;
       history?: unknown[];
       error?: string;
-    }>('template-import-pdf', {
+    }>(GOLDEN_RUN_HISTORY_FUNCTION, {
       body: {
         operation: 'list_golden_run_history',
-        corpus_id: options.corpusId ?? null,
-        import_id: options.importId ?? null,
+        corpus_id: options?.corpusId || undefined,
+        import_id: options?.importId || undefined,
         limit,
       },
     } as any);
@@ -93,8 +99,10 @@ export async function listGoldenRunHistory(
     if (!data || data.error || data.ok !== true) {
       return { kind: 'error', message: String(data?.error ?? 'list_golden_run_history did not return ok') };
     }
-    const records = Array.isArray(data.history) ? data.history.map(normalizeGoldenRunHistoryRecord) : [];
-    return { kind: 'ok', records };
+    const history = Array.isArray(data.history)
+      ? (data.history.map(safeNormalize).filter((r): r is GoldenRunHistoryRecord => r !== null))
+      : [];
+    return { kind: 'ok', history };
   } catch (error) {
     return { kind: 'error', message: errorMessage(error) };
   }
@@ -110,7 +118,7 @@ export async function getGoldenRunHistory(
       ok?: boolean;
       history?: unknown;
       error?: string;
-    }>('template-import-pdf', {
+    }>(GOLDEN_RUN_HISTORY_FUNCTION, {
       body: {
         operation: 'get_golden_run_history',
         history_id: historyId,
@@ -119,16 +127,16 @@ export async function getGoldenRunHistory(
 
     if (error) {
       const message = errorMessage(error);
-      if (looksMissing(message)) return { kind: 'missing' };
-      return { kind: 'error', message };
+      return looksMissing(message) ? { kind: 'missing' } : { kind: 'error', message };
     }
     if (!data || data.error) {
       const message = String(data?.error ?? 'unknown error');
-      if (looksMissing(message)) return { kind: 'missing' };
-      return { kind: 'error', message };
+      return looksMissing(message) ? { kind: 'missing' } : { kind: 'error', message };
     }
     if (!data.history) return { kind: 'missing' };
-    return { kind: 'ok', record: normalizeGoldenRunHistoryRecord(data.history) };
+    const record = safeNormalize(data.history);
+    if (!record) return { kind: 'error', message: 'invalid history record' };
+    return { kind: 'ok', history: record };
   } catch (error) {
     return { kind: 'error', message: errorMessage(error) };
   }
@@ -142,10 +150,10 @@ export async function getLatestGoldenRunBaselines(
       ok?: boolean;
       baselines?: unknown[];
       error?: string;
-    }>('template-import-pdf', {
+    }>(GOLDEN_RUN_HISTORY_FUNCTION, {
       body: {
         operation: 'get_latest_golden_run_baselines',
-        corpus_id: options.corpusId ?? null,
+        corpus_id: corpusId || undefined,
       },
     } as any);
 
@@ -153,7 +161,9 @@ export async function getLatestGoldenRunBaselines(
     if (!data || data.error || data.ok !== true) {
       return { kind: 'error', message: String(data?.error ?? 'get_latest_golden_run_baselines did not return ok') };
     }
-    const baselines = Array.isArray(data.baselines) ? data.baselines.map(normalizeGoldenRunHistoryRecord) : [];
+    const baselines = Array.isArray(data.baselines)
+      ? (data.baselines.map(safeNormalize).filter((r): r is GoldenRunHistoryRecord => r !== null))
+      : [];
     return { kind: 'ok', baselines };
   } catch (error) {
     return { kind: 'error', message: errorMessage(error) };

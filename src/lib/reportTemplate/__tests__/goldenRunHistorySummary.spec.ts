@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GOLDEN_CORPUS_ORCHESTRATOR_VERSION,
   GOLDEN_REGRESSION_SUMMARY_VERSION,
-  buildGoldenRunHistoryInputFromSummary,
+  buildGoldenRunHistoryRecordInput,
+  countGoldenRunFailures,
+  countGoldenRunWarnings,
   normalizeGoldenRunHistoryRecord,
   type GoldenRegressionSummary,
 } from '../ingestion/goldenCorpus';
@@ -42,92 +43,150 @@ function summary(overrides: Partial<GoldenRegressionSummary> = {}): GoldenRegres
     failures: [],
     operatorDecision: 'accepted',
     notes: ['note-1'],
-    generatedAt: '2026-07-04T00:00:00.000Z',
+    generatedAt: '2026-07-05T00:00:00.000Z',
     persistedAt: null,
     ...overrides,
   };
 }
 
-describe('buildGoldenRunHistoryInputFromSummary', () => {
-  it('maps summary fields and derives counts from the arrays', () => {
-    const input = buildGoldenRunHistoryInputFromSummary({ summary: summary() });
+describe('buildGoldenRunHistoryRecordInput', () => {
+  it('throws when the summary is missing', () => {
+    expect(() => buildGoldenRunHistoryRecordInput({} as any)).toThrow(/goldenRegressionSummary is required/);
+  });
+
+  it('throws when importId is missing', () => {
+    expect(() => buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary({ importId: '' }) }))
+      .toThrow(/importId is required/);
+  });
+
+  it('throws when runId is missing', () => {
+    expect(() => buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary({ runId: '' }) }))
+      .toThrow(/runId is required/);
+  });
+
+  it('throws when corpusId is missing', () => {
+    expect(() => buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary({ corpusId: '' }) }))
+      .toThrow(/corpusId is required/);
+  });
+
+  it('maps the core identity fields', () => {
+    const input = buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary() });
     expect(input.runId).toBe('golden-run-simple-1');
+    expect(input.runBatchId).toBe('batch-1');
     expect(input.corpusId).toBe('golden-simple-001');
-    expect(input.category).toBe('simple_one_page');
     expect(input.importId).toBe('import-1');
+    expect(input.templateId).toBe('template-1');
+    expect(input.summaryVersion).toBe(GOLDEN_REGRESSION_SUMMARY_VERSION);
+  });
+
+  it('maps the quality fields', () => {
+    const input = buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary() });
     expect(input.qualityGateStatus).toBe('pass');
     expect(input.operatorDecision).toBe('accepted');
     expect(input.visualQaScore).toBe(0.95);
+    expect(input.repairStatus).toBe('completed');
+    expect(input.repairFinalScore).toBe(0.96);
     expect(input.exportVsSourceScore).toBe(0.94);
-    expect(input.warningCount).toBe(1);
-    expect(input.failureCount).toBe(0);
-    expect(input.summaryVersion).toBe(GOLDEN_REGRESSION_SUMMARY_VERSION);
-    expect(input.orchestratorVersion).toBe(GOLDEN_CORPUS_ORCHESTRATOR_VERSION);
-    expect(input.baselineComparison).toBeNull();
-    // The full summary is embedded for audit.
-    expect((input.goldenRegressionSummary as any).runId).toBe('golden-run-simple-1');
   });
 
-  it('carries triage summary, orchestrator version, and baseline comparison when provided', () => {
-    const input = buildGoldenRunHistoryInputFromSummary({
-      summary: summary(),
-      triageSummary: { outcome: 'resolved' } as any,
-      orchestratorVersion: 'custom-orchestrator',
-      baselineComparison: { outcome: 'improved' } as any,
+  it('maps warnings/failures and derives counts', () => {
+    const input = buildGoldenRunHistoryRecordInput({
+      goldenRegressionSummary: summary({ warnings: ['a', 'b', 'c'], failures: ['x'] }),
     });
-    expect((input.triageSummary as any).outcome).toBe('resolved');
-    expect(input.orchestratorVersion).toBe('custom-orchestrator');
-    expect(input.baselineComparison).toEqual({ outcome: 'improved' });
-  });
-
-  it('recomputes counts even if summary arrays disagree with any prior count', () => {
-    const input = buildGoldenRunHistoryInputFromSummary({
-      summary: summary({ warnings: ['a', 'b', 'c'], failures: ['x'] }),
-    });
+    expect(input.warnings).toEqual(['a', 'b', 'c']);
+    expect(input.failures).toEqual(['x']);
     expect(input.warningCount).toBe(3);
     expect(input.failureCount).toBe(1);
   });
 
-  it('throws when the summary lacks an importId', () => {
-    expect(() => buildGoldenRunHistoryInputFromSummary({ summary: summary({ importId: '' }) })).toThrow();
+  it('stores the gate summary', () => {
+    const input = buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary() });
+    expect(input.gateSummary).toEqual({ total: 5, pass: 5 });
+  });
+
+  it('stores the triage summary when provided', () => {
+    const input = buildGoldenRunHistoryRecordInput({
+      goldenRegressionSummary: summary(),
+      triageSummary: { outcome: 'resolved' } as any,
+    });
+    expect((input.triageSummary as any).outcome).toBe('resolved');
+  });
+
+  it('stores an empty object for triage summary when missing', () => {
+    const input = buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary() });
+    expect(input.triageSummary).toEqual({});
+  });
+
+  it('stores the golden regression summary object', () => {
+    const input = buildGoldenRunHistoryRecordInput({ goldenRegressionSummary: summary() });
+    expect((input.goldenRegressionSummary as any).runId).toBe('golden-run-simple-1');
+  });
+
+  it('includes the baseline comparison when provided', () => {
+    const input = buildGoldenRunHistoryRecordInput({
+      goldenRegressionSummary: summary(),
+      baselineComparison: { outcome: 'improved' } as any,
+    });
+    expect(input.baselineComparison).toEqual({ outcome: 'improved' });
   });
 });
 
 describe('normalizeGoldenRunHistoryRecord', () => {
-  it('coerces a loosely-typed payload into a record', () => {
+  it('handles a snake_case DB row', () => {
     const record = normalizeGoldenRunHistoryRecord({
       id: 'hist-1',
-      runId: 'run-1',
-      corpusId: 'golden-simple-001',
-      category: 'simple_one_page',
-      importId: 'import-1',
-      qualityGateStatus: 'warning',
-      operatorDecision: 'accepted_with_warnings',
-      visualQaScore: '0.8',
-      warningCount: 2,
+      run_id: 'run-1',
+      corpus_id: 'golden-simple-001',
+      import_id: 'import-1',
+      quality_gate_status: 'warning',
+      operator_decision: 'accepted_with_warnings',
+      visual_qa_score: '0.8',
+      repair_status: 'completed',
+      warning_count: 2,
       warnings: ['w1', 'w2'],
       failures: [],
-      createdAt: '2026-07-04T00:00:00.000Z',
+      created_at: '2026-07-05T00:00:00.000Z',
     });
     expect(record.id).toBe('hist-1');
+    expect(record.runId).toBe('run-1');
     expect(record.visualQaScore).toBe(0.8);
+    expect(record.repairStatus).toBe('completed');
     expect(record.warningCount).toBe(2);
     expect(record.failureCount).toBe(0);
-    expect(record.baselineComparison).toBeNull();
   });
 
-  it('falls back to array lengths when counts are absent', () => {
+  it('handles an already-camelCase row', () => {
     const record = normalizeGoldenRunHistoryRecord({
-      warnings: ['w1', 'w2', 'w3'],
-      failures: ['f1'],
+      id: 'hist-2',
+      runId: 'run-2',
+      corpusId: 'golden-simple-001',
+      importId: 'import-2',
+      qualityGateStatus: 'pass',
+      operatorDecision: 'accepted',
+      warnings: ['w'],
     });
-    expect(record.warningCount).toBe(3);
-    expect(record.failureCount).toBe(1);
+    expect(record.runId).toBe('run-2');
+    expect(record.qualityGateStatus).toBe('pass');
+    expect(record.warningCount).toBe(1);
   });
 
-  it('defaults missing status/decision to safe values', () => {
-    const record = normalizeGoldenRunHistoryRecord({});
-    expect(record.qualityGateStatus).toBe('not_evaluated');
-    expect(record.operatorDecision).toBe('not_reviewed');
+  it('throws when id is missing', () => {
+    expect(() => normalizeGoldenRunHistoryRecord({
+      run_id: 'run-1', corpus_id: 'c', import_id: 'i', quality_gate_status: 'pass', operator_decision: 'accepted',
+    })).toThrow(/missing id/);
+  });
+});
+
+describe('countGoldenRunWarnings / countGoldenRunFailures', () => {
+  it('counts warnings for array/null/object', () => {
+    expect(countGoldenRunWarnings(['a', 'b'])).toBe(2);
+    expect(countGoldenRunWarnings(null)).toBe(0);
+    expect(countGoldenRunWarnings({} as any)).toBe(0);
+  });
+
+  it('counts failures for array/null/object', () => {
+    expect(countGoldenRunFailures(['x'])).toBe(1);
+    expect(countGoldenRunFailures(undefined)).toBe(0);
+    expect(countGoldenRunFailures({ length: 5 } as any)).toBe(0);
   });
 });

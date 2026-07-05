@@ -644,17 +644,18 @@ function goldenRunInputToColumns(history: any, importId: string, createdBy: stri
     import_page_count: grInt(history.importPageCount),
     template_page_count: grInt(history.templatePageCount),
     visual_qa_score: grNum(history.visualQaScore),
-    repair_final_score: grNum(history.repairFinalScore),
-    export_vs_source_score: grNum(history.exportVsSourceScore),
-    editor_vs_source_score: grNum(history.editorVsSourceScore),
-    export_vs_editor_score: grNum(history.exportVsEditorScore),
     visual_qa_manual_review_required: grBool(history.visualQaManualReviewRequired),
+    repair_status: grStr(history.repairStatus),
+    repair_final_score: grNum(history.repairFinalScore),
     repair_requires_fallback: grBool(history.repairRequiresFallback),
     repair_requires_manual_review: grBool(history.repairRequiresManualReview),
     ai_reconciliation_status: grStr(history.aiReconciliationStatus),
     ai_reconciliation_recommendation: grStr(history.aiReconciliationRecommendation),
     export_parity_status: grStr(history.exportParityStatus),
     export_parity_mode: grStr(history.exportParityMode),
+    export_vs_source_score: grNum(history.exportVsSourceScore),
+    editor_vs_source_score: grNum(history.editorVsSourceScore),
+    export_vs_editor_score: grNum(history.exportVsEditorScore),
     warning_count: grCount(history.warningCount),
     failure_count: grCount(history.failureCount),
     warnings: grArr(history.warnings),
@@ -689,17 +690,18 @@ function goldenRunRowToCamel(row: any) {
     importPageCount: row.import_page_count ?? null,
     templatePageCount: row.template_page_count ?? null,
     visualQaScore: row.visual_qa_score ?? null,
-    repairFinalScore: row.repair_final_score ?? null,
-    exportVsSourceScore: row.export_vs_source_score ?? null,
-    editorVsSourceScore: row.editor_vs_source_score ?? null,
-    exportVsEditorScore: row.export_vs_editor_score ?? null,
     visualQaManualReviewRequired: row.visual_qa_manual_review_required ?? null,
+    repairStatus: row.repair_status ?? null,
+    repairFinalScore: row.repair_final_score ?? null,
     repairRequiresFallback: row.repair_requires_fallback ?? null,
     repairRequiresManualReview: row.repair_requires_manual_review ?? null,
     aiReconciliationStatus: row.ai_reconciliation_status ?? null,
     aiReconciliationRecommendation: row.ai_reconciliation_recommendation ?? null,
     exportParityStatus: row.export_parity_status ?? null,
     exportParityMode: row.export_parity_mode ?? null,
+    exportVsSourceScore: row.export_vs_source_score ?? null,
+    editorVsSourceScore: row.editor_vs_source_score ?? null,
+    exportVsEditorScore: row.export_vs_editor_score ?? null,
     warningCount: row.warning_count ?? 0,
     failureCount: row.failure_count ?? 0,
     warnings: Array.isArray(row.warnings) ? row.warnings : [],
@@ -715,7 +717,7 @@ function goldenRunRowToCamel(row: any) {
 }
 
 const GOLDEN_RUN_SELECT =
-  'id,run_id,run_batch_id,corpus_id,category,import_id,template_id,source_filename,engine_version,orchestrator_version,summary_version,import_status,run_status,run_decision,quality_gate_status,operator_decision,import_page_count,template_page_count,visual_qa_score,repair_final_score,export_vs_source_score,editor_vs_source_score,export_vs_editor_score,visual_qa_manual_review_required,repair_requires_fallback,repair_requires_manual_review,ai_reconciliation_status,ai_reconciliation_recommendation,export_parity_status,export_parity_mode,warning_count,failure_count,warnings,failures,gate_summary,triage_summary,golden_regression_summary,baseline_comparison,created_by,created_at,updated_at';
+  'id,run_id,run_batch_id,corpus_id,category,import_id,template_id,source_filename,engine_version,orchestrator_version,summary_version,import_status,run_status,run_decision,quality_gate_status,operator_decision,import_page_count,template_page_count,visual_qa_score,visual_qa_manual_review_required,repair_status,repair_final_score,repair_requires_fallback,repair_requires_manual_review,ai_reconciliation_status,ai_reconciliation_recommendation,export_parity_status,export_parity_mode,export_vs_source_score,editor_vs_source_score,export_vs_editor_score,warning_count,failure_count,warnings,failures,gate_summary,triage_summary,golden_regression_summary,baseline_comparison,created_by,created_at,updated_at';
 
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();

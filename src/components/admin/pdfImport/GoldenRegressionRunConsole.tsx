@@ -95,6 +95,9 @@ export function GoldenRegressionRunConsole({
         if (orchestratorResult.persisted) toast.success('Golden regression summary persisted.');
         else toast.error(`Persistence did not complete (${orchestratorResult.status}).`);
         if (orchestratorResult.historySaved) toast.success('Run saved to history ledger.');
+        else if (orchestratorResult.historyPersistenceResult?.kind === 'error') {
+          toast.error(`History save failed: ${orchestratorResult.historyPersistenceResult.message}`);
+        }
       } else {
         toast.success(`Evaluated: ${orchestratorResult.status}.`);
       }
@@ -227,7 +230,7 @@ export function GoldenRegressionRunConsole({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex items-center justify-between rounded-md border p-3">
               <div className="space-y-0.5">
-                <Label htmlFor="compareBaseline" className="text-sm">Compare to baseline</Label>
+                <Label htmlFor="compareBaseline" className="text-sm">Compare with latest baseline</Label>
                 <p className="text-xs text-muted-foreground">Read-only: compares against the previous run for this corpus.</p>
               </div>
               <Switch id="compareBaseline" checked={form.compareBaseline}
@@ -235,8 +238,8 @@ export function GoldenRegressionRunConsole({
             </div>
             <div className="flex items-center justify-between rounded-md border p-3">
               <div className="space-y-0.5">
-                <Label htmlFor="saveHistory" className="text-sm">Save to history ledger</Label>
-                <p className="text-xs text-muted-foreground">On persist, records this run in <code>pdf_import_golden_runs</code>.</p>
+                <Label htmlFor="saveHistory" className="text-sm">Save history when persisting</Label>
+                <p className="text-xs text-muted-foreground">Appends a row to <code>pdf_import_golden_runs</code> on Evaluate + Persist.</p>
               </div>
               <Switch id="saveHistory" checked={form.saveHistory}
                 onCheckedChange={(v) => setBool('saveHistory', v)} />
@@ -332,7 +335,6 @@ export function GoldenRegressionRunConsole({
                 <GoldenRegressionHistoryPanel
                   corpusId={result.corpusId}
                   importId={result.importId}
-                  baselineComparison={result.baselineComparison}
                   refreshKey={historyRefreshKey}
                 />
               </TabsContent>
@@ -351,8 +353,10 @@ export function GoldenRegressionRunConsole({
           <DialogHeader>
             <DialogTitle>Persist golden regression summary?</DialogTitle>
             <DialogDescription>
-              This will save the current golden regression result to
+              This will save the latest golden regression summary to
               <code className="mx-1">template_imports.meta.golden_regression_summary</code>
+              and{form.saveHistory ? ' also append a history row to ' : ' (history saving is off, so it will NOT write to) '}
+              <code className="mx-1">pdf_import_golden_runs</code>
               for the selected import. Failing or blocked results may be persisted as evidence. Continue?
             </DialogDescription>
           </DialogHeader>

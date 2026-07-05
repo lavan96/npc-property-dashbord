@@ -2,175 +2,197 @@
 
 ## Objective
 
-Phase 9C adds durable, queryable history for golden corpus regression runs and a
-baseline comparison that detects regressions between a new run and the previous
-run for the same corpus.
+Phase 9C introduces durable historical tracking for golden corpus regression runs.
 
-Phase 8D persists only the **latest** golden regression summary onto
-`template_imports.meta.golden_regression_summary` (fast dashboard display). Phase
-9C keeps that summary and adds a dedicated ledger — one row per persisted run in
-`public.pdf_import_golden_runs` — so history, trends, and baselines survive beyond
-the single latest summary.
+Phase 8D stores the latest golden regression summary on the import record.
+
+Phase 9C adds a dedicated historical ledger:
+
+`public.pdf_import_golden_runs`
+
+## Why This Exists
+
+The latest summary alone cannot answer:
+
+- What happened in previous runs?
+- Did the latest run improve or regress?
+- Which corpus items are consistently failing?
+- Which score changed since the previous baseline?
+- Are warnings increasing over time?
+- Can release gates compare current results against a baseline?
+
+A dedicated history table gives the system a regression timeline.
 
 ## What Phase 9C Does
 
-- Adds one new table: `public.pdf_import_golden_runs` (the regression ledger).
-- Adds four secure edge operations on `template-import-pdf`:
-  `save_golden_run_history`, `list_golden_run_history`, `get_golden_run_history`,
-  `get_latest_golden_run_baselines`.
-- Adds pure history modules: types, summary/normalizer, persistence invokers, and a
-  baseline comparator.
-- Wires `saveHistory` / `compareBaseline` into the Phase 9A orchestrator with three
-  new steps (`load_baseline`, `compare_baseline`, `save_history`) and four new
-  result fields (`baselineComparison`, `historyPersistenceResult`, `historyRecord`,
-  `historySaved`).
-- Surfaces baseline outcome + a run-history table in the Phase 9B operator console.
+- Creates `public.pdf_import_golden_runs`.
+- Adds secure backend operations for saving/listing/loading history.
+- Adds TypeScript history types.
+- Adds a summary builder for history rows.
+- Adds a persistence helper.
+- Adds a baseline comparison helper.
+- Updates the orchestrator to optionally save history and compare a baseline.
+- Updates the operator console to show history save status and baseline comparison.
+- Adds SQL validation.
+- Adds tests.
 
-## What Phase 9C Does NOT Do
+## What Phase 9C Does Not Do
 
-- Does not remove `template_imports.meta.golden_regression_summary`.
-- Does not store source PDFs, screenshots, raster images, or generated PDFs — the
-  ledger holds **metadata only**.
-- Does not mutate `report_templates`. It only inserts history rows and (via Phase
-  8D) the latest summary when `persist` is requested.
-- Does not add more than one table.
+- Does not automate PDF uploads.
+- Does not automate export parity (Phase 9D).
+- Does not create CI/release gates (Phase 9E).
+- Does not add monitoring alerts (Phase 9F).
+- Does not replace `template_imports.meta.golden_regression_summary`.
+- Does not store raw PDFs or images.
+- Does not create a full history dashboard.
 
-## The Ledger Table
+## Table Purpose
 
-`public.pdf_import_golden_runs` — one row per persisted golden run.
+`public.pdf_import_golden_runs` stores one row per golden regression run.
 
-- Identity: `run_id`, `run_batch_id`, `corpus_id`, `category`, `import_id`
-  (FK → `template_imports`, `ON DELETE CASCADE`), `template_id`
-  (FK → `report_templates`, `ON DELETE SET NULL`).
-- Versions: `engine_version`, `orchestrator_version`, `summary_version`.
-- Status: `import_status`, `run_status`, `run_decision`, `quality_gate_status`
-  (checked), `operator_decision` (checked).
-- Metrics: `visual_qa_score`, `repair_final_score`, `export_vs_source_score`,
-  `editor_vs_source_score`, `export_vs_editor_score` (each `0..1` when not null).
-- Flags: `visual_qa_manual_review_required`, `repair_requires_fallback`,
-  `repair_requires_manual_review`.
-- Counts / arrays: `warning_count`, `failure_count` (`>= 0`), `warnings`,
-  `failures`.
-- JSON: `gate_summary`, `triage_summary`, `golden_regression_summary`,
-  `baseline_comparison` (nullable).
-- Audit: `created_by`, `created_at`, `updated_at` (trigger-maintained).
+It records:
 
-There is intentionally **no unique constraint on `run_id`** — the ledger is
-append-only and the same run may be recorded more than once across reruns.
+- corpus identity
+- import/template identity
+- quality gate result
+- operator decision
+- key scores
+- warning/failure counts
+- compact summary JSON
+- triage JSON
+- timestamps
+- actor metadata
 
-### Row-level security
+It stores **metadata only** — never source PDFs, screenshots, raster images, or
+generated PDFs.
 
-RLS is enabled. Reads follow ownership of the linked import — the same model as
-`template_imports` (owner via `user_id = auth.uid()` or an admin via `has_role`):
+## Relationship to `template_imports.meta`
 
-```sql
-EXISTS (
-  SELECT 1 FROM public.template_imports ti
-  WHERE ti.id = pdf_import_golden_runs.import_id
-    AND (ti.user_id = auth.uid() OR has_role(auth.uid(), 'admin'::app_role))
-)
-```
+`template_imports.meta.golden_regression_summary`:
+- latest summary attached to the import
+- quick diagnostics display
+- overwritten when the same import is persisted again
 
-Writes are service-role only; the secure `template-import-pdf` edge function
-performs ownership-checked inserts. The browser client is anonymous under this
-app's custom-auth flow, so all privileged reads/writes go through the edge
-function (service role), which enforces the same ownership rules server-side.
-
-## Edge Operations
-
-All four are added to the existing `template-import-pdf` handler (no new function).
-
-| Operation | Input | Returns |
-| --- | --- | --- |
-| `save_golden_run_history` | `import_id`, `history{…}` (camelCase) | `{ ok, history_id, history }` |
-| `list_golden_run_history` | `corpus_id?`, `import_id?`, `limit` (default 50, max 200) | `{ ok, history: [] }` |
-| `get_golden_run_history` | `history_id` | `{ ok, history }` or `404 not found` |
-| `get_latest_golden_run_baselines` | `corpus_id?` | `{ ok, baselines: [] }` (latest run per corpus) |
-
-`save` validates ownership of the import, requires a non-empty `runId` /
-`corpusId` / `category`, and validates `qualityGateStatus` / `operatorDecision`
-against the allowed sets before inserting. The read operations enforce ownership
-via an inner join to `template_imports` (owner or admin); there are no broad
-unauthenticated reads.
+`public.pdf_import_golden_runs`:
+- append-only-ish history ledger
+- one row per golden run
+- used for trend/baseline comparison
 
 ## Baseline Comparison
 
-`compareGoldenRunToBaseline({ current, baseline, tolerance })` compares a run to
-the previous baseline for the same corpus. It is pure and network-free.
+A baseline is the most recent previous historical run for the same `corpusId`.
 
-- **Rank-based** quality-gate and operator-decision direction (higher is better):
-  - Gate: `blocked` < `fail` < `not_evaluated` < `warning` < `pass`.
-  - Decision: `rejected` < `needs_rerun` < `not_reviewed` < `accepted_with_warnings` < `accepted`.
-- **Metric** direction for `visualQa`, `repairFinal`, and `exportParity`
-  (export-vs-source) using a per-metric score-drop `tolerance` (default `0.02`):
-  a drop beyond tolerance is `degraded`, a rise beyond tolerance is `improved`,
-  otherwise `stable`; a missing score on either side is `unknown`.
-- **Counts**: `failureCountDelta` and `warningCountDelta`.
+A new run is compared against the previous run for the same `corpusId`. (Future
+phases can expand to release baseline pinning, previous-passing-run, or best-run
+baselines.)
 
-### Outcome resolution
+## Regression Detection
 
-- `no_baseline` — there is no previous run.
-- `degraded` — any gate/decision/metric degraded, `failureCountDelta > 0`, or
-  `warningCountDelta > 2`.
-- `improved` — nothing degraded and at least one signal improved.
-- `stable` — at least one comparable signal, none moved materially.
-- `unknown` — not enough comparable data.
+Compared signals:
+
+- `qualityGateStatus`
+- `visualQaScore`
+- `repairFinalScore`
+- `exportVsSourceScore`
+- `editorVsSourceScore`
+- `exportVsEditorScore`
+- warning count
+- failure count
+
+Regression examples:
+
+- `pass -> warning`, `pass -> fail`, `warning -> fail`
+- score drops by more than the allowed tolerance
+- failures increase
+- warnings increase significantly
+
+## Comparison Outcomes
+
+- `improved`
+- `stable`
+- `degraded`
+- `no_baseline`
+- `unknown`
+
+Status/decision direction uses ordinal ranks (higher is better):
+
+- Quality gate: `blocked` < `fail` < `not_evaluated` < `warning` < `pass`.
+- Operator decision: `rejected` < `needs_rerun` < `not_reviewed` < `accepted_with_warnings` < `accepted`.
+
+Outcome resolution: `degraded` if any gate/decision/metric degraded, failures
+increased, or warnings increased by more than two; `improved` if nothing degraded
+and at least one signal improved; `stable` if comparable but unchanged;
+`no_baseline` when there is no previous run; `unknown` when there is insufficient
+comparable data.
+
+## Score Tolerances
+
+Default per-metric score-drop tolerance: `0.02` for visual QA, repair final, and
+export parity. A drop greater than tolerance counts as degraded; movement within
+tolerance is stable.
 
 ## Orchestrator Integration
 
-Two request flags drive the history phase (async-only; the pure core stays
-network-free):
+Two request flags:
 
-- `saveHistory` — after building the summary, records the run in the ledger.
+- `saveHistory` — appends a row to `pdf_import_golden_runs` (independent of
+  `persist`). A save failure fails the run (`history_persistence_failed`); saving
+  with no summary fails with `history_summary_missing`.
 - `compareBaseline` — loads the latest baseline for the corpus and attaches
   `baselineComparison`. Defaults to `saveHistory` when omitted.
 
-Behaviour:
+New orchestration steps (in order): `load_baseline`, `compare_baseline` (before
+`persist_summary`), then `save_history` (last). New result fields:
+`baselineComparison`, `historyPersistenceResult`, `historyRecord`, `historySaved`.
 
-- History runs independently of `persist` (evaluate-only can still compare a
-  baseline; the console only enables **save** on persist).
-- No baseline yet → warning `no_baseline_found` → `completed_with_warnings`.
-- Baseline load failure → warning `baseline_load_failed` (non-blocking).
-- A `degraded` outcome adds a `baseline_regression_detected` warning.
-- `saveHistory` with no summary → failure `history_summary_missing` (status
-  `failed`).
-- History save failure → failure `history_persistence_failed` (status `failed`).
+Non-blocking signals: no baseline → warning `no_baseline_found`
+(→ `completed_with_warnings`); baseline load failure → warning
+`baseline_load_failed` (comparison left null); degraded outcome → warning
+`baseline_regression_detected`.
 
 ## Console
 
-The Phase 9B console adds:
+The operator console adds:
 
-- **Compare to baseline** and **Save to history ledger** toggles.
-- A **History** tab (`GoldenRegressionHistoryPanel`) showing the baseline
-  comparison for the current run and the run-history table for the corpus/import.
-- Baseline-outcome and history-saved badges on the result panel.
+- **Compare with latest baseline** toggle (read-only; works in evaluate-only).
+- **Save history when persisting** toggle (writes only on Evaluate + Persist).
+- A confirmation dialog that names both `template_imports.meta` and
+  `pdf_import_golden_runs`.
+- A **History** tab (baseline comparison + run-history table) and baseline/history
+  badges on the result panel.
+
+`TemplateImportQuality` is intentionally left meta-driven; it does not load
+history rows (a full history dashboard is deferred to a later phase).
+
+## Security Rules
+
+- Reads and writes go through the secure `template-import-pdf` edge function.
+- Reads follow ownership of the linked import (owner or admin) via an inner join
+  to `template_imports`; no broad unauthenticated reads.
+- Inserts are ownership-checked and run under the service role.
+- No private PDF contents are exposed; metadata only.
 
 ## Deployment
 
 Phase 9C requires **both**:
 
-1. The migration `supabase/migrations/20260704000000_create_pdf_import_golden_runs.sql`.
+1. The migration `supabase/migrations/20260705000000_create_pdf_import_golden_runs.sql`.
 2. A redeploy of the `template-import-pdf` edge function (four new operations).
-
-## Validation
-
-`scripts/regression/pdf-import-phase-9c-history-check.sql` (read-only) inspects the
-ledger: table/index/policy presence, per-corpus history counts, latest-run
-baselines, degraded outcomes, and orphan checks.
 
 ## Acceptance Criteria
 
-- One new table with RLS, indexes, and an `updated_at` trigger.
-- Four ownership-checked edge operations; no broad unauthenticated reads.
-- History modules + baseline comparator are pure and unit-tested.
-- Orchestrator saves history and compares baselines behind explicit flags without
-  breaking the pure snapshot path.
-- Console surfaces baseline outcome and history.
-- `template_imports.meta.golden_regression_summary` is untouched.
-- tests pass; build passes.
+- migration exists and creates the table
+- RLS/policies + indexes exist per project pattern
+- backend save/list/get/baselines operations exist
+- TypeScript history types exist
+- history summary builder exists
+- persistence helper exists
+- baseline comparison helper exists
+- orchestrator can save history and compare a baseline when requested
+- console surfaces history save status and baseline comparison
+- tests pass; SQL runs; build passes
 
 ## Recommended Next Phase
 
-**Phase 9D — Regression trend dashboard:** aggregate the ledger into per-corpus
-trend charts (score-over-time, gate/decision distribution) and alerting on
-sustained `degraded` streaks.
+**Phase 9D — Automated export parity**, then **9E — release gates** and
+**9F — monitoring/alerts**, all of which consume this ledger.

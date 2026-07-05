@@ -12,7 +12,7 @@ import { evaluateGoldenCorpusRun } from './goldenCorpusRunEvaluator';
 import { buildGoldenRegressionSummary } from './goldenRegressionSummary';
 import { saveGoldenRegressionSummary } from './goldenRegressionPersistence';
 import { loadGoldenCorpusImportQualitySnapshot } from './goldenCorpusImportSnapshot';
-import { buildGoldenRunHistoryInputFromSummary } from './goldenRunHistorySummary';
+import { buildGoldenRunHistoryRecordInput } from './goldenRunHistorySummary';
 import {
   getLatestGoldenRunBaselines,
   saveGoldenRunHistory,
@@ -51,9 +51,9 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   evaluate_quality_gates: 'Evaluate quality gates',
   build_summary: 'Build regression summary',
   evaluate_triage: 'Evaluate failure triage',
-  persist_summary: 'Persist regression summary',
   load_baseline: 'Load baseline run',
   compare_baseline: 'Compare to baseline',
+  persist_summary: 'Persist regression summary',
   save_history: 'Save run history',
 };
 
@@ -378,6 +378,137 @@ function replaceStep(
   return copy;
 }
 
+/** Insert `step` immediately before the step with `beforeId` (append if absent). */
+function insertBeforeStep(
+  steps: GoldenCorpusOrchestratorStep[],
+  beforeId: GoldenCorpusOrchestratorStepId,
+  step: GoldenCorpusOrchestratorStep,
+): GoldenCorpusOrchestratorStep[] {
+  const idx = steps.findIndex((s) => s.id === beforeId);
+  if (idx < 0) return [...steps, step];
+  return [...steps.slice(0, idx), step, ...steps.slice(idx)];
+}
+
+function baselineStepStatus(outcome: string): GoldenCorpusOrchestratorStepStatus {
+  if (outcome === 'improved' || outcome === 'stable') return 'pass';
+  return 'warning'; // degraded | no_baseline | unknown
+}
+
+/** Build a temporary "current" history record for baseline comparison. */
+function buildCurrentHistoryRecord(
+  result: GoldenCorpusOrchestratorResult,
+): GoldenRunHistoryRecord {
+  const input = buildGoldenRunHistoryRecordInput({
+    goldenRegressionSummary: result.goldenRegressionSummary!,
+    triageSummary: result.triageSummary,
+    orchestratorVersion: result.version,
+    baselineComparison: null,
+  });
+  return {
+    ...input,
+    id: 'current',
+    createdBy: null,
+    createdAt: result.generatedAt,
+    updatedAt: result.generatedAt,
+  };
+}
+
+/**
+ * Phase 9C baseline phase (async-only): loads the latest baseline for the corpus
+ * and compares the current run. Inserts `load_baseline` / `compare_baseline`
+ * steps before `persist_summary`. Non-blocking — failures surface as warnings.
+ */
+async function applyBaselineComparePhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+): Promise<void> {
+  const summary = result.goldenRegressionSummary;
+  const corpusId = result.corpusId ?? (request.corpusId || null);
+  const insert = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = insertBeforeStep(result.steps, 'persist_summary', step);
+  };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  let baseline: GoldenRunHistoryRecord | null = null;
+  let baselineLoadFailed = false;
+  if (!corpusId) {
+    insert(skippedStep('load_baseline', 'No corpus ID to load a baseline.'));
+  } else {
+    const res = await getLatestGoldenRunBaselines(corpusId);
+    if (res.kind === 'error') {
+      baselineLoadFailed = true;
+      addWarning('baseline_load_failed');
+      insert(createGoldenCorpusOrchestratorStep('load_baseline', 'warning', res.message));
+    } else {
+      baseline = res.baselines.find((b) => b.corpusId === corpusId) ?? res.baselines[0] ?? null;
+      insert(createGoldenCorpusOrchestratorStep(
+        'load_baseline',
+        baseline ? 'pass' : 'warning',
+        baseline ? `Baseline run ${baseline.runId} loaded.` : 'No previous baseline run found.',
+      ));
+    }
+  }
+
+  if (!summary) {
+    insert(skippedStep('compare_baseline', 'No summary to compare.'));
+    return;
+  }
+  if (baselineLoadFailed) {
+    // A load failure is distinct from "no baseline" — do not fabricate a comparison.
+    insert(skippedStep('compare_baseline', 'Baseline unavailable (load failed).'));
+    return;
+  }
+
+  const comparison = compareGoldenRunToBaseline({ previous: baseline, current: buildCurrentHistoryRecord(result) });
+  result.baselineComparison = comparison;
+  insert(createGoldenCorpusOrchestratorStep(
+    'compare_baseline',
+    baselineStepStatus(comparison.outcome),
+    `Baseline outcome: ${comparison.outcome}.`,
+    { outcome: comparison.outcome, messages: comparison.messages },
+  ));
+  if (comparison.outcome === 'no_baseline') addWarning('no_baseline_found');
+  if (comparison.outcome === 'degraded') addWarning('baseline_regression_detected');
+}
+
+/**
+ * Phase 9C save phase (async-only): appends a history row to the ledger. Adds a
+ * `save_history` step at the end. A save failure fails the run (the operator
+ * explicitly requested a history write).
+ */
+async function applySaveHistoryPhase(
+  result: GoldenCorpusOrchestratorResult,
+): Promise<void> {
+  const summary = result.goldenRegressionSummary;
+  const append = (step: GoldenCorpusOrchestratorStep) => { result.steps = [...result.steps, step]; };
+
+  if (!summary) {
+    append(createGoldenCorpusOrchestratorStep('save_history', 'fail', 'No summary to save to history.'));
+    result.failures = uniq([...result.failures, 'history_summary_missing']);
+    result.status = 'failed';
+    return;
+  }
+
+  const input = buildGoldenRunHistoryRecordInput({
+    goldenRegressionSummary: summary,
+    triageSummary: result.triageSummary,
+    orchestratorVersion: result.version,
+    baselineComparison: result.baselineComparison,
+  });
+  const res = await saveGoldenRunHistory(input);
+  result.historyPersistenceResult = res;
+  if (res.kind === 'ok') {
+    result.historySaved = true;
+    result.historyRecord = res.history;
+    append(createGoldenCorpusOrchestratorStep('save_history', 'pass', 'Golden run history saved.'));
+  } else {
+    result.historySaved = false;
+    append(createGoldenCorpusOrchestratorStep('save_history', 'fail', res.message));
+    result.failures = uniq([...result.failures, 'history_persistence_failed']);
+    result.status = 'failed';
+  }
+}
+
 /**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
@@ -423,7 +554,17 @@ export async function orchestrateGoldenCorpusRun(
     createGoldenCorpusOrchestratorStep('load_snapshot', 'pass', 'Import snapshot loaded.'),
   );
 
-  // Persist the latest summary (Phase 8D). evaluate_only leaves it read-only.
+  // Phase 9C flags. compareBaseline defaults to saveHistory when omitted.
+  const wantSaveHistory = request.saveHistory === true;
+  const wantCompareBaseline = request.compareBaseline ?? wantSaveHistory;
+
+  // Baseline compare runs before persistence (load_baseline / compare_baseline
+  // are inserted before persist_summary).
+  if (wantCompareBaseline) {
+    await applyBaselineComparePhase(pure, request);
+  }
+
+  // persist_summary (Phase 8D/9A). evaluate_only leaves the summary read-only.
   if (request.persist !== true) {
     pure.mode = 'evaluate_only';
     pure.persisted = false;
@@ -452,11 +593,15 @@ export async function orchestrateGoldenCorpusRun(
     }
   }
 
-  // Phase 9C — baseline comparison + history persistence (independent of persist).
-  const wantSaveHistory = request.saveHistory === true;
-  const wantCompareBaseline = request.compareBaseline ?? wantSaveHistory;
-  if (wantSaveHistory || wantCompareBaseline) {
-    await applyGoldenRunHistoryPhase(pure, request, importId);
+  // save_history (Phase 9C) runs after persistence — records the run (with its
+  // baseline comparison) in the ledger. Independent of `persist`.
+  if (wantSaveHistory) {
+    await applySaveHistoryPhase(pure);
+  }
+
+  // A clean run that only accrued baseline warnings drops to completed_with_warnings.
+  if (pure.status === 'completed' && pure.warnings.length > 0) {
+    pure.status = 'completed_with_warnings';
   }
 
   return pure;

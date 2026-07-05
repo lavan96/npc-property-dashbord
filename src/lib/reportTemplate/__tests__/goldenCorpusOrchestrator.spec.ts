@@ -239,6 +239,24 @@ describe('orchestrateGoldenCorpusRun (async)', () => {
   });
 });
 
+function baselineRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'b1',
+    runId: 'baseline-run',
+    corpusId: 'golden-simple-001',
+    qualityGateStatus: 'pass',
+    operatorDecision: 'accepted',
+    visualQaScore: 0.95,
+    repairFinalScore: 0.96,
+    exportVsSourceScore: 0.94,
+    editorVsSourceScore: null,
+    exportVsEditorScore: null,
+    warningCount: 0,
+    failureCount: 0,
+    ...overrides,
+  } as any;
+}
+
 describe('orchestrateGoldenCorpusRun (Phase 9C history + baseline)', () => {
   beforeEach(() => {
     vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
@@ -247,32 +265,54 @@ describe('orchestrateGoldenCorpusRun (Phase 9C history + baseline)', () => {
     vi.mocked(saveGoldenRunHistory).mockReset();
     vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
     vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
-    vi.mocked(saveGoldenRunHistory).mockResolvedValue({ kind: 'ok', historyId: 'hist-1', record: { id: 'hist-1' } as any });
+    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [] });
+    vi.mocked(saveGoldenRunHistory).mockResolvedValue({ kind: 'ok', historyId: 'hist-1', history: { id: 'hist-1' } as any });
   });
 
-  it('does not touch history when neither flag is set', async () => {
+  it('evaluate_only does not save history by default', async () => {
     const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false }), now: NOW });
-    expect(getLatestGoldenRunBaselines).not.toHaveBeenCalled();
     expect(saveGoldenRunHistory).not.toHaveBeenCalled();
+    expect(getLatestGoldenRunBaselines).not.toHaveBeenCalled();
+    expect(result.historySaved).toBe(false);
     expect(result.baselineComparison).toBeNull();
+  });
+
+  it('persist=true saveHistory=false keeps the old behavior', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true, compareBaseline: false }), now: NOW });
+    expect(result.persisted).toBe(true);
+    expect(saveGoldenRunHistory).not.toHaveBeenCalled();
     expect(result.historySaved).toBe(false);
   });
 
-  it('compareBaseline (evaluate_only) attaches a comparison without saving history', async () => {
-    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({
-      kind: 'ok',
-      baselines: [{ id: 'b1', runId: 'baseline-run', corpusId: 'golden-simple-001', qualityGateStatus: 'pass', operatorDecision: 'accepted', visualQaScore: 0.95, repairFinalScore: 0.96, exportVsSourceScore: 0.94, warningCount: 0, failureCount: 0 } as any],
-    });
-
-    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, compareBaseline: true }), now: NOW });
-    expect(getLatestGoldenRunBaselines).toHaveBeenCalledWith({ corpusId: 'golden-simple-001' });
-    expect(saveGoldenRunHistory).not.toHaveBeenCalled();
-    expect(result.baselineComparison?.outcome).toBe('stable');
-    expect(stepOf(result as any, 'load_baseline')?.status).toBe('pass');
-    expect(stepOf(result as any, 'compare_baseline')?.status).toBe('pass');
+  it('persist=true saveHistory=true calls saveGoldenRunHistory', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true }), now: NOW });
+    expect(saveGoldenRunHistory).toHaveBeenCalledTimes(1);
+    expect(result.historySaved).toBe(true);
   });
 
-  it('warns (completed_with_warnings) when there is no baseline yet', async () => {
+  it('history save success populates the record and passes the save_history step', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true }), now: NOW });
+    expect(result.historySaved).toBe(true);
+    expect(result.historyRecord?.id).toBe('hist-1');
+    expect(stepOf(result as any, 'save_history')?.status).toBe('pass');
+  });
+
+  it('history save error fails the run', async () => {
+    vi.mocked(saveGoldenRunHistory).mockResolvedValue({ kind: 'error', message: 'db down' });
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true }), now: NOW });
+    expect(result.historySaved).toBe(false);
+    expect(result.historyPersistenceResult?.kind).toBe('error');
+    expect(stepOf(result as any, 'save_history')?.status).toBe('fail');
+    expect(result.failures).toContain('history_persistence_failed');
+    expect(result.status).toBe('failed');
+  });
+
+  it('compareBaseline true loads baselines', async () => {
+    await orchestrateGoldenCorpusRun({ request: req({ persist: false, compareBaseline: true }), now: NOW });
+    expect(getLatestGoldenRunBaselines).toHaveBeenCalledWith('golden-simple-001');
+  });
+
+  it('no baseline creates a no_baseline comparison', async () => {
     vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [] });
     const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, compareBaseline: true }), now: NOW });
     expect(result.baselineComparison?.outcome).toBe('no_baseline');
@@ -280,41 +320,46 @@ describe('orchestrateGoldenCorpusRun (Phase 9C history + baseline)', () => {
     expect(result.status).toBe('completed_with_warnings');
   });
 
-  it('treats a baseline load failure as a non-blocking warning', async () => {
+  it('a previous baseline creates a comparison', async () => {
+    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [baselineRow()] });
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, compareBaseline: true }), now: NOW });
+    expect(result.baselineComparison).not.toBeNull();
+    expect(result.baselineComparison?.previousRunId).toBe('baseline-run');
+    expect(result.baselineComparison?.outcome).toBe('stable');
+  });
+
+  it('a degraded baseline comparison drops to completed_with_warnings', async () => {
+    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [baselineRow({ visualQaScore: 0.99 })] });
+    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, compareBaseline: true }), now: NOW });
+    expect(result.baselineComparison?.outcome).toBe('degraded');
+    expect(result.warnings).toContain('baseline_regression_detected');
+    expect(result.status).toBe('completed_with_warnings');
+  });
+
+  it('a baseline load failure warns but does not block summary creation', async () => {
     vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'error', message: 'network' });
     const result = await orchestrateGoldenCorpusRun({ request: req({ persist: false, compareBaseline: true }), now: NOW });
     expect(result.warnings).toContain('baseline_load_failed');
-    expect(result.status).toBe('completed_with_warnings');
+    expect(result.goldenRegressionSummary).not.toBeNull();
     expect(result.baselineComparison).toBeNull();
   });
 
-  it('saveHistory persists the run and defaults compareBaseline on', async () => {
-    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [] });
-    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true }), now: NOW });
-    expect(getLatestGoldenRunBaselines).toHaveBeenCalledTimes(1); // compareBaseline defaulted to saveHistory
-    expect(saveGoldenRunHistory).toHaveBeenCalledTimes(1);
-    expect(result.historySaved).toBe(true);
-    expect(result.historyRecord?.id).toBe('hist-1');
-    expect(stepOf(result as any, 'save_history')?.status).toBe('pass');
-  });
-
-  it('fails the run when saving history errors', async () => {
-    vi.mocked(getLatestGoldenRunBaselines).mockResolvedValue({ kind: 'ok', baselines: [] });
-    vi.mocked(saveGoldenRunHistory).mockResolvedValue({ kind: 'error', message: 'db down' });
-    const result = await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true }), now: NOW });
-    expect(result.status).toBe('failed');
-    expect(result.failures).toContain('history_persistence_failed');
-    expect(result.historySaved).toBe(false);
-  });
-
-  it('can save history without comparing when compareBaseline is explicitly false', async () => {
+  it('saveHistory with no summary fails with history_summary_missing', async () => {
     const result = await orchestrateGoldenCorpusRun({
-      request: req({ persist: true, saveHistory: true, compareBaseline: false }),
+      request: req({ corpusId: 'golden-nope-000', persist: false, saveHistory: true, compareBaseline: false }),
       now: NOW,
     });
+    expect(result.goldenRegressionSummary).toBeNull();
+    expect(result.failures).toContain('history_summary_missing');
+    expect(result.status).toBe('failed');
+  });
+
+  it('saveHistory=true defaults compareBaseline true unless explicitly false', async () => {
+    await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true }), now: NOW });
+    expect(getLatestGoldenRunBaselines).toHaveBeenCalledTimes(1);
+
+    vi.mocked(getLatestGoldenRunBaselines).mockClear();
+    await orchestrateGoldenCorpusRun({ request: req({ persist: true, saveHistory: true, compareBaseline: false }), now: NOW });
     expect(getLatestGoldenRunBaselines).not.toHaveBeenCalled();
-    expect(saveGoldenRunHistory).toHaveBeenCalledTimes(1);
-    expect(result.baselineComparison).toBeNull();
-    expect(result.historySaved).toBe(true);
   });
 });
