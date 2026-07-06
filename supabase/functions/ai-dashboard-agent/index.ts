@@ -8480,6 +8480,182 @@ Deno.serve(async (req) => {
         const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId);
         return new Response(JSON.stringify({ success: true, result: toolResult }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
+      // ============= Phase 5: Memory analytics, insights feed, skills, evals =============
+      case 'memory-analytics': {
+        const { data: mems } = await sb.from('agent_semantic_memories')
+          .select('id, kind, importance, feedback_score, use_count, created_at, tags')
+          .eq('user_id', userId!);
+        const list = mems || [];
+        const { count: totalFeedback } = await sb.from('agent_memory_feedback').select('id', { count: 'exact', head: true }).eq('user_id', userId!);
+        const positive = list.filter((m: any) => (m.feedback_score || 0) > 0).length;
+        const negative = list.filter((m: any) => (m.feedback_score || 0) < 0).length;
+        const usedRecall = list.filter((m: any) => (m.use_count || 0) > 0).length;
+        const kindBreakdown: Record<string, number> = {};
+        const tagCounts: Record<string, number> = {};
+        for (const m of list) {
+          kindBreakdown[m.kind || 'other'] = (kindBreakdown[m.kind || 'other'] || 0) + 1;
+          for (const t of (m.tags || [])) tagCounts[t] = (tagCounts[t] || 0) + 1;
+        }
+        const topMemories = [...list].sort((a: any, b: any) => (b.use_count || 0) - (a.use_count || 0)).slice(0, 10);
+        const topTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+        return new Response(JSON.stringify({
+          success: true,
+          total: list.length, quota: DEFAULT_MEMORY_QUOTA,
+          positive_feedback: positive, negative_feedback: negative, total_feedback_events: totalFeedback ?? 0,
+          used_in_recall: usedRecall, recall_rate: list.length ? Math.round((usedRecall / list.length) * 100) : 0,
+          kind_breakdown: kindBreakdown, top_tags: topTags, top_memories: topMemories,
+        }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'update-memory': {
+        if (!body.memory_id) return new Response(JSON.stringify({ success: false, error: 'memory_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const patch: any = {};
+        if (typeof body.content === 'string') patch.content = body.content;
+        if (Array.isArray(body.tags)) patch.tags = body.tags;
+        if (typeof body.importance === 'number') patch.importance = Math.max(1, Math.min(5, body.importance));
+        if (Object.keys(patch).length === 0) return new Response(JSON.stringify({ success: false, error: 'no fields to update' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        patch.updated_at = new Date().toISOString();
+        const { error: upErr } = await sb.from('agent_semantic_memories').update(patch).eq('id', body.memory_id).eq('user_id', userId!);
+        if (upErr) return new Response(JSON.stringify({ success: false, error: upErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      // ── Proactive insights feed
+      case 'list-insights': {
+        const { data: rows, error: e } = await sb.from('agent_insights_feed')
+          .select('*').eq('user_id', userId!).eq('is_dismissed', false)
+          .order('created_at', { ascending: false }).limit(Math.min(Number(body.limit) || 50, 200));
+        if (e) return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { count: unread } = await sb.from('agent_insights_feed').select('id', { count: 'exact', head: true }).eq('user_id', userId!).eq('is_read', false).eq('is_dismissed', false);
+        return new Response(JSON.stringify({ success: true, insights: rows || [], unread_count: unread ?? 0 }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'mark-insight-read': {
+        if (!body.insight_id) return new Response(JSON.stringify({ success: false, error: 'insight_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        await sb.from('agent_insights_feed').update({ is_read: true }).eq('id', body.insight_id).eq('user_id', userId!);
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'dismiss-insight': {
+        if (!body.insight_id) return new Response(JSON.stringify({ success: false, error: 'insight_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        await sb.from('agent_insights_feed').update({ is_dismissed: true, is_read: true }).eq('id', body.insight_id).eq('user_id', userId!);
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'act-on-insight': {
+        if (!body.insight_id) return new Response(JSON.stringify({ success: false, error: 'insight_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        await sb.from('agent_insights_feed').update({ acted_on_at: new Date().toISOString(), is_read: true }).eq('id', body.insight_id).eq('user_id', userId!);
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      // ── Skills registry (multi-agent sub-personas)
+      case 'list-skills': {
+        const { data: rows, error: e } = await sb.from('agent_skills')
+          .select('id, slug, name, description, icon, allowed_tools, default_model, is_enabled, is_public, run_count, last_run_at, user_id')
+          .or(`user_id.eq.${userId},is_public.eq.true`)
+          .eq('is_enabled', true)
+          .order('is_public', { ascending: false })
+          .order('name');
+        if (e) return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true, skills: rows || [] }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'upsert-skill': {
+        const slug = String(body.slug || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+        if (!slug || !body.name || !body.system_prompt) return new Response(JSON.stringify({ success: false, error: 'slug, name, system_prompt required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const row: any = {
+          user_id: userId, slug, name: body.name, description: body.description || null,
+          icon: body.icon || null, system_prompt: body.system_prompt,
+          allowed_tools: Array.isArray(body.allowed_tools) ? body.allowed_tools : [],
+          default_model: body.default_model || null, is_enabled: body.is_enabled !== false, is_public: false,
+        };
+        const { data, error: e } = await sb.from('agent_skills').upsert(row, { onConflict: 'user_id,slug' }).select().maybeSingle();
+        if (e) return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true, skill: data }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'delete-skill': {
+        if (!body.skill_id) return new Response(JSON.stringify({ success: false, error: 'skill_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        await sb.from('agent_skills').delete().eq('id', body.skill_id).eq('user_id', userId!).eq('is_public', false);
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      // ── Evaluation harness
+      case 'list-evals': {
+        const { data: evals } = await sb.from('agent_evals').select('*').order('created_at', { ascending: false });
+        const evalIds = (evals || []).map((e: any) => e.id);
+        let recent: any[] = [];
+        if (evalIds.length) {
+          const { data } = await sb.from('agent_eval_runs').select('eval_id, passed, score, latency_ms, model, created_at, error').in('eval_id', evalIds).order('created_at', { ascending: false }).limit(200);
+          recent = data || [];
+        }
+        const stats: Record<string, any> = {};
+        for (const r of recent) {
+          const s = stats[r.eval_id] || (stats[r.eval_id] = { runs: 0, pass: 0, avg_score: 0, latest: null, avg_latency: 0 });
+          s.runs++; if (r.passed) s.pass++; if (r.score != null) s.avg_score += Number(r.score); if (r.latency_ms) s.avg_latency += r.latency_ms;
+          if (!s.latest) s.latest = r;
+        }
+        for (const k of Object.keys(stats)) { stats[k].avg_score = stats[k].runs ? stats[k].avg_score / stats[k].runs : 0; stats[k].avg_latency = stats[k].runs ? Math.round(stats[k].avg_latency / stats[k].runs) : 0; stats[k].pass_rate = stats[k].runs ? Math.round((stats[k].pass / stats[k].runs) * 100) : 0; }
+        return new Response(JSON.stringify({ success: true, evals: evals || [], stats }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'upsert-eval': {
+        if (!body.name || !body.prompt) return new Response(JSON.stringify({ success: false, error: 'name and prompt required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const row: any = {
+          name: body.name, description: body.description || null, prompt: body.prompt,
+          expected_tools: Array.isArray(body.expected_tools) ? body.expected_tools : [],
+          expected_contains: Array.isArray(body.expected_contains) ? body.expected_contains : [],
+          expected_not_contains: Array.isArray(body.expected_not_contains) ? body.expected_not_contains : [],
+          grader_prompt: body.grader_prompt || null, tags: Array.isArray(body.tags) ? body.tags : [],
+          is_enabled: body.is_enabled !== false, created_by: userId,
+        };
+        if (body.id) row.id = body.id;
+        const { data, error: e } = await sb.from('agent_evals').upsert(row).select().maybeSingle();
+        if (e) return new Response(JSON.stringify({ success: false, error: e.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true, eval: data }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'delete-eval': {
+        if (!body.eval_id) return new Response(JSON.stringify({ success: false, error: 'eval_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        await sb.from('agent_evals').delete().eq('id', body.eval_id);
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'run-eval': {
+        if (!body.eval_id) return new Response(JSON.stringify({ success: false, error: 'eval_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { data: evalRow } = await sb.from('agent_evals').select('*').eq('id', body.eval_id).maybeSingle();
+        if (!evalRow) return new Response(JSON.stringify({ success: false, error: 'eval not found' }), { status: 404, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const started = Date.now();
+        let responseText = '', toolCallsUsed: string[] = [], errText: string | null = null;
+        try {
+          const res = await handleChat(sb, { message: evalRow.prompt, conversation_id: null, eval_mode: true }, userId!, username!, cors);
+          const data = await res.json();
+          responseText = data.response || data.message || '';
+          toolCallsUsed = (data.tool_calls || []).map((t: any) => t.name || t.tool_name).filter(Boolean);
+        } catch (err: any) { errText = err?.message || String(err); }
+        const latency = Date.now() - started;
+        const lowered = responseText.toLowerCase();
+        const containsPass = (evalRow.expected_contains || []).every((s: string) => lowered.includes(s.toLowerCase()));
+        const notContainsPass = (evalRow.expected_not_contains || []).every((s: string) => !lowered.includes(s.toLowerCase()));
+        const toolsPass = (evalRow.expected_tools || []).every((t: string) => toolCallsUsed.includes(t));
+        const passed = !errText && containsPass && notContainsPass && toolsPass;
+        const score = ((containsPass ? 1 : 0) + (notContainsPass ? 1 : 0) + (toolsPass ? 1 : 0)) / 3;
+        const { data: runRow } = await sb.from('agent_eval_runs').insert({
+          eval_id: evalRow.id, triggered_by: userId, model: 'agent-default', passed, score,
+          response_text: responseText.substring(0, 8000), tool_calls_used: toolCallsUsed, latency_ms: latency, error: errText,
+          grader_reasoning: `contains=${containsPass} not_contains=${notContainsPass} tools=${toolsPass}`,
+        }).select().maybeSingle();
+        return new Response(JSON.stringify({ success: true, run: runRow, passed, score, latency_ms: latency }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'get-eval-runs': {
+        if (!body.eval_id) return new Response(JSON.stringify({ success: false, error: 'eval_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { data } = await sb.from('agent_eval_runs').select('*').eq('eval_id', body.eval_id).order('created_at', { ascending: false }).limit(50);
+        return new Response(JSON.stringify({ success: true, runs: data || [] }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'get-trace-log': {
+        const limit = Math.min(Number(body.limit) || 100, 500);
+        let q = sb.from('agent_action_log').select('id, conversation_id, tool_name, tool_arguments, tool_result, affected_table, affected_record_id, status, confidence_score, execution_time_ms, created_at, is_rolled_back').order('created_at', { ascending: false }).limit(limit);
+        if (body.tool_name) q = q.eq('tool_name', body.tool_name);
+        if (body.only_user) q = q.eq('user_id', userId!);
+        const { data } = await q;
+        // aggregate
+        const rows = data || [];
+        const toolCounts: Record<string, { count: number; avg_ms: number; errors: number }> = {};
+        for (const r of rows) {
+          const t = toolCounts[r.tool_name] || (toolCounts[r.tool_name] = { count: 0, avg_ms: 0, errors: 0 });
+          t.count++; t.avg_ms += (r.execution_time_ms || 0); if (r.status && r.status !== 'success') t.errors++;
+        }
+        for (const k of Object.keys(toolCounts)) toolCounts[k].avg_ms = Math.round(toolCounts[k].avg_ms / toolCounts[k].count);
+        return new Response(JSON.stringify({ success: true, traces: rows, tool_summary: toolCounts }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${body.action}` }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
     }
