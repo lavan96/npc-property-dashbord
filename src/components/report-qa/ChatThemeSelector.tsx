@@ -26,7 +26,7 @@ const themes: Theme[] = [
     id: 'ocean', 
     name: 'Ocean', 
     preview: 'bg-gradient-to-r from-info to-info',
-    userBg: 'bg-info text-foreground dark:text-white',
+    userBg: 'bg-info text-foreground dark:text-primary-foreground',
     assistantBg: 'bg-info/10 dark:bg-info',
     accent: 'bg-info/10'
   },
@@ -34,7 +34,7 @@ const themes: Theme[] = [
     id: 'forest', 
     name: 'Forest', 
     preview: 'bg-gradient-to-r from-success to-success',
-    userBg: 'bg-success text-foreground dark:text-white',
+    userBg: 'bg-success text-foreground dark:text-primary-foreground',
     assistantBg: 'bg-success/10 dark:bg-success',
     accent: 'bg-success/10'
   },
@@ -42,7 +42,7 @@ const themes: Theme[] = [
     id: 'sunset', 
     name: 'Sunset', 
     preview: 'bg-gradient-to-r from-warning to-accent',
-    userBg: 'bg-gradient-to-r from-warning to-accent text-foreground dark:text-white',
+    userBg: 'bg-gradient-to-r from-warning to-accent text-foreground dark:text-primary-foreground',
     assistantBg: 'bg-warning/10 dark:bg-warning',
     accent: 'bg-warning/10'
   },
@@ -50,7 +50,7 @@ const themes: Theme[] = [
     id: 'midnight', 
     name: 'Midnight', 
     preview: 'bg-gradient-to-r from-accent to-accent',
-    userBg: 'bg-gradient-to-r from-accent to-accent text-foreground dark:text-white',
+    userBg: 'bg-gradient-to-r from-accent to-accent text-foreground dark:text-primary-foreground',
     assistantBg: 'bg-accent/10 dark:bg-accent',
     accent: 'bg-accent/10'
   },
@@ -58,7 +58,7 @@ const themes: Theme[] = [
     id: 'minimal', 
     name: 'Minimal', 
     preview: 'bg-gradient-to-r from-muted to-muted',
-    userBg: 'bg-background text-foreground dark:text-white dark:bg-muted dark:text-foreground',
+    userBg: 'bg-background text-foreground dark:text-primary-foreground dark:bg-muted dark:text-foreground',
     assistantBg: 'bg-muted dark:bg-background',
     accent: 'bg-muted0/10'
   },
