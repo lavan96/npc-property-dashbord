@@ -8049,13 +8049,17 @@ async function handleChatStream(
     ? `\n\nUser Preferences:\n${prefs.map((p: any) => `- ${p.preference_key}: ${JSON.stringify(p.preference_value)}`).join('\n')}`
     : '';
 
+  // Phase 4: retrieve semantic long-term memories relevant to this turn
+  const semanticMemories = await recallSemanticMemories(sb, userId, message, 6);
+  const semanticContext = formatMemoriesForPrompt(semanticMemories);
+
   const { data: history } = await sb.from('agent_messages')
     .select('role, content, tool_calls, tool_results')
     .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const brand = await getBrandConfig();
   const messages: any[] = [
-    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
+    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}` },
   ];
 
   const convMessages: any[] = [];
