@@ -1247,7 +1247,11 @@ export function AgentChatWidget() {
                       }} onKeyDown={handleKeyDown}
                         placeholder="Ask Aurixa..." className="!min-h-[40px] max-h-[160px] resize-none text-sm rounded-xl overflow-y-auto" rows={1} disabled={loading} style={{ height: 'auto' }} />
                       <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
-                      <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
+                      {streamingId ? (
+                        <Button size="icon" variant="destructive" onClick={stopStreaming} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Stop generating"><Square className="h-4 w-4" /></Button>
+                      ) : (
+                        <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Send"><Send className="h-4 w-4" /></Button>
+                      )}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes • 📎 Up to 5 files (50MB each)</p>
                   </div>
