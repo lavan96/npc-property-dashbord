@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { streamSecureFunction } from '@/lib/streamSecureFunction';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { useAuth } from '@/hooks/useAuth';
