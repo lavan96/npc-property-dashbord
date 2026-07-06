@@ -15,6 +15,8 @@ import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceH
 import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
 import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSourcesAdminDialog';
 import { MarketQAVoiceButton } from '@/components/market-updates/MarketQAVoiceButton';
+import { MarketQAAnswerActions } from '@/components/market-updates/MarketQAAnswerActions';
+import type { MarketQARetrievedItem } from '@/types/marketUpdates';
 
 const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
   { id: '24h', label: '24 Hours', hint: 'Last day' },
