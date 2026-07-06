@@ -1244,6 +1244,73 @@ export function AgentChatWidget() {
               }
               return (
                 <div className="border-t shrink-0 bg-background">
+                  {/* Skill (persona) picker */}
+                  <div className="px-3 pt-2 flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setSkillPickerOpen(o => !o)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                        activeSkill
+                          ? "border-primary/50 bg-primary/10 text-primary hover:bg-primary/15"
+                          : "border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted/70"
+                      )}
+                      title="Choose an Aurixa skill (persona)"
+                    >
+                      <Brain className="h-3 w-3" />
+                      {activeSkill ? (
+                        <>
+                          <span>{activeSkill.icon || '🧠'} {activeSkill.name}</span>
+                          <span className="opacity-60">·</span>
+                          <span className="opacity-70">change</span>
+                        </>
+                      ) : (
+                        <span>General assistant · pick a skill</span>
+                      )}
+                    </button>
+                    {activeSkill && (
+                      <button
+                        type="button"
+                        onClick={() => selectSkill(null)}
+                        className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {skillPickerOpen && (
+                    <div className="px-3 pt-2">
+                      <div className="rounded-lg border border-border/60 bg-muted/30 p-2 max-h-48 overflow-y-auto space-y-1">
+                        {skills.length === 0 && (
+                          <div className="text-[11px] text-muted-foreground px-2 py-1">No skills available yet.</div>
+                        )}
+                        {skills.map(s => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => selectSkill(s.slug)}
+                            className={cn(
+                              "w-full text-left rounded-md px-2 py-1.5 text-xs transition-colors flex items-start gap-2",
+                              activeSkillSlug === s.slug
+                                ? "bg-primary/15 text-primary"
+                                : "hover:bg-accent hover:text-accent-foreground"
+                            )}
+                          >
+                            <span className="text-sm leading-none">{s.icon || '🧠'}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{s.name}</div>
+                              {s.system_prompt && (
+                                <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">
+                                  {s.system_prompt.slice(0, 140)}
+                                </div>
+                              )}
+                            </div>
+                            {activeSkillSlug === s.slug && <Check className="h-3 w-3 shrink-0 mt-0.5" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {/* File preview chips */}
                   {attachedFiles.length > 0 && (
                     <div className="px-3 pt-2 flex flex-wrap gap-1.5">
