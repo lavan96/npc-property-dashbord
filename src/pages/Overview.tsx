@@ -531,7 +531,7 @@ export default function Overview() {
             <RadioTower className="h-3.5 w-3.5" />
             Command Centre
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#F5F2FA] md:text-5xl">Overview</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </DashboardThemeFrame>
         <Card className="overflow-hidden rounded-[1.5rem] border-brand-400/40 bg-gradient-to-br from-brand-500/10 via-card to-card shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:border-brand-400/25 dark:from-brand-400/10 dark:via-background/80 dark:to-background">
@@ -564,7 +564,7 @@ export default function Overview() {
       <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
         <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
           <div className="mb-3 h-7 w-40 rounded-full bg-brand-500/10" />
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#F5F2FA] md:text-5xl">Overview</h1>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </DashboardThemeFrame>
         <div className="grid gap-3 min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-4">
@@ -602,8 +602,8 @@ export default function Overview() {
               <RadioTower className="h-3.5 w-3.5" />
               Command Centre
             </div>
-            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[#F5F2FA] md:text-5xl">Overview</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#B4ADBF] md:text-base">
+            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Property intake dashboard overview and key metrics
             </p>
           </div>
@@ -646,7 +646,7 @@ export default function Overview() {
         </div>
 
         {/* Content Statistics */}
-        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-white/[0.06] pt-4 min-[520px]:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 xl:grid-cols-5">
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-border/60 dark:border-white/[0.06] pt-4 min-[520px]:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 xl:grid-cols-5">
           <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
           <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
           <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
@@ -817,7 +817,7 @@ export default function Overview() {
         </div>
 
         <div className="pt-1 md:pt-2">
-          <div className="mb-4 flex items-center gap-2 border-t border-white/[0.06] pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
+          <div className="mb-4 flex items-center gap-2 border-t border-border/60 dark:border-white/[0.06] pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl dashboard-luxury-icon-tile">
               <Database className="h-4 w-4" />
             </span>
