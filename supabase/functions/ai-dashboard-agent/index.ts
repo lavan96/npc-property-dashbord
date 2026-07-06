@@ -2617,6 +2617,207 @@ const WRITE_TOOLS = [
 ];
 
 // ============================================================
+//  TOOL DEFERRAL — Phase 2
+//  Group all 215 tools into domains; only expose a small eager
+//  core + 3 meta-tools by default. The model unlocks specific
+//  tools on-demand via load_tools / search_tools.
+// ============================================================
+
+const TOOL_DOMAINS: Record<string, { description: string; tools: string[] }> = {
+  clients: {
+    description: "Client CRUD, profiles, additional contacts, notes, scores, files, filter by pipeline status.",
+    tools: ["search_clients", "get_client_details", "get_client_additional_contacts", "update_client_field", "get_client_activities", "log_client_activity", "create_client", "delete_client", "get_clients_by_pipeline_status", "get_clients_needing_follow_up", "get_client_notes", "create_client_note", "update_client_note", "delete_client_note", "get_client_score", "get_portfolio_review_details", "add_additional_contact", "update_additional_contact", "remove_additional_contact", "delete_client_file"],
+  },
+  deals: {
+    description: "Deal CRUD, pipeline stages, risk/stale/settlement views, timeline, health scoring, pipeline analytics.",
+    tools: ["get_client_deals", "get_pipeline_overview", "get_deals_by_stage", "get_deals_by_risk", "get_settlement_countdown", "get_stale_deals", "update_deal_stage", "update_deal_risk_status", "update_deal_field", "get_clawback_monitor", "get_commission_forecast", "get_build_progress", "update_build_payment", "get_builder_invoices", "create_deal", "delete_deal", "get_conversion_funnel", "get_pipeline_velocity", "get_commission_actuals", "complete_deal_stage", "get_deal_timeline", "get_deal_health_score"],
+  },
+  reminders_tasks: {
+    description: "Reminders, follow-ups, snoozing, scheduled tasks/cron jobs.",
+    tools: ["get_client_reminders", "get_all_reminders", "get_overdue_reminders", "create_reminder", "update_reminder", "delete_reminder", "set_follow_up_date", "get_upcoming_milestones", "get_scheduled_tasks", "create_scheduled_task", "toggle_scheduled_task", "delete_scheduled_task"],
+  },
+  financial: {
+    description: "Borrowing capacity, income, expenses, liabilities, assets, employment, calculators (stamp duty/LMI/repayments/yield/equity), lending rates, what-if scenarios.",
+    tools: ["get_borrowing_capacity", "get_borrowing_capacity_history", "get_income_sources", "get_client_expenses", "get_client_liabilities", "get_client_assets", "get_client_properties", "get_employment_details", "get_cash_flow_analysis", "calculate_stamp_duty", "calculate_lmi", "calculate_loan_repayment", "calculate_rental_yield", "calculate_equity_position", "get_lending_rates", "compare_lender_rates", "what_if_analysis", "find_best_rates"],
+  },
+  email: {
+    description: "Email search, threads, linking, sending, email statistics.",
+    tools: ["get_client_emails", "search_emails", "get_email_thread", "get_unlinked_emails", "link_email_to_client", "send_email", "get_email_stats"],
+  },
+  calendar: {
+    description: "GHL calendar: view/search/create/reschedule/cancel appointments, free slots, calendars list.",
+    tools: ["get_upcoming_calendar", "get_appointments_for_client", "search_calendar_events", "reschedule_appointment", "create_appointment", "cancel_appointment", "get_calendars", "get_free_slots", "get_todays_schedule"],
+  },
+  calls: {
+    description: "Voice AI call logs, transcripts, alerts, analytics, flagged calls, voice-to-report.",
+    tools: ["get_recent_calls", "get_call_details", "search_calls", "get_call_alerts", "get_call_analytics", "get_flagged_calls", "generate_client_summary_report"],
+  },
+  reports: {
+    description: "Investment reports, portfolio reviews, report generation, report QA, depreciation comps.",
+    tools: ["get_client_files", "get_investment_reports", "get_report_details", "search_reports_by_address", "get_portfolio_reviews", "get_report_qa_details", "trigger_investment_report", "get_depreciation_comps", "get_depreciation_summary"],
+  },
+  operations: {
+    description: "Checklists (templates+instances), playbooks, automation switches, bulk operations, document readiness.",
+    tools: ["get_checklist_templates", "get_active_checklists", "get_checklist_items", "toggle_checklist_item", "create_checklist_instance", "create_checklist_template", "delete_checklist_instance", "get_document_readiness", "get_auto_report_switches", "toggle_auto_report_switch", "get_auto_report_log", "get_playbooks", "create_playbook", "run_playbook", "delete_playbook", "get_bulk_generation_status", "bulk_update_clients", "bulk_create_reminders", "bulk_set_follow_up_dates"],
+  },
+  game_plan: {
+    description: "Internal strategic game plans: phases, milestones, KPIs, notes, action items, goals, performance metrics, weekly digest.",
+    tools: ["get_game_plans", "get_game_plan_details", "create_game_plan", "update_game_plan", "delete_game_plan", "add_game_plan_phase", "update_game_plan_phase", "delete_game_plan_phase", "add_game_plan_milestone", "update_game_plan_milestone", "add_game_plan_kpi", "update_game_plan_kpi", "add_game_plan_note", "add_game_plan_action", "toggle_game_plan_action", "get_performance_metrics", "get_weekly_digest"],
+  },
+  analytics: {
+    description: "Dashboard summary, activity, trend analysis, proactive insights, notification alerts, charts, exports, unified smart search, comparisons, forecasts, engagement scoring.",
+    tools: ["get_recent_activity", "get_api_usage_stats", "get_api_health", "get_cache_statistics", "get_dashboard_summary", "get_pipeline_trends", "get_revenue_forecast", "get_client_engagement_score", "get_top_clients", "get_proactive_insights", "compare_clients", "draft_follow_up", "run_system_health_check", "get_notification_summary", "get_saved_charts", "search_charts", "get_chart_analysis", "generate_chart_data", "export_pipeline_data", "export_client_portfolio", "smart_search"],
+  },
+  collaboration: {
+    description: "Conversation sharing, team members, user preferences, contextual memory, audit trail, undo.",
+    tools: ["share_conversation", "get_shared_conversations", "get_conversation_collaborators", "revoke_conversation_share", "get_team_members", "get_user_preferences", "set_user_preference", "save_memory", "recall_memories", "get_audit_trail", "undo_action"],
+  },
+  listings: {
+    description: "Airtable property listings and listing sources.",
+    tools: ["search_property_listings", "get_listing_details", "get_listings_summary", "get_recent_listings", "get_data_sources"],
+  },
+  admin: {
+    description: "Branding, templates, data imports, monitoring, QA, error logs, integrations, Cloudflare, user management, file uploads, agreements/DocuSign, marketing/attribution, client portal, Outlook calendar.",
+    tools: ["get_branding_profiles", "get_user_permissions", "get_report_templates", "get_import_history", "get_monitoring_dashboard", "get_qa_queue", "get_qa_stats", "get_error_logs", "get_error_summary", "get_integration_status", "get_cloudflare_status", "get_user_list", "search_uploaded_files", "get_agreements_overview", "get_client_agreements", "get_agreement_details", "search_agreements", "get_agreement_templates", "generate_agreement", "send_agreement_docusign", "get_lead_attributions", "get_attribution_summary", "get_campaign_performance", "get_marketing_funnel", "get_marketing_reports", "get_client_lead_source", "get_portal_users", "get_portal_overview", "get_client_portal_status", "send_portal_invite", "revoke_portal_access", "get_appointment_notifications", "get_outlook_events", "create_outlook_event", "create_outlook_prep_block", "delete_outlook_event", "get_team_outlook_availability", "create_follow_up_block"],
+  },
+};
+
+// Tools always exposed on the first turn (~9 tools). Kept small on purpose.
+const EAGER_TOOL_NAMES = new Set<string>([
+  "search_clients",
+  "get_client_details",
+  "get_client_deals",
+  "get_pipeline_overview",
+  "get_upcoming_calendar",
+  "get_all_reminders",
+  "get_dashboard_summary",
+  "get_notification_summary",
+  "get_proactive_insights",
+]);
+
+// Fast lookup: tool name → domain
+const TOOL_TO_DOMAIN: Record<string, string> = {};
+for (const [d, v] of Object.entries(TOOL_DOMAINS)) {
+  for (const t of v.tools) TOOL_TO_DOMAIN[t] = d;
+}
+
+// Fast lookup: tool name → full definition
+const TOOL_BY_NAME: Record<string, any> = {};
+for (const t of TOOLS) {
+  const n = t?.function?.name;
+  if (n) TOOL_BY_NAME[n] = t;
+}
+
+const META_TOOL_NAMES = new Set(["list_tool_domains", "search_tools", "load_tools"]);
+
+const META_TOOLS: any[] = [
+  {
+    type: "function",
+    function: {
+      name: "list_tool_domains",
+      description: "List available tool domains with counts and descriptions. Call this if you are unsure which category of tools you need.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_tools",
+      description: "Search deferred tools by keyword across all domains. Returns matching tool names, their domain, and short descriptions. Use this before load_tools to discover the right tool.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Keyword to match in tool names or descriptions" },
+          domain: { type: "string", description: "Optional domain to restrict search (e.g. 'financial', 'deals')" },
+          limit: { type: "number", description: "Max results (default 12)" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "load_tools",
+      description: "Load specific tool definitions into your available tool list so you can call them on the next step. Pass exact tool names (from search_tools) and/or a domain to load every tool in that domain. Prefer loading only what you need.",
+      parameters: {
+        type: "object",
+        properties: {
+          names: { type: "array", items: { type: "string" }, description: "Exact tool names to load" },
+          domain: { type: "string", description: "Load all tools from this domain" },
+        },
+      },
+    },
+  },
+];
+
+function buildActiveToolList(loaded: Set<string>): any[] {
+  const out: any[] = [...META_TOOLS];
+  for (const name of loaded) {
+    const def = TOOL_BY_NAME[name];
+    if (def) out.push(def);
+  }
+  return out;
+}
+
+function executeMetaTool(name: string, args: any, loaded: Set<string>): { success: boolean; message: string; loaded?: string[] } {
+  if (name === "list_tool_domains") {
+    const lines = Object.entries(TOOL_DOMAINS).map(([d, v]) => `- **${d}** (${v.tools.length} tools): ${v.description}`);
+    return { success: true, message: `Available tool domains:\n${lines.join("\n")}\n\nUse search_tools({query}) to find specific tools, or load_tools({domain}) to load a whole domain.` };
+  }
+  if (name === "search_tools") {
+    const q = String(args?.query || "").toLowerCase().trim();
+    const domainFilter = args?.domain ? String(args.domain) : null;
+    const limit = Math.min(Number(args?.limit) || 12, 30);
+    if (!q) return { success: false, message: "query is required" };
+    const matches: { name: string; domain: string; description: string }[] = [];
+    for (const [d, v] of Object.entries(TOOL_DOMAINS)) {
+      if (domainFilter && d !== domainFilter) continue;
+      for (const toolName of v.tools) {
+        const def = TOOL_BY_NAME[toolName];
+        if (!def) continue;
+        const desc: string = def.function?.description || "";
+        if (toolName.toLowerCase().includes(q) || desc.toLowerCase().includes(q)) {
+          matches.push({ name: toolName, domain: d, description: desc });
+          if (matches.length >= limit) break;
+        }
+      }
+      if (matches.length >= limit) break;
+    }
+    if (!matches.length) return { success: true, message: `No tools matched "${q}". Try list_tool_domains to browse categories.` };
+    const body = matches.map(m => `- \`${m.name}\` [${m.domain}] — ${m.description}`).join("\n");
+    return { success: true, message: `Found ${matches.length} tool(s):\n${body}\n\nCall load_tools({names:[...]}) to enable them.` };
+  }
+  if (name === "load_tools") {
+    const requested = new Set<string>();
+    if (Array.isArray(args?.names)) {
+      for (const n of args.names) if (typeof n === "string" && TOOL_BY_NAME[n]) requested.add(n);
+    }
+    if (args?.domain && TOOL_DOMAINS[args.domain]) {
+      for (const n of TOOL_DOMAINS[args.domain].tools) if (TOOL_BY_NAME[n]) requested.add(n);
+    }
+    if (!requested.size) return { success: false, message: "No valid tool names or domain provided. Use search_tools or list_tool_domains first." };
+    const newlyLoaded: string[] = [];
+    for (const n of requested) {
+      if (!loaded.has(n)) { loaded.add(n); newlyLoaded.push(n); }
+    }
+    return {
+      success: true,
+      message: `Loaded ${newlyLoaded.length} new tool(s) (${loaded.size} total active). Newly available: ${newlyLoaded.join(", ") || "(all already loaded)"}. You can now call these tools directly.`,
+      loaded: newlyLoaded,
+    };
+  }
+  return { success: false, message: `Unknown meta tool: ${name}` };
+}
+
+// If the model calls a tool that isn't loaded yet, auto-load it so we never hard-fail on a valid tool.
+function ensureToolLoaded(name: string, loaded: Set<string>): boolean {
+  if (loaded.has(name) || META_TOOL_NAMES.has(name)) return false;
+  if (TOOL_BY_NAME[name]) { loaded.add(name); return true; }
+  return false;
+}
+
+// ============================================================
 //  TOOL EXECUTORS
 // ============================================================
 
