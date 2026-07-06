@@ -77,6 +77,8 @@ import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
 import AgentQuality from "./pages/admin/AgentQuality";
 import AgentMemoryManager from "./pages/agent/MemoryManager";
 import AgentInsights from "./pages/agent/AgentInsights";
+import AgentPlans from "./pages/agent/AgentPlans";
+import SharedMarketQAAnswer from "./pages/qa/SharedMarketQAAnswer";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
