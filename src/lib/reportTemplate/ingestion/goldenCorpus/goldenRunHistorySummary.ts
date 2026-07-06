@@ -141,7 +141,7 @@ export function buildGoldenRunHistoryRecordInput(
     failures: failures.map((f) => String(f)),
 
     gateSummary: summary.gateSummary ?? {},
-    triageSummary: (input.triageSummary as Record<string, unknown> | null | undefined) ?? {},
+    triageSummary: (input.triageSummary as unknown as Record<string, unknown> | null | undefined) ?? {},
     goldenRegressionSummary: summary,
 
     baselineComparison: input.baselineComparison ?? null,
