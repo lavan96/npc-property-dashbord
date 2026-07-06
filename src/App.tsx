@@ -341,6 +341,7 @@ const App = () => (
                 <Route path="admin/pdf-import-diagnostics" element={<ModuleGuard moduleKey="templates"><PdfImportDiagnostics /></ModuleGuard>} />
                 <Route path="admin/template-import-quality" element={<ModuleGuard moduleKey="templates"><TemplateImportQuality /></ModuleGuard>} />
                 <Route path="admin/pdf-golden-regression" element={<ModuleGuard moduleKey="templates"><PdfGoldenRegression /></ModuleGuard>} />
+                <Route path="admin/market-qa-quality" element={<ModuleGuard moduleKey="activity_logs"><MarketQAQuality /></ModuleGuard>} />
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
                 <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
 
