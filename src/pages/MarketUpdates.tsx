@@ -556,7 +556,7 @@ export default function MarketUpdates() {
                 />
                 <div className="flex gap-2">
                   <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
-                  <Button size="sm" className="flex-1" onClick={handleAsk} disabled={asking || !question.trim()}>
+                  <Button size="sm" className="flex-1" onClick={() => handleAsk()} disabled={asking || !question.trim()}>
                     {asking ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking…</> : 'Ask safely'}
                   </Button>
                 </div>
@@ -652,7 +652,7 @@ export default function MarketUpdates() {
               <Textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleQuestionKeyDown} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
               <div className="flex gap-2">
                 <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
-                <Button onClick={handleAsk} className="flex-1" disabled={asking || !question.trim()}>
+                <Button onClick={() => handleAsk()} className="flex-1" disabled={asking || !question.trim()}>
                   {asking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Asking…</> : <><Sparkles className="mr-2 h-4 w-4" />Ask safely</>}
                 </Button>
               </div>
