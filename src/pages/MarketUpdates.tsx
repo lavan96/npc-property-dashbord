@@ -102,6 +102,8 @@ export default function MarketUpdates() {
   const [qaUpdate, setQaUpdate] = useState<MarketUpdate | null>(null);
   const [question, setQuestion] = useState('');
   const [qaMessage, setQaMessage] = useState<MarketQAMessage | null>(null);
+  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[] }>>([]);
+  const [asking, setAsking] = useState(false);
   const [search, setSearch] = useState('');
   const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
   const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
