@@ -180,29 +180,54 @@ export default function MarketUpdates() {
     if (!q || asking) return;
     setAsking(true);
     const priorHistory = qaThread.map((t) => ({ role: t.role, content: t.content }));
-    setQaThread((t) => [...t, { role: 'user', content: q }]);
+    const inDialog = Boolean(qaUpdate);
+    const convId = inDialog ? dialogConversationId : conversationId;
+    setQaThread((t) => [...t, { role: 'user', content: q }, { role: 'assistant', content: '', streaming: true }]);
     setQuestion('');
     try {
       const seg = activeSegment !== 'all' ? activeSegment : undefined;
-      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined, priorHistory, seg);
+      const answer = await streamMarketUpdateQuestion(q, {
+        updateIds: qaUpdate ? [qaUpdate.id] : undefined,
+        history: priorHistory,
+        segment: seg,
+        conversation_id: convId,
+        onDelta: (acc) => {
+          setQaThread((t) => {
+            const next = [...t];
+            const last = next[next.length - 1];
+            if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: acc };
+            return next;
+          });
+        },
+      });
       setQaMessage(answer);
-      setQaThread((t) => [...t, {
-        role: 'assistant',
-        content: answer?.content ?? 'No response.',
-        citations: answer?.citations ?? [],
-        limitations: answer?.limitations ?? [],
-        follow_up_questions: answer?.follow_up_questions ?? [],
-        key_figures: answer?.key_figures ?? [],
-        time_horizon: answer?.time_horizon,
-        sentiment: answer?.sentiment,
-        confidence_score: answer?.confidence_score,
-      }]);
+      setQaThread((t) => {
+        const next = [...t];
+        next[next.length - 1] = {
+          role: 'assistant',
+          content: answer?.content ?? 'No response.',
+          citations: answer?.citations ?? [],
+          limitations: answer?.limitations ?? [],
+          follow_up_questions: answer?.follow_up_questions ?? [],
+          key_figures: answer?.key_figures ?? [],
+          time_horizon: answer?.time_horizon,
+          sentiment: answer?.sentiment,
+          confidence_score: answer?.confidence_score,
+          streaming: false,
+        };
+        return next;
+      });
     } catch (err) {
-      setQaThread((t) => [...t, { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.' }]);
+      setQaThread((t) => {
+        const next = [...t];
+        next[next.length - 1] = { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.', streaming: false };
+        return next;
+      });
     } finally {
       setAsking(false);
     }
   };
+
 
   const handleFollowUp = (q: string) => { setQuestion(q); void handleAsk(q); };
 
