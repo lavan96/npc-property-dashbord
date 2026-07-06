@@ -826,3 +826,17 @@ verify_jwt = true
 
 [functions.estimate-commercial-caprate]
 verify_jwt = true
+
+[functions.market-updates-ingest]
+# Called by pg_cron with a service-role Bearer token AND/OR by the app UI via authorised
+# users. verify_jwt must be false so the Authorization header is preserved for in-function
+# auth checks (cron secret or service-role match). Auth is enforced in-function.
+verify_jwt = false
+
+[functions.market-updates-digest]
+# Called by pg_cron (multi-period digests) and by authenticated portal users to regenerate
+# a period digest. Auth is enforced in-function (Authorization required OR cron secret).
+verify_jwt = false
+
+[functions.market-updates-qa">
+verify_jwt = true
