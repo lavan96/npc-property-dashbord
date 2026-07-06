@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight, Info, Play, HelpCircle, ArrowRight, Paperclip, File, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, X, Plus, Trash2, Send, Check, XCircle, Loader2, ChevronLeft, Search, Pencil, RotateCcw, Sparkles, Diamond, BarChart3, Calendar, Zap, TrendingUp, Target, FileDown, Brain, Bell, Settings, Users, Share2, ClipboardList, Clock, Shield, ChevronRight, Info, Play, HelpCircle, ArrowRight, Paperclip, File, Image as ImageIcon, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { VoiceToTextButton } from '@/components/ui/VoiceToTextButton';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { streamSecureFunction } from '@/lib/streamSecureFunction';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { useAuth } from '@/hooks/useAuth';
@@ -97,6 +98,9 @@ export function AgentChatWidget() {
   const [extractingFiles, setExtractingFiles] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
 
   // Auto-resize textarea when input changes (covers voice transcription + typing)
   useEffect(() => {
@@ -478,18 +482,62 @@ export function AgentChatWidget() {
       if (allImageAttachments.length > 0) {
         payload.image_attachments = allImageAttachments;
       }
-      const { data, error } = await invokeSecureFunction('ai-dashboard-agent', payload);
-      if (error || !data?.success) {
-        const errorMsg = error?.message || data?.error || 'Something went wrong';
+      const payloadStream: any = { ...payload, action: 'chat-stream' };
+      const streamMsgId = `stream-${Date.now()}`;
+      const streamMsg: Message = { id: streamMsgId, role: 'assistant', content: '', created_at: new Date().toISOString() };
+      setMessages(prev => [...prev, streamMsg]);
+      setStreamingId(streamMsgId);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      let accumulated = '';
+      let requiresConfirmation = false;
+      let sawEvent = false;
+      let streamError: string | null = null;
+
+      try {
+        for await (const evt of streamSecureFunction('ai-dashboard-agent', payloadStream, { signal: controller.signal })) {
+          sawEvent = true;
+          if (evt.event === 'token' && evt.data?.delta) {
+            accumulated += evt.data.delta;
+            setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, content: accumulated } : m));
+          } else if (evt.event === 'tool') {
+            if (evt.data?.phase === 'start') setActiveTool(evt.data.name);
+            else if (evt.data?.phase === 'end') setActiveTool(null);
+          } else if (evt.event === 'error') {
+            streamError = evt.data?.message || 'Stream error';
+          } else if (evt.event === 'done') {
+            requiresConfirmation = Boolean(evt.data?.requires_confirmation);
+          }
+        }
+      } catch (streamErr: any) {
+        if (streamErr?.name === 'AbortError') {
+          accumulated += '\n\n_Stopped._';
+          setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, content: accumulated } : m));
+        } else {
+          streamError = streamErr?.message || 'Network error';
+        }
+      } finally {
+        abortRef.current = null;
+        setStreamingId(null);
+        setActiveTool(null);
+      }
+
+      if (streamError && !sawEvent) {
         setRetryMessage(msg);
-        setMessages(prev => [...prev.filter(m => m.id !== tempUserMsg.id), tempUserMsg, { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${errorMsg}`, created_at: new Date().toISOString() }]);
-        toast.error(errorMsg);
+        setMessages(prev => prev.filter(m => m.id !== streamMsgId).concat({ id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${streamError}`, created_at: new Date().toISOString() }));
+        toast.error(streamError);
       } else {
+        // Refresh from server so partial stream text is replaced by the persisted
+        // canonical message (with tool_calls / confirmation metadata attached).
         const { data: refreshed } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: convId });
         if (refreshed?.messages) setMessages(refreshed.messages);
         loadConversations();
-        // Auto-refresh settings panel if it's open (e.g. after creating a playbook/task via chat)
         if (panelView === 'settings') loadSettingsData(settingsTab);
+        if (requiresConfirmation) {
+          // no-op: confirmation buttons will render off the refreshed message metadata
+        }
       }
     } catch (err: any) {
       setRetryMessage(msg);
@@ -497,6 +545,13 @@ export function AgentChatWidget() {
       toast.error(err.message || 'Failed to send message');
     }
     setLoading(false);
+  };
+
+  const stopStreaming = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
   };
 
   const handleConfirmAction = async (messageId: string, approved: boolean) => {
@@ -1192,8 +1247,17 @@ export function AgentChatWidget() {
                       }} onKeyDown={handleKeyDown}
                         placeholder="Ask Aurixa..." className="!min-h-[40px] max-h-[160px] resize-none text-sm rounded-xl overflow-y-auto" rows={1} disabled={loading} style={{ height: 'auto' }} />
                       <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
-                      <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
+                      {streamingId ? (
+                        <Button size="icon" variant="destructive" onClick={stopStreaming} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Stop generating"><Square className="h-4 w-4" /></Button>
+                      ) : (
+                        <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Send"><Send className="h-4 w-4" /></Button>
+                      )}
                     </div>
+                    {activeTool && (
+                      <p className="text-[10px] text-muted-foreground mt-1.5 text-center flex items-center justify-center gap-1.5">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Running <span className="font-mono">{activeTool}</span>…
+                      </p>
+                    )}
                     <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes • 📎 Up to 5 files (50MB each)</p>
                   </div>
                 </div>

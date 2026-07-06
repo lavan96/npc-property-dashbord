@@ -7228,8 +7228,334 @@ async function executeGetRecentListings(args: any) {
 }
 
 // ============================================================
+//  STREAMING CHAT (Phase 1: token streaming + AbortController)
+// ============================================================
+
+/**
+ * Streaming variant of callAI. Uses OpenAI-compatible `stream: true` on the
+ * Lovable AI Gateway and yields incremental text chunks via onToken, while
+ * still assembling any tool_calls so the outer loop can execute them.
+ * Honours the request AbortSignal so a client-side stop() cancels the
+ * upstream fetch and unwinds the loop.
+ */
+async function callAIStream(
+  messages: any[],
+  sb: any,
+  userId: string,
+  onToken: (t: string) => void,
+  signal: AbortSignal,
+): Promise<{ content: string; tool_calls?: any[] }> {
+  const startTime = Date.now();
+  const response = await fetch(AI_GATEWAY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-3-flash-preview',
+      messages,
+      tools: TOOLS,
+      tool_choice: 'auto',
+      temperature: 0.3,
+      max_tokens: 3000,
+      stream: true,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    console.error('[ai-dashboard-agent] AI Gateway stream error:', response.status, errorText);
+    if (response.status === 429) throw new Error('Rate limit exceeded. Please try again in a moment.');
+    if (response.status === 402) throw new Error('AI credits exhausted. Please add credits to your Lovable workspace.');
+    throw new Error(`AI Gateway error: ${response.status}`);
+  }
+  if (!response.body) throw new Error('AI Gateway returned no stream body');
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let content = '';
+  const toolCallsMap: Record<number, { id: string; name: string; args: string }> = {};
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line || !line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') { buffer = ''; break; }
+        try {
+          const chunk = JSON.parse(data);
+          const delta = chunk.choices?.[0]?.delta;
+          if (delta?.content) {
+            content += delta.content;
+            onToken(delta.content);
+          }
+          if (Array.isArray(delta?.tool_calls)) {
+            for (const tc of delta.tool_calls) {
+              const idx = typeof tc.index === 'number' ? tc.index : 0;
+              if (!toolCallsMap[idx]) toolCallsMap[idx] = { id: '', name: '', args: '' };
+              if (tc.id) toolCallsMap[idx].id = tc.id;
+              if (tc.function?.name) toolCallsMap[idx].name = tc.function.name;
+              if (tc.function?.arguments) toolCallsMap[idx].args += tc.function.arguments;
+            }
+          }
+        } catch { /* skip malformed */ }
+      }
+    }
+  } finally {
+    try { await reader.cancel(); } catch { /* ignore */ }
+  }
+
+  const tool_calls = Object.values(toolCallsMap)
+    .filter(t => t.name)
+    .map(t => ({ id: t.id || `call_${Math.random().toString(36).slice(2)}`, type: 'function', function: { name: t.name, arguments: t.args || '{}' } }));
+
+  logApiUsage(sb, {
+    service_name: 'lovable-ai-gateway',
+    endpoint: '/v1/chat/completions',
+    model_used: 'google/gemini-3-flash-preview',
+    prompt_tokens: 0, completion_tokens: 0, tokens_used: 0,
+    response_time_ms: Date.now() - startTime,
+    status: 'success', user_id: userId,
+    metadata: { feature: 'ai-dashboard-agent-stream', tool_calls: tool_calls.length },
+  });
+
+  return { content, tool_calls: tool_calls.length ? tool_calls : undefined };
+}
+
+/**
+ * Streaming chat handler — returns SSE with token/tool/done/error events.
+ * Mirrors handleChat's tool loop, write-tool confirmation flow, and auto-title
+ * behaviour, but streams tokens live and cancels cleanly on client abort.
+ */
+async function handleChatStream(
+  sb: any,
+  body: any,
+  userId: string,
+  username: string,
+  cors: Record<string, string>,
+  signal: AbortSignal,
+): Promise<Response> {
+  const { conversation_id, message, image_attachments } = body;
+  if (!conversation_id || !message) {
+    return new Response(JSON.stringify({ error: 'conversation_id and message are required' }), {
+      status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+
+  await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message, sent_by: userId });
+
+  const { data: prefs } = await sb.from('agent_user_preferences')
+    .select('preference_key, preference_value').eq('user_id', userId);
+  const prefsContext = prefs?.length
+    ? `\n\nUser Preferences:\n${prefs.map((p: any) => `- ${p.preference_key}: ${JSON.stringify(p.preference_value)}`).join('\n')}`
+    : '';
+
+  const { data: history } = await sb.from('agent_messages')
+    .select('role, content, tool_calls, tool_results')
+    .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
+
+  const brand = await getBrandConfig();
+  const messages: any[] = [
+    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}` },
+  ];
+
+  const convMessages: any[] = [];
+  for (const msg of (history || [])) {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      convMessages.push({ role: msg.role, content: msg.content || '' });
+    }
+  }
+  const MAX_RECENT = 24;
+  if (convMessages.length > MAX_RECENT) {
+    const older = convMessages.slice(0, convMessages.length - MAX_RECENT);
+    const recent = convMessages.slice(-MAX_RECENT);
+    const summary = older.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${(m.content || '').substring(0, 150)}${m.content?.length > 150 ? '...' : ''}`).join('\n');
+    messages.push({ role: 'user', content: `[CONVERSATION HISTORY SUMMARY — ${older.length} earlier messages condensed]\n${summary}` });
+    messages.push({ role: 'assistant', content: 'Understood, I have the conversation context.' });
+    messages.push(...recent);
+  } else {
+    messages.push(...convMessages);
+  }
+
+  if (image_attachments && Array.isArray(image_attachments) && image_attachments.length > 0) {
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'user') {
+      const parts: any[] = [{ type: 'text', text: typeof lastMsg.content === 'string' ? lastMsg.content : '' }];
+      for (const img of image_attachments) {
+        if (img.base64) {
+          const raw = img.base64.includes(',') ? img.base64.split(',')[1] : img.base64;
+          parts.push({ type: 'image_url', image_url: { url: `data:${img.mime_type || 'image/png'};base64,${raw}` } });
+        }
+      }
+      messages[messages.length - 1] = { role: 'user', content: parts };
+    }
+  }
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const enc = new TextEncoder();
+      const emit = (event: string, payload: any) => {
+        try { controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`)); }
+        catch { /* controller already closed */ }
+      };
+
+      let finalResponse = '';
+      let pendingConfirmation = false;
+      let pendingToolCalls: any[] = [];
+      let aborted = false;
+      const onAbort = () => { aborted = true; };
+      signal.addEventListener('abort', onAbort);
+
+      const toolCallCounts: Record<string, number> = {};
+      const MAX_SAME_TOOL_CALLS = 3;
+      const MAX_TOTAL_TOOL_CALLS = 15;
+      let totalToolCalls = 0;
+
+      try {
+        for (let round = 0; round < 8; round++) {
+          if (aborted) break;
+
+          const { content, tool_calls } = await callAIStream(
+            messages, sb, userId,
+            (tok) => { finalResponse += tok; emit('token', { delta: tok }); },
+            signal,
+          );
+
+          if (tool_calls?.length) {
+            const hasWrite = tool_calls.some(tc => WRITE_TOOLS.includes(tc.function.name));
+            if (hasWrite) {
+              pendingConfirmation = true;
+              pendingToolCalls = tool_calls;
+              if (!finalResponse) finalResponse = content || '';
+              break;
+            }
+
+            totalToolCalls += tool_calls.length;
+            if (totalToolCalls > MAX_TOTAL_TOOL_CALLS) {
+              const note = '\n\n⚠️ Reached maximum tool calls for this request. Please narrow your question.';
+              finalResponse += note;
+              emit('token', { delta: note });
+              break;
+            }
+
+            messages.push({ role: 'assistant', content: content || '', tool_calls });
+            for (const tc of tool_calls) {
+              if (aborted) break;
+              const name = tc.function.name;
+              toolCallCounts[name] = (toolCallCounts[name] || 0) + 1;
+              if (toolCallCounts[name] > MAX_SAME_TOOL_CALLS) {
+                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ error: `Tool "${name}" called too many times.` }) });
+                continue;
+              }
+              let args: any = {};
+              try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
+              emit('tool', { phase: 'start', name, id: tc.id });
+              const result = await executeTool(sb, name, args, userId);
+              emit('tool', { phase: 'end', name, id: tc.id });
+              messages.push({ role: 'tool', tool_call_id: tc.id, content: smartTruncateResult(result) });
+            }
+            continue;
+          }
+
+          // Assistant produced final text; already streamed via onToken.
+          break;
+        }
+      } catch (err: any) {
+        if (aborted || err?.name === 'AbortError') {
+          const note = '\n\n_Stopped by user._';
+          finalResponse += note;
+          emit('token', { delta: note });
+        } else {
+          const msg = err?.message || 'An error occurred.';
+          console.error('[ai-dashboard-agent] Stream chat error:', err);
+          finalResponse += `\n\n⚠️ ${msg}`;
+          emit('error', { message: msg });
+        }
+      } finally {
+        signal.removeEventListener('abort', onAbort);
+      }
+
+      // Persist assistant message (partial on abort, full otherwise).
+      try {
+        if (pendingConfirmation) {
+          await sb.from('agent_messages').insert({
+            conversation_id, role: 'assistant', content: finalResponse,
+            tool_calls: pendingToolCalls, requires_confirmation: true, confirmation_status: 'pending',
+          });
+        } else if (finalResponse.length > 0) {
+          await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+        }
+      } catch (persistErr) {
+        console.error('[ai-dashboard-agent] Failed to persist assistant message:', persistErr);
+      }
+
+      // Auto-title on first turn (fire-and-forget).
+      (async () => {
+        try {
+          const { count } = await sb.from('agent_messages').select('id', { count: 'exact', head: true }).eq('conversation_id', conversation_id);
+          if (count !== null && count <= 2) {
+            const titleResp = await fetch(AI_GATEWAY_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${LOVABLE_API_KEY}` },
+              body: JSON.stringify({
+                model: 'google/gemini-2.5-flash',
+                messages: [
+                  { role: 'system', content: 'Generate a concise 3-6 word title. No quotes, no trailing punctuation.' },
+                  { role: 'user', content: message },
+                ],
+                max_tokens: 20, temperature: 0.3,
+              }),
+            });
+            let title = message.length > 60 ? message.substring(0, 57) + '...' : message;
+            if (titleResp.ok) {
+              const j = await titleResp.json();
+              const t = j.choices?.[0]?.message?.content?.trim();
+              if (t && t.length > 0 && t.length <= 80) title = t;
+            }
+            await sb.from('agent_conversations').update({ title }).eq('id', conversation_id);
+          }
+        } catch (e) {
+          console.error('[ai-dashboard-agent] Title generation error:', e);
+        }
+      })();
+
+      emit('done', {
+        requires_confirmation: pendingConfirmation,
+        pending_tool_calls: pendingConfirmation ? pendingToolCalls : undefined,
+        aborted,
+      });
+      try { controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); } catch { /* ignore */ }
+      controller.close();
+    },
+    cancel() {
+      // Client disconnected — nothing to do; signal.abort already fired.
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      ...cors,
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}
+
+// ============================================================
 //  MAIN HANDLER
 // ============================================================
+
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -7250,6 +7576,7 @@ Deno.serve(async (req) => {
       case 'get-messages': return handleGetMessages(sb, body.conversation_id, cors);
       case 'confirm-action': return handleConfirmAction(sb, { ...body, user_id: userId }, cors);
       case 'chat': return handleChat(sb, body, userId!, username!, cors);
+      case 'chat-stream': return handleChatStream(sb, body, userId!, username!, cors, req.signal);
       case 'get-notifications': {
         const summary = await executeGetNotificationSummary(sb);
         return new Response(JSON.stringify({ success: true, ...summary }), { headers: { ...cors, 'Content-Type': 'application/json' } });
