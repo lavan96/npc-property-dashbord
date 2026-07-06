@@ -6910,10 +6910,214 @@ FORMATTING RULES:
 
 
 // ============================================================
-//  SMART TRUNCATION — preserves structure for large tool results
+//  PHASE 3 — SCHEMA-AWARE COMPACTION + PER-USER TOOL CACHE
 // ============================================================
 
 const MAX_RESULT_CHARS = 12000;
+
+// Per-tool projection: whitelist essential fields on list items to shrink payloads
+// before the generic smartTruncateResult ever needs to trim.
+const TOOL_FIELD_PROJECTIONS: Record<string, { arrayKey?: string; fields: string[] }> = {
+  search_clients: { arrayKey: 'clients', fields: ['id', 'first_name', 'last_name', 'primary_email', 'primary_mobile', 'pipeline_status', 'created_at'] },
+  get_clients_by_pipeline_status: { arrayKey: 'clients', fields: ['id', 'first_name', 'last_name', 'primary_email', 'pipeline_status'] },
+  get_clients_needing_follow_up: { arrayKey: 'clients', fields: ['id', 'first_name', 'last_name', 'follow_up_date', 'pipeline_status'] },
+  get_client_deals: { arrayKey: 'deals', fields: ['id', 'stage', 'risk_status', 'settlement_date', 'purchase_price', 'address', 'progress', 'commission_amount'] },
+  get_deals_by_stage: { arrayKey: 'deals', fields: ['id', 'client_id', 'client_name', 'stage', 'settlement_date', 'purchase_price'] },
+  get_deals_by_risk: { arrayKey: 'deals', fields: ['id', 'client_id', 'client_name', 'stage', 'risk_status', 'notes'] },
+  get_stale_deals: { arrayKey: 'deals', fields: ['id', 'client_id', 'client_name', 'stage', 'last_activity_at', 'days_stale'] },
+  get_settlement_countdown: { arrayKey: 'deals', fields: ['id', 'client_name', 'address', 'settlement_date', 'days_remaining'] },
+  get_all_reminders: { arrayKey: 'reminders', fields: ['id', 'title', 'due_date', 'status', 'client_id', 'client_name'] },
+  get_client_reminders: { arrayKey: 'reminders', fields: ['id', 'title', 'due_date', 'status'] },
+  get_overdue_reminders: { arrayKey: 'reminders', fields: ['id', 'title', 'due_date', 'client_id', 'client_name', 'days_overdue'] },
+  get_client_activities: { arrayKey: 'activities', fields: ['id', 'title', 'activity_type', 'created_at', 'description'] },
+  get_recent_activity: { arrayKey: 'activities', fields: ['id', 'title', 'activity_type', 'created_at', 'client_id', 'client_name'] },
+  get_investment_reports: { arrayKey: 'reports', fields: ['id', 'address', 'status', 'created_at', 'investment_score'] },
+  search_reports_by_address: { arrayKey: 'reports', fields: ['id', 'address', 'status', 'created_at', 'investment_score'] },
+  get_portfolio_reviews: { arrayKey: 'reviews', fields: ['id', 'client_id', 'client_name', 'status', 'created_at'] },
+  get_upcoming_calendar: { arrayKey: 'appointments', fields: ['id', 'title', 'startTime', 'endTime', 'contact_name'] },
+  search_calendar_events: { arrayKey: 'appointments', fields: ['id', 'title', 'startTime', 'endTime', 'contact_name'] },
+  get_appointments_for_client: { arrayKey: 'appointments', fields: ['id', 'title', 'startTime', 'endTime'] },
+  get_recent_calls: { arrayKey: 'calls', fields: ['id', 'agent_name', 'customer_name', 'duration_seconds', 'call_outcome', 'sentiment', 'created_at'] },
+  search_calls: { arrayKey: 'calls', fields: ['id', 'agent_name', 'customer_name', 'duration_seconds', 'call_outcome', 'created_at'] },
+  get_flagged_calls: { arrayKey: 'calls', fields: ['id', 'agent_name', 'customer_name', 'escalation_severity', 'sentiment', 'resolution_status'] },
+  search_property_listings: { arrayKey: 'listings', fields: ['id', 'address', 'suburb', 'state', 'price', 'bedrooms', 'bathrooms', 'yield'] },
+  get_recent_listings: { arrayKey: 'listings', fields: ['id', 'address', 'suburb', 'price', 'created_at'] },
+  smart_search: { fields: [] }, // handled generically, but flagged for downstream trimming
+};
+
+function projectItem(item: any, fields: string[]): any {
+  if (!item || typeof item !== 'object' || !fields.length) return item;
+  const out: any = {};
+  for (const f of fields) if (f in item) out[f] = item[f];
+  return out;
+}
+
+function applyToolProjection(name: string, result: any): any {
+  const proj = TOOL_FIELD_PROJECTIONS[name];
+  if (!proj || !proj.fields.length || !result || typeof result !== 'object') return result;
+  const clone: any = { ...result };
+  const keys = proj.arrayKey ? [proj.arrayKey] : Object.keys(result).filter(k => Array.isArray(result[k]));
+  for (const key of keys) {
+    if (Array.isArray(clone[key])) clone[key] = clone[key].map((it: any) => projectItem(it, proj.fields));
+  }
+  return clone;
+}
+
+// ------------------------------------------------------------
+// In-memory tool-result cache (per edge instance).
+// Keyed by user+tool+args-hash. Live tools (calendar/GHL) skip cache.
+// ------------------------------------------------------------
+type CacheEntry = { data: any; expiresAt: number };
+const TOOL_RESULT_CACHE = new Map<string, CacheEntry>();
+const CACHE_MAX_ENTRIES = 500;
+
+// TTL in ms. 0 or missing = do not cache.
+const TOOL_CACHE_TTL_MS: Record<string, number> = {
+  // Fast-refresh dashboards
+  get_dashboard_summary: 30_000,
+  get_pipeline_overview: 30_000,
+  get_notification_summary: 20_000,
+  get_proactive_insights: 60_000,
+  get_recent_activity: 30_000,
+  // Client reads
+  search_clients: 120_000,
+  get_client_details: 60_000,
+  get_client_deals: 60_000,
+  get_client_activities: 60_000,
+  get_client_additional_contacts: 300_000,
+  get_client_notes: 60_000,
+  // Deal reads
+  get_deals_by_stage: 60_000,
+  get_deals_by_risk: 60_000,
+  get_stale_deals: 120_000,
+  get_settlement_countdown: 120_000,
+  get_clawback_monitor: 120_000,
+  get_commission_forecast: 300_000,
+  // Reminders
+  get_all_reminders: 30_000,
+  get_client_reminders: 60_000,
+  get_overdue_reminders: 30_000,
+  // Financial
+  get_borrowing_capacity: 300_000,
+  get_borrowing_capacity_history: 300_000,
+  get_income_sources: 300_000,
+  get_client_expenses: 300_000,
+  get_client_liabilities: 300_000,
+  get_client_assets: 300_000,
+  get_client_properties: 300_000,
+  get_employment_details: 300_000,
+  get_lending_rates: 900_000,
+  compare_lender_rates: 900_000,
+  find_best_rates: 900_000,
+  // Calculators — pure math
+  calculate_stamp_duty: 3_600_000,
+  calculate_lmi: 3_600_000,
+  calculate_loan_repayment: 3_600_000,
+  calculate_rental_yield: 3_600_000,
+  calculate_equity_position: 3_600_000,
+  // Reports / listings (slow to fetch, rarely change)
+  get_investment_reports: 300_000,
+  get_report_details: 600_000,
+  search_reports_by_address: 300_000,
+  get_portfolio_reviews: 300_000,
+  search_property_listings: 300_000,
+  get_recent_listings: 120_000,
+  get_listing_details: 600_000,
+  get_data_sources: 3_600_000,
+  // Admin / config
+  get_branding_profiles: 3_600_000,
+  get_team_members: 600_000,
+  get_user_permissions: 600_000,
+  get_report_templates: 3_600_000,
+  get_agreement_templates: 3_600_000,
+  // Analytics rollups
+  get_pipeline_trends: 300_000,
+  get_revenue_forecast: 300_000,
+  get_top_clients: 300_000,
+  get_performance_metrics: 300_000,
+  get_weekly_digest: 600_000,
+  get_conversion_funnel: 300_000,
+  get_pipeline_velocity: 300_000,
+  get_commission_actuals: 300_000,
+};
+
+function stableStringify(v: any): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+}
+
+function cacheKey(userId: string, name: string, args: any): string {
+  return `${userId}|${name}|${stableStringify(args ?? {})}`;
+}
+
+function cacheGet(key: string): any | undefined {
+  const hit = TOOL_RESULT_CACHE.get(key);
+  if (!hit) return undefined;
+  if (hit.expiresAt < Date.now()) { TOOL_RESULT_CACHE.delete(key); return undefined; }
+  return hit.data;
+}
+
+function cacheSet(key: string, data: any, ttlMs: number): void {
+  if (!ttlMs || ttlMs <= 0) return;
+  if (TOOL_RESULT_CACHE.size >= CACHE_MAX_ENTRIES) {
+    // Simple eviction: drop oldest expired, else oldest inserted
+    const now = Date.now();
+    for (const [k, v] of TOOL_RESULT_CACHE) {
+      if (v.expiresAt < now) TOOL_RESULT_CACHE.delete(k);
+      if (TOOL_RESULT_CACHE.size < CACHE_MAX_ENTRIES) break;
+    }
+    if (TOOL_RESULT_CACHE.size >= CACHE_MAX_ENTRIES) {
+      const firstKey = TOOL_RESULT_CACHE.keys().next().value;
+      if (firstKey) TOOL_RESULT_CACHE.delete(firstKey);
+    }
+  }
+  TOOL_RESULT_CACHE.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
+
+// Broad invalidation after any write: drop this user's cached entries.
+function bustCacheForUser(userId: string): void {
+  const prefix = `${userId}|`;
+  for (const k of TOOL_RESULT_CACHE.keys()) {
+    if (k.startsWith(prefix)) TOOL_RESULT_CACHE.delete(k);
+  }
+}
+
+// Central runner: cache + project + hand back both raw (for logs) and content (for messages)
+async function runToolCached(
+  sb: any,
+  name: string,
+  args: any,
+  userId: string,
+): Promise<{ raw: any; content: string; cached: boolean }> {
+  const ttl = TOOL_CACHE_TTL_MS[name] ?? 0;
+  const isWrite = WRITE_TOOLS.includes(name);
+  let cached = false;
+  let raw: any;
+
+  if (!isWrite && ttl > 0) {
+    const key = cacheKey(userId, name, args);
+    const hit = cacheGet(key);
+    if (hit !== undefined) {
+      raw = hit;
+      cached = true;
+    } else {
+      raw = await executeTool(sb, name, args, userId);
+      // Only cache successful reads
+      if (raw && (raw.success !== false)) cacheSet(key, raw, ttl);
+    }
+  } else {
+    raw = await executeTool(sb, name, args, userId);
+    if (isWrite) bustCacheForUser(userId);
+  }
+
+  const projected = applyToolProjection(name, raw);
+  const content = smartTruncateResult(projected);
+  return { raw, content, cached };
+}
+
+
 
 function smartTruncateResult(result: any): string {
   const raw = JSON.stringify(result);
