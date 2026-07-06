@@ -1253,6 +1253,11 @@ export function AgentChatWidget() {
                         <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Send"><Send className="h-4 w-4" /></Button>
                       )}
                     </div>
+                    {activeTool && (
+                      <p className="text-[10px] text-muted-foreground mt-1.5 text-center flex items-center justify-center gap-1.5">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Running <span className="font-mono">{activeTool}</span>…
+                      </p>
+                    )}
                     <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes • 📎 Up to 5 files (50MB each)</p>
                   </div>
                 </div>
