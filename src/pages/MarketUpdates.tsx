@@ -609,31 +609,43 @@ export default function MarketUpdates() {
         </Dialog>
 
         {/* Q&A Dialog */}
-        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); } }}>
+        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); setQaThread([]); } }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ask AI about this update</DialogTitle>
               <p className="text-xs text-muted-foreground">{qaUpdate?.title}</p>
             </DialogHeader>
             <div className="space-y-3">
-              <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
-              <Button onClick={handleAsk} className="w-full"><Sparkles className="mr-2 h-4 w-4" />Ask safely</Button>
-              {qaMessage && (
-                <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-                  <p className="text-sm">{qaMessage.content}</p>
-                  {qaMessage.citations.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {qaMessage.citations.map((url, i) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {i + 1}</a>
-                      ))}
+              {qaThread.length > 0 && (
+                <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
+                  {qaThread.map((turn, i) => (
+                    <div key={i} className={cn('rounded-md p-2 text-sm', turn.role === 'user' ? 'bg-primary/10' : 'bg-background/70 border border-border/60')}>
+                      <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                      <p className="whitespace-pre-wrap">{turn.content}</p>
+                      {turn.citations && turn.citations.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {turn.citations.map((url, j) => (
+                            <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {j + 1}</a>
+                          ))}
+                        </div>
+                      )}
+                      {turn.limitations && turn.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{turn.limitations.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                     </div>
-                  )}
-                  {qaMessage.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{qaMessage.limitations.map((l, i) => <li key={i}>{l}</li>)}</ul>}
+                  ))}
+                  {asking && <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Thinking…</div>}
                 </div>
               )}
+              <Textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleQuestionKeyDown} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
+              <div className="flex gap-2">
+                <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
+                <Button onClick={handleAsk} className="flex-1" disabled={asking || !question.trim()}>
+                  {asking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Asking…</> : <><Sparkles className="mr-2 h-4 w-4" />Ask safely</>}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
+
         <MarketSourcesAdminDialog open={sourcesAdminOpen} onOpenChange={setSourcesAdminOpen} onChanged={loadUpdates} />
       </div>
     </main>
