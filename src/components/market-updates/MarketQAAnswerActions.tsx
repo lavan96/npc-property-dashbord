@@ -4,7 +4,8 @@
  * a used/considered badge so the user can audit the grounding.
  */
 import { useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLink } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink, Share2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { MarketQARetrievedItem } from '@/types/marketUpdates';
@@ -19,6 +20,7 @@ interface Props {
 export function MarketQAAnswerActions({ content, retrieved = [], questionId, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -31,14 +33,23 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
     }
   };
 
-  const handleCopyLink = async () => {
-    if (!questionId) return;
-    const url = `${window.location.origin}/qa/market/${questionId}`;
+  const handleShare = async () => {
+    if (!questionId || sharing) return;
+    setSharing(true);
     try {
+      const { data, error } = await supabase.functions.invoke('market-qa-share', {
+        body: { action: 'create', question_id: questionId },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error ?? error?.message ?? 'Share failed');
+      const slug = (data as any)?.share?.slug;
+      if (!slug) throw new Error('No slug returned');
+      const url = `${window.location.origin}/qa/market/${slug}`;
       await navigator.clipboard.writeText(url);
-      toast.success('Reference id copied');
-    } catch {
-      toast.error('Copy failed');
+      toast.success('Public share link copied');
+    } catch (err) {
+      toast.error(String((err as Error).message));
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -61,11 +72,13 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
         {questionId && (
           <button
             type="button"
-            onClick={handleCopyLink}
-            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-muted-foreground hover:border-primary/40 hover:text-primary"
-            title="Copy reference id"
+            onClick={handleShare}
+            disabled={sharing}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-50"
+            title="Create a public shareable link"
           >
-            <Copy className="h-2.5 w-2.5" />Ref
+            {sharing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Share2 className="h-2.5 w-2.5" />}
+            Share
           </button>
         )}
         {total > 0 && (

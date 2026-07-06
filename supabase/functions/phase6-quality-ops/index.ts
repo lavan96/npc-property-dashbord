@@ -27,6 +27,16 @@ Deno.serve(async (req) => {
   if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
   const userId = auth.userId as string;
 
+  // Superadmin gate — baselines are org-wide quality artefacts
+  const { data: roleRow } = await sb
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .in('role', ['superadmin', 'admin'])
+    .maybeSingle();
+  if (!roleRow) return json({ error: 'forbidden' }, 403);
+
+
   const action = body?.action ?? '';
 
   try {
