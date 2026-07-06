@@ -838,5 +838,3 @@ verify_jwt = false
 # a period digest. Auth is enforced in-function (Authorization required OR cron secret).
 verify_jwt = false
 
-[functions.market-updates-qa">
-verify_jwt = true
