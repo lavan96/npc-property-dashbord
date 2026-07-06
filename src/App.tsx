@@ -72,6 +72,7 @@ import BcSegmentEngineAdmin from "./pages/admin/BcSegmentEngineAdmin";
 import PdfImportDiagnostics from "./pages/admin/PdfImportDiagnostics";
 import TemplateImportQuality from "./pages/admin/TemplateImportQuality";
 import PdfGoldenRegression from "./pages/admin/PdfGoldenRegression";
+import MarketQAQuality from "./pages/admin/MarketQAQuality";
 import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
 
 import Integrations from "./pages/Integrations";
