@@ -215,6 +215,8 @@ export default function MarketUpdates() {
           time_horizon: answer?.time_horizon,
           sentiment: answer?.sentiment,
           confidence_score: answer?.confidence_score,
+          retrieved: answer?.retrieved ?? [],
+          question_id: answer?.question_id ?? null,
           streaming: false,
         };
         return next;
