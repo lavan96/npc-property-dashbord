@@ -31,26 +31,20 @@ export function MemoryCitations({ messageId, memories, defaultOpen = false }: Pr
   if (!memories?.length) return null;
 
   const submitFeedback = async (memoryId: string, rating: 1 | -1) => {
-    if (pending[memoryId]) return;
+    if (pending[memoryId] || ratings[memoryId] === rating) return;
     const previous = ratings[memoryId] ?? null;
-    const next: RatingState = previous === rating ? null : rating;
-    // Optimistic
-    setRatings(prev => ({ ...prev, [memoryId]: next }));
+    setRatings(prev => ({ ...prev, [memoryId]: rating }));
     setPending(prev => ({ ...prev, [memoryId]: true }));
     try {
-      // Sending the toggled rating; when "unrating" we still record the last chosen
-      // rating server-side (server treats it as an upsert). We approximate an
-      // unrate as the opposite vote; keep it simple by sending the tap value only.
-      const sendRating = next ?? -rating as 1 | -1;
       const res = await invokeSecureFunction('ai-dashboard-agent', {
         action: 'memory-feedback',
         memory_id: memoryId,
         message_id: messageId,
-        rating: sendRating,
+        rating,
       });
       if (!res.data?.success) throw new Error(res.data?.error || 'Feedback failed');
-      if (next === 1) toast.success('Thanks — I\'ll surface this more often.');
-      else if (next === -1) toast.success('Noted — I\'ll rely on this less.');
+      if (rating === 1) toast.success('Thanks — I\'ll surface this more often.');
+      else toast.success('Noted — I\'ll rely on this less.');
     } catch (err: any) {
       setRatings(prev => ({ ...prev, [memoryId]: previous }));
       toast.error(err?.message || 'Could not save feedback');
