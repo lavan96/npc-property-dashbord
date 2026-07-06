@@ -74,6 +74,9 @@ import TemplateImportQuality from "./pages/admin/TemplateImportQuality";
 import PdfGoldenRegression from "./pages/admin/PdfGoldenRegression";
 import MarketQAQuality from "./pages/admin/MarketQAQuality";
 import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
+import AgentQuality from "./pages/admin/AgentQuality";
+import AgentMemoryManager from "./pages/agent/MemoryManager";
+import AgentInsights from "./pages/agent/AgentInsights";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
@@ -344,6 +347,9 @@ const App = () => (
                 <Route path="admin/market-qa-quality" element={<ModuleGuard moduleKey="activity_logs"><MarketQAQuality /></ModuleGuard>} />
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
                 <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
+                <Route path="admin/agent-quality" element={<AgentQuality />} />
+                <Route path="agent/memories" element={<AgentMemoryManager />} />
+                <Route path="agent-insights" element={<AgentInsights />} />
 
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />

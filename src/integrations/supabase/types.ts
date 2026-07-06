@@ -475,6 +475,107 @@ export type Database = {
           },
         ]
       }
+      agent_eval_runs: {
+        Row: {
+          created_at: string
+          error: string | null
+          eval_id: string
+          grader_reasoning: string | null
+          id: string
+          latency_ms: number | null
+          model: string | null
+          passed: boolean | null
+          response_text: string | null
+          score: number | null
+          tool_calls_used: string[]
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          eval_id: string
+          grader_reasoning?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          passed?: boolean | null
+          response_text?: string | null
+          score?: number | null
+          tool_calls_used?: string[]
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          eval_id?: string
+          grader_reasoning?: string | null
+          id?: string
+          latency_ms?: number | null
+          model?: string | null
+          passed?: boolean | null
+          response_text?: string | null
+          score?: number | null
+          tool_calls_used?: string[]
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_eval_runs_eval_id_fkey"
+            columns: ["eval_id"]
+            isOneToOne: false
+            referencedRelation: "agent_evals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_evals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expected_contains: string[]
+          expected_not_contains: string[]
+          expected_tools: string[]
+          grader_prompt: string | null
+          id: string
+          is_enabled: boolean
+          name: string
+          prompt: string
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_contains?: string[]
+          expected_not_contains?: string[]
+          expected_tools?: string[]
+          grader_prompt?: string | null
+          id?: string
+          is_enabled?: boolean
+          name: string
+          prompt: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expected_contains?: string[]
+          expected_not_contains?: string[]
+          expected_tools?: string[]
+          grader_prompt?: string | null
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          prompt?: string
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       agent_file_uploads: {
         Row: {
           conversation_id: string | null
@@ -547,6 +648,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      agent_insights_feed: {
+        Row: {
+          acted_on_at: string | null
+          body_markdown: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_dismissed: boolean
+          is_read: boolean
+          kind: string
+          payload: Json
+          related_conversation_id: string | null
+          severity: string
+          source: string
+          summary: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          acted_on_at?: string | null
+          body_markdown?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_dismissed?: boolean
+          is_read?: boolean
+          kind?: string
+          payload?: Json
+          related_conversation_id?: string | null
+          severity?: string
+          source?: string
+          summary?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          acted_on_at?: string | null
+          body_markdown?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_dismissed?: boolean
+          is_read?: boolean
+          kind?: string
+          payload?: Json
+          related_conversation_id?: string | null
+          severity?: string
+          source?: string
+          summary?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       agent_memory_feedback: {
         Row: {
@@ -886,6 +1041,60 @@ export type Database = {
           updated_at?: string
           use_count?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      agent_skills: {
+        Row: {
+          allowed_tools: string[]
+          created_at: string
+          default_model: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_enabled: boolean
+          is_public: boolean
+          last_run_at: string | null
+          name: string
+          run_count: number
+          slug: string
+          system_prompt: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          allowed_tools?: string[]
+          created_at?: string
+          default_model?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_enabled?: boolean
+          is_public?: boolean
+          last_run_at?: string | null
+          name: string
+          run_count?: number
+          slug: string
+          system_prompt: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          allowed_tools?: string[]
+          created_at?: string
+          default_model?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_enabled?: boolean
+          is_public?: boolean
+          last_run_at?: string | null
+          name?: string
+          run_count?: number
+          slug?: string
+          system_prompt?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
