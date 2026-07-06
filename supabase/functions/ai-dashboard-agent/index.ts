@@ -6584,8 +6584,46 @@ async function saveSemanticMemory(
     console.warn('[semantic-memory] save error', error.message);
     return { success: false, error: error.message };
   }
+  // Fire-and-forget pruning to keep this user's memory store bounded
+  pruneUserMemories(sb, userId).catch(() => {});
   return { success: true, id: data?.id, deduped: false };
 }
+
+// Per-user quota (kept in sync with prune_agent_memories default; overridable per-user later)
+const DEFAULT_MEMORY_QUOTA = 500;
+
+async function pruneUserMemories(sb: any, userId: string, maxItems = DEFAULT_MEMORY_QUOTA): Promise<number> {
+  try {
+    const { data, error } = await sb.rpc('prune_agent_memories', { p_user_id: userId, p_max: maxItems });
+    if (error) { console.warn('[semantic-memory] prune error', error.message); return 0; }
+    const n = typeof data === 'number' ? data : 0;
+    if (n > 0) console.log(`[semantic-memory] pruned ${n} memories for user ${userId}`);
+    return n;
+  } catch (e) {
+    console.warn('[semantic-memory] prune exception', (e as any)?.message);
+    return 0;
+  }
+}
+
+// Record thumbs up/down on a memory used in an assistant answer
+async function recordMemoryFeedback(
+  sb: any,
+  userId: string,
+  memoryId: string,
+  rating: 1 | -1,
+  messageId?: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  if (!memoryId || (rating !== 1 && rating !== -1)) return { success: false, error: 'invalid_args' };
+  const { error } = await sb.from('agent_memory_feedback').upsert({
+    memory_id: memoryId,
+    user_id: userId,
+    message_id: messageId || null,
+    rating,
+  }, { onConflict: 'memory_id,user_id,message_id' });
+  if (error) { console.warn('[semantic-memory] feedback error', error.message); return { success: false, error: error.message }; }
+  return { success: true };
+}
+
 
 // Tool executors
 async function executeSaveSemanticMemory(sb: any, args: any, userId: string, conversation_id?: string) {
