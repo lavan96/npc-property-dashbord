@@ -8280,14 +8280,19 @@ async function handleChatStream(
       }
 
       // Persist assistant message (partial on abort, full otherwise).
+      const recalledIds = semanticMemories.map((m: any) => m.id).filter(Boolean);
       try {
         if (pendingConfirmation) {
           await sb.from('agent_messages').insert({
             conversation_id, role: 'assistant', content: finalResponse,
             tool_calls: pendingToolCalls, requires_confirmation: true, confirmation_status: 'pending',
+            recalled_memory_ids: recalledIds,
           });
         } else if (finalResponse.length > 0) {
-          await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+          await sb.from('agent_messages').insert({
+            conversation_id, role: 'assistant', content: finalResponse,
+            recalled_memory_ids: recalledIds,
+          });
           // Phase 4: fire-and-forget auto-capture of durable memories (skip on abort/empty)
           if (!aborted) autoCaptureMemory(sb, userId, conversation_id, message, finalResponse).catch(() => {});
         }
