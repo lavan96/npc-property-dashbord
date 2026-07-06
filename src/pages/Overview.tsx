@@ -774,8 +774,8 @@ export default function Overview() {
                     dataKey="count"
                     stroke={OVERVIEW_CHART_COLORS.brand}
                     strokeWidth={isMobile ? 2 : 3}
-                    dot={isMobile ? false : { fill: OVERVIEW_CHART_COLORS.brand, stroke: 'rgba(15,13,22,0.98)', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: isMobile ? 5 : 7, fill: OVERVIEW_CHART_COLORS.positive, stroke: 'rgba(15,13,22,0.98)', strokeWidth: 2 }}
+                    dot={isMobile ? false : { fill: OVERVIEW_CHART_COLORS.brand, stroke: OVERVIEW_CHART_COLORS.dotStroke, strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: isMobile ? 5 : 7, fill: OVERVIEW_CHART_COLORS.positive, stroke: OVERVIEW_CHART_COLORS.dotStroke, strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
