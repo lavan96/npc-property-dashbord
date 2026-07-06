@@ -4,7 +4,7 @@
  * a used/considered badge so the user can audit the grounding.
  */
 import { useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLink, Share2 } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { MarketQARetrievedItem } from '@/types/marketUpdates';
