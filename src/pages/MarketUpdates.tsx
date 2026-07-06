@@ -15,6 +15,8 @@ import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceH
 import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
 import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSourcesAdminDialog';
 import { MarketQAVoiceButton } from '@/components/market-updates/MarketQAVoiceButton';
+import { MarketQAAnswerActions } from '@/components/market-updates/MarketQAAnswerActions';
+import type { MarketQARetrievedItem } from '@/types/marketUpdates';
 
 const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
   { id: '24h', label: '24 Hours', hint: 'Last day' },
@@ -102,7 +104,7 @@ export default function MarketUpdates() {
   const [qaUpdate, setQaUpdate] = useState<MarketUpdate | null>(null);
   const [question, setQuestion] = useState('');
   const [qaMessage, setQaMessage] = useState<MarketQAMessage | null>(null);
-  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[]; follow_up_questions?: string[]; key_figures?: Array<{ label: string; value: string; source_id?: string }>; time_horizon?: string; sentiment?: string; confidence_score?: number | null; streaming?: boolean }>>([]);
+  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[]; follow_up_questions?: string[]; key_figures?: Array<{ label: string; value: string; source_id?: string }>; time_horizon?: string; sentiment?: string; confidence_score?: number | null; streaming?: boolean; retrieved?: MarketQARetrievedItem[]; question_id?: string | null }>>([]);
   const [asking, setAsking] = useState(false);
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
   const [dialogConversationId, setDialogConversationId] = useState<string>(() => crypto.randomUUID());
@@ -213,6 +215,8 @@ export default function MarketUpdates() {
           time_horizon: answer?.time_horizon,
           sentiment: answer?.sentiment,
           confidence_score: answer?.confidence_score,
+          retrieved: answer?.retrieved ?? [],
+          question_id: answer?.question_id ?? null,
           streaming: false,
         };
         return next;
@@ -596,6 +600,9 @@ export default function MarketUpdates() {
                             {turn.limitations.map((l, j) => <li key={j}>{l}</li>)}
                           </ul>
                         )}
+                        {turn.role === 'assistant' && !turn.streaming && (
+                          <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} compact />
+                        )}
                       </div>
                     ))}
                     {asking && (
@@ -724,6 +731,9 @@ export default function MarketUpdates() {
                         </div>
                       )}
                       {turn.limitations && turn.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{turn.limitations.map((l, j) => <li key={j}>{l}</li>)}</ul>}
+                      {turn.role === 'assistant' && !turn.streaming && (
+                        <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} />
+                      )}
                     </div>
                   ))}
                   {asking && <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Thinking…</div>}

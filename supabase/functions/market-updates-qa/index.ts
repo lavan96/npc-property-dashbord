@@ -192,6 +192,9 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+const RATE_LIMIT_HOUR = Number(Deno.env.get('MARKET_QA_RATE_LIMIT_HOUR') || 30);
+const RATE_LIMIT_DAY = Number(Deno.env.get('MARKET_QA_RATE_LIMIT_DAY') || 200);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   const auth = req.headers.get('authorization');
@@ -205,6 +208,15 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     auth ? { global: { headers: { Authorization: auth } } } : {},
   );
+
+  // Resolve caller identity for rate limiting + attribution.
+  let userId: string | null = null;
+  if (auth) {
+    try {
+      const { data: u } = await sb.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
+      userId = u?.user?.id ?? null;
+    } catch { /* ignore */ }
+  }
 
   const payload = await req.json().catch(() => ({}));
   const question = String(payload?.question ?? '').trim();
@@ -224,7 +236,27 @@ Deno.serve(async (req) => {
       answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0,
       limitations: ['A specific question is required.'],
       follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
+      retrieved: [], question_id: null,
     });
+  }
+
+  // Rate limiting — per authenticated user.
+  if (userId) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+    const [{ count: hourCount }, { count: dayCount }] = await Promise.all([
+      sb.from('market_update_questions').select('id', { count: 'exact', head: true }).eq('created_by', userId).gte('created_at', oneHourAgo),
+      sb.from('market_update_questions').select('id', { count: 'exact', head: true }).eq('created_by', userId).gte('created_at', oneDayAgo),
+    ]);
+    if ((hourCount ?? 0) >= RATE_LIMIT_HOUR || (dayCount ?? 0) >= RATE_LIMIT_DAY) {
+      return json({
+        answer: `You have reached the Market Q&A rate limit (${RATE_LIMIT_HOUR}/hour, ${RATE_LIMIT_DAY}/day). Please wait and try again.`,
+        citations: [], source_update_ids: [], confidence_score: 0,
+        limitations: ['Rate limit exceeded — protects the shared model budget.'],
+        follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
+        retrieved: [], question_id: null, rate_limited: true,
+      }, 429);
+    }
   }
 
   const terms = pickTerms(question);
@@ -331,8 +363,20 @@ Deno.serve(async (req) => {
       .flatMap(c => [...(c.citation_urls ?? []), c.source_url].filter(Boolean))
   ));
 
-  // Persist turn (async, non-blocking to response path).
-  const persistPromise = sb.from('market_update_questions').insert({
+  // Transparency: every retrieved item flagged as used or considered-only.
+  const usedSet = new Set(used_ids);
+  const retrieved = context.map(c => ({
+    id: c.id,
+    title: c.title,
+    source_name: c.source_name,
+    source_url: c.source_url,
+    source_published_at: c.source_published_at ?? null,
+    impact_level: c.impact_level ?? null,
+    used: usedSet.has(c.id),
+  }));
+
+  // Persist turn and capture inserted row id for "Share answer" affordance.
+  const insertRow = {
     question, answer,
     source_update_ids: used_ids,
     citation_urls: citations,
@@ -343,7 +387,18 @@ Deno.serve(async (req) => {
     time_horizon,
     sentiment,
     model_used: model,
-  }).then(({ error: e }: any) => { if (e) console.warn('[qa] log insert', e.message); });
+    created_by: userId,
+  };
+  const persistPromise = sb.from('market_update_questions').insert(insertRow).select('id').maybeSingle()
+    .then((res: any) => { if (res?.error) console.warn('[qa] log insert', res.error.message); return res?.data?.id ?? null; });
+
+  let question_id: string | null = null;
+  if (!stream) {
+    question_id = await persistPromise.catch(() => null);
+  } else {
+    // Kick off but don't block streaming; question_id will be inlined in metadata if it lands in time.
+    persistPromise.catch(() => null);
+  }
 
   const finalPayload = {
     answer,
@@ -358,16 +413,23 @@ Deno.serve(async (req) => {
     model_used: model,
     context_size: context.length,
     conversation_id,
+    retrieved,
+    question_id,
   };
 
+
   if (!stream) {
-    await persistPromise;
     return json(finalPayload);
   }
+
+  // Await persistence so metadata can include question_id (used by "Share answer").
+  const pid = await persistPromise.catch(() => null);
+  const streamPayload = { ...finalPayload, question_id: pid };
 
   // SSE streaming: chunk answer word-by-word for progressive typewriter UI.
   const encoder = new TextEncoder();
   const words = answer.split(/(\s+)/);
+
   const body = new ReadableStream({
     async start(controller) {
       try {
@@ -378,7 +440,7 @@ Deno.serve(async (req) => {
           controller.enqueue(encoder.encode(sseEvent('delta', { text: w, acc })));
           await new Promise(r => setTimeout(r, 12));
         }
-        controller.enqueue(encoder.encode(sseEvent('metadata', finalPayload)));
+        controller.enqueue(encoder.encode(sseEvent('metadata', streamPayload)));
         controller.enqueue(encoder.encode(sseEvent('done', { ok: true })));
       } catch (e) {
         controller.enqueue(encoder.encode(sseEvent('error', { message: (e as Error).message })));
@@ -387,10 +449,9 @@ Deno.serve(async (req) => {
       }
     },
   });
-  // fire-and-forget persistence
-  persistPromise.catch(() => {});
   return new Response(body, {
     headers: { ...cors, 'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'x-accel-buffering': 'no' },
   });
 });
+
 
