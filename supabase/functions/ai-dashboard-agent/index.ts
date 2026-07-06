@@ -8226,6 +8226,8 @@ async function handleChatStream(
           });
         } else if (finalResponse.length > 0) {
           await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+          // Phase 4: fire-and-forget auto-capture of durable memories (skip on abort/empty)
+          if (!aborted) autoCaptureMemory(sb, userId, conversation_id, message, finalResponse).catch(() => {});
         }
       } catch (persistErr) {
         console.error('[ai-dashboard-agent] Failed to persist assistant message:', persistErr);
