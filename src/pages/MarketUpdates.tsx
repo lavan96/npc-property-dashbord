@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest, triggerMarketIngestion } from '@/services/marketUpdatesService';
 import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
+import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSourcesAdminDialog';
 
 const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
   { id: '24h', label: '24 Hours', hint: 'Last day' },
