@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest, triggerMarketIngestion } from '@/services/marketUpdatesService';
+import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest, streamMarketUpdateQuestion, triggerMarketIngestion } from '@/services/marketUpdatesService';
 import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
 import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSourcesAdminDialog';
 import { MarketQAVoiceButton } from '@/components/market-updates/MarketQAVoiceButton';
@@ -102,8 +102,10 @@ export default function MarketUpdates() {
   const [qaUpdate, setQaUpdate] = useState<MarketUpdate | null>(null);
   const [question, setQuestion] = useState('');
   const [qaMessage, setQaMessage] = useState<MarketQAMessage | null>(null);
-  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[]; follow_up_questions?: string[]; key_figures?: Array<{ label: string; value: string; source_id?: string }>; time_horizon?: string; sentiment?: string; confidence_score?: number | null }>>([]);
+  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[]; follow_up_questions?: string[]; key_figures?: Array<{ label: string; value: string; source_id?: string }>; time_horizon?: string; sentiment?: string; confidence_score?: number | null; streaming?: boolean }>>([]);
   const [asking, setAsking] = useState(false);
+  const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID());
+  const [dialogConversationId, setDialogConversationId] = useState<string>(() => crypto.randomUUID());
   const [search, setSearch] = useState('');
   const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
   const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
@@ -178,29 +180,54 @@ export default function MarketUpdates() {
     if (!q || asking) return;
     setAsking(true);
     const priorHistory = qaThread.map((t) => ({ role: t.role, content: t.content }));
-    setQaThread((t) => [...t, { role: 'user', content: q }]);
+    const inDialog = Boolean(qaUpdate);
+    const convId = inDialog ? dialogConversationId : conversationId;
+    setQaThread((t) => [...t, { role: 'user', content: q }, { role: 'assistant', content: '', streaming: true }]);
     setQuestion('');
     try {
       const seg = activeSegment !== 'all' ? activeSegment : undefined;
-      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined, priorHistory, seg);
+      const answer = await streamMarketUpdateQuestion(q, {
+        updateIds: qaUpdate ? [qaUpdate.id] : undefined,
+        history: priorHistory,
+        segment: seg,
+        conversation_id: convId,
+        onDelta: (acc) => {
+          setQaThread((t) => {
+            const next = [...t];
+            const last = next[next.length - 1];
+            if (last?.role === 'assistant') next[next.length - 1] = { ...last, content: acc };
+            return next;
+          });
+        },
+      });
       setQaMessage(answer);
-      setQaThread((t) => [...t, {
-        role: 'assistant',
-        content: answer?.content ?? 'No response.',
-        citations: answer?.citations ?? [],
-        limitations: answer?.limitations ?? [],
-        follow_up_questions: answer?.follow_up_questions ?? [],
-        key_figures: answer?.key_figures ?? [],
-        time_horizon: answer?.time_horizon,
-        sentiment: answer?.sentiment,
-        confidence_score: answer?.confidence_score,
-      }]);
+      setQaThread((t) => {
+        const next = [...t];
+        next[next.length - 1] = {
+          role: 'assistant',
+          content: answer?.content ?? 'No response.',
+          citations: answer?.citations ?? [],
+          limitations: answer?.limitations ?? [],
+          follow_up_questions: answer?.follow_up_questions ?? [],
+          key_figures: answer?.key_figures ?? [],
+          time_horizon: answer?.time_horizon,
+          sentiment: answer?.sentiment,
+          confidence_score: answer?.confidence_score,
+          streaming: false,
+        };
+        return next;
+      });
     } catch (err) {
-      setQaThread((t) => [...t, { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.' }]);
+      setQaThread((t) => {
+        const next = [...t];
+        next[next.length - 1] = { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.', streaming: false };
+        return next;
+      });
     } finally {
       setAsking(false);
     }
   };
+
 
   const handleFollowUp = (q: string) => { setQuestion(q); void handleAsk(q); };
 
@@ -461,7 +488,7 @@ export default function MarketUpdates() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
                     <Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQaThread([]); setQuestion(''); }}>Ask AI</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQaThread([]); setQuestion(''); setDialogConversationId(crypto.randomUUID()); }}>Ask AI</Button>
                     <div className="ml-auto flex flex-wrap items-center gap-1">
                       {update.citation_urls.slice(0, 3).map((url, i) => (
                         <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
@@ -515,9 +542,16 @@ export default function MarketUpdates() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle>
+                  {qaThread.length > 0 && (
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => { setQaThread([]); setQaMessage(null); setConversationId(crypto.randomUUID()); }}>New thread</Button>
+                  )}
+                </div>
+              </CardHeader>
               <CardContent className="space-y-2">
-                <p className="text-xs text-muted-foreground">Source-grounded answers from published market updates only.</p>
+                <p className="text-xs text-muted-foreground">Source-grounded, streaming answers from published market updates. Threaded — follow-ups keep prior context.</p>
                 {qaThread.length > 0 && (
                   <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
                     {qaThread.map((turn, i) => (
@@ -647,7 +681,7 @@ export default function MarketUpdates() {
         </Dialog>
 
         {/* Q&A Dialog */}
-        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); setQaThread([]); } }}>
+        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); setQaThread([]); setDialogConversationId(crypto.randomUUID()); } }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ask AI about this update</DialogTitle>

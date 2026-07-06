@@ -135,9 +135,10 @@ export async function answerMarketUpdateQuestion(
   updateIds?: string[],
   history?: Array<{ role: 'user' | 'assistant'; content: string }>,
   segment?: string,
+  conversation_id?: string | null,
 ): Promise<MarketQAMessage> {
   try {
-    const { data, error } = await db.functions.invoke('market-updates-qa', { body: { question, updateIds, history, segment } });
+    const { data, error } = await db.functions.invoke('market-updates-qa', { body: { question, updateIds, history, segment, conversation_id } });
     if (error) throw error;
     return {
       id: crypto.randomUUID(),
@@ -159,3 +160,91 @@ export async function answerMarketUpdateQuestion(
     return { id: crypto.randomUUID(), role:'assistant', content:'I do not have enough sourced market updates to answer that yet.', citations:[], source_update_ids:[], confidence_score:0, limitations:['Market Q&A only answers from published, source-backed market updates.'], created_at:new Date().toISOString(), follow_up_questions: [], key_figures: [] };
   }
 }
+
+/** SSE-streaming variant. `onDelta` receives the accumulated answer text as it streams.
+ *  Returns the final assistant message once the stream completes. */
+export async function streamMarketUpdateQuestion(
+  question: string,
+  opts: {
+    updateIds?: string[];
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    segment?: string;
+    conversation_id?: string | null;
+    onDelta?: (acc: string) => void;
+    signal?: AbortSignal;
+  } = {},
+): Promise<MarketQAMessage> {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/market-updates-qa`;
+  const session = (await supabase.auth.getSession()).data.session;
+  const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      signal: opts.signal,
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+      },
+      body: JSON.stringify({
+        question,
+        updateIds: opts.updateIds,
+        history: opts.history,
+        segment: opts.segment,
+        conversation_id: opts.conversation_id,
+        stream: true,
+      }),
+    });
+    if (!res.ok || !res.body) throw new Error(`Stream failed (${res.status})`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let metadata: any = null;
+    let acc = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split('\n\n');
+      buffer = frames.pop() ?? '';
+      for (const frame of frames) {
+        const lines = frame.split('\n');
+        let event = 'message';
+        let data = '';
+        for (const line of lines) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        }
+        if (!data) continue;
+        try {
+          const parsed = JSON.parse(data);
+          if (event === 'delta') {
+            acc = parsed.acc ?? (acc + (parsed.text ?? ''));
+            opts.onDelta?.(acc);
+          } else if (event === 'metadata') {
+            metadata = parsed;
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+    return {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: metadata?.answer ?? acc,
+      citations: safeArray(metadata?.citations),
+      source_update_ids: safeArray(metadata?.source_update_ids),
+      confidence_score: metadata?.confidence_score,
+      limitations: safeArray(metadata?.limitations),
+      created_at: new Date().toISOString(),
+      follow_up_questions: safeArray(metadata?.follow_up_questions),
+      key_figures: Array.isArray(metadata?.key_figures) ? metadata.key_figures : [],
+      time_horizon: metadata?.time_horizon,
+      sentiment: metadata?.sentiment,
+      model_used: metadata?.model_used,
+    };
+  } catch (e) {
+    warnMissing('Market Q&A streaming failed; falling back to non-streaming.', e);
+    return answerMarketUpdateQuestion(question, opts.updateIds, opts.history, opts.segment, opts.conversation_id);
+  }
+}
+

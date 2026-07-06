@@ -1,4 +1,5 @@
 # Market Updates AI Q&A — Phased Upgrade Plan
+Status: Phases 1–4 shipped. Phase 5 remaining.
 
 ## Diagnosis (current state)
 - The inline Q&A textarea in `src/pages/MarketUpdates.tsx` is bound to a Textarea that is **disabled whenever `updates.length === 0`** and the "Ask safely" button additionally requires `question.trim()`. When the loaded filter returns zero published updates, the input goes read-only — that's the "can't type" symptom.

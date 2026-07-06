@@ -12429,31 +12429,49 @@ export type Database = {
           answer: string
           citation_urls: Json
           confidence_score: number | null
+          conversation_id: string | null
           created_at: string
           created_by: string | null
+          follow_up_questions: Json
           id: string
+          key_figures: Json
+          model_used: string | null
           question: string
+          sentiment: string | null
           source_update_ids: Json
+          time_horizon: string | null
         }
         Insert: {
           answer: string
           citation_urls?: Json
           confidence_score?: number | null
+          conversation_id?: string | null
           created_at?: string
           created_by?: string | null
+          follow_up_questions?: Json
           id?: string
+          key_figures?: Json
+          model_used?: string | null
           question: string
+          sentiment?: string | null
           source_update_ids?: Json
+          time_horizon?: string | null
         }
         Update: {
           answer?: string
           citation_urls?: Json
           confidence_score?: number | null
+          conversation_id?: string | null
           created_at?: string
           created_by?: string | null
+          follow_up_questions?: Json
           id?: string
+          key_figures?: Json
+          model_used?: string | null
           question?: string
+          sentiment?: string | null
           source_update_ids?: Json
+          time_horizon?: string | null
         }
         Relationships: []
       }

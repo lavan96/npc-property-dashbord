@@ -188,6 +188,10 @@ STRICT RULES:
   }
 }
 
+function sseEvent(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   const auth = req.headers.get('authorization');
@@ -206,6 +210,8 @@ Deno.serve(async (req) => {
   const question = String(payload?.question ?? '').trim();
   const updateIds: string[] = Array.isArray(payload?.updateIds) ? payload.updateIds : [];
   const segment: string | undefined = payload?.segment;
+  const stream: boolean = Boolean(payload?.stream);
+  const conversation_id: string | null = typeof payload?.conversation_id === 'string' ? payload.conversation_id : null;
   const history: HistoryTurn[] = Array.isArray(payload?.history)
     ? payload.history
         .filter((h: any) => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
@@ -222,6 +228,19 @@ Deno.serve(async (req) => {
   }
 
   const terms = pickTerms(question);
+
+  // Anchor ids from prior turns in the same conversation — retrieval boost + inclusion.
+  let anchorIds: string[] = [];
+  if (conversation_id) {
+    const { data: prior } = await sb.from('market_update_questions')
+      .select('source_update_ids')
+      .eq('conversation_id', conversation_id)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if (prior) {
+      anchorIds = Array.from(new Set(prior.flatMap((p: any) => Array.isArray(p.source_update_ids) ? p.source_update_ids : []))).slice(0, 8);
+    }
+  }
 
   // Candidate retrieval — larger pool for hybrid rerank.
   let q = sb.from('market_updates')
@@ -248,12 +267,30 @@ Deno.serve(async (req) => {
     data = fallback.data ?? [];
   }
 
+  // Ensure anchor updates are always in the pool.
+  if (anchorIds.length) {
+    const existing = new Set((data ?? []).map((r: any) => r.id));
+    const missing = anchorIds.filter(id => !existing.has(id));
+    if (missing.length) {
+      const anchorRows = await sb.from('market_updates')
+        .select('id,title,source_name,source_url,source_published_at,category,segments,geography,impact_level,ai_summary,why_it_matters,key_points,citation_urls')
+        .in('id', missing);
+      data = [...(data ?? []), ...(anchorRows.data ?? [])];
+    }
+  }
+
   if (error) {
     console.warn('[qa] retrieval error', error.message);
     return json({ answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0, limitations: ['Retrieval error.'], follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral' });
   }
 
-  const context = rankAndTrim((data ?? []) as Ctx[], terms.length ? terms : pickTerms(question), segment);
+  // Boost anchor rows during ranking.
+  const anchorSet = new Set(anchorIds);
+  const raw = (data ?? []) as Ctx[];
+  const preScored = raw.map(r => ({ ...r, __anchor: anchorSet.has(r.id) ? 3 : 0 } as any));
+  const context = rankAndTrim(preScored, terms.length ? terms : pickTerms(question), segment)
+    .sort((a: any, b: any) => (b.__anchor ?? 0) - (a.__anchor ?? 0));
+
   if (!context.length) {
     return json({
       answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0,
@@ -265,7 +302,6 @@ Deno.serve(async (req) => {
   const contextIds = new Set(context.map(c => c.id));
   const model = isComplex(question, history) ? MODEL_DEEP : MODEL_FAST;
   let ai = await callAI(model, question, context, history);
-  // Fallback: if deep model fails, retry with fast model.
   if (!ai && model !== MODEL_FAST) ai = await callAI(MODEL_FAST, question, context, history);
 
   let answer: string, used_ids: string[], confidence: number, limitations: string[];
@@ -295,14 +331,21 @@ Deno.serve(async (req) => {
       .flatMap(c => [...(c.citation_urls ?? []), c.source_url].filter(Boolean))
   ));
 
-  await sb.from('market_update_questions').insert({
+  // Persist turn (async, non-blocking to response path).
+  const persistPromise = sb.from('market_update_questions').insert({
     question, answer,
     source_update_ids: used_ids,
     citation_urls: citations,
     confidence_score: confidence,
+    conversation_id,
+    follow_up_questions,
+    key_figures,
+    time_horizon,
+    sentiment,
+    model_used: model,
   }).then(({ error: e }: any) => { if (e) console.warn('[qa] log insert', e.message); });
 
-  return json({
+  const finalPayload = {
     answer,
     citations,
     source_update_ids: used_ids,
@@ -314,5 +357,40 @@ Deno.serve(async (req) => {
     sentiment,
     model_used: model,
     context_size: context.length,
+    conversation_id,
+  };
+
+  if (!stream) {
+    await persistPromise;
+    return json(finalPayload);
+  }
+
+  // SSE streaming: chunk answer word-by-word for progressive typewriter UI.
+  const encoder = new TextEncoder();
+  const words = answer.split(/(\s+)/);
+  const body = new ReadableStream({
+    async start(controller) {
+      try {
+        controller.enqueue(encoder.encode(sseEvent('start', { model_used: model, context_size: context.length })));
+        let acc = '';
+        for (const w of words) {
+          acc += w;
+          controller.enqueue(encoder.encode(sseEvent('delta', { text: w, acc })));
+          await new Promise(r => setTimeout(r, 12));
+        }
+        controller.enqueue(encoder.encode(sseEvent('metadata', finalPayload)));
+        controller.enqueue(encoder.encode(sseEvent('done', { ok: true })));
+      } catch (e) {
+        controller.enqueue(encoder.encode(sseEvent('error', { message: (e as Error).message })));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  // fire-and-forget persistence
+  persistPromise.catch(() => {});
+  return new Response(body, {
+    headers: { ...cors, 'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'x-accel-buffering': 'no' },
   });
 });
+
