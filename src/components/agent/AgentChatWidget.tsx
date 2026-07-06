@@ -505,6 +505,9 @@ export function AgentChatWidget() {
           if (evt.event === 'token' && evt.data?.delta) {
             accumulated += evt.data.delta;
             setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, content: accumulated } : m));
+          } else if (evt.event === 'memories' && Array.isArray(evt.data?.items)) {
+            const items: RecalledMemory[] = evt.data.items;
+            setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, recalled_memories: items, recalled_memory_ids: items.map(i => i.id) } : m));
           } else if (evt.event === 'tool') {
             if (evt.data?.phase === 'start') setActiveTool(evt.data.name);
             else if (evt.data?.phase === 'end') setActiveTool(null);
