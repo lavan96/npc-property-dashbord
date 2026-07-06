@@ -581,6 +581,7 @@ export default function MarketUpdates() {
             </div>
           </DialogContent>
         </Dialog>
+        <MarketSourcesAdminDialog open={sourcesAdminOpen} onOpenChange={setSourcesAdminOpen} onChanged={loadUpdates} />
       </div>
     </main>
   );
