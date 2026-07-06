@@ -212,7 +212,11 @@ ${item.excerpt ?? "(no excerpt supplied)"}`,
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const secret = Deno.env.get("MARKET_INGESTION_CRON_SECRET");
-  const authorised = secret && req.headers.get("x-cron-secret") === secret;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+  const authorised =
+    (secret && req.headers.get("x-cron-secret") === secret) ||
+    (serviceRoleKey && bearer && bearer === serviceRoleKey);
   if (!authorised) return json({ error: "Unauthorised market ingestion request." }, 401);
 
   const sb = createClient(
