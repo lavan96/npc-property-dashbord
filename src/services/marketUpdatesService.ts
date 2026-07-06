@@ -66,6 +66,40 @@ export async function fetchLatestMarketDigest(period: MarketDigestPeriod = '24h'
 
 export async function fetchMarketSources(): Promise<MarketSource[]> { try { const { data, error } = await db.from('market_sources').select('*').order('name'); if (error) throw error; return data ?? []; } catch (e) { warnMissing('Unable to fetch market_sources.', e); return []; } }
 
+export interface MarketSourceAlert { source_id: string; name: string; severity: 'error' | 'warning' | 'info'; message: string; }
+
+export async function fetchMarketSourceAdminSnapshot(): Promise<{ sources: MarketSource[]; alerts: MarketSourceAlert[] }> {
+  try {
+    const { data, error } = await db.functions.invoke('market-updates-source-admin', { body: { action: 'list' } });
+    if (error) throw error;
+    return { sources: safeArray<MarketSource>(data?.sources), alerts: safeArray<MarketSourceAlert>(data?.alerts) };
+  } catch (e) { warnMissing('Admin source snapshot unavailable (admin role required).', e); return { sources: [], alerts: [] }; }
+}
+
+export async function toggleMarketSource(source_id: string, enabled: boolean): Promise<MarketSource | null> {
+  try {
+    const { data, error } = await db.functions.invoke('market-updates-source-admin', { body: { action: 'toggle', source_id, enabled } });
+    if (error) throw error;
+    return data?.source ?? null;
+  } catch (e) { warnMissing('Toggle source failed.', e); return null; }
+}
+
+export async function updateMarketSourceConfig(source_id: string, patch: Partial<Pick<MarketSource, 'refresh_frequency_hours' | 'reliability_tier' | 'description'>>): Promise<MarketSource | null> {
+  try {
+    const { data, error } = await db.functions.invoke('market-updates-source-admin', { body: { action: 'update', source_id, ...patch } });
+    if (error) throw error;
+    return data?.source ?? null;
+  } catch (e) { warnMissing('Update source failed.', e); return null; }
+}
+
+export async function clearMarketSourceError(source_id: string): Promise<MarketSource | null> {
+  try {
+    const { data, error } = await db.functions.invoke('market-updates-source-admin', { body: { action: 'clear_error', source_id } });
+    if (error) throw error;
+    return data?.source ?? null;
+  } catch (e) { warnMissing('Clear source error failed.', e); return null; }
+}
+
 export async function fetchMarketSourceHealth(): Promise<MarketSourceHealth> {
   const sources = await fetchMarketSources();
   const failed = sources.filter(s => Boolean(s.last_error));

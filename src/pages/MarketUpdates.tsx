@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest, triggerMarketIngestion } from '@/services/marketUpdatesService';
 import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
+import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSourcesAdminDialog';
 
 const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
   { id: '24h', label: '24 Hours', hint: 'Last day' },
@@ -104,6 +105,7 @@ export default function MarketUpdates() {
   const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
   const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
   const [filters, setFilters] = useState({ category: 'all', geography: 'all', impact: 'all', audience: 'all' });
+  const [sourcesAdminOpen, setSourcesAdminOpen] = useState(false);
 
   const loadUpdates = async () => {
     setLoading(true);
@@ -199,7 +201,7 @@ export default function MarketUpdates() {
               <Button onClick={loadUpdates} variant="outline"><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
               <Button onClick={handleIngest} disabled={ingesting} variant="outline">{ingesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}Run Ingest</Button>
               <Button onClick={handleGenerateDigest} disabled={digestLoading}>{digestLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}Generate {PERIODS.find(p => p.id === period)?.label} Digest</Button>
-              <Button variant="ghost" onClick={() => navigate('/sources')}><Settings className="mr-2 h-4 w-4" />Sources</Button>
+              <Button variant="ghost" onClick={() => setSourcesAdminOpen(true)}><Settings className="mr-2 h-4 w-4" />Sources</Button>
             </div>
           </div>
         </section>
@@ -579,6 +581,7 @@ export default function MarketUpdates() {
             </div>
           </DialogContent>
         </Dialog>
+        <MarketSourcesAdminDialog open={sourcesAdminOpen} onOpenChange={setSourcesAdminOpen} onChanged={loadUpdates} />
       </div>
     </main>
   );

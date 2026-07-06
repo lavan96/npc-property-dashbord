@@ -1,0 +1,137 @@
+// Market Updates — Phase 6: Source health admin
+// Admin-gated CRUD-ish operations on market_sources and health snapshots.
+// Roles allowed: 'admin' | 'superadmin'. Bypass via x-cron-secret for ops.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
+};
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), {
+    status,
+    headers: { ...cors, "content-type": "application/json" },
+  });
+
+const CRON_SECRET = Deno.env.get("MARKET_INGESTION_CRON_SECRET");
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+
+  const sb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // AuthZ: cron secret OR admin/superadmin role
+  const cron = req.headers.get("x-cron-secret");
+  let authorized = Boolean(cron && CRON_SECRET && cron === CRON_SECRET);
+  let actorId: string | null = null;
+
+  if (!authorized) {
+    const authHeader = req.headers.get("authorization") ?? "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    if (!jwt) return json({ error: "unauthorized" }, 401);
+    const { data: userData, error: userErr } = await sb.auth.getUser(jwt);
+    if (userErr || !userData.user) return json({ error: "unauthorized" }, 401);
+    actorId = userData.user.id;
+    const { data: roleRows } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", actorId);
+    const roles = (roleRows ?? []).map((r: any) => r.role);
+    authorized = roles.includes("admin") || roles.includes("superadmin");
+    if (!authorized) return json({ error: "forbidden" }, 403);
+  }
+
+  let body: any = {};
+  try { body = req.method === "GET" ? {} : await req.json(); } catch { /* noop */ }
+  const action = (body.action ?? new URL(req.url).searchParams.get("action") ?? "list") as string;
+
+  try {
+    if (action === "list") {
+      const { data, error } = await sb
+        .from("market_sources")
+        .select("*")
+        .order("enabled", { ascending: false })
+        .order("name");
+      if (error) throw error;
+      const now = Date.now();
+      const alerts = (data ?? [])
+        .filter((s: any) => s.enabled)
+        .map((s: any) => {
+          const staleHours = s.last_success_at
+            ? (now - new Date(s.last_success_at).getTime()) / 3_600_000
+            : Infinity;
+          const overdue = staleHours > Math.max(24, (s.refresh_frequency_hours ?? 24) * 3);
+          if (s.last_error) {
+            return { source_id: s.id, name: s.name, severity: "error", message: s.last_error };
+          }
+          if (overdue && Number.isFinite(staleHours)) {
+            return {
+              source_id: s.id, name: s.name, severity: "warning",
+              message: `No successful fetch for ${Math.round(staleHours)}h (target ${s.refresh_frequency_hours}h).`,
+            };
+          }
+          if (!Number.isFinite(staleHours)) {
+            return { source_id: s.id, name: s.name, severity: "info", message: "Never fetched." };
+          }
+          return null;
+        })
+        .filter(Boolean);
+      return json({ sources: data ?? [], alerts });
+    }
+
+    if (action === "toggle") {
+      const id = body.source_id as string;
+      const enabled = Boolean(body.enabled);
+      if (!id) return json({ error: "source_id required" }, 400);
+      const { data, error } = await sb
+        .from("market_sources")
+        .update({ enabled, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return json({ source: data });
+    }
+
+    if (action === "update") {
+      const id = body.source_id as string;
+      if (!id) return json({ error: "source_id required" }, 400);
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (typeof body.refresh_frequency_hours === "number") {
+        patch.refresh_frequency_hours = Math.max(1, Math.min(168, Math.round(body.refresh_frequency_hours)));
+      }
+      if (typeof body.reliability_tier === "string") patch.reliability_tier = body.reliability_tier;
+      if (typeof body.description === "string") patch.description = body.description;
+      const { data, error } = await sb
+        .from("market_sources")
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return json({ source: data });
+    }
+
+    if (action === "clear_error") {
+      const id = body.source_id as string;
+      if (!id) return json({ error: "source_id required" }, 400);
+      const { data, error } = await sb
+        .from("market_sources")
+        .update({ last_error: null, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return json({ source: data });
+    }
+
+    return json({ error: `unknown action: ${action}` }, 400);
+  } catch (e: any) {
+    return json({ error: String(e?.message ?? e) }, 500);
+  }
+});
