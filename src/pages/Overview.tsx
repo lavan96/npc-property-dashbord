@@ -172,12 +172,12 @@ function renderOverviewPieLabel(labelKey: 'type' | 'status', data: { count: numb
       <text
         x={x}
         y={y}
-        fill="#F5F2FA"
+        fill="hsl(var(--foreground))"
         textAnchor={x > props.cx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize={isMobile ? 9 : 11}
         fontWeight="600"
-        style={{ paintOrder: 'stroke', stroke: 'rgba(15,13,22,0.98)', strokeWidth: 3, textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}
+        style={{ paintOrder: 'stroke', stroke: 'hsl(var(--card))', strokeWidth: 3 }}
       >
         {props[labelKey]} ({percentageValue.toFixed(1)}%)
       </text>
