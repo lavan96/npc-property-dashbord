@@ -203,6 +203,8 @@ const App = () => (
                       <Routes>
                         {/* Public shareable answer link (no auth) */}
                         <Route path="/qa/shared/:token" element={<SharedQAAnswer />} />
+                        {/* Public shareable market Q&A answer (no auth) */}
+                        <Route path="/qa/market/:slug" element={<SharedMarketQAAnswer />} />
                         {/* Public template share preview (no auth) */}
                         <Route path="/template-share/:token" element={<TemplateSharePreview />} />
                         {/* Client Portal Routes */}
@@ -352,6 +354,7 @@ const App = () => (
                 <Route path="admin/agent-quality" element={<AgentQuality />} />
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
+                <Route path="agent/plans" element={<AgentPlans />} />
 
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
