@@ -2920,7 +2920,7 @@
 
   .deal-pipeline-polish :is(input, textarea):focus-visible {
     border-color: hsl(var(--deal-gold) / 0.62) !important;
-    background: linear-gradient(135deg, hsl(240 10% 4% / 0.96), hsl(var(--brand) / 0.22)) !important;
+    background: linear-gradient(135deg, hsl(var(--background) / 0.96), hsl(var(--brand) / 0.22)) !important;
   }
 
   .deal-pipeline-polish :is(button, [role="button"]):hover:not(:disabled),
