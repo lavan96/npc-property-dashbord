@@ -7622,6 +7622,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   // Phase 4: retrieve semantic long-term memories relevant to this turn
   const semanticMemories = await recallSemanticMemories(sb, userId, message, 6);
   const semanticContext = formatMemoriesForPrompt(semanticMemories);
+  const skillOverlay = await loadSkillOverlay(sb, userId, body.skill_slug);
 
   // Smart context window: fetch more history, then intelligently compress
   const { data: history } = await sb.from('agent_messages')
@@ -7629,7 +7630,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const messages: any[] = [
-    { role: 'system', content: buildSystemPrompt((await getBrandConfig()).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}` },
+    { role: 'system', content: buildSystemPrompt((await getBrandConfig()).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}${skillOverlay}` },
   ];
 
   // Build conversation messages from history
