@@ -58,18 +58,19 @@ const OVERVIEW_CHART_COLORS = {
   positive: 'hsl(var(--success))',
   teal: 'hsl(173 80% 38%)',
   neutral: 'hsl(215 16% 47%)',
-  grid: 'rgba(255,255,255,0.06)',
-  axis: '#B4ADBF',
-  tooltipBorder: 'hsl(var(--dashboard-primary-strong) / 0.24)',
-  tooltipShadow: '0 18px 45px rgba(0,0,0,0.34)',
+  grid: 'hsl(var(--border) / 0.55)',
+  axis: 'hsl(var(--muted-foreground))',
+  tooltipBorder: 'hsl(var(--border))',
+  tooltipShadow: '0 18px 45px hsl(var(--foreground) / 0.18)',
+  dotStroke: 'hsl(var(--card))',
 };
 
 const premiumTooltipStyle = {
-  backgroundColor: 'rgba(15,13,22,0.98)',
+  backgroundColor: 'hsl(var(--popover))',
   border: `1px solid ${OVERVIEW_CHART_COLORS.tooltipBorder}`,
   borderRadius: '14px',
   boxShadow: OVERVIEW_CHART_COLORS.tooltipShadow,
-  color: '#F5F2FA',
+  color: 'hsl(var(--popover-foreground))',
   padding: '10px 12px',
 };
 
