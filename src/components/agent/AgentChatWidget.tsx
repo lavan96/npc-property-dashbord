@@ -104,6 +104,11 @@ export function AgentChatWidget() {
   const abortRef = useRef<AbortController | null>(null);
   const [streamingId, setStreamingId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [skills, setSkills] = useState<Array<{ id: string; slug: string; name: string; icon?: string | null; system_prompt?: string; is_public?: boolean }>>([]);
+  const [activeSkillSlug, setActiveSkillSlug] = useState<string | null>(() => {
+    try { return localStorage.getItem('aurixa_active_skill') || null; } catch { return null; }
+  });
+  const [skillPickerOpen, setSkillPickerOpen] = useState(false);
 
   // Auto-resize textarea when input changes (covers voice transcription + typing)
   useEffect(() => {
