@@ -1599,7 +1599,7 @@
   .report-qa-premium {
     background:
       radial-gradient(circle at 16% 8%, hsl(var(--brand) / 0.14), transparent 32rem),
-      radial-gradient(circle at 88% 18%, hsl(173 80% 40% / 0.09), transparent 28rem),
+      radial-gradient(circle at 88% 18%, hsl(var(--primary) / 0.08), transparent 28rem),
       linear-gradient(135deg, hsl(var(--background)), hsl(var(--card)) 44%, hsl(var(--background)));
   }
 
