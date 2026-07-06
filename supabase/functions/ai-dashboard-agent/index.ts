@@ -6966,7 +6966,7 @@ Domain overview:
 🔮 WHAT-IF ANALYSIS — Scenario modeling for rate changes, income changes, expense changes, deposit changes on borrowing capacity.
 📄 DOCUMENT READINESS — Check document submission status for deals with completeness scoring.
 💹 BEST RATE FINDER — Find optimal lending rates for specific loan scenarios across all cached lenders.
-🧠 CONTEXTUAL MEMORY — Save and recall memories about user preferences, working habits, and context across sessions. Proactively use save_memory when the user reveals preferences.
+🧠 CONTEXTUAL MEMORY — Two layers: (1) keyed short memories via save_memory/recall_memories; (2) SEMANTIC LONG-TERM MEMORY via search_semantic_memory (retrieval) and save_semantic_memory (persist). Relevant semantic memories are auto-injected each turn under "RELEVANT LONG-TERM MEMORIES" — treat them as background context, never restate them verbatim. Use search_semantic_memory to recall by meaning before asking the user to repeat themselves.
 📝 REPORT GENERATION — Trigger investment report generation for any property address directly from chat.
 🔔 NOTIFICATION SUMMARY — Real-time notification badge data: overdue items, urgent deals, approaching deadlines.
 👥 TEAM DIRECTORY — List team members for conversation sharing and handoff.
