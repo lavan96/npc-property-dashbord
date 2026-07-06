@@ -1179,6 +1179,9 @@ export function AgentChatWidget() {
                     )}
                     {msg.confirmation_status === 'approved' && <p className="text-xs text-primary mt-1.5 flex items-center gap-1"><Check className="h-3 w-3" /> Approved & executed</p>}
                     {msg.confirmation_status === 'rejected' && <p className="text-xs text-destructive mt-1.5 flex items-center gap-1"><XCircle className="h-3 w-3" /> Cancelled</p>}
+                    {msg.role === 'assistant' && msg.recalled_memories && msg.recalled_memories.length > 0 && (
+                      <MemoryCitations messageId={msg.id} memories={msg.recalled_memories} />
+                    )}
                   </div>
                 </div>
                 );
