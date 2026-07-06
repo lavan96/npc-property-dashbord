@@ -419,13 +419,17 @@ Deno.serve(async (req) => {
 
 
   if (!stream) {
-    await persistPromise;
     return json(finalPayload);
   }
+
+  // Await persistence so metadata can include question_id (used by "Share answer").
+  const pid = await persistPromise.catch(() => null);
+  const streamPayload = { ...finalPayload, question_id: pid };
 
   // SSE streaming: chunk answer word-by-word for progressive typewriter UI.
   const encoder = new TextEncoder();
   const words = answer.split(/(\s+)/);
+
   const body = new ReadableStream({
     async start(controller) {
       try {
