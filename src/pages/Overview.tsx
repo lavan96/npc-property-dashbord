@@ -194,7 +194,7 @@ function OverviewPieLegend({ data, labelKey }: { data: Array<Record<string, any>
         const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
         const label = entry[labelKey];
         return (
-          <div key={label} className="flex min-w-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1.5 text-[10px] shadow-sm md:text-xs">
+          <div key={label} className="flex min-w-0 items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1.5 text-[10px] shadow-sm md:text-xs dark:border-white/10 dark:bg-white/[0.045]">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full md:h-3 md:w-3" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
             <span className="max-w-[9rem] truncate font-medium text-foreground">{label}</span>
             <span className="shrink-0 text-muted-foreground">({entry.count.toLocaleString('en-AU')} · {pct}%)</span>
