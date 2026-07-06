@@ -7532,7 +7532,28 @@ async function handleRenameConversation(sb: any, userId: string, convId: string,
 async function handleGetMessages(sb: any, convId: string, cors: Record<string, string>) {
   const { data, error } = await sb.from('agent_messages').select('*, custom_users!agent_messages_sent_by_fkey(username)').eq('conversation_id', convId).order('created_at', { ascending: true }).limit(200);
   if (error) throw error;
-  const messages = (data || []).map((m: any) => ({ ...m, sent_by_username: m.custom_users?.username || null, custom_users: undefined }));
+
+  // Collect all recalled memory IDs referenced across the conversation and hydrate once
+  const allIds = new Set<string>();
+  for (const m of (data || [])) {
+    for (const id of (m.recalled_memory_ids || [])) if (id) allIds.add(id);
+  }
+  let memoryMap: Record<string, any> = {};
+  if (allIds.size > 0) {
+    const { data: memRows } = await sb.from('agent_semantic_memories')
+      .select('id, content, tags, importance, feedback_score, kind')
+      .in('id', Array.from(allIds));
+    for (const r of (memRows || [])) memoryMap[r.id] = r;
+  }
+
+  const messages = (data || []).map((m: any) => ({
+    ...m,
+    sent_by_username: m.custom_users?.username || null,
+    custom_users: undefined,
+    recalled_memories: (m.recalled_memory_ids || [])
+      .map((id: string) => memoryMap[id])
+      .filter(Boolean),
+  }));
   return new Response(JSON.stringify({ success: true, messages }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
