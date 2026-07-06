@@ -658,12 +658,34 @@ export default function MarketUpdates() {
                 <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
                   {qaThread.map((turn, i) => (
                     <div key={i} className={cn('rounded-md p-2 text-sm', turn.role === 'user' ? 'bg-primary/10' : 'bg-background/70 border border-border/60')}>
-                      <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                      <div className="mb-0.5 flex flex-wrap items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                        <span>{turn.role === 'user' ? 'You' : 'AI'}</span>
+                        {turn.role === 'assistant' && turn.sentiment && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.sentiment}</Badge>}
+                        {turn.role === 'assistant' && turn.time_horizon && turn.time_horizon !== 'unclear' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.time_horizon.replace('_',' ')}</Badge>}
+                        {turn.role === 'assistant' && typeof turn.confidence_score === 'number' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{Math.round(turn.confidence_score)}% conf</Badge>}
+                      </div>
                       <p className="whitespace-pre-wrap">{turn.content}</p>
+                      {turn.key_figures && turn.key_figures.length > 0 && (
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {turn.key_figures.map((k, j) => (
+                            <div key={j} className="rounded border border-border/60 bg-background/50 px-2 py-1">
+                              <div className="text-[9px] uppercase text-muted-foreground">{k.label}</div>
+                              <div className="text-sm font-semibold text-primary">{k.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {turn.citations && turn.citations.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {turn.citations.map((url, j) => (
                             <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {j + 1}</a>
+                          ))}
+                        </div>
+                      )}
+                      {turn.follow_up_questions && turn.follow_up_questions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {turn.follow_up_questions.map((fq, j) => (
+                            <button key={j} type="button" onClick={() => handleFollowUp(fq)} disabled={asking} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10 disabled:opacity-50">↳ {fq}</button>
                           ))}
                         </div>
                       )}
