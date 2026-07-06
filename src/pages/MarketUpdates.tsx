@@ -447,7 +447,7 @@ export default function MarketUpdates() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
                     <Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQuestion(''); }}>Ask AI</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQaThread([]); setQuestion(''); }}>Ask AI</Button>
                     <div className="ml-auto flex flex-wrap items-center gap-1">
                       {update.citation_urls.slice(0, 3).map((url, i) => (
                         <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
