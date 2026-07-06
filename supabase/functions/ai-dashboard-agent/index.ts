@@ -7576,6 +7576,7 @@ Deno.serve(async (req) => {
       case 'get-messages': return handleGetMessages(sb, body.conversation_id, cors);
       case 'confirm-action': return handleConfirmAction(sb, { ...body, user_id: userId }, cors);
       case 'chat': return handleChat(sb, body, userId!, username!, cors);
+      case 'chat-stream': return handleChatStream(sb, body, userId!, username!, cors, req.signal);
       case 'get-notifications': {
         const summary = await executeGetNotificationSummary(sb);
         return new Response(JSON.stringify({ success: true, ...summary }), { headers: { ...cors, 'Content-Type': 'application/json' } });
