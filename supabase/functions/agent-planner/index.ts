@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch {}
 
   const auth = await verifyAuth(sb, req.headers, body);
-  if (!auth.ok) return json({ error: 'unauthorized' }, 401);
+  if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
   const userId = auth.userId as string;
   const action = body?.action ?? 'list-plans';
 

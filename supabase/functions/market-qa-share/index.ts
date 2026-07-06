@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     // Authed actions
     const auth = await verifyAuth(sb, req.headers, body);
-    if (!auth.ok) return json({ error: 'unauthorized' }, 401);
+    if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
     const userId = auth.userId as string;
 
     if (action === 'create') {
