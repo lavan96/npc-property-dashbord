@@ -2070,6 +2070,37 @@ const TOOLS: any[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_semantic_memory",
+      description: "Semantic vector search over the user's long-term memories (RAG). Returns the top matches most relevant to a natural-language query. Use this to recall durable context (preferences, habits, favourite lenders/segments, standing instructions) rather than re-asking the user. Read-only.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Natural-language query describing what to recall (e.g. 'preferred pipeline stage colours', 'CBA vs Macquarie preference')." },
+          limit: { type: "number", description: "Max matches to return (default 6, max 20)." },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "save_semantic_memory",
+      description: "Persist a durable long-term memory about the user (preference, habit, working style, standing instruction). Prefer this over save_memory when the fact is free-form and best retrieved by meaning rather than by a fixed key. Deduplicated by content hash. REQUIRES USER CONFIRMATION.",
+      parameters: {
+        type: "object",
+        properties: {
+          content: { type: "string", description: "The fact to remember, written in the third person about the user (e.g. 'User prefers weekly digest emails on Monday mornings')." },
+          tags: { type: "array", items: { type: "string" }, description: "Optional short tags for grouping (e.g. ['communication','cadence'])." },
+          importance: { type: "number", description: "1 (nice-to-know) to 5 (critical). Default 3." },
+        },
+        required: ["content"],
+      },
+    },
+  },
 
   // ─── INVESTMENT REPORT TRIGGER ───
   {
