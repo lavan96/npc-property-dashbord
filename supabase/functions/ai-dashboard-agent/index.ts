@@ -7409,16 +7409,23 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
         }
 
         messages.push(assistantMsg);
+
+        // Phase 3: process meta-tools inline (state-mutating), then run all
+        // non-meta tool calls in PARALLEL via runToolCached (cache + projection).
+        type ParallelJob = { tc: any; toolName: string; args: any };
+        const parallelJobs: ParallelJob[] = [];
+        const skipMessages: { tc: any; content: string }[] = [];
+
         for (const tc of assistantMsg.tool_calls) {
           const toolName = tc.function.name;
           let args: any = {};
           try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
 
-          // Meta-tools handled inline
+          // Meta-tools handled inline (mutate loadedToolNames)
           if (META_TOOL_NAMES.has(toolName)) {
             const metaResult = executeMetaTool(toolName, args, loadedToolNames);
             console.log(`[ai-dashboard-agent] Meta: ${toolName}`, JSON.stringify(args).substring(0, 200), '→', metaResult.loaded?.length ?? '');
-            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(metaResult) });
+            skipMessages.push({ tc, content: JSON.stringify(metaResult) });
             continue;
           }
 
@@ -7426,16 +7433,31 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
           toolCallCounts[toolName] = (toolCallCounts[toolName] || 0) + 1;
           if (toolCallCounts[toolName] > MAX_SAME_TOOL_CALLS) {
             console.warn(`[ai-dashboard-agent] Tool "${toolName}" called ${toolCallCounts[toolName]} times, rate limited`);
-            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ error: `Tool "${toolName}" has been called too many times in this turn. Use the data you already have or try a different approach.` }) });
+            skipMessages.push({ tc, content: JSON.stringify({ error: `Tool "${toolName}" has been called too many times in this turn. Use the data you already have or try a different approach.` }) });
             continue;
           }
 
-          // Auto-load if the model somehow called an unknown/unloaded tool (defensive)
           ensureToolLoaded(toolName, loadedToolNames);
+          parallelJobs.push({ tc, toolName, args });
+        }
 
-          console.log(`[ai-dashboard-agent] Tool: ${toolName} [${toolCallCounts[toolName]}/${MAX_SAME_TOOL_CALLS}]`, JSON.stringify(args).substring(0, 200));
-          const result = await executeTool(sb, toolName, args, userId);
-          messages.push({ role: 'tool', tool_call_id: tc.id, content: smartTruncateResult(result) });
+        // Push meta / rate-limit responses in original order-agnostic manner (tool_call_id keeps mapping)
+        for (const m of skipMessages) messages.push({ role: 'tool', tool_call_id: m.tc.id, content: m.content });
+
+        if (parallelJobs.length) {
+          console.log(`[ai-dashboard-agent] Parallel tools (${parallelJobs.length}):`, parallelJobs.map(j => j.toolName).join(', '));
+          const settled = await Promise.all(parallelJobs.map(async (job) => {
+            try {
+              const { content, cached } = await runToolCached(sb, job.toolName, job.args, userId);
+              return { tc: job.tc, content, cached, error: null as any };
+            } catch (err: any) {
+              return { tc: job.tc, content: JSON.stringify({ error: err?.message || String(err) }), cached: false, error: err };
+            }
+          }));
+          for (const r of settled) {
+            messages.push({ role: 'tool', tool_call_id: r.tc.id, content: r.content });
+            if (r.cached) console.log(`[ai-dashboard-agent] cache hit: ${(r.tc as any).function.name}`);
+          }
         }
         continue;
       }
