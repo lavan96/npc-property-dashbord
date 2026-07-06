@@ -7445,6 +7445,7 @@ async function callAIStream(
   userId: string,
   onToken: (t: string) => void,
   signal: AbortSignal,
+  tools: any[] = TOOLS,
 ): Promise<{ content: string; tool_calls?: any[] }> {
   const startTime = Date.now();
   const response = await fetch(AI_GATEWAY_URL, {
@@ -7456,7 +7457,7 @@ async function callAIStream(
     body: JSON.stringify({
       model: 'google/gemini-3-flash-preview',
       messages,
-      tools: TOOLS,
+      tools,
       tool_choice: 'auto',
       temperature: 0.3,
       max_tokens: 3000,
