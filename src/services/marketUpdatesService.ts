@@ -244,6 +244,9 @@ export async function streamMarketUpdateQuestion(
       time_horizon: metadata?.time_horizon,
       sentiment: metadata?.sentiment,
       model_used: metadata?.model_used,
+      retrieved: Array.isArray(metadata?.retrieved) ? metadata.retrieved : [],
+      question_id: metadata?.question_id ?? null,
+      rate_limited: Boolean(metadata?.rate_limited),
     };
   } catch (e) {
     warnMissing('Market Q&A streaming failed; falling back to non-streaming.', e);
