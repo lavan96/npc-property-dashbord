@@ -1,4 +1,271 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const cors = { 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type, x-cron-secret' };
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'content-type':'application/json' } });
-Deno.serve(async (req) => { if (req.method === 'OPTIONS') return new Response(null, { headers: cors }); const auth = req.headers.get('authorization') ?? ''; const secret = Deno.env.get('MARKET_INGESTION_CRON_SECRET'); if (!auth && !(secret && req.headers.get('x-cron-secret') === secret)) return json({ error:'Unauthorised digest request.' }, 401); const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!); const end = new Date(); const start = new Date(end.getTime()-86400000); const { data: updates, error } = await sb.from('market_updates').select('*').eq('status','published').gte('ingested_at', start.toISOString()).lte('ingested_at', end.toISOString()).order('impact_level', { ascending:true }); if (error) return json({ error:error.message }, 500); if (!updates?.length) return json({ digest:null, noData:true, message:'No source-backed market updates were found in the last 24 hours.' }); const by = (c:string) => updates.filter((u:any)=>u.category===c).map((u:any)=>u.ai_summary || u.title).slice(0,5); const digest = { period_start:start.toISOString(), period_end:end.toISOString(), executive_summary:`${updates.length} source-backed Australian market update${updates.length===1?'':'s'} were published in the last 24 hours. Review cited sources before acting.`, top_update_ids:updates.slice(0,5).map((u:any)=>u.id), finance_lending_highlights:by('finance'), property_market_highlights:by('property_market'), construction_supply_highlights:[...by('construction'),...by('planning_supply')], policy_regulation_highlights:by('policy_regulation'), political_economic_watchpoints:[...by('political'),...by('economy')], buyer_implications:null, investor_implications:null, broker_adviser_implications:null, client_advisory_implications:[], recommended_watchlist_for_tomorrow:[], source_urls:[...new Set(updates.flatMap((u:any)=>u.citation_urls || [u.source_url]))], confidence_score:75, status:'published' }; const { data, error: insertError } = await sb.from('market_digests').insert(digest).select('*').single(); if (insertError) return json({ error:insertError.message }, 500); return json({ digest:data, noData:false, message:'24-hour market digest generated from stored source-backed updates.' }); });
+// Market Updates Digest — Phase 2
+// Generates period-scoped executive digests (24h / weekly / biweekly / monthly / quarterly / annual)
+// from published, source-cited market updates. Groups by segment, calls Lovable AI Gateway for the
+// narrative, and persists one row per (period, period_start) in market_digests.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "content-type": "application/json" },
+  });
+
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const AI_MODEL = Deno.env.get("MARKET_AI_MODEL") ?? "google/gemini-3-flash-preview";
+
+type Period = "24h" | "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
+const VALID_PERIODS: Period[] = ["24h", "weekly", "biweekly", "monthly", "quarterly", "annual"];
+const SEGMENTS = [
+  "finance", "property", "construction", "political",
+  "economic", "social", "policy_regulation", "rental",
+];
+
+function periodWindow(period: Period, ref = new Date()): { start: Date; end: Date } {
+  const end = new Date(ref);
+  const start = new Date(ref);
+  switch (period) {
+    case "24h": start.setUTCDate(end.getUTCDate() - 1); break;
+    case "weekly": start.setUTCDate(end.getUTCDate() - 7); break;
+    case "biweekly": start.setUTCDate(end.getUTCDate() - 14); break;
+    case "monthly": start.setUTCMonth(end.getUTCMonth() - 1); break;
+    case "quarterly": start.setUTCMonth(end.getUTCMonth() - 3); break;
+    case "annual": start.setUTCFullYear(end.getUTCFullYear() - 1); break;
+  }
+  return { start, end };
+}
+
+function groupBySegment(updates: any[]) {
+  const map: Record<string, any[]> = Object.fromEntries(SEGMENTS.map((s) => [s, []]));
+  for (const u of updates) {
+    const segs: string[] = Array.isArray(u.segments) && u.segments.length ? u.segments : [u.category];
+    for (const seg of segs) {
+      if (map[seg]) map[seg].push(u);
+    }
+  }
+  return map;
+}
+
+async function synthesizeWithAI(period: Period, windowLabel: string, grouped: Record<string, any[]>, updates: any[]) {
+  if (!LOVABLE_API_KEY) return null;
+  const compact = updates.slice(0, 60).map((u: any) => ({
+    id: u.id,
+    title: u.title,
+    segments: u.segments,
+    impact: u.impact_level,
+    source: u.source_name,
+    url: u.source_url,
+    published_at: u.source_published_at,
+    summary: u.ai_summary,
+    why: u.why_it_matters,
+  }));
+
+  const tool = {
+    type: "function",
+    function: {
+      name: "record_market_digest",
+      description: "Produce an evidence-grounded Australian market intelligence digest.",
+      parameters: {
+        type: "object",
+        properties: {
+          executive_summary: { type: "string" },
+          top_update_ids: { type: "array", items: { type: "string" } },
+          finance_lending_highlights: { type: "array", items: { type: "string" } },
+          property_market_highlights: { type: "array", items: { type: "string" } },
+          construction_supply_highlights: { type: "array", items: { type: "string" } },
+          policy_regulation_highlights: { type: "array", items: { type: "string" } },
+          political_economic_watchpoints: { type: "array", items: { type: "string" } },
+          social_watchpoints: { type: "array", items: { type: "string" } },
+          segment_breakdown: {
+            type: "object",
+            description: "Short per-segment narrative keyed by segment name.",
+            additionalProperties: { type: "string" },
+          },
+          buyer_implications: { type: "string" },
+          investor_implications: { type: "string" },
+          broker_adviser_implications: { type: "string" },
+          client_advisory_implications: { type: "array", items: { type: "string" } },
+          recommended_watchlist_for_tomorrow: { type: "array", items: { type: "string" } },
+          confidence_score: { type: "number" },
+        },
+        required: [
+          "executive_summary", "top_update_ids",
+          "finance_lending_highlights", "property_market_highlights",
+          "construction_supply_highlights", "policy_regulation_highlights",
+          "political_economic_watchpoints", "segment_breakdown",
+          "confidence_score",
+        ],
+        additionalProperties: false,
+      },
+    },
+  };
+
+  const body = {
+    model: AI_MODEL,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an Australian real-estate market intelligence editor. Produce a factual, source-grounded " +
+          `${period} digest. Cite only from the supplied updates (use their IDs in top_update_ids). ` +
+          "Never invent figures, sources or events. Australian English. Concise, executive tone; no filler.",
+      },
+      {
+        role: "user",
+        content: `Period: ${period} (${windowLabel})
+Updates (${updates.length} total):
+${JSON.stringify(compact, null, 2)}`,
+      },
+    ],
+    tools: [tool],
+    tool_choice: { type: "function", function: { name: "record_market_digest" } },
+  };
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`AI digest ${res.status}: ${text.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  const tc = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!tc) return null;
+  try {
+    return JSON.parse(tc.function.arguments);
+  } catch {
+    return null;
+  }
+}
+
+function fallbackDigest(period: Period, updates: any[], grouped: Record<string, any[]>) {
+  const bySeg = (seg: string) =>
+    (grouped[seg] ?? []).slice(0, 5).map((u) => u.ai_summary || u.title);
+  return {
+    executive_summary:
+      `${updates.length} source-backed Australian market update${updates.length === 1 ? "" : "s"} across the ${period} window. Review cited sources before acting.`,
+    top_update_ids: updates.slice(0, 5).map((u: any) => u.id),
+    finance_lending_highlights: bySeg("finance"),
+    property_market_highlights: bySeg("property"),
+    construction_supply_highlights: bySeg("construction"),
+    policy_regulation_highlights: bySeg("policy_regulation"),
+    political_economic_watchpoints: [...bySeg("political"), ...bySeg("economic")],
+    social_watchpoints: bySeg("social"),
+    segment_breakdown: Object.fromEntries(
+      SEGMENTS.map((s) => [s, `${grouped[s]?.length ?? 0} update(s) in this window.`]),
+    ),
+    buyer_implications: null,
+    investor_implications: null,
+    broker_adviser_implications: null,
+    client_advisory_implications: [],
+    recommended_watchlist_for_tomorrow: [],
+    confidence_score: 55,
+  };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const auth = req.headers.get("authorization") ?? "";
+  const cronSecret = Deno.env.get("MARKET_INGESTION_CRON_SECRET");
+  const cronOk = cronSecret && req.headers.get("x-cron-secret") === cronSecret;
+  if (!auth && !cronOk) return json({ error: "Unauthorised digest request." }, 401);
+
+  const sb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  const payload = await req.json().catch(() => ({}));
+  const period: Period = VALID_PERIODS.includes(payload?.period) ? payload.period : "24h";
+  const { start, end } = periodWindow(period);
+  const windowLabel = `${start.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}`;
+
+  const { data: updates, error } = await sb
+    .from("market_updates")
+    .select(
+      "id, title, category, segments, impact_level, geography, source_name, source_url, source_published_at, ai_summary, why_it_matters, citation_urls, ingested_at",
+    )
+    .eq("status", "published")
+    .gte("ingested_at", start.toISOString())
+    .lte("ingested_at", end.toISOString())
+    .order("ingested_at", { ascending: false })
+    .limit(200);
+
+  if (error) return json({ error: error.message }, 500);
+  if (!updates?.length) {
+    return json({
+      digest: null,
+      noData: true,
+      period,
+      period_start: start.toISOString(),
+      period_end: end.toISOString(),
+      message: `No source-backed market updates were found in the ${period} window.`,
+    });
+  }
+
+  const grouped = groupBySegment(updates);
+  let ai: any = null;
+  try {
+    ai = await synthesizeWithAI(period, windowLabel, grouped, updates);
+  } catch (e) {
+    console.warn("AI digest failed:", String(e?.message ?? e));
+  }
+  const body = ai ?? fallbackDigest(period, updates, grouped);
+
+  const digest = {
+    period,
+    period_start: start.toISOString(),
+    period_end: end.toISOString(),
+    executive_summary: body.executive_summary,
+    top_update_ids: body.top_update_ids ?? [],
+    finance_lending_highlights: body.finance_lending_highlights ?? [],
+    property_market_highlights: body.property_market_highlights ?? [],
+    construction_supply_highlights: body.construction_supply_highlights ?? [],
+    policy_regulation_highlights: body.policy_regulation_highlights ?? [],
+    political_economic_watchpoints: body.political_economic_watchpoints ?? [],
+    social_watchpoints: body.social_watchpoints ?? [],
+    segment_breakdown: body.segment_breakdown ?? {},
+    buyer_implications: body.buyer_implications ?? null,
+    investor_implications: body.investor_implications ?? null,
+    broker_adviser_implications: body.broker_adviser_implications ?? null,
+    client_advisory_implications: body.client_advisory_implications ?? [],
+    recommended_watchlist_for_tomorrow: body.recommended_watchlist_for_tomorrow ?? [],
+    source_urls: [
+      ...new Set(
+        updates.flatMap((u: any) =>
+          Array.isArray(u.citation_urls) && u.citation_urls.length ? u.citation_urls : [u.source_url],
+        ),
+      ),
+    ],
+    confidence_score: Number(body.confidence_score ?? 70),
+    status: "published",
+  };
+
+  // Upsert on (period, period_start) — replace same-day regenerations for the same window.
+  const { data, error: insertError } = await sb
+    .from("market_digests")
+    .upsert(digest, { onConflict: "period,period_start" })
+    .select("*")
+    .single();
+  if (insertError) return json({ error: insertError.message }, 500);
+
+  return json({
+    digest: data,
+    noData: false,
+    period,
+    period_start: digest.period_start,
+    period_end: digest.period_end,
+    update_count: updates.length,
+    message: `${period} market digest generated from ${updates.length} sourced update(s).`,
+  });
+});
