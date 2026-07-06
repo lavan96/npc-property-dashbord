@@ -1,83 +1,63 @@
-## Market Updates — Real-Data Intelligence Overhaul
+# Market Updates AI Q&A — Phased Upgrade Plan
 
-### Goal
-Turn Market Updates from an empty shell into a live, source-cited AU real-estate intelligence workspace segmented by **Finance, Property, Construction/Supply, Political, Economic, Social, Policy/Regulation, Rental**, with **cited sources, freshness timestamps**, and digests for **24h / weekly / biweekly / monthly / quarterly / annual** periods.
+## Diagnosis (current state)
+- The inline Q&A textarea in `src/pages/MarketUpdates.tsx` is bound to a Textarea that is **disabled whenever `updates.length === 0`** and the "Ask safely" button additionally requires `question.trim()`. When the loaded filter returns zero published updates, the input goes read-only — that's the "can't type" symptom.
+- Only a single one-shot Q&A round-trip exists (`answerMarketUpdateQuestion`). No conversation history, no streaming, no voice, no follow-ups, no retrieval tuning surfaces.
+- Backend `market-updates-qa` already grounds on top-8 retrieved updates via Gemini 3 Flash with tool-forced JSON. Room to lift: hybrid retrieval, better reranking, follow-up context, richer answer schema, streaming.
 
 ---
 
-### 1. Data Ingestion (server-side)
+## Phase 1 — Unblock text input + baseline UX fixes (small, immediate)
+**Goal:** user can always type a question; clear affordances for empty-state.
 
-**Sources (`market_sources` seed expansion)** — free/legal RSS + APIs first, licensed providers behind flags:
-- Finance: RBA, APRA, ABS Lending Indicators, AFR RSS, Livewire
-- Property: CoreLogic/Cotality blog RSS, PropTrack/REA Insights, Domain Research, SQM Research
-- Construction/Supply: HIA, Master Builders, ABS Building Approvals, Infrastructure Australia
-- Political: Parliament of Australia RSS (housing committee), state planning ministers' feeds
-- Economic: ABS CPI/GDP/Wages, Treasury releases, RBA SoMP
-- Social: AHURI, ACOSS housing, Productivity Commission
-- Policy/Regulation: NCCP/ASIC media, state revenue offices, First Home schemes
-- Rental: Tenants Union feeds, PropTrack rental report, SQM vacancy
+- Remove the `disabled={!updates.length}` from the inline Q&A Textarea; keep the Ask button gated only on empty `question.trim()` **and** on "no context available" from the backend (surfaced as an inline notice, not a disabled input).
+- Same fix in the per-update `Dialog` Q&A composer.
+- Add "Enter to send / Shift+Enter for newline" behaviour to both composers.
+- Loading state on the Ask button (spinner, disabled while a request is in-flight) — currently no visible pending state.
+- Persist the last N Q&A turns in component state so the panel behaves like a mini-thread instead of replacing the previous answer on each ask.
 
-**Ingestion pipeline** (extend existing `market-updates-ingest`):
-1. Fetch enabled sources on cron (hourly for high-freq, daily for others via `refresh_frequency_hours`).
-2. Normalise → dedupe by `dedupe_hash` → relevance score (existing) → **AI classification** into 8 segments via Lovable AI (`google/gemini-3-flash-preview`), returning: `category`, `segments[]` (multi-tag), `geography[]`, `impact_level`, `audience_tags[]`, `ai_summary`, `key_points[]`, `why_it_matters`, `property_implications`, `finance_implications`, `policy_implications`, `risk_flags[]`, `confidence_score`, `citation_urls[]` (must include original source URL).
-3. Persist to `market_updates` with `status='published'` if confidence ≥ threshold, else `candidate` for review.
-4. Every update card **must** render: source name, source URL (clickable), `source_published_at`, `ingested_at` ("Ingested 2h ago"), and citation chips linking to originals.
+## Phase 2 — Voice-to-text capture (mirrors existing pattern)
+**Goal:** press-and-hold / tap-to-record voice → transcript populates the question field, editable before send.
 
-**Schema additions** (new migration):
-- `market_updates.segments text[]` (multi-segment tagging; keep `category` for primary).
-- `market_updates.freshness_tier text` (`breaking` <6h, `today` <24h, `this_week`, `older`) — computed on read or via trigger.
-- New table `market_digests` gains `period text` enum: `24h | weekly | biweekly | monthly | quarterly | annual`, plus `period_start`, `period_end`, `segment_breakdown jsonb`. Unique on `(period, period_start)`.
+- Reuse the exact architecture already used in `src/components/finance-portal/VoiceMemoDialog.tsx` and `VoiceMemoButton.tsx`: `navigator.mediaDevices.getUserMedia` → `MediaRecorder` → base64 → server transcription.
+- New small edge function `market-updates-voice-transcribe` (thin wrapper around the Lovable AI `openai/gpt-4o-mini-transcribe` endpoint, WAV/webm accepted). JWT-auth only, no persistence — transcript returned directly.
+- New component `MarketQAVoiceButton.tsx` mounted next to both Q&A textareas: mic → recording indicator + elapsed timer (30s soft cap) → "Transcribing…" → transcript inserted into the `question` state (append if the user was already typing).
+- Graceful denial handling (mic blocked / unsupported browser) with toast, no crash.
 
-### 2. Digests — Multi-Period
+## Phase 3 — Retrieval & answer quality lift (backend)
+**Goal:** exponentially better answers; less "not enough sourced updates".
 
-Extend `market-updates-digest` edge function:
-- Accept `{ period: '24h'|'weekly'|'biweekly'|'monthly'|'quarterly'|'annual' }`.
-- Query published updates in the window, group by segment, feed to AI for an executive summary + per-segment highlights + client-advisory implications + citations.
-- Store one row per `(period, period_start)`; return latest per period.
-- Cron schedule: 24h daily, weekly Mon, biweekly alt Mon, monthly 1st, quarterly Jan/Apr/Jul/Oct 1st, annual Jan 1.
+- **Hybrid retrieval** in `market-updates-qa`: keep term-hit scoring but layer (a) recency decay, (b) impact-weighting (`impact_level` high > medium > low), (c) segment/geography boosting derived from the question via a cheap classifier call, (d) dedupe by `dedupe_hash`.
+- Expand candidate pool 60→200, then rerank to top 12 (up from 8) for more context breadth.
+- Add optional **semantic recall**: when term-hit returns <5 matches, fall back to a Lovable AI embedding search over `title + summary + why_it_matters` (store embeddings on `market_updates` via a lightweight background job — Phase 3b if user wants persistence, otherwise ephemeral per-request).
+- Upgrade model to `google/gemini-2.5-pro` for the answer step when the question is classified as "analytical/multi-hop"; keep `gemini-3-flash-preview` for simple lookups. Router lives server-side.
+- Extend the tool-forced JSON schema to also return: `follow_up_questions[]`, `key_figures[]` (numeric callouts with source id), `time_horizon`, `sentiment` (bearish/neutral/bullish per segment).
+- Keep the strict "used_ids ⊆ retrieved context" refusal guard; expand refusal string library so users get *why* it refused (no matches vs. off-topic vs. advice-guardrail).
 
-### 3. Frontend (`src/pages/MarketUpdates.tsx`)
+## Phase 4 — Conversational Q&A (multi-turn + streaming)
+**Goal:** feels like a real analyst chat, not a search box.
 
-Rebuild layout using **branded semantic tokens only** (no slate/cyan hardcodes — consistent with recent Branding refactor):
+- Introduce a threaded `MarketQAConversation` component: message list (user/assistant), citations rendered inline as chips, key figures as a small stat strip.
+- Persist turns to existing `market_update_questions` with a new `conversation_id` column (nullable-safe migration) so follow-ups reuse prior context.
+- Backend accepts `conversation_id` + prior `messages[]`, includes the last 3 assistant answers' `used_ids` as anchor context for the retriever (topic continuity).
+- Server-Sent Events streaming of the answer text using `streamText` from the AI SDK; UI renders tokens as they arrive. Refusal/fallback path still uses the deterministic non-streaming branch.
+- Suggested follow-ups (from Phase 3 schema) render as one-click chips under each assistant turn.
 
-- **Header:** title, freshness badge ("Live · Last sync 4m ago"), Refresh + Sources buttons.
-- **Digest selector:** Tabs `24h | Weekly | Biweekly | Monthly | Quarterly | Annual`. Each tab shows the latest digest for that period with Generate/Regenerate button + export.
-- **Segment filter chips:** Finance, Property, Construction/Supply, Political, Economic, Social, Policy/Regulation, Rental, All. Multi-select.
-- **Secondary filters:** Geography, Impact, Audience, Freshness (Breaking/Today/This week/All), Search.
-- **KPI strip:** Updates today, Breaking (<6h), High-impact, per-segment counts.
-- **Update cards** show: segment badge(s), impact, geography, **source name + logo**, **"Published" timestamp + relative age**, **"Ingested" timestamp**, AI summary, why-it-matters, citation chips (each links to source), Open Analysis / Ask AI / Source buttons.
-- **Sidebar:** Segment breakdown, High-impact watchlist, Ask-AI (source-grounded), Source Health.
-- **Analysis dialog:** full AI breakdown + all citations rendered as clickable list with source + accessed date.
+## Phase 5 — Polish, telemetry & guardrails
+- "Explain this answer" affordance: expandable panel showing every retrieved source considered, with hit/used badges — full transparency.
+- Copy-to-clipboard + "Share answer" (reuses `SharedQAAnswer` route pattern if that fits).
+- Rate-limit + token budget guard through existing Mission Control metering (`generateWithTokens`) so Q&A rolls into the standard credit spine.
+- Analytics: log question, retrieved ids, used ids, model, latency, confidence into `market_update_questions` (already partly done) — add a superadmin "Q&A quality" panel to spot low-confidence / refused questions for source-coverage tuning.
 
-### 4. Citation & Freshness Guarantees
-- Every card enforces `source_url` + `source_published_at` presence (fallback to `ingested_at` + "publication date unknown" flag).
-- Q&A responses only cite from `citation_urls` of matched updates; refuse if none.
-- Never render an update lacking a source URL.
+---
 
-### 5. Technical File Map
+## Technical touchpoints
+- **Frontend:** `src/pages/MarketUpdates.tsx`, new `src/components/market-updates/MarketQAConversation.tsx`, `MarketQAVoiceButton.tsx`, `MarketQAComposer.tsx`, `src/services/marketUpdatesService.ts`.
+- **Backend:** `supabase/functions/market-updates-qa/index.ts` (rewrite for hybrid retrieval, streaming, conversation context, richer schema), new `supabase/functions/market-updates-voice-transcribe/index.ts`, optional `market-updates-embed-backfill` cron.
+- **DB:** additive migration — `market_update_questions.conversation_id uuid`, optional `market_updates.embedding vector(1536)` if Phase 3 semantic path is enabled.
+- **Models:** Gemini 3 Flash (default), Gemini 2.5 Pro (analytical route), `openai/gpt-4o-mini-transcribe` (voice) — all via Lovable AI Gateway, no new secrets.
 
-**Backend**
-- `supabase/migrations/<ts>_market_updates_segments_and_periods.sql` — add `segments`, `freshness_tier`, extend `market_digests.period`, seed new sources.
-- `supabase/functions/market-updates-ingest/index.ts` — add AI classification step via Lovable AI Gateway.
-- `supabase/functions/market-updates-digest/index.ts` — accept `period`, window logic, per-segment grouping.
-- Cron schedules via pg_cron for each period.
+## Suggested delivery order
+Ship Phase 1 + Phase 2 together (small, immediately visible win — input works, voice works). Then Phase 3 (quality jump users will *feel*). Then Phase 4 (conversational shell). Then Phase 5 polish.
 
-**Frontend**
-- `src/types/marketUpdates.ts` — add `MarketDigestPeriod`, `segments`, `freshness_tier`.
-- `src/services/marketUpdatesService.ts` — `generateMarketDigest(period)`, `fetchLatestMarketDigest(period)`, `fetchMarketDigestsByPeriod`.
-- `src/pages/MarketUpdates.tsx` — full rebuild per §3.
-- New components: `src/components/market-updates/{DigestPeriodTabs,SegmentFilterChips,MarketUpdateCard,CitationList,FreshnessBadge,SourceHealthPanel,AskMarketAI}.tsx`.
-- Styling via semantic tokens (`bg-card`, `text-foreground`, `border-border`, `bg-warning/10`, etc.) — respects Branding page.
-
-### 6. Rollout Phases
-1. **Schema + seeds** migration (segments, periods, extra sources — disabled by default).
-2. **Ingestion AI classification** wired to Lovable AI Gateway; enable 3–5 official free RSS sources (RBA, ABS, APRA, HIA, Parliament).
-3. **Multi-period digest** edge function + cron.
-4. **Frontend rebuild** with segments, period tabs, citations, freshness, branded tokens.
-5. **Q&A hardening** to enforce source-only answers.
-6. **Ops:** source health alerts + admin toggle for enabling additional sources after licensing review.
-
-### Open Confirmations
-- OK to use **Lovable AI Gateway (`google/gemini-3-flash-preview`)** for classification + digest summarisation? (default per project standards)
-- Any licensed providers (CoreLogic/Cotality/PropTrack/Domain) you already have keys for that we should wire beyond RSS?
-- Should Political/Social segments include state-level parliament and ACOSS/AHURI, or restrict to federal + peak bodies initially?
+Reply "Proceed with Phase 1+2" (or any phase combo) and I'll build it end-to-end.
