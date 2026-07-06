@@ -1,4 +1,5 @@
-// Market Updates Q&A — Phase 5: source-grounded, refuses when no citations exist.
+// Market Updates Q&A — Phase 6: hybrid retrieval, adaptive model, conversation history,
+// richer grounded schema (key figures, follow-ups, sentiment, time horizon).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const cors = {
@@ -10,7 +11,8 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'content-type': 'application/json' } });
 
 const REFUSAL = 'I do not have enough sourced market updates to answer that yet.';
-const AI_MODEL = Deno.env.get('MARKET_AI_MODEL') || 'google/gemini-3-flash-preview';
+const MODEL_FAST = Deno.env.get('MARKET_AI_MODEL_FAST') || 'google/gemini-3-flash-preview';
+const MODEL_DEEP = Deno.env.get('MARKET_AI_MODEL_DEEP') || 'google/gemini-2.5-pro';
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 interface Ctx {
@@ -21,41 +23,75 @@ interface Ctx {
   source_published_at?: string | null;
   category?: string | null;
   segments?: string[] | null;
+  geography?: string[] | null;
+  impact_level?: string | null;
   ai_summary?: string | null;
   why_it_matters?: string | null;
   key_points?: string[] | null;
   citation_urls?: string[] | null;
 }
 
+interface HistoryTurn { role: 'user' | 'assistant'; content: string }
+
+const STOP = new Set(['what','when','where','which','with','about','into','this','that','have','from','been','will','would','should','could','their','there','than','then','they','them','are','the','and','for','was','how','why','who','you','your','our','has','does','doing','tell','give','show','explain']);
+
 function pickTerms(q: string): string[] {
-  const stop = new Set(['what','when','where','which','with','about','into','this','that','have','from','been','will','would','should','could','their','there','than','then','they','them','are','the','and','for','was','how','why','who','you','your','our']);
   return Array.from(new Set(
-    q.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 3 && !stop.has(t))
-  )).slice(0, 8);
+    q.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 3 && !STOP.has(t))
+  )).slice(0, 12);
 }
 
-function rankAndTrim(rows: Ctx[], terms: string[], limit = 8): Ctx[] {
-  return rows
-    .map(r => {
-      const blob = `${r.title} ${r.ai_summary ?? ''} ${r.why_it_matters ?? ''} ${(r.key_points ?? []).join(' ')}`.toLowerCase();
-      let score = 0;
-      for (const t of terms) if (blob.includes(t)) score += 1;
-      return { r, score };
-    })
-    .filter(x => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(x => x.r);
+// Question is "complex" → route to deeper model.
+function isComplex(q: string, history: HistoryTurn[]): boolean {
+  const wc = q.split(/\s+/).length;
+  const marks = (q.match(/\?/g) ?? []).length;
+  const multi = /\b(and|also|then|compare|versus|vs\.?|trend|forecast|impact|why|implication|scenario|difference|between)\b/i.test(q);
+  return wc > 22 || marks > 1 || multi || history.length >= 4;
 }
 
-async function callAI(question: string, context: Ctx[]): Promise<{ answer: string; used_ids: string[]; confidence: number; limitations: string[] } | null> {
+function recencyBoost(publishedAt?: string | null): number {
+  if (!publishedAt) return 0;
+  const ageDays = (Date.now() - new Date(publishedAt).getTime()) / 86_400_000;
+  if (!Number.isFinite(ageDays) || ageDays < 0) return 0;
+  // 3.0 today → 0 at ~90 days (exponential-ish decay).
+  return Math.max(0, 3 * Math.exp(-ageDays / 30));
+}
+
+function impactBoost(level?: string | null): number {
+  return level === 'high' ? 1.5 : level === 'medium' ? 0.75 : 0;
+}
+
+function rankAndTrim(rows: Ctx[], terms: string[], segment: string | undefined, limit = 12): Ctx[] {
+  const scored = rows.map(r => {
+    const blob = `${r.title} ${r.ai_summary ?? ''} ${r.why_it_matters ?? ''} ${(r.key_points ?? []).join(' ')}`.toLowerCase();
+    let score = 0;
+    for (const t of terms) {
+      if (r.title?.toLowerCase().includes(t)) score += 2;   // title match weighted higher
+      else if (blob.includes(t)) score += 1;
+    }
+    if (segment && r.segments?.includes(segment)) score += 1.5;
+    score += recencyBoost(r.source_published_at);
+    score += impactBoost(r.impact_level);
+    return { r, score };
+  });
+  const filtered = scored.filter(x => x.score > 0.5);
+  const use = filtered.length ? filtered : scored; // semantic fallback → keep top recent/impact
+  return use.sort((a, b) => b.score - a.score).slice(0, limit).map(x => x.r);
+}
+
+async function callAI(
+  model: string,
+  question: string,
+  context: Ctx[],
+  history: HistoryTurn[],
+): Promise<{ answer: string; used_ids: string[]; confidence: number; limitations: string[]; follow_up_questions: string[]; key_figures: Array<{ label: string; value: string; source_id?: string }>; time_horizon: string; sentiment: string } | null> {
   if (!LOVABLE_API_KEY) return null;
   const contextBlock = context.map((c, i) => {
     const cites = Array.from(new Set([...(c.citation_urls ?? []), c.source_url].filter(Boolean)));
     return `[[${i + 1}]] id=${c.id}
 Title: ${c.title}
 Source: ${c.source_name} — ${c.source_published_at ?? 'date unknown'}
-Category: ${c.category ?? 'n/a'} | Segments: ${(c.segments ?? []).join(', ') || 'n/a'}
+Category: ${c.category ?? 'n/a'} | Segments: ${(c.segments ?? []).join(', ') || 'n/a'} | Geography: ${(c.geography ?? []).join(', ') || 'n/a'} | Impact: ${c.impact_level ?? 'n/a'}
 Summary: ${c.ai_summary ?? ''}
 Why it matters: ${c.why_it_matters ?? ''}
 Key points: ${(c.key_points ?? []).join(' • ')}
@@ -68,13 +104,22 @@ STRICT RULES:
 2. If the CONTEXT does not contain enough grounded evidence to answer, respond with EXACTLY: "${REFUSAL}" and set used_ids to [].
 3. Cite the update ids you relied on in used_ids. Do not fabricate ids.
 4. Never give personal financial, tax, legal or investment advice. Attribute claims to their source.
-5. Keep the answer under 220 words, in plain Australian English, factual and specific.`;
+5. Keep the main answer under 260 words, plain Australian English, factual, quantitative where the sources support it.
+6. Extract concrete numbers (rates, percentages, prices, volumes, dates) into key_figures with the source id.
+7. Suggest 2–3 tightly-scoped follow_up_questions the user could ask next given only the CONTEXT you have.
+8. Use conversation history for pronoun resolution only, never as a source of facts.
+9. sentiment ∈ {positive, neutral, cautious, negative}. time_horizon ∈ {immediate, short_term, medium_term, long_term, unclear}.`;
 
-  const user = `QUESTION: ${question}\n\nCONTEXT:\n${contextBlock}`;
+  const historyMsgs = history.slice(-6).map(h => ({ role: h.role, content: h.content }));
+  const messages = [
+    { role: 'system', content: system },
+    ...historyMsgs,
+    { role: 'user', content: `QUESTION: ${question}\n\nCONTEXT:\n${contextBlock}` },
+  ];
 
   const body = {
-    model: AI_MODEL,
-    messages: [ { role: 'system', content: system }, { role: 'user', content: user } ],
+    model,
+    messages,
     tools: [{
       type: 'function',
       function: {
@@ -88,8 +133,24 @@ STRICT RULES:
             used_ids: { type: 'array', items: { type: 'string' } },
             confidence: { type: 'number', minimum: 0, maximum: 100 },
             limitations: { type: 'array', items: { type: 'string' } },
+            follow_up_questions: { type: 'array', items: { type: 'string' } },
+            key_figures: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  label: { type: 'string' },
+                  value: { type: 'string' },
+                  source_id: { type: 'string' },
+                },
+                required: ['label', 'value'],
+              },
+            },
+            time_horizon: { type: 'string', enum: ['immediate','short_term','medium_term','long_term','unclear'] },
+            sentiment: { type: 'string', enum: ['positive','neutral','cautious','negative'] },
           },
-          required: ['answer', 'used_ids', 'confidence', 'limitations'],
+          required: ['answer','used_ids','confidence','limitations','follow_up_questions','key_figures','time_horizon','sentiment'],
         },
       },
     }],
@@ -112,6 +173,14 @@ STRICT RULES:
       used_ids: Array.isArray(parsed.used_ids) ? parsed.used_ids.map(String) : [],
       confidence: Number.isFinite(parsed.confidence) ? Number(parsed.confidence) : 50,
       limitations: Array.isArray(parsed.limitations) ? parsed.limitations.map(String) : [],
+      follow_up_questions: Array.isArray(parsed.follow_up_questions) ? parsed.follow_up_questions.map(String).slice(0, 4) : [],
+      key_figures: Array.isArray(parsed.key_figures) ? parsed.key_figures.slice(0, 8).map((k: any) => ({
+        label: String(k.label ?? ''),
+        value: String(k.value ?? ''),
+        source_id: k.source_id ? String(k.source_id) : undefined,
+      })) : [],
+      time_horizon: typeof parsed.time_horizon === 'string' ? parsed.time_horizon : 'unclear',
+      sentiment: typeof parsed.sentiment === 'string' ? parsed.sentiment : 'neutral',
     };
   } catch (e) {
     console.warn('[qa] AI call failed', (e as Error).message);
@@ -137,22 +206,29 @@ Deno.serve(async (req) => {
   const question = String(payload?.question ?? '').trim();
   const updateIds: string[] = Array.isArray(payload?.updateIds) ? payload.updateIds : [];
   const segment: string | undefined = payload?.segment;
+  const history: HistoryTurn[] = Array.isArray(payload?.history)
+    ? payload.history
+        .filter((h: any) => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
+        .map((h: any) => ({ role: h.role, content: String(h.content).slice(0, 1200) }))
+        .slice(-8)
+    : [];
 
   if (question.length < 4) {
     return json({
       answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0,
       limitations: ['A specific question is required.'],
+      follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
     });
   }
 
   const terms = pickTerms(question);
 
-  // Candidate retrieval — restrict to published, recent, and (if provided) explicit ids.
+  // Candidate retrieval — larger pool for hybrid rerank.
   let q = sb.from('market_updates')
-    .select('id,title,source_name,source_url,source_published_at,category,segments,ai_summary,why_it_matters,key_points,citation_urls')
+    .select('id,title,source_name,source_url,source_published_at,category,segments,geography,impact_level,ai_summary,why_it_matters,key_points,citation_urls')
     .eq('status', 'published')
     .order('source_published_at', { ascending: false, nullsFirst: false })
-    .limit(60);
+    .limit(updateIds.length ? updateIds.length : 200);
   if (updateIds.length) q = q.in('id', updateIds);
   if (segment) q = q.contains('segments', [segment]);
   if (terms.length && !updateIds.length) {
@@ -160,27 +236,45 @@ Deno.serve(async (req) => {
     q = q.or(or);
   }
 
-  const { data, error } = await q;
-  if (error) {
-    console.warn('[qa] retrieval error', error.message);
-    return json({ answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0, limitations: ['Retrieval error.'] });
+  let { data, error } = await q;
+
+  // Semantic fallback: if term-restricted query returned nothing, pull recent high-impact pool.
+  if (!error && (!data || data.length === 0) && !updateIds.length) {
+    const fallback = await sb.from('market_updates')
+      .select('id,title,source_name,source_url,source_published_at,category,segments,geography,impact_level,ai_summary,why_it_matters,key_points,citation_urls')
+      .eq('status', 'published')
+      .order('source_published_at', { ascending: false, nullsFirst: false })
+      .limit(80);
+    data = fallback.data ?? [];
   }
 
-  const context = rankAndTrim((data ?? []) as Ctx[], terms.length ? terms : pickTerms(question));
+  if (error) {
+    console.warn('[qa] retrieval error', error.message);
+    return json({ answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0, limitations: ['Retrieval error.'], follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral' });
+  }
+
+  const context = rankAndTrim((data ?? []) as Ctx[], terms.length ? terms : pickTerms(question), segment);
   if (!context.length) {
     return json({
       answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0,
       limitations: ['No published source-backed update matched the question.'],
+      follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
     });
   }
 
   const contextIds = new Set(context.map(c => c.id));
-  const ai = await callAI(question, context);
+  const model = isComplex(question, history) ? MODEL_DEEP : MODEL_FAST;
+  let ai = await callAI(model, question, context, history);
+  // Fallback: if deep model fails, retry with fast model.
+  if (!ai && model !== MODEL_FAST) ai = await callAI(MODEL_FAST, question, context, history);
 
-  // Enforcement: must have used_ids ⊆ contextIds; otherwise refuse.
   let answer: string, used_ids: string[], confidence: number, limitations: string[];
+  let follow_up_questions: string[] = [];
+  let key_figures: Array<{ label: string; value: string; source_id?: string }> = [];
+  let time_horizon = 'unclear';
+  let sentiment = 'neutral';
+
   if (!ai || !ai.used_ids.length || ai.used_ids.some(id => !contextIds.has(id)) || ai.answer.length < 4) {
-    // Fallback: deterministic extractive answer from retrieved context.
     answer = context.slice(0, 3).map(c => `• ${c.title} (${c.source_name}): ${c.ai_summary || c.why_it_matters || 'Limited sourced context.'}`).join('\n');
     used_ids = context.slice(0, 3).map(c => c.id);
     confidence = 45;
@@ -190,6 +284,10 @@ Deno.serve(async (req) => {
     used_ids = ai.used_ids.filter(id => contextIds.has(id));
     confidence = Math.max(0, Math.min(100, ai.confidence));
     limitations = ai.limitations.length ? ai.limitations : ['Answer limited to stored market update summaries and citations; not financial, legal, tax or investment advice.'];
+    follow_up_questions = ai.follow_up_questions;
+    key_figures = ai.key_figures.filter(k => !k.source_id || contextIds.has(k.source_id));
+    time_horizon = ai.time_horizon;
+    sentiment = ai.sentiment;
   }
 
   const citations = Array.from(new Set(
@@ -210,5 +308,11 @@ Deno.serve(async (req) => {
     source_update_ids: used_ids,
     confidence_score: confidence,
     limitations,
+    follow_up_questions,
+    key_figures,
+    time_horizon,
+    sentiment,
+    model_used: model,
+    context_size: context.length,
   });
 });
