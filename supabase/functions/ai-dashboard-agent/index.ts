@@ -7740,13 +7740,18 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     finalResponse = `⚠️ ${err.message || 'An error occurred.'}`;
   }
 
+  const recalledIds = semanticMemories.map(m => (m as any).id).filter(Boolean);
   if (pendingConfirmation) {
     await sb.from('agent_messages').insert({
       conversation_id, role: 'assistant', content: finalResponse,
       tool_calls: pendingToolCalls, requires_confirmation: true, confirmation_status: 'pending',
+      recalled_memory_ids: recalledIds,
     });
   } else {
-    await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+    await sb.from('agent_messages').insert({
+      conversation_id, role: 'assistant', content: finalResponse,
+      recalled_memory_ids: recalledIds,
+    });
     // Phase 4: fire-and-forget auto-capture of durable memories
     autoCaptureMemory(sb, userId, conversation_id, message, finalResponse).catch(() => {});
   }
