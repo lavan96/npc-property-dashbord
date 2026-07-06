@@ -621,6 +621,29 @@ export function AgentChatWidget() {
     }
   }, [panelView]);
 
+  // Load available skills (personas) once panel opens
+  useEffect(() => {
+    if (!isOpen || skills.length > 0) return;
+    invokeSecureFunction('ai-dashboard-agent', { action: 'list-skills' })
+      .then(({ data }) => { if (data?.skills) setSkills(data.skills); })
+      .catch(() => {});
+  }, [isOpen, skills.length]);
+
+  const activeSkill = useMemo(
+    () => skills.find(s => s.slug === activeSkillSlug) || null,
+    [skills, activeSkillSlug]
+  );
+
+  const selectSkill = (slug: string | null) => {
+    setActiveSkillSlug(slug);
+    try {
+      if (slug) localStorage.setItem('aurixa_active_skill', slug);
+      else localStorage.removeItem('aurixa_active_skill');
+    } catch {}
+    setSkillPickerOpen(false);
+  };
+
+
   if (!user) return null;
 
   if (!isOpen) {
