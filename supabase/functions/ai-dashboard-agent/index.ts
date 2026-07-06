@@ -6948,7 +6948,7 @@ async function callAI(messages: any[], supabase: any, userId: string, tools: any
     body: JSON.stringify({
       model: 'google/gemini-3-flash-preview',
       messages,
-      tools: TOOLS,
+      tools,
       tool_choice: 'auto',
       temperature: 0.3,
       max_tokens: 3000,
