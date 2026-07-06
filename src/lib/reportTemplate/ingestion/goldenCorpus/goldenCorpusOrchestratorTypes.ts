@@ -18,6 +18,12 @@ import type {
 } from './goldenCorpusRunTypes';
 import type { PdfImportQualityGateReport } from '../qualityGates/pdfImportQualityGateTypes';
 import type { PdfImportFailureTriageSummary } from '../failureTriage/pdfImportFailureTriageTypes';
+import type {
+  GoldenRunBaselineComparison,
+  GoldenRunHistoryRecord,
+  SaveGoldenRunHistoryResult,
+} from './goldenRunHistoryTypes';
+import type { ExportParityRunnerResult } from '../exportParity/exportParityRunnerTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -33,11 +39,15 @@ export type GoldenCorpusOrchestratorStatus =
 export type GoldenCorpusOrchestratorStepId =
   | 'validate_input'
   | 'load_snapshot'
+  | 'run_export_parity'
   | 'evaluate_run'
   | 'evaluate_quality_gates'
   | 'build_summary'
   | 'evaluate_triage'
-  | 'persist_summary';
+  | 'load_baseline'
+  | 'compare_baseline'
+  | 'persist_summary'
+  | 'save_history';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -64,7 +74,20 @@ export interface GoldenCorpusOrchestratorRequest {
   runBatchId?: string | null;
   operatorDecision?: GoldenRegressionOperatorDecision;
   notes?: string[];
+  /** Persist the latest summary onto template_imports.meta (Phase 8D/9A). */
   persist?: boolean;
+  /** Run the Phase 9D export parity automation before evaluating the run. */
+  runExportParity?: boolean;
+  /** Persist the export parity summary produced by the runner (Phase 9D). */
+  persistExportParity?: boolean;
+  /** Append a history row to public.pdf_import_golden_runs (Phase 9C). */
+  saveHistory?: boolean;
+  /**
+   * Compare this run against the latest previous baseline for the corpus.
+   * Defaults to `saveHistory` when omitted (a saved run is compared before it
+   * becomes the next baseline).
+   */
+  compareBaseline?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -92,6 +115,15 @@ export interface GoldenCorpusOrchestratorResult {
 
   persistenceResult: SaveGoldenRegressionSummaryResult | null;
   persisted: boolean;
+
+  // Phase 9D — automated export parity runner.
+  exportParityRunnerResult: ExportParityRunnerResult | null;
+
+  // Phase 9C — regression history + baseline comparison.
+  baselineComparison: GoldenRunBaselineComparison | null;
+  historyPersistenceResult: SaveGoldenRunHistoryResult | null;
+  historyRecord: GoldenRunHistoryRecord | null;
+  historySaved: boolean;
 
   warnings: string[];
   failures: string[];
