@@ -115,7 +115,46 @@ export default function MarketQAQuality() {
             })}
           </CardContent>
         </Card>
+
+        <MarketQaTrendPanel />
       </div>
     </main>
+  );
+}
+
+interface Baseline { snapshot_date: string; total_questions: number; refusal_count: number; refusal_rate: number; avg_confidence: number | null; avg_retrieved_ids: number; avg_used_ids: number; low_confidence_count: number; model_mix: Record<string, number>; }
+
+function MarketQaTrendPanel() {
+  const [baselines, setBaselines] = useState<Baseline[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => { (async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase.functions.invoke('phase6-quality-ops', { body: { action: 'market-qa-baselines-list' } });
+      setBaselines(((data as any)?.baselines ?? []) as Baseline[]);
+    } finally { setLoading(false); }
+  })(); }, []);
+  const max = Math.max(1, ...baselines.map(b => b.total_questions));
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-sm">30-day quality trend</CardTitle></CardHeader>
+      <CardContent>
+        {loading && <p className="text-xs text-muted-foreground">Loading baselines…</p>}
+        {!loading && baselines.length === 0 && <p className="text-xs text-muted-foreground">No nightly snapshots yet. The <code>market-qa-quality-snapshot</code> job writes one per day.</p>}
+        {baselines.length > 0 && (
+          <div className="space-y-1">
+            {baselines.slice(0, 30).reverse().map(b => (
+              <div key={b.snapshot_date} className="grid grid-cols-[90px_1fr_60px_60px_60px] items-center gap-2 text-[11px]">
+                <span className="text-muted-foreground">{b.snapshot_date}</span>
+                <div className="h-3 rounded bg-muted overflow-hidden"><div className="h-full bg-primary/60" style={{ width: `${(b.total_questions / max) * 100}%` }} /></div>
+                <span>{b.total_questions} q</span>
+                <span className={b.refusal_rate > 0.15 ? 'text-destructive' : 'text-muted-foreground'}>{(b.refusal_rate * 100).toFixed(0)}% ref</span>
+                <span className="text-muted-foreground">{b.avg_confidence != null ? `${(b.avg_confidence).toFixed(0)}%` : '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
