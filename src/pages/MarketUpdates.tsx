@@ -542,9 +542,16 @@ export default function MarketUpdates() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle>
+                  {qaThread.length > 0 && (
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => { setQaThread([]); setQaMessage(null); setConversationId(crypto.randomUUID()); }}>New thread</Button>
+                  )}
+                </div>
+              </CardHeader>
               <CardContent className="space-y-2">
-                <p className="text-xs text-muted-foreground">Source-grounded answers from published market updates only.</p>
+                <p className="text-xs text-muted-foreground">Source-grounded, streaming answers from published market updates. Threaded — follow-ups keep prior context.</p>
                 {qaThread.length > 0 && (
                   <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
                     {qaThread.map((turn, i) => (
