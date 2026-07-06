@@ -105,6 +105,7 @@ export default function MarketUpdates() {
   const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
   const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
   const [filters, setFilters] = useState({ category: 'all', geography: 'all', impact: 'all', audience: 'all' });
+  const [sourcesAdminOpen, setSourcesAdminOpen] = useState(false);
 
   const loadUpdates = async () => {
     setLoading(true);
