@@ -363,8 +363,20 @@ Deno.serve(async (req) => {
       .flatMap(c => [...(c.citation_urls ?? []), c.source_url].filter(Boolean))
   ));
 
-  // Persist turn (async, non-blocking to response path).
-  const persistPromise = sb.from('market_update_questions').insert({
+  // Transparency: every retrieved item flagged as used or considered-only.
+  const usedSet = new Set(used_ids);
+  const retrieved = context.map(c => ({
+    id: c.id,
+    title: c.title,
+    source_name: c.source_name,
+    source_url: c.source_url,
+    source_published_at: c.source_published_at ?? null,
+    impact_level: c.impact_level ?? null,
+    used: usedSet.has(c.id),
+  }));
+
+  // Persist turn and capture inserted row id for "Share answer" affordance.
+  const insertRow = {
     question, answer,
     source_update_ids: used_ids,
     citation_urls: citations,
@@ -375,7 +387,18 @@ Deno.serve(async (req) => {
     time_horizon,
     sentiment,
     model_used: model,
-  }).then(({ error: e }: any) => { if (e) console.warn('[qa] log insert', e.message); });
+    created_by: userId,
+  };
+  const persistPromise = sb.from('market_update_questions').insert(insertRow).select('id').maybeSingle()
+    .then((res: any) => { if (res?.error) console.warn('[qa] log insert', res.error.message); return res?.data?.id ?? null; });
+
+  let question_id: string | null = null;
+  if (!stream) {
+    question_id = await persistPromise.catch(() => null);
+  } else {
+    // Kick off but don't block streaming; question_id will be inlined in metadata if it lands in time.
+    persistPromise.catch(() => null);
+  }
 
   const finalPayload = {
     answer,
@@ -390,7 +413,10 @@ Deno.serve(async (req) => {
     model_used: model,
     context_size: context.length,
     conversation_id,
+    retrieved,
+    question_id,
   };
+
 
   if (!stream) {
     await persistPromise;
