@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { Activity, AlertTriangle, BarChart3, Building2, ExternalLink, FileText, Globe2, Loader2, Newspaper, RefreshCw, Search, Settings, ShieldCheck, Sparkles, TrendingUp, Zap, Clock, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest, triggerMarketIngestion } from '@/services/marketUpdatesService';
 import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
 import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSourcesAdminDialog';
+import { MarketQAVoiceButton } from '@/components/market-updates/MarketQAVoiceButton';
 
 const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
   { id: '24h', label: '24 Hours', hint: 'Last day' },
@@ -101,6 +102,8 @@ export default function MarketUpdates() {
   const [qaUpdate, setQaUpdate] = useState<MarketUpdate | null>(null);
   const [question, setQuestion] = useState('');
   const [qaMessage, setQaMessage] = useState<MarketQAMessage | null>(null);
+  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[] }>>([]);
+  const [asking, setAsking] = useState(false);
   const [search, setSearch] = useState('');
   const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
   const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
@@ -171,8 +174,27 @@ export default function MarketUpdates() {
   };
 
   const handleAsk = async () => {
-    if (!question.trim()) return;
-    setQaMessage(await answerMarketUpdateQuestion(question, qaUpdate ? [qaUpdate.id] : undefined));
+    const q = question.trim();
+    if (!q || asking) return;
+    setAsking(true);
+    setQaThread((t) => [...t, { role: 'user', content: q }]);
+    setQuestion('');
+    try {
+      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined);
+      setQaMessage(answer);
+      setQaThread((t) => [...t, { role: 'assistant', content: answer?.content ?? 'No response.', citations: answer?.citations ?? [], limitations: answer?.limitations ?? [] }]);
+    } catch (err) {
+      setQaThread((t) => [...t, { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.' }]);
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  const handleQuestionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void handleAsk();
+    }
   };
 
   return (
@@ -425,7 +447,7 @@ export default function MarketUpdates() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
                     <Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQuestion(''); }}>Ask AI</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQaThread([]); setQuestion(''); }}>Ask AI</Button>
                     <div className="ml-auto flex flex-wrap items-center gap-1">
                       {update.citation_urls.slice(0, 3).map((url, i) => (
                         <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
@@ -482,24 +504,55 @@ export default function MarketUpdates() {
               <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-xs text-muted-foreground">Source-grounded answers from published market updates only.</p>
-                <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="e.g. What's the RBA signalling this month?" disabled={!updates.length} className="min-h-[80px] text-sm" />
-                <Button size="sm" className="w-full" onClick={handleAsk} disabled={!updates.length || !question.trim()}>Ask safely</Button>
-                {qaMessage && (
-                  <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-                    <p className="text-xs leading-relaxed">{qaMessage.content}</p>
-                    {qaMessage.citations.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {qaMessage.citations.map((url, i) => (
-                          <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
-                            <ExternalLink className="h-2.5 w-2.5" />Cite {i + 1}
-                          </a>
-                        ))}
+                {qaThread.length > 0 && (
+                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
+                    {qaThread.map((turn, i) => (
+                      <div key={i} className={cn('rounded-md p-2 text-xs leading-relaxed', turn.role === 'user' ? 'bg-primary/10 text-foreground' : 'bg-background/70 border border-border/60')}>
+                        <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                        <p className="whitespace-pre-wrap">{turn.content}</p>
+                        {turn.citations && turn.citations.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {turn.citations.map((url, j) => (
+                              <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
+                                <ExternalLink className="h-2.5 w-2.5" />Cite {j + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {turn.limitations && turn.limitations.length > 0 && (
+                          <ul className="mt-1.5 list-disc pl-4 text-[10px] text-muted-foreground">
+                            {turn.limitations.map((l, j) => <li key={j}>{l}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                    {asking && (
+                      <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Thinking…
                       </div>
                     )}
                   </div>
                 )}
+                <Textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={handleQuestionKeyDown}
+                  placeholder="Ask anything — e.g. What's the RBA signalling this month?"
+                  className="min-h-[80px] text-sm"
+                />
+                <div className="flex gap-2">
+                  <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
+                  <Button size="sm" className="flex-1" onClick={handleAsk} disabled={asking || !question.trim()}>
+                    {asking ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking…</> : 'Ask safely'}
+                  </Button>
+                </div>
+                {qaThread.length === 0 && !updates.length && (
+                  <p className="text-[10px] text-muted-foreground">No published updates loaded yet — the AI may refuse if it has no grounded sources.</p>
+                )}
               </CardContent>
             </Card>
+
+
 
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Source Health</CardTitle></CardHeader>
@@ -556,31 +609,43 @@ export default function MarketUpdates() {
         </Dialog>
 
         {/* Q&A Dialog */}
-        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); } }}>
+        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); setQaThread([]); } }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ask AI about this update</DialogTitle>
               <p className="text-xs text-muted-foreground">{qaUpdate?.title}</p>
             </DialogHeader>
             <div className="space-y-3">
-              <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
-              <Button onClick={handleAsk} className="w-full"><Sparkles className="mr-2 h-4 w-4" />Ask safely</Button>
-              {qaMessage && (
-                <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-                  <p className="text-sm">{qaMessage.content}</p>
-                  {qaMessage.citations.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {qaMessage.citations.map((url, i) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {i + 1}</a>
-                      ))}
+              {qaThread.length > 0 && (
+                <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
+                  {qaThread.map((turn, i) => (
+                    <div key={i} className={cn('rounded-md p-2 text-sm', turn.role === 'user' ? 'bg-primary/10' : 'bg-background/70 border border-border/60')}>
+                      <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                      <p className="whitespace-pre-wrap">{turn.content}</p>
+                      {turn.citations && turn.citations.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {turn.citations.map((url, j) => (
+                            <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {j + 1}</a>
+                          ))}
+                        </div>
+                      )}
+                      {turn.limitations && turn.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{turn.limitations.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                     </div>
-                  )}
-                  {qaMessage.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{qaMessage.limitations.map((l, i) => <li key={i}>{l}</li>)}</ul>}
+                  ))}
+                  {asking && <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Thinking…</div>}
                 </div>
               )}
+              <Textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleQuestionKeyDown} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
+              <div className="flex gap-2">
+                <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
+                <Button onClick={handleAsk} className="flex-1" disabled={asking || !question.trim()}>
+                  {asking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Asking…</> : <><Sparkles className="mr-2 h-4 w-4" />Ask safely</>}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
+
         <MarketSourcesAdminDialog open={sourcesAdminOpen} onOpenChange={setSourcesAdminOpen} onChanged={loadUpdates} />
       </div>
     </main>
