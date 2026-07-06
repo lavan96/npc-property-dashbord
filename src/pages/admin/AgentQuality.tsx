@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { PlayCircle, Plus, Trash2, CheckCircle2, XCircle, Activity, Beaker } from 'lucide-react';
+import AgentEvalBaselinesPanel from './AgentEvalBaselinesPanel';
 
 interface EvalRow { id: string; name: string; description: string | null; prompt: string; expected_tools: string[]; expected_contains: string[]; expected_not_contains: string[]; tags: string[]; is_enabled: boolean; }
 interface Stats { runs: number; pass: number; pass_rate: number; avg_score: number; avg_latency: number; latest: any; }
