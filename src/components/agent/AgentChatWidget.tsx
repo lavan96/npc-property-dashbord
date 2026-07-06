@@ -98,6 +98,9 @@ export function AgentChatWidget() {
   const [extractingFiles, setExtractingFiles] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
 
   // Auto-resize textarea when input changes (covers voice transcription + typing)
   useEffect(() => {
