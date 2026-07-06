@@ -440,7 +440,7 @@ Deno.serve(async (req) => {
           controller.enqueue(encoder.encode(sseEvent('delta', { text: w, acc })));
           await new Promise(r => setTimeout(r, 12));
         }
-        controller.enqueue(encoder.encode(sseEvent('metadata', finalPayload)));
+        controller.enqueue(encoder.encode(sseEvent('metadata', streamPayload)));
         controller.enqueue(encoder.encode(sseEvent('done', { ok: true })));
       } catch (e) {
         controller.enqueue(encoder.encode(sseEvent('error', { message: (e as Error).message })));
@@ -449,10 +449,9 @@ Deno.serve(async (req) => {
       }
     },
   });
-  // fire-and-forget persistence
-  persistPromise.catch(() => {});
   return new Response(body, {
     headers: { ...cors, 'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'x-accel-buffering': 'no' },
   });
 });
+
 
