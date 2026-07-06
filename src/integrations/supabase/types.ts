@@ -790,6 +790,57 @@ export type Database = {
           },
         ]
       }
+      agent_semantic_memories: {
+        Row: {
+          content: string
+          content_hash: string
+          conversation_id: string | null
+          created_at: string
+          embedding: string
+          id: string
+          importance: number
+          kind: string
+          last_used_at: string | null
+          source_message_id: string | null
+          tags: string[]
+          updated_at: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          content: string
+          content_hash: string
+          conversation_id?: string | null
+          created_at?: string
+          embedding: string
+          id?: string
+          importance?: number
+          kind?: string
+          last_used_at?: string | null
+          source_message_id?: string | null
+          tags?: string[]
+          updated_at?: string
+          use_count?: number
+          user_id: string
+        }
+        Update: {
+          content?: string
+          content_hash?: string
+          conversation_id?: string | null
+          created_at?: string
+          embedding?: string
+          id?: string
+          importance?: number
+          kind?: string
+          last_used_at?: string | null
+          source_message_id?: string | null
+          tags?: string[]
+          updated_at?: string
+          use_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_user_preferences: {
         Row: {
           created_at: string
@@ -18862,6 +18913,23 @@ export type Database = {
           p_username: string
         }
         Returns: string
+      }
+      match_agent_memories: {
+        Args: {
+          p_match_count?: number
+          p_min_similarity?: number
+          p_query_embedding: string
+          p_user_id: string
+        }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          importance: number
+          kind: string
+          similarity: number
+          tags: string[]
+        }[]
       }
       match_document_chunks: {
         Args: {
