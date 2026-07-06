@@ -548,6 +548,48 @@ export type Database = {
           },
         ]
       }
+      agent_memory_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          memory_id: string
+          message_id: string | null
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memory_id: string
+          message_id?: string | null
+          rating: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memory_id?: string
+          message_id?: string | null
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_memory_feedback_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "agent_semantic_memories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_memory_feedback_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "agent_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_messages: {
         Row: {
           confirmation_status: string | null
@@ -555,6 +597,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          recalled_memory_ids: string[]
           requires_confirmation: boolean | null
           role: string
           sent_by: string | null
@@ -567,6 +610,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          recalled_memory_ids?: string[]
           requires_confirmation?: boolean | null
           role: string
           sent_by?: string | null
@@ -579,6 +623,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          recalled_memory_ids?: string[]
           requires_confirmation?: boolean | null
           role?: string
           sent_by?: string | null
@@ -797,6 +842,7 @@ export type Database = {
           conversation_id: string | null
           created_at: string
           embedding: string
+          feedback_score: number
           id: string
           importance: number
           kind: string
@@ -813,6 +859,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           embedding: string
+          feedback_score?: number
           id?: string
           importance?: number
           kind?: string
@@ -829,6 +876,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           embedding?: string
+          feedback_score?: number
           id?: string
           importance?: number
           kind?: string
@@ -18924,6 +18972,7 @@ export type Database = {
         Returns: {
           content: string
           created_at: string
+          feedback_score: number
           id: string
           importance: number
           kind: string
@@ -18983,6 +19032,10 @@ export type Database = {
       }
       pause_migration_job: { Args: { p_job_id: string }; Returns: undefined }
       pdf_import_watchdog_sweep: { Args: never; Returns: number }
+      prune_agent_memories: {
+        Args: { p_max?: number; p_user_id: string }
+        Returns: number
+      }
       read_migration_control_signal: {
         Args: { p_job_id: string }
         Returns: string
