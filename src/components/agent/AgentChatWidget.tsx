@@ -482,18 +482,62 @@ export function AgentChatWidget() {
       if (allImageAttachments.length > 0) {
         payload.image_attachments = allImageAttachments;
       }
-      const { data, error } = await invokeSecureFunction('ai-dashboard-agent', payload);
-      if (error || !data?.success) {
-        const errorMsg = error?.message || data?.error || 'Something went wrong';
+      const payloadStream: any = { ...payload, action: 'chat-stream' };
+      const streamMsgId = `stream-${Date.now()}`;
+      const streamMsg: Message = { id: streamMsgId, role: 'assistant', content: '', created_at: new Date().toISOString() };
+      setMessages(prev => [...prev, streamMsg]);
+      setStreamingId(streamMsgId);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      let accumulated = '';
+      let requiresConfirmation = false;
+      let sawEvent = false;
+      let streamError: string | null = null;
+
+      try {
+        for await (const evt of streamSecureFunction('ai-dashboard-agent', payloadStream, { signal: controller.signal })) {
+          sawEvent = true;
+          if (evt.event === 'token' && evt.data?.delta) {
+            accumulated += evt.data.delta;
+            setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, content: accumulated } : m));
+          } else if (evt.event === 'tool') {
+            if (evt.data?.phase === 'start') setActiveTool(evt.data.name);
+            else if (evt.data?.phase === 'end') setActiveTool(null);
+          } else if (evt.event === 'error') {
+            streamError = evt.data?.message || 'Stream error';
+          } else if (evt.event === 'done') {
+            requiresConfirmation = Boolean(evt.data?.requires_confirmation);
+          }
+        }
+      } catch (streamErr: any) {
+        if (streamErr?.name === 'AbortError') {
+          accumulated += '\n\n_Stopped._';
+          setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, content: accumulated } : m));
+        } else {
+          streamError = streamErr?.message || 'Network error';
+        }
+      } finally {
+        abortRef.current = null;
+        setStreamingId(null);
+        setActiveTool(null);
+      }
+
+      if (streamError && !sawEvent) {
         setRetryMessage(msg);
-        setMessages(prev => [...prev.filter(m => m.id !== tempUserMsg.id), tempUserMsg, { id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${errorMsg}`, created_at: new Date().toISOString() }]);
-        toast.error(errorMsg);
+        setMessages(prev => prev.filter(m => m.id !== streamMsgId).concat({ id: `error-${Date.now()}`, role: 'assistant', content: `⚠️ ${streamError}`, created_at: new Date().toISOString() }));
+        toast.error(streamError);
       } else {
+        // Refresh from server so partial stream text is replaced by the persisted
+        // canonical message (with tool_calls / confirmation metadata attached).
         const { data: refreshed } = await invokeSecureFunction('ai-dashboard-agent', { action: 'get-messages', conversation_id: convId });
         if (refreshed?.messages) setMessages(refreshed.messages);
         loadConversations();
-        // Auto-refresh settings panel if it's open (e.g. after creating a playbook/task via chat)
         if (panelView === 'settings') loadSettingsData(settingsTab);
+        if (requiresConfirmation) {
+          // no-op: confirmation buttons will render off the refreshed message metadata
+        }
       }
     } catch (err: any) {
       setRetryMessage(msg);
@@ -501,6 +545,13 @@ export function AgentChatWidget() {
       toast.error(err.message || 'Failed to send message');
     }
     setLoading(false);
+  };
+
+  const stopStreaming = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
   };
 
   const handleConfirmAction = async (messageId: string, approved: boolean) => {
