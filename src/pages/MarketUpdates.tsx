@@ -102,7 +102,7 @@ export default function MarketUpdates() {
   const [qaUpdate, setQaUpdate] = useState<MarketUpdate | null>(null);
   const [question, setQuestion] = useState('');
   const [qaMessage, setQaMessage] = useState<MarketQAMessage | null>(null);
-  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[] }>>([]);
+  const [qaThread, setQaThread] = useState<Array<{ role: 'user' | 'assistant'; content: string; citations?: string[]; limitations?: string[]; follow_up_questions?: string[]; key_figures?: Array<{ label: string; value: string; source_id?: string }>; time_horizon?: string; sentiment?: string; confidence_score?: number | null }>>([]);
   const [asking, setAsking] = useState(false);
   const [search, setSearch] = useState('');
   const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
@@ -173,22 +173,36 @@ export default function MarketUpdates() {
     setIngesting(false);
   };
 
-  const handleAsk = async () => {
-    const q = question.trim();
+  const handleAsk = async (overrideQuestion?: string) => {
+    const q = (overrideQuestion ?? question).trim();
     if (!q || asking) return;
     setAsking(true);
+    const priorHistory = qaThread.map((t) => ({ role: t.role, content: t.content }));
     setQaThread((t) => [...t, { role: 'user', content: q }]);
     setQuestion('');
     try {
-      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined);
+      const seg = activeSegment !== 'all' ? activeSegment : undefined;
+      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined, priorHistory, seg);
       setQaMessage(answer);
-      setQaThread((t) => [...t, { role: 'assistant', content: answer?.content ?? 'No response.', citations: answer?.citations ?? [], limitations: answer?.limitations ?? [] }]);
+      setQaThread((t) => [...t, {
+        role: 'assistant',
+        content: answer?.content ?? 'No response.',
+        citations: answer?.citations ?? [],
+        limitations: answer?.limitations ?? [],
+        follow_up_questions: answer?.follow_up_questions ?? [],
+        key_figures: answer?.key_figures ?? [],
+        time_horizon: answer?.time_horizon,
+        sentiment: answer?.sentiment,
+        confidence_score: answer?.confidence_score,
+      }]);
     } catch (err) {
       setQaThread((t) => [...t, { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.' }]);
     } finally {
       setAsking(false);
     }
   };
+
+  const handleFollowUp = (q: string) => { setQuestion(q); void handleAsk(q); };
 
   const handleQuestionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -508,14 +522,38 @@ export default function MarketUpdates() {
                   <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
                     {qaThread.map((turn, i) => (
                       <div key={i} className={cn('rounded-md p-2 text-xs leading-relaxed', turn.role === 'user' ? 'bg-primary/10 text-foreground' : 'bg-background/70 border border-border/60')}>
-                        <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                        <div className="mb-0.5 flex flex-wrap items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                          <span>{turn.role === 'user' ? 'You' : 'AI'}</span>
+                          {turn.role === 'assistant' && turn.sentiment && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.sentiment}</Badge>}
+                          {turn.role === 'assistant' && turn.time_horizon && turn.time_horizon !== 'unclear' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.time_horizon.replace('_',' ')}</Badge>}
+                          {turn.role === 'assistant' && typeof turn.confidence_score === 'number' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{Math.round(turn.confidence_score)}% conf</Badge>}
+                        </div>
                         <p className="whitespace-pre-wrap">{turn.content}</p>
+                        {turn.key_figures && turn.key_figures.length > 0 && (
+                          <div className="mt-1.5 grid grid-cols-2 gap-1">
+                            {turn.key_figures.map((k, j) => (
+                              <div key={j} className="rounded border border-border/60 bg-background/50 px-1.5 py-1">
+                                <div className="text-[9px] uppercase text-muted-foreground">{k.label}</div>
+                                <div className="text-[11px] font-semibold text-primary">{k.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {turn.citations && turn.citations.length > 0 && (
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {turn.citations.map((url, j) => (
                               <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
                                 <ExternalLink className="h-2.5 w-2.5" />Cite {j + 1}
                               </a>
+                            ))}
+                          </div>
+                        )}
+                        {turn.follow_up_questions && turn.follow_up_questions.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {turn.follow_up_questions.map((fq, j) => (
+                              <button key={j} type="button" onClick={() => handleFollowUp(fq)} disabled={asking} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] text-primary hover:bg-primary/10 disabled:opacity-50">
+                                ↳ {fq}
+                              </button>
                             ))}
                           </div>
                         )}
@@ -542,7 +580,7 @@ export default function MarketUpdates() {
                 />
                 <div className="flex gap-2">
                   <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
-                  <Button size="sm" className="flex-1" onClick={handleAsk} disabled={asking || !question.trim()}>
+                  <Button size="sm" className="flex-1" onClick={() => handleAsk()} disabled={asking || !question.trim()}>
                     {asking ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking…</> : 'Ask safely'}
                   </Button>
                 </div>
@@ -620,12 +658,34 @@ export default function MarketUpdates() {
                 <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
                   {qaThread.map((turn, i) => (
                     <div key={i} className={cn('rounded-md p-2 text-sm', turn.role === 'user' ? 'bg-primary/10' : 'bg-background/70 border border-border/60')}>
-                      <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                      <div className="mb-0.5 flex flex-wrap items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                        <span>{turn.role === 'user' ? 'You' : 'AI'}</span>
+                        {turn.role === 'assistant' && turn.sentiment && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.sentiment}</Badge>}
+                        {turn.role === 'assistant' && turn.time_horizon && turn.time_horizon !== 'unclear' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.time_horizon.replace('_',' ')}</Badge>}
+                        {turn.role === 'assistant' && typeof turn.confidence_score === 'number' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{Math.round(turn.confidence_score)}% conf</Badge>}
+                      </div>
                       <p className="whitespace-pre-wrap">{turn.content}</p>
+                      {turn.key_figures && turn.key_figures.length > 0 && (
+                        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {turn.key_figures.map((k, j) => (
+                            <div key={j} className="rounded border border-border/60 bg-background/50 px-2 py-1">
+                              <div className="text-[9px] uppercase text-muted-foreground">{k.label}</div>
+                              <div className="text-sm font-semibold text-primary">{k.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {turn.citations && turn.citations.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {turn.citations.map((url, j) => (
                             <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {j + 1}</a>
+                          ))}
+                        </div>
+                      )}
+                      {turn.follow_up_questions && turn.follow_up_questions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {turn.follow_up_questions.map((fq, j) => (
+                            <button key={j} type="button" onClick={() => handleFollowUp(fq)} disabled={asking} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10 disabled:opacity-50">↳ {fq}</button>
                           ))}
                         </div>
                       )}
@@ -638,7 +698,7 @@ export default function MarketUpdates() {
               <Textarea value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={handleQuestionKeyDown} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
               <div className="flex gap-2">
                 <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
-                <Button onClick={handleAsk} className="flex-1" disabled={asking || !question.trim()}>
+                <Button onClick={() => handleAsk()} className="flex-1" disabled={asking || !question.trim()}>
                   {asking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Asking…</> : <><Sparkles className="mr-2 h-4 w-4" />Ask safely</>}
                 </Button>
               </div>

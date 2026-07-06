@@ -130,13 +130,32 @@ export async function generateMarketDigest(period: MarketDigestPeriod = '24h'): 
 // Back-compat alias
 export const generateMarketDigest24h = () => generateMarketDigest('24h');
 
-export async function answerMarketUpdateQuestion(question: string, updateIds?: string[]): Promise<MarketQAMessage> {
+export async function answerMarketUpdateQuestion(
+  question: string,
+  updateIds?: string[],
+  history?: Array<{ role: 'user' | 'assistant'; content: string }>,
+  segment?: string,
+): Promise<MarketQAMessage> {
   try {
-    const { data, error } = await db.functions.invoke('market-updates-qa', { body: { question, updateIds } });
+    const { data, error } = await db.functions.invoke('market-updates-qa', { body: { question, updateIds, history, segment } });
     if (error) throw error;
-    return { id: crypto.randomUUID(), role:'assistant', content:data.answer, citations:safeArray(data.citations), source_update_ids:safeArray(data.source_update_ids), confidence_score:data.confidence_score, limitations:safeArray(data.limitations), created_at:new Date().toISOString() };
+    return {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: data.answer,
+      citations: safeArray(data.citations),
+      source_update_ids: safeArray(data.source_update_ids),
+      confidence_score: data.confidence_score,
+      limitations: safeArray(data.limitations),
+      created_at: new Date().toISOString(),
+      follow_up_questions: safeArray(data.follow_up_questions),
+      key_figures: Array.isArray(data.key_figures) ? data.key_figures : [],
+      time_horizon: data.time_horizon,
+      sentiment: data.sentiment,
+      model_used: data.model_used,
+    };
   } catch (e) {
     warnMissing('Market Q&A function unavailable or insufficient context.', e);
-    return { id: crypto.randomUUID(), role:'assistant', content:'I do not have enough sourced market updates to answer that yet.', citations:[], source_update_ids:[], confidence_score:0, limitations:['Market Q&A only answers from published, source-backed market updates.'], created_at:new Date().toISOString() };
+    return { id: crypto.randomUUID(), role:'assistant', content:'I do not have enough sourced market updates to answer that yet.', citations:[], source_update_ids:[], confidence_score:0, limitations:['Market Q&A only answers from published, source-backed market updates.'], created_at:new Date().toISOString(), follow_up_questions: [], key_figures: [] };
   }
 }
