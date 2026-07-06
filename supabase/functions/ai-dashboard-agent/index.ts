@@ -8144,6 +8144,7 @@ async function handleChatStream(
   // Phase 4: retrieve semantic long-term memories relevant to this turn
   const semanticMemories = await recallSemanticMemories(sb, userId, message, 6);
   const semanticContext = formatMemoriesForPrompt(semanticMemories);
+  const skillOverlay = await loadSkillOverlay(sb, userId, body.skill_slug);
 
   const { data: history } = await sb.from('agent_messages')
     .select('role, content, tool_calls, tool_results')
@@ -8151,7 +8152,7 @@ async function handleChatStream(
 
   const brand = await getBrandConfig();
   const messages: any[] = [
-    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}` },
+    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}${skillOverlay}` },
   ];
 
   const convMessages: any[] = [];
