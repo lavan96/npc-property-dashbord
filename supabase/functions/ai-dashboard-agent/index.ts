@@ -7639,18 +7639,24 @@ async function handleChatStream(
       const MAX_TOTAL_TOOL_CALLS = 15;
       let totalToolCalls = 0;
 
+      // Phase 2 — tool deferral: start with eager core; unlock more via meta-tools.
+      const loadedToolNames = new Set<string>(EAGER_TOOL_NAMES);
+
       try {
         for (let round = 0; round < 8; round++) {
           if (aborted) break;
 
+          const activeTools = buildActiveToolList(loadedToolNames);
           const { content, tool_calls } = await callAIStream(
             messages, sb, userId,
             (tok) => { finalResponse += tok; emit('token', { delta: tok }); },
             signal,
+            activeTools,
           );
 
           if (tool_calls?.length) {
-            const hasWrite = tool_calls.some(tc => WRITE_TOOLS.includes(tc.function.name));
+            const nonMetaCalls = tool_calls.filter(tc => !META_TOOL_NAMES.has(tc.function.name));
+            const hasWrite = nonMetaCalls.some(tc => WRITE_TOOLS.includes(tc.function.name));
             if (hasWrite) {
               pendingConfirmation = true;
               pendingToolCalls = tool_calls;
@@ -7658,7 +7664,7 @@ async function handleChatStream(
               break;
             }
 
-            totalToolCalls += tool_calls.length;
+            totalToolCalls += nonMetaCalls.length;
             if (totalToolCalls > MAX_TOTAL_TOOL_CALLS) {
               const note = '\n\n⚠️ Reached maximum tool calls for this request. Please narrow your question.';
               finalResponse += note;
@@ -7670,13 +7676,26 @@ async function handleChatStream(
             for (const tc of tool_calls) {
               if (aborted) break;
               const name = tc.function.name;
+              let args: any = {};
+              try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
+
+              // Meta-tool: mutate loaded set inline, no exec/counter
+              if (META_TOOL_NAMES.has(name)) {
+                const metaResult = executeMetaTool(name, args, loadedToolNames);
+                emit('tool', { phase: 'start', name, id: tc.id });
+                emit('tool', { phase: 'end', name, id: tc.id });
+                messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(metaResult) });
+                continue;
+              }
+
               toolCallCounts[name] = (toolCallCounts[name] || 0) + 1;
               if (toolCallCounts[name] > MAX_SAME_TOOL_CALLS) {
                 messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify({ error: `Tool "${name}" called too many times.` }) });
                 continue;
               }
-              let args: any = {};
-              try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
+
+              ensureToolLoaded(name, loadedToolNames);
+
               emit('tool', { phase: 'start', name, id: tc.id });
               const result = await executeTool(sb, name, args, userId);
               emit('tool', { phase: 'end', name, id: tc.id });
