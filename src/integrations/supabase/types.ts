@@ -12289,6 +12289,284 @@ export type Database = {
         }
         Relationships: []
       }
+      market_digests: {
+        Row: {
+          broker_adviser_implications: string | null
+          buyer_implications: string | null
+          client_advisory_implications: Json
+          confidence_score: number | null
+          construction_supply_highlights: Json
+          created_at: string
+          executive_summary: string
+          finance_lending_highlights: Json
+          generated_at: string
+          id: string
+          investor_implications: string | null
+          period: string
+          period_end: string
+          period_start: string
+          policy_regulation_highlights: Json
+          political_economic_watchpoints: Json
+          property_market_highlights: Json
+          recommended_watchlist_for_tomorrow: Json
+          segment_breakdown: Json
+          social_watchpoints: Json
+          source_urls: Json
+          status: string
+          top_update_ids: Json
+          updated_at: string
+        }
+        Insert: {
+          broker_adviser_implications?: string | null
+          buyer_implications?: string | null
+          client_advisory_implications?: Json
+          confidence_score?: number | null
+          construction_supply_highlights?: Json
+          created_at?: string
+          executive_summary: string
+          finance_lending_highlights?: Json
+          generated_at?: string
+          id?: string
+          investor_implications?: string | null
+          period?: string
+          period_end: string
+          period_start: string
+          policy_regulation_highlights?: Json
+          political_economic_watchpoints?: Json
+          property_market_highlights?: Json
+          recommended_watchlist_for_tomorrow?: Json
+          segment_breakdown?: Json
+          social_watchpoints?: Json
+          source_urls?: Json
+          status?: string
+          top_update_ids?: Json
+          updated_at?: string
+        }
+        Update: {
+          broker_adviser_implications?: string | null
+          buyer_implications?: string | null
+          client_advisory_implications?: Json
+          confidence_score?: number | null
+          construction_supply_highlights?: Json
+          created_at?: string
+          executive_summary?: string
+          finance_lending_highlights?: Json
+          generated_at?: string
+          id?: string
+          investor_implications?: string | null
+          period?: string
+          period_end?: string
+          period_start?: string
+          policy_regulation_highlights?: Json
+          political_economic_watchpoints?: Json
+          property_market_highlights?: Json
+          recommended_watchlist_for_tomorrow?: Json
+          segment_breakdown?: Json
+          social_watchpoints?: Json
+          source_urls?: Json
+          status?: string
+          top_update_ids?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      market_sources: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          enabled: boolean
+          geography: string
+          id: string
+          last_error: string | null
+          last_fetched_at: string | null
+          last_success_at: string | null
+          name: string
+          refresh_frequency_hours: number
+          reliability_tier: string
+          source_type: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          geography?: string
+          id?: string
+          last_error?: string | null
+          last_fetched_at?: string | null
+          last_success_at?: string | null
+          name: string
+          refresh_frequency_hours?: number
+          reliability_tier?: string
+          source_type: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          geography?: string
+          id?: string
+          last_error?: string | null
+          last_fetched_at?: string | null
+          last_success_at?: string | null
+          name?: string
+          refresh_frequency_hours?: number
+          reliability_tier?: string
+          source_type?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      market_update_questions: {
+        Row: {
+          answer: string
+          citation_urls: Json
+          confidence_score: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          question: string
+          source_update_ids: Json
+        }
+        Insert: {
+          answer: string
+          citation_urls?: Json
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          question: string
+          source_update_ids?: Json
+        }
+        Update: {
+          answer?: string
+          citation_urls?: Json
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          question?: string
+          source_update_ids?: Json
+        }
+        Relationships: []
+      }
+      market_updates: {
+        Row: {
+          ai_summary: string | null
+          audience_tags: Json
+          category: string
+          citation_urls: Json
+          confidence_score: number | null
+          created_at: string
+          dedupe_hash: string
+          failure_reason: string | null
+          finance_implications: string | null
+          freshness_tier: string | null
+          geography: Json
+          id: string
+          impact_level: string
+          ingested_at: string
+          key_points: Json
+          policy_implications: string | null
+          property_implications: string | null
+          raw_content_hash: string | null
+          raw_excerpt: string | null
+          relevance_score: number
+          risk_flags: Json
+          segments: Json
+          slug: string | null
+          source_id: string | null
+          source_name: string
+          source_published_at: string | null
+          source_url: string
+          status: string
+          title: string
+          updated_at: string
+          why_it_matters: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          audience_tags?: Json
+          category: string
+          citation_urls?: Json
+          confidence_score?: number | null
+          created_at?: string
+          dedupe_hash: string
+          failure_reason?: string | null
+          finance_implications?: string | null
+          freshness_tier?: string | null
+          geography?: Json
+          id?: string
+          impact_level?: string
+          ingested_at?: string
+          key_points?: Json
+          policy_implications?: string | null
+          property_implications?: string | null
+          raw_content_hash?: string | null
+          raw_excerpt?: string | null
+          relevance_score?: number
+          risk_flags?: Json
+          segments?: Json
+          slug?: string | null
+          source_id?: string | null
+          source_name: string
+          source_published_at?: string | null
+          source_url: string
+          status?: string
+          title: string
+          updated_at?: string
+          why_it_matters?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          audience_tags?: Json
+          category?: string
+          citation_urls?: Json
+          confidence_score?: number | null
+          created_at?: string
+          dedupe_hash?: string
+          failure_reason?: string | null
+          finance_implications?: string | null
+          freshness_tier?: string | null
+          geography?: Json
+          id?: string
+          impact_level?: string
+          ingested_at?: string
+          key_points?: Json
+          policy_implications?: string | null
+          property_implications?: string | null
+          raw_content_hash?: string | null
+          raw_excerpt?: string | null
+          relevance_score?: number
+          risk_flags?: Json
+          segments?: Json
+          slug?: string | null
+          source_id?: string | null
+          source_name?: string
+          source_published_at?: string | null
+          source_url?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          why_it_matters?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_updates_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "market_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketing_intelligence_reports: {
         Row: {
           audience_segment: string
