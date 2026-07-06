@@ -31,16 +31,17 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
     }
   };
 
-  const handleShare = async () => {
-    if (!questionId) { toast.error('Answer not yet saved — try again in a moment.'); return; }
-    const url = `${window.location.origin}/shared-qa/${questionId}`;
+  const handleCopyLink = async () => {
+    if (!questionId) return;
+    const url = `${window.location.origin}/qa/market/${questionId}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success('Share link copied');
+      toast.success('Reference id copied');
     } catch {
       toast.error('Copy failed');
     }
   };
+
 
   const used = retrieved.filter(r => r.used).length;
   const total = retrieved.length;
