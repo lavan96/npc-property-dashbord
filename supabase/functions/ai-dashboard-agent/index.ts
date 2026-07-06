@@ -8152,6 +8152,20 @@ async function handleChatStream(
         catch { /* controller already closed */ }
       };
 
+      // Emit recalled memories upfront for immediate citation rendering
+      if (semanticMemories.length) {
+        emit('memories', {
+          items: semanticMemories.map((m: any) => ({
+            id: m.id,
+            content: m.content,
+            tags: m.tags,
+            importance: m.importance,
+            similarity: Number(m.similarity?.toFixed?.(3) ?? m.similarity),
+            feedback_score: m.feedback_score ?? 0,
+          })),
+        });
+      }
+
       let finalResponse = '';
       let pendingConfirmation = false;
       let pendingToolCalls: any[] = [];
