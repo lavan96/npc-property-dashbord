@@ -174,8 +174,27 @@ export default function MarketUpdates() {
   };
 
   const handleAsk = async () => {
-    if (!question.trim()) return;
-    setQaMessage(await answerMarketUpdateQuestion(question, qaUpdate ? [qaUpdate.id] : undefined));
+    const q = question.trim();
+    if (!q || asking) return;
+    setAsking(true);
+    setQaThread((t) => [...t, { role: 'user', content: q }]);
+    setQuestion('');
+    try {
+      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined);
+      setQaMessage(answer);
+      setQaThread((t) => [...t, { role: 'assistant', content: answer?.content ?? 'No response.', citations: answer?.citations ?? [], limitations: answer?.limitations ?? [] }]);
+    } catch (err) {
+      setQaThread((t) => [...t, { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.' }]);
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void handleAsk();
+    }
   };
 
   return (
