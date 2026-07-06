@@ -6936,7 +6936,7 @@ function smartTruncateResult(result: any): string {
 //  AI GATEWAY CALL
 // ============================================================
 
-async function callAI(messages: any[], supabase: any, userId: string): Promise<{ message: any; usage: any }> {
+async function callAI(messages: any[], supabase: any, userId: string, tools: any[] = TOOLS): Promise<{ message: any; usage: any }> {
   const startTime = Date.now();
 
   const response = await fetch(AI_GATEWAY_URL, {
