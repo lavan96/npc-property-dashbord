@@ -1,76 +1,64 @@
-# Phase 6 — Market Updates Q&A + Aurixa Agent (parallel)
+# Phase 7 — Market Q&A + Aurixa Agent (parallel, continues from Phase 6)
 
-Both tracks ship in one migration + focused new edge functions + new UI pages. Existing large edge functions (`market-updates-qa`, `ai-dashboard-agent`) get **only additive changes**; new capabilities live in dedicated new functions so we don't destabilise Phase 5.
-
----
-
-## Track A — Market Updates Q&A Phase 6
-
-Goal: turn the Phase 3 semantic recall path from ephemeral to persistent, let analysts share/export answers, and give superadmins a real regression baseline.
-
-**DB (additive):**
-- Enable `pgvector` (already available in Supabase).
-- `market_updates.embedding vector(1536)` + `embedding_generated_at` + ivfflat index (`vector_cosine_ops`, lists=100).
-- `market_update_qa_shares` — public share links for a specific `market_update_questions` row (slug, expires_at, view_count).
-- `market_qa_quality_baselines` — stores nightly aggregate metrics (avg confidence, refusal rate, avg retrieved/used, model mix) so `/admin/market-qa-quality` can show trend deltas.
-
-**New edge functions:**
-- `market-updates-embed-backfill` — batched embedder using `google/gemini-embedding-001`; embeds any `market_updates` row where `embedding IS NULL`; run hourly via existing pg_cron pattern (200 rows/batch).
-- `market-qa-share` — mint + resolve public share tokens; write-through counter.
-- `market-qa-quality-snapshot` — daily nightly job writing one row to `market_qa_quality_baselines`.
-
-**Existing edge function (small additive edit only):**
-- `market-updates-qa`: prefer persistent `embedding` column when present; fall back to per-request embedding (Phase 3 path) otherwise. No API-shape change.
-
-**Frontend:**
-- Reuse existing `SharedQAAnswer` route pattern: new `/qa/:slug` public route for market Q&A shares.
-- Add "Share answer" button to `MarketQAConversation` message actions.
-- `MarketQAQuality` gets a Trend tab: 30-day sparkline of confidence / refusal rate / retrieval breadth from `market_qa_quality_baselines`.
-
-**Cron:** two new pg_cron entries (hourly embed backfill; nightly quality snapshot at 02:15 UTC).
+Phase 6 shipped persistent embeddings, share links, quality baselines, and long-horizon plans. Phase 7 closes the deliberate gaps we left, adds the "unattended" surfaces (scheduled/recurring plans, digest subscriptions), and moves Market Q&A retrieval to hybrid search.
 
 ---
 
-## Track B — Aurixa Agent Phase 6
+## Track A — Market Updates Q&A Phase 7
 
-Goal: promote the agent from turn-by-turn tool use to **long-horizon planned runs with human approvals**, and give the eval harness a real regression baseline.
+**Goal:** actually consume the persistent embeddings, add hybrid (vector + lexical) retrieval, and let people subscribe to answers.
 
-**DB (additive):**
-- `agent_plans` — `id, user_id, title, goal, status (draft|awaiting_approval|approved|running|paused|completed|cancelled|failed), context jsonb, skill_slug, requires_approval bool, created_at, updated_at, completed_at`.
-- `agent_plan_steps` — `id, plan_id, seq int, title, description, tool_calls jsonb, expected_output, status (pending|approved|running|done|skipped|failed), result jsonb, started_at, completed_at`.
-- `agent_eval_baselines` — snapshot rows from `agent_eval_runs` promoted to baseline; used by `/admin/agent-quality` to compute pass-rate regression vs. previous baseline.
+### DB (additive)
+- `market_updates.search_tsv tsvector` generated column (`title || summary || why_it_matters`) + GIN index for lexical scoring.
+- `market_qa_subscriptions` — `user_id, question_template, cadence (daily|weekly), channels (email|in_app), last_run_at, next_run_at, is_active`.
+- `market_qa_subscription_runs` — one row per run, links to the resulting `market_update_questions.id`.
 
-All service-role-locked, per Phase 5 pattern; user-owned via RLS.
+### Edge function edits (additive)
+- `market-updates-qa`: prefer `market_updates.embedding` when present; add lexical scoring path (`ts_rank_cd`) blended with cosine similarity (0.7 semantic / 0.3 lexical), configurable via body flag. No API shape change.
+- New `market-qa-subscriptions` — CRUD + `run-due` action (cron-invoked hourly) that re-asks each due question via `market-updates-qa`, writes result, notifies subscriber via existing `notifications` insert (+ optional email when a mailer exists).
 
-**New edge function `agent-planner`:**
-- Actions: `draft-plan` (LLM decomposes goal → steps using selected skill's `system_prompt`), `list-plans`, `get-plan`, `approve-step`, `approve-all`, `execute-next-step`, `pause-plan`, `resume-plan`, `cancel-plan`.
-- `execute-next-step` calls back into the existing `ai-dashboard-agent` chat action with the step context, records the tool_calls trace, updates step status.
-- Uses `google/gemini-2.5-pro` for planning (analytical), `gemini-3-flash-preview` for step execution routing (same router as Phase 3).
+### Frontend
+- `MarketQAConversation`: add "Subscribe to updates on this question" button (opens dialog: cadence + channels).
+- New `/qa/subscriptions` page listing user's subscriptions with pause/resume/delete and last-run summary.
 
-**Existing edge function (small additive edit only):**
-- `ai-dashboard-agent`: add `promote-baseline` and `list-baselines` actions that read/write `agent_eval_baselines`; add `plan_id`/`step_id` optional pass-through so agent traces can be linked back to the plan.
+### Cron
+- Hourly `market-qa-subscriptions-run-due`.
 
-**Frontend:**
-- New `/agent/plans` page — list of plans (status filter), plan detail with step timeline, per-step approve/skip/execute buttons, live status polling.
-- New "Draft plan" affordance in `AgentChatWidget` composer footer (opens a small dialog capturing goal + skill; submits to `agent-planner draft-plan`).
-- `/admin/agent-quality` gets a "Baselines" tab: promote current eval run to baseline, diff current vs. last baseline (pass-rate delta, per-eval regressions highlighted).
+---
+
+## Track B — Aurixa Agent Phase 7
+
+**Goal:** unattended execution, recurring plans, and full plan/step traceability in the agent chat.
+
+### DB (additive)
+- `agent_plans`: `+ schedule_cron text, next_run_at timestamptz, last_run_at timestamptz, auto_execute boolean default false`.
+- `agent_plan_runs` — `plan_id, started_at, finished_at, status, step_ids uuid[]` so recurring plans keep run history separate from step lifecycle.
+- `agent_action_log`: `+ plan_id, step_id` for cross-linking (already in schema check — additive only if missing).
+
+### Edge function edits (additive)
+- `ai-dashboard-agent`: accept optional `plan_id`/`step_id` in chat body, persist them on `agent_messages` + `agent_action_log` rows so the trace lines up with `/agent/plans`.
+- `agent-planner`: add `schedule-plan` (validate cron), `unschedule-plan`, `run-scheduled` (cron-invoked; instantiates a plan_run and calls `execute-next-step` in a loop until an approval boundary or terminal state, respecting `auto_execute`).
+
+### Frontend
+- `/agent/plans` detail page: new "Schedule" card (cron picker with 4 presets + custom, auto-execute toggle, next-run/last-run readout), and a "Runs" tab showing historic `agent_plan_runs`.
+- `AgentChatWidget`: if a message is streamed with `plan_id`/`step_id`, add a small "Step 3 of 5 · plan: X" chip linking back to the plan.
+
+### Cron
+- Every 5 min `agent-planner-run-scheduled`.
 
 ---
 
 ## Delivery order (single response)
 
-1. `supabase--migration` for all four tables + pgvector enable + baselines table (both tracks in one migration).
-2. Create `market-updates-embed-backfill`, `market-qa-share`, `market-qa-quality-snapshot`, `agent-planner` edge functions.
-3. Additive edits to `market-updates-qa` (embedding preference) and `ai-dashboard-agent` (baseline + plan pass-through actions).
-4. New pages `src/pages/agent/AgentPlans.tsx`, `src/pages/qa/SharedMarketQAAnswer.tsx`; extend `MarketQAConversation`, `MarketQAQuality`, `AgentChatWidget`, `AgentQuality` with the new surfaces; register routes in `App.tsx`.
-5. Propose (not auto-run) two `supabase--insert` cron entries for the new hourly/nightly jobs.
+1. Single `supabase--migration` — tsvector column + GIN, subscriptions tables, plan scheduling columns, plan_runs table.
+2. New edge functions: `market-qa-subscriptions`, and the edits to `market-updates-qa`, `ai-dashboard-agent`, `agent-planner`.
+3. New pages / dialogs: `/qa/subscriptions`, subscribe dialog in `MarketQAConversation`, schedule card + runs tab in `AgentPlans`, plan/step chip in `AgentChatWidget`.
+4. Two `supabase--insert` cron entries (5-min agent runner, hourly Q&A subscriptions runner).
 
 ## Technical notes
+- Hybrid score: `0.7 * (1 - cosine) + 0.3 * ts_rank_cd_norm`. Fall back to pure vector when tsvector is unpopulated for a row.
+- Cron validation: reject anything more frequent than every 5 minutes; enforce a per-user cap of 10 scheduled plans.
+- Auto-execute plans still write every tool call to `agent_action_log` and honour skill safety bounds.
+- No breaking changes to Phase 6 shapes; every DB and function edit is additive.
 
-- Embedding model: `google/gemini-embedding-001` (1536-dim). Backfill batches of 200, 5s throttle, hard 20k budget per run.
-- Planner LLM output constrained via AI SDK `Output.object` with a small schema (`{ steps: [{ title, description, expected_output, tool_hint? }] }`) — no bounds/enums in schema; text-level constraints in the prompt per the AI SDK rule.
-- Plan execution is one-step-at-a-time, human-approved by default. `requires_approval=false` plans can auto-advance but still surface every tool call in the trace.
-- All new edge functions require JWT and reuse the shared `verifyAuth` + CORS helpers.
-- No changes to Mission Control token metering shape; new AI calls route through `generateWithTokens` where applicable.
-
-Reply "Proceed" to ship, or tell me what to trim.
+Reply **"Proceed"** to ship, or tell me what to trim/expand.
