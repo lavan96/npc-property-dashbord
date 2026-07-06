@@ -504,24 +504,55 @@ export default function MarketUpdates() {
               <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-xs text-muted-foreground">Source-grounded answers from published market updates only.</p>
-                <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="e.g. What's the RBA signalling this month?" disabled={!updates.length} className="min-h-[80px] text-sm" />
-                <Button size="sm" className="w-full" onClick={handleAsk} disabled={!updates.length || !question.trim()}>Ask safely</Button>
-                {qaMessage && (
-                  <div className="rounded-lg border border-border/60 bg-background/60 p-3">
-                    <p className="text-xs leading-relaxed">{qaMessage.content}</p>
-                    {qaMessage.citations.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {qaMessage.citations.map((url, i) => (
-                          <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
-                            <ExternalLink className="h-2.5 w-2.5" />Cite {i + 1}
-                          </a>
-                        ))}
+                {qaThread.length > 0 && (
+                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
+                    {qaThread.map((turn, i) => (
+                      <div key={i} className={cn('rounded-md p-2 text-xs leading-relaxed', turn.role === 'user' ? 'bg-primary/10 text-foreground' : 'bg-background/70 border border-border/60')}>
+                        <div className="mb-0.5 text-[10px] font-semibold uppercase text-muted-foreground">{turn.role === 'user' ? 'You' : 'AI'}</div>
+                        <p className="whitespace-pre-wrap">{turn.content}</p>
+                        {turn.citations && turn.citations.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {turn.citations.map((url, j) => (
+                              <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
+                                <ExternalLink className="h-2.5 w-2.5" />Cite {j + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {turn.limitations && turn.limitations.length > 0 && (
+                          <ul className="mt-1.5 list-disc pl-4 text-[10px] text-muted-foreground">
+                            {turn.limitations.map((l, j) => <li key={j}>{l}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                    {asking && (
+                      <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Thinking…
                       </div>
                     )}
                   </div>
                 )}
+                <Textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={handleQuestionKeyDown}
+                  placeholder="Ask anything — e.g. What's the RBA signalling this month?"
+                  className="min-h-[80px] text-sm"
+                />
+                <div className="flex gap-2">
+                  <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
+                  <Button size="sm" className="flex-1" onClick={handleAsk} disabled={asking || !question.trim()}>
+                    {asking ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking…</> : 'Ask safely'}
+                  </Button>
+                </div>
+                {qaThread.length === 0 && !updates.length && (
+                  <p className="text-[10px] text-muted-foreground">No published updates loaded yet — the AI may refuse if it has no grounded sources.</p>
+                )}
               </CardContent>
             </Card>
+
+
 
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Source Health</CardTitle></CardHeader>
