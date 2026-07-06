@@ -154,10 +154,13 @@ export async function answerMarketUpdateQuestion(
       time_horizon: data.time_horizon,
       sentiment: data.sentiment,
       model_used: data.model_used,
+      retrieved: Array.isArray(data.retrieved) ? data.retrieved : [],
+      question_id: data.question_id ?? null,
+      rate_limited: Boolean(data.rate_limited),
     };
   } catch (e) {
     warnMissing('Market Q&A function unavailable or insufficient context.', e);
-    return { id: crypto.randomUUID(), role:'assistant', content:'I do not have enough sourced market updates to answer that yet.', citations:[], source_update_ids:[], confidence_score:0, limitations:['Market Q&A only answers from published, source-backed market updates.'], created_at:new Date().toISOString(), follow_up_questions: [], key_figures: [] };
+    return { id: crypto.randomUUID(), role:'assistant', content:'I do not have enough sourced market updates to answer that yet.', citations:[], source_update_ids:[], confidence_score:0, limitations:['Market Q&A only answers from published, source-backed market updates.'], created_at:new Date().toISOString(), follow_up_questions: [], key_figures: [], retrieved: [], question_id: null };
   }
 }
 
