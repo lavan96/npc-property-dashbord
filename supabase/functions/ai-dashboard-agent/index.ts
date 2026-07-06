@@ -7580,6 +7580,26 @@ async function handleConfirmAction(sb: any, body: any, cors: Record<string, stri
   return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
+// Phase 5: load an active skill overlay (persona) and return a system-prompt suffix.
+async function loadSkillOverlay(sb: any, userId: string, skillSlug: string | undefined | null): Promise<string> {
+  if (!skillSlug) return '';
+  try {
+    const { data } = await sb.from('agent_skills')
+      .select('name, icon, system_prompt, allowed_tools, is_enabled, is_public, user_id')
+      .eq('slug', skillSlug)
+      .or(`user_id.eq.${userId},is_public.eq.true`)
+      .limit(1).maybeSingle();
+    if (!data || data.is_enabled === false) return '';
+    // Fire-and-forget usage counters
+    sb.from('agent_skills').update({ run_count: (data as any).run_count ? undefined : 1, last_run_at: new Date().toISOString() })
+      .eq('slug', skillSlug).eq('user_id', data.user_id).then(() => {}).catch(() => {});
+    const tools = Array.isArray(data.allowed_tools) && data.allowed_tools.length
+      ? `\nPreferred tools for this skill: ${data.allowed_tools.join(', ')}.`
+      : '';
+    return `\n\n===== ACTIVE SKILL: ${data.icon || ''} ${data.name} =====\n${data.system_prompt}${tools}\n===== END SKILL =====`;
+  } catch { return ''; }
+}
+
 // ============================================================
 //  MAIN CHAT HANDLER
 // ============================================================
@@ -7602,6 +7622,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   // Phase 4: retrieve semantic long-term memories relevant to this turn
   const semanticMemories = await recallSemanticMemories(sb, userId, message, 6);
   const semanticContext = formatMemoriesForPrompt(semanticMemories);
+  const skillOverlay = await loadSkillOverlay(sb, userId, body.skill_slug);
 
   // Smart context window: fetch more history, then intelligently compress
   const { data: history } = await sb.from('agent_messages')
@@ -7609,7 +7630,7 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     .eq('conversation_id', conversation_id).order('created_at', { ascending: true }).limit(60);
 
   const messages: any[] = [
-    { role: 'system', content: buildSystemPrompt((await getBrandConfig()).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}` },
+    { role: 'system', content: buildSystemPrompt((await getBrandConfig()).companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}${skillOverlay}` },
   ];
 
   // Build conversation messages from history
@@ -8123,6 +8144,7 @@ async function handleChatStream(
   // Phase 4: retrieve semantic long-term memories relevant to this turn
   const semanticMemories = await recallSemanticMemories(sb, userId, message, 6);
   const semanticContext = formatMemoriesForPrompt(semanticMemories);
+  const skillOverlay = await loadSkillOverlay(sb, userId, body.skill_slug);
 
   const { data: history } = await sb.from('agent_messages')
     .select('role, content, tool_calls, tool_results')
@@ -8130,7 +8152,7 @@ async function handleChatStream(
 
   const brand = await getBrandConfig();
   const messages: any[] = [
-    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}` },
+    { role: 'system', content: buildSystemPrompt(brand.companyName) + `\n\nCurrent user: ${username} (ID: ${userId})\nCurrent conversation_id: ${conversation_id}\nCurrent time: ${new Date().toISOString()}${prefsContext}${semanticContext}${skillOverlay}` },
   ];
 
   const convMessages: any[] = [];
