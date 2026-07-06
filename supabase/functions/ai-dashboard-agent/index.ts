@@ -7709,6 +7709,8 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     });
   } else {
     await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+    // Phase 4: fire-and-forget auto-capture of durable memories
+    autoCaptureMemory(sb, userId, conversation_id, message, finalResponse).catch(() => {});
   }
 
   // Smart auto-title: use AI to generate concise title from first message
