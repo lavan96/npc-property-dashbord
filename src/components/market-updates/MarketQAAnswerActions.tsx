@@ -61,11 +61,11 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
         {questionId && (
           <button
             type="button"
-            onClick={handleShare}
+            onClick={handleCopyLink}
             className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-muted-foreground hover:border-primary/40 hover:text-primary"
-            title="Copy share link"
+            title="Copy reference id"
           >
-            <Share2 className="h-2.5 w-2.5" />Share
+            <Copy className="h-2.5 w-2.5" />Ref
           </button>
         )}
         {total > 0 && (
