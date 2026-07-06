@@ -173,22 +173,36 @@ export default function MarketUpdates() {
     setIngesting(false);
   };
 
-  const handleAsk = async () => {
-    const q = question.trim();
+  const handleAsk = async (overrideQuestion?: string) => {
+    const q = (overrideQuestion ?? question).trim();
     if (!q || asking) return;
     setAsking(true);
+    const priorHistory = qaThread.map((t) => ({ role: t.role, content: t.content }));
     setQaThread((t) => [...t, { role: 'user', content: q }]);
     setQuestion('');
     try {
-      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined);
+      const seg = activeSegment !== 'all' ? activeSegment : undefined;
+      const answer = await answerMarketUpdateQuestion(q, qaUpdate ? [qaUpdate.id] : undefined, priorHistory, seg);
       setQaMessage(answer);
-      setQaThread((t) => [...t, { role: 'assistant', content: answer?.content ?? 'No response.', citations: answer?.citations ?? [], limitations: answer?.limitations ?? [] }]);
+      setQaThread((t) => [...t, {
+        role: 'assistant',
+        content: answer?.content ?? 'No response.',
+        citations: answer?.citations ?? [],
+        limitations: answer?.limitations ?? [],
+        follow_up_questions: answer?.follow_up_questions ?? [],
+        key_figures: answer?.key_figures ?? [],
+        time_horizon: answer?.time_horizon,
+        sentiment: answer?.sentiment,
+        confidence_score: answer?.confidence_score,
+      }]);
     } catch (err) {
       setQaThread((t) => [...t, { role: 'assistant', content: err instanceof Error ? err.message : 'Failed to get an answer. Please try again.' }]);
     } finally {
       setAsking(false);
     }
   };
+
+  const handleFollowUp = (q: string) => { setQuestion(q); void handleAsk(q); };
 
   const handleQuestionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
