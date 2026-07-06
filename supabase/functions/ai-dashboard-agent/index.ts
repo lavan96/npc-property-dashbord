@@ -5855,6 +5855,8 @@ async function executeTool(sb: any, name: string, args: any, userId: string): Pr
     // Batch 5
     case 'save_memory': return executeSaveMemory(sb, args, userId);
     case 'recall_memories': return executeRecallMemories(sb, userId);
+    case 'search_semantic_memory': return executeSearchSemanticMemory(sb, args, userId);
+    case 'save_semantic_memory': return executeSaveSemanticMemory(sb, args, userId, args?.__conversation_id);
     case 'trigger_investment_report': return executeTriggerInvestmentReport(sb, args, userId);
     case 'get_notification_summary': return executeGetNotificationSummary(sb);
     case 'get_team_members': return executeGetTeamMembers(sb, userId);
