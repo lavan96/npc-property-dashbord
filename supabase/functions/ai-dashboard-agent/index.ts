@@ -7164,13 +7164,18 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   const MAX_TOTAL_TOOL_CALLS = 15; // Max total tool calls across all rounds
   let totalToolCalls = 0;
 
+  // Phase 2 — tool deferral: start with eager core; unlock more via meta-tools.
+  const loadedToolNames = new Set<string>(EAGER_TOOL_NAMES);
+
   try {
     for (let round = 0; round < 8; round++) {
-      const { message: assistantMsg } = await callAI(messages, sb, userId);
+      const activeTools = buildActiveToolList(loadedToolNames);
+      const { message: assistantMsg } = await callAI(messages, sb, userId, activeTools);
       if (!assistantMsg) { finalResponse = 'I encountered an error. Please try again.'; break; }
 
       if (assistantMsg.tool_calls?.length) {
-        const hasWrite = assistantMsg.tool_calls.some((tc: any) => WRITE_TOOLS.includes(tc.function.name));
+        const nonMetaCalls = assistantMsg.tool_calls.filter((tc: any) => !META_TOOL_NAMES.has(tc.function.name));
+        const hasWrite = nonMetaCalls.some((tc: any) => WRITE_TOOLS.includes(tc.function.name));
         if (hasWrite) {
           pendingConfirmation = true;
           pendingToolCalls = assistantMsg.tool_calls;
@@ -7178,8 +7183,8 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
           break;
         }
 
-        // Check total tool call budget
-        totalToolCalls += assistantMsg.tool_calls.length;
+        // Check total tool call budget (exclude meta calls)
+        totalToolCalls += nonMetaCalls.length;
         if (totalToolCalls > MAX_TOTAL_TOOL_CALLS) {
           console.warn(`[ai-dashboard-agent] Tool call budget exceeded: ${totalToolCalls} calls`);
           finalResponse = (assistantMsg.content || '') + '\n\n⚠️ I reached the maximum number of tool calls for this request. Please ask a more focused question or break your request into smaller parts.';
@@ -7189,6 +7194,16 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
         messages.push(assistantMsg);
         for (const tc of assistantMsg.tool_calls) {
           const toolName = tc.function.name;
+          let args: any = {};
+          try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
+
+          // Meta-tools handled inline
+          if (META_TOOL_NAMES.has(toolName)) {
+            const metaResult = executeMetaTool(toolName, args, loadedToolNames);
+            console.log(`[ai-dashboard-agent] Meta: ${toolName}`, JSON.stringify(args).substring(0, 200), '→', metaResult.loaded?.length ?? '');
+            messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(metaResult) });
+            continue;
+          }
 
           // Per-tool rate limit check
           toolCallCounts[toolName] = (toolCallCounts[toolName] || 0) + 1;
@@ -7198,7 +7213,9 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
             continue;
           }
 
-          const args = JSON.parse(tc.function.arguments);
+          // Auto-load if the model somehow called an unknown/unloaded tool (defensive)
+          ensureToolLoaded(toolName, loadedToolNames);
+
           console.log(`[ai-dashboard-agent] Tool: ${toolName} [${toolCallCounts[toolName]}/${MAX_SAME_TOOL_CALLS}]`, JSON.stringify(args).substring(0, 200));
           const result = await executeTool(sb, toolName, args, userId);
           messages.push({ role: 'tool', tool_call_id: tc.id, content: smartTruncateResult(result) });
