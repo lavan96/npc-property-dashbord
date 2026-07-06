@@ -63,6 +63,8 @@ interface Message {
   created_at: string;
   sent_by?: string | null;
   sent_by_username?: string;
+  recalled_memory_ids?: string[];
+  recalled_memories?: RecalledMemory[];
 }
 
 type PanelView = 'chat' | 'notifications' | 'settings' | 'share';
