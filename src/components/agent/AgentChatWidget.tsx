@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
+import { MemoryCitations, type RecalledMemory } from '@/components/agent/MemoryCitations';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
 
 // Consistent color palette for sender attribution in collaborative conversations
@@ -62,6 +63,8 @@ interface Message {
   created_at: string;
   sent_by?: string | null;
   sent_by_username?: string;
+  recalled_memory_ids?: string[];
+  recalled_memories?: RecalledMemory[];
 }
 
 type PanelView = 'chat' | 'notifications' | 'settings' | 'share';
@@ -502,6 +505,9 @@ export function AgentChatWidget() {
           if (evt.event === 'token' && evt.data?.delta) {
             accumulated += evt.data.delta;
             setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, content: accumulated } : m));
+          } else if (evt.event === 'memories' && Array.isArray(evt.data?.items)) {
+            const items: RecalledMemory[] = evt.data.items;
+            setMessages(prev => prev.map(m => m.id === streamMsgId ? { ...m, recalled_memories: items, recalled_memory_ids: items.map(i => i.id) } : m));
           } else if (evt.event === 'tool') {
             if (evt.data?.phase === 'start') setActiveTool(evt.data.name);
             else if (evt.data?.phase === 'end') setActiveTool(null);
@@ -1173,6 +1179,9 @@ export function AgentChatWidget() {
                     )}
                     {msg.confirmation_status === 'approved' && <p className="text-xs text-primary mt-1.5 flex items-center gap-1"><Check className="h-3 w-3" /> Approved & executed</p>}
                     {msg.confirmation_status === 'rejected' && <p className="text-xs text-destructive mt-1.5 flex items-center gap-1"><XCircle className="h-3 w-3" /> Cancelled</p>}
+                    {msg.role === 'assistant' && msg.recalled_memories && msg.recalled_memories.length > 0 && (
+                      <MemoryCitations messageId={msg.id} memories={msg.recalled_memories} />
+                    )}
                   </div>
                 </div>
                 );

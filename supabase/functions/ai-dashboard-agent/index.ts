@@ -6584,8 +6584,46 @@ async function saveSemanticMemory(
     console.warn('[semantic-memory] save error', error.message);
     return { success: false, error: error.message };
   }
+  // Fire-and-forget pruning to keep this user's memory store bounded
+  pruneUserMemories(sb, userId).catch(() => {});
   return { success: true, id: data?.id, deduped: false };
 }
+
+// Per-user quota (kept in sync with prune_agent_memories default; overridable per-user later)
+const DEFAULT_MEMORY_QUOTA = 500;
+
+async function pruneUserMemories(sb: any, userId: string, maxItems = DEFAULT_MEMORY_QUOTA): Promise<number> {
+  try {
+    const { data, error } = await sb.rpc('prune_agent_memories', { p_user_id: userId, p_max: maxItems });
+    if (error) { console.warn('[semantic-memory] prune error', error.message); return 0; }
+    const n = typeof data === 'number' ? data : 0;
+    if (n > 0) console.log(`[semantic-memory] pruned ${n} memories for user ${userId}`);
+    return n;
+  } catch (e) {
+    console.warn('[semantic-memory] prune exception', (e as any)?.message);
+    return 0;
+  }
+}
+
+// Record thumbs up/down on a memory used in an assistant answer
+async function recordMemoryFeedback(
+  sb: any,
+  userId: string,
+  memoryId: string,
+  rating: 1 | -1,
+  messageId?: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  if (!memoryId || (rating !== 1 && rating !== -1)) return { success: false, error: 'invalid_args' };
+  const { error } = await sb.from('agent_memory_feedback').upsert({
+    memory_id: memoryId,
+    user_id: userId,
+    message_id: messageId || null,
+    rating,
+  }, { onConflict: 'memory_id,user_id,message_id' });
+  if (error) { console.warn('[semantic-memory] feedback error', error.message); return { success: false, error: error.message }; }
+  return { success: true };
+}
+
 
 // Tool executors
 async function executeSaveSemanticMemory(sb: any, args: any, userId: string, conversation_id?: string) {
@@ -7494,7 +7532,28 @@ async function handleRenameConversation(sb: any, userId: string, convId: string,
 async function handleGetMessages(sb: any, convId: string, cors: Record<string, string>) {
   const { data, error } = await sb.from('agent_messages').select('*, custom_users!agent_messages_sent_by_fkey(username)').eq('conversation_id', convId).order('created_at', { ascending: true }).limit(200);
   if (error) throw error;
-  const messages = (data || []).map((m: any) => ({ ...m, sent_by_username: m.custom_users?.username || null, custom_users: undefined }));
+
+  // Collect all recalled memory IDs referenced across the conversation and hydrate once
+  const allIds = new Set<string>();
+  for (const m of (data || [])) {
+    for (const id of (m.recalled_memory_ids || [])) if (id) allIds.add(id);
+  }
+  let memoryMap: Record<string, any> = {};
+  if (allIds.size > 0) {
+    const { data: memRows } = await sb.from('agent_semantic_memories')
+      .select('id, content, tags, importance, feedback_score, kind')
+      .in('id', Array.from(allIds));
+    for (const r of (memRows || [])) memoryMap[r.id] = r;
+  }
+
+  const messages = (data || []).map((m: any) => ({
+    ...m,
+    sent_by_username: m.custom_users?.username || null,
+    custom_users: undefined,
+    recalled_memories: (m.recalled_memory_ids || [])
+      .map((id: string) => memoryMap[id])
+      .filter(Boolean),
+  }));
   return new Response(JSON.stringify({ success: true, messages }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
@@ -7702,13 +7761,18 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     finalResponse = `⚠️ ${err.message || 'An error occurred.'}`;
   }
 
+  const recalledIds = semanticMemories.map(m => (m as any).id).filter(Boolean);
   if (pendingConfirmation) {
     await sb.from('agent_messages').insert({
       conversation_id, role: 'assistant', content: finalResponse,
       tool_calls: pendingToolCalls, requires_confirmation: true, confirmation_status: 'pending',
+      recalled_memory_ids: recalledIds,
     });
   } else {
-    await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+    await sb.from('agent_messages').insert({
+      conversation_id, role: 'assistant', content: finalResponse,
+      recalled_memory_ids: recalledIds,
+    });
     // Phase 4: fire-and-forget auto-capture of durable memories
     autoCaptureMemory(sb, userId, conversation_id, message, finalResponse).catch(() => {});
   }
@@ -7754,6 +7818,11 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     success: true, response: finalResponse,
     requires_confirmation: pendingConfirmation,
     pending_tool_calls: pendingConfirmation ? pendingToolCalls : undefined,
+    recalled_memories: semanticMemories.map((m: any) => ({
+      id: m.id, content: m.content, tags: m.tags, importance: m.importance,
+      similarity: Number(m.similarity?.toFixed?.(3) ?? m.similarity),
+      feedback_score: m.feedback_score ?? 0,
+    })),
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
@@ -8104,6 +8173,20 @@ async function handleChatStream(
         catch { /* controller already closed */ }
       };
 
+      // Emit recalled memories upfront for immediate citation rendering
+      if (semanticMemories.length) {
+        emit('memories', {
+          items: semanticMemories.map((m: any) => ({
+            id: m.id,
+            content: m.content,
+            tags: m.tags,
+            importance: m.importance,
+            similarity: Number(m.similarity?.toFixed?.(3) ?? m.similarity),
+            feedback_score: m.feedback_score ?? 0,
+          })),
+        });
+      }
+
       let finalResponse = '';
       let pendingConfirmation = false;
       let pendingToolCalls: any[] = [];
@@ -8218,14 +8301,19 @@ async function handleChatStream(
       }
 
       // Persist assistant message (partial on abort, full otherwise).
+      const recalledIds = semanticMemories.map((m: any) => m.id).filter(Boolean);
       try {
         if (pendingConfirmation) {
           await sb.from('agent_messages').insert({
             conversation_id, role: 'assistant', content: finalResponse,
             tool_calls: pendingToolCalls, requires_confirmation: true, confirmation_status: 'pending',
+            recalled_memory_ids: recalledIds,
           });
         } else if (finalResponse.length > 0) {
-          await sb.from('agent_messages').insert({ conversation_id, role: 'assistant', content: finalResponse });
+          await sb.from('agent_messages').insert({
+            conversation_id, role: 'assistant', content: finalResponse,
+            recalled_memory_ids: recalledIds,
+          });
           // Phase 4: fire-and-forget auto-capture of durable memories (skip on abort/empty)
           if (!aborted) autoCaptureMemory(sb, userId, conversation_id, message, finalResponse).catch(() => {});
         }
@@ -8327,6 +8415,31 @@ Deno.serve(async (req) => {
       case 'get-audit-log': {
         const result = await executeGetAuditTrail(sb, { limit: body.limit || 20 }, userId!);
         return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'memory-feedback': {
+        const r = await recordMemoryFeedback(sb, userId!, body.memory_id, body.rating, body.message_id);
+        return new Response(JSON.stringify(r), { status: r.success ? 200 : 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'list-memories': {
+        const limit = Math.min(Number(body.limit) || 100, 500);
+        const { data: memRows, error: memErr } = await sb.from('agent_semantic_memories')
+          .select('id, content, tags, importance, kind, feedback_score, use_count, last_used_at, created_at')
+          .eq('user_id', userId!)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (memErr) return new Response(JSON.stringify({ success: false, error: memErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { count } = await sb.from('agent_semantic_memories').select('id', { count: 'exact', head: true }).eq('user_id', userId!);
+        return new Response(JSON.stringify({ success: true, memories: memRows || [], total: count ?? (memRows?.length || 0), quota: DEFAULT_MEMORY_QUOTA }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'delete-memory': {
+        if (!body.memory_id) return new Response(JSON.stringify({ success: false, error: 'memory_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { error: delErr } = await sb.from('agent_semantic_memories').delete().eq('id', body.memory_id).eq('user_id', userId!);
+        if (delErr) return new Response(JSON.stringify({ success: false, error: delErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'prune-memories': {
+        const n = await pruneUserMemories(sb, userId!, Math.min(Number(body.max) || DEFAULT_MEMORY_QUOTA, 5000));
+        return new Response(JSON.stringify({ success: true, deleted: n }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       case 'get-team-members-list': {
         const result = await executeGetTeamMembers(sb, userId!);
