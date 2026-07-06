@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { PlayCircle, Plus, Trash2, CheckCircle2, XCircle, Activity, Beaker } from 'lucide-react';
+import AgentEvalBaselinesPanel from './AgentEvalBaselinesPanel';
 
 interface EvalRow { id: string; name: string; description: string | null; prompt: string; expected_tools: string[]; expected_contains: string[]; expected_not_contains: string[]; tags: string[]; is_enabled: boolean; }
 interface Stats { runs: number; pass: number; pass_rate: number; avg_score: number; avg_latency: number; latest: any; }
@@ -101,7 +102,7 @@ export default function AgentQuality() {
       </div>
 
       <Tabs defaultValue="evals">
-        <TabsList><TabsTrigger value="evals">Evaluations</TabsTrigger><TabsTrigger value="traces">Trace log</TabsTrigger><TabsTrigger value="tools">Tool summary</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="evals">Evaluations</TabsTrigger><TabsTrigger value="traces">Trace log</TabsTrigger><TabsTrigger value="tools">Tool summary</TabsTrigger><TabsTrigger value="baselines">Baselines</TabsTrigger></TabsList>
 
         <TabsContent value="evals" className="mt-4">
           {loading ? <div className="text-sm text-muted-foreground p-4">Loading…</div> :
@@ -164,6 +165,8 @@ export default function AgentQuality() {
             ))}
           </div>
         </TabsContent>
+
+        <TabsContent value="baselines" className="mt-4"><AgentEvalBaselinesPanel /></TabsContent>
       </Tabs>
 
       <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
