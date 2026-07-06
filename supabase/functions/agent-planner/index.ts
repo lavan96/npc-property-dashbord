@@ -199,8 +199,8 @@ Deno.serve(async (req) => {
       await sb.from('agent_plan_steps').update(patch).eq('id', step.id);
 
       // Update plan counters and status
-      const { data: doneCount } = await sb.from('agent_plan_steps').select('id', { count: 'exact', head: true }).eq('plan_id', planId).eq('status', 'done');
-      await sb.from('agent_plans').update({ completed_steps: (doneCount as any)?.count ?? undefined }).eq('id', planId);
+      const { count: doneCount } = await sb.from('agent_plan_steps').select('id', { count: 'exact', head: true }).eq('plan_id', planId).eq('status', 'done');
+      if (typeof doneCount === 'number') await sb.from('agent_plans').update({ completed_steps: doneCount }).eq('id', planId);
 
       if (errMsg) {
         await sb.from('agent_plans').update({ status: 'failed' }).eq('id', planId);
