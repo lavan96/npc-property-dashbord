@@ -8416,6 +8416,31 @@ Deno.serve(async (req) => {
         const result = await executeGetAuditTrail(sb, { limit: body.limit || 20 }, userId!);
         return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
+      case 'memory-feedback': {
+        const r = await recordMemoryFeedback(sb, userId!, body.memory_id, body.rating, body.message_id);
+        return new Response(JSON.stringify(r), { status: r.success ? 200 : 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'list-memories': {
+        const limit = Math.min(Number(body.limit) || 100, 500);
+        const { data: memRows, error: memErr } = await sb.from('agent_semantic_memories')
+          .select('id, content, tags, importance, kind, feedback_score, use_count, last_used_at, created_at')
+          .eq('user_id', userId!)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (memErr) return new Response(JSON.stringify({ success: false, error: memErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { count } = await sb.from('agent_semantic_memories').select('id', { count: 'exact', head: true }).eq('user_id', userId!);
+        return new Response(JSON.stringify({ success: true, memories: memRows || [], total: count ?? (memRows?.length || 0), quota: DEFAULT_MEMORY_QUOTA }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'delete-memory': {
+        if (!body.memory_id) return new Response(JSON.stringify({ success: false, error: 'memory_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+        const { error: delErr } = await sb.from('agent_semantic_memories').delete().eq('id', body.memory_id).eq('user_id', userId!);
+        if (delErr) return new Response(JSON.stringify({ success: false, error: delErr.message }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      case 'prune-memories': {
+        const n = await pruneUserMemories(sb, userId!, Math.min(Number(body.max) || DEFAULT_MEMORY_QUOTA, 5000));
+        return new Response(JSON.stringify({ success: true, deleted: n }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
       case 'get-team-members-list': {
         const result = await executeGetTeamMembers(sb, userId!);
         return new Response(JSON.stringify({ success: true, ...result }), { headers: { ...cors, 'Content-Type': 'application/json' } });
