@@ -458,7 +458,7 @@ export function AgentChatWidget() {
 
     try {
       const payload: any = { action: 'chat', conversation_id: convId, message: agentMessage };
-      // Include image data for vision analysis (regular images + scanned PDF page images)
+      if (activeSkillSlug) payload.skill_slug = activeSkillSlug;
       const allImageAttachments: Array<{ filename: string; mime_type: string; base64: string }> = [];
       
       // Regular image files
