@@ -13109,6 +13109,156 @@ export type Database = {
           },
         ]
       }
+      pdf_import_golden_runs: {
+        Row: {
+          ai_reconciliation_recommendation: string | null
+          ai_reconciliation_status: string | null
+          baseline_comparison: Json | null
+          category: string
+          corpus_id: string
+          created_at: string
+          created_by: string | null
+          editor_vs_source_score: number | null
+          engine_version: string | null
+          export_parity_mode: string | null
+          export_parity_status: string | null
+          export_vs_editor_score: number | null
+          export_vs_source_score: number | null
+          failure_count: number
+          failures: Json
+          gate_summary: Json
+          golden_regression_summary: Json
+          id: string
+          import_id: string
+          import_page_count: number | null
+          import_status: string | null
+          operator_decision: string
+          orchestrator_version: string | null
+          quality_gate_status: string
+          repair_final_score: number | null
+          repair_requires_fallback: boolean | null
+          repair_requires_manual_review: boolean | null
+          repair_status: string | null
+          run_batch_id: string | null
+          run_decision: string | null
+          run_id: string
+          run_status: string | null
+          source_filename: string | null
+          summary_version: string | null
+          template_id: string | null
+          template_page_count: number | null
+          triage_summary: Json
+          updated_at: string
+          visual_qa_manual_review_required: boolean | null
+          visual_qa_score: number | null
+          warning_count: number
+          warnings: Json
+        }
+        Insert: {
+          ai_reconciliation_recommendation?: string | null
+          ai_reconciliation_status?: string | null
+          baseline_comparison?: Json | null
+          category: string
+          corpus_id: string
+          created_at?: string
+          created_by?: string | null
+          editor_vs_source_score?: number | null
+          engine_version?: string | null
+          export_parity_mode?: string | null
+          export_parity_status?: string | null
+          export_vs_editor_score?: number | null
+          export_vs_source_score?: number | null
+          failure_count?: number
+          failures?: Json
+          gate_summary?: Json
+          golden_regression_summary?: Json
+          id?: string
+          import_id: string
+          import_page_count?: number | null
+          import_status?: string | null
+          operator_decision: string
+          orchestrator_version?: string | null
+          quality_gate_status: string
+          repair_final_score?: number | null
+          repair_requires_fallback?: boolean | null
+          repair_requires_manual_review?: boolean | null
+          repair_status?: string | null
+          run_batch_id?: string | null
+          run_decision?: string | null
+          run_id: string
+          run_status?: string | null
+          source_filename?: string | null
+          summary_version?: string | null
+          template_id?: string | null
+          template_page_count?: number | null
+          triage_summary?: Json
+          updated_at?: string
+          visual_qa_manual_review_required?: boolean | null
+          visual_qa_score?: number | null
+          warning_count?: number
+          warnings?: Json
+        }
+        Update: {
+          ai_reconciliation_recommendation?: string | null
+          ai_reconciliation_status?: string | null
+          baseline_comparison?: Json | null
+          category?: string
+          corpus_id?: string
+          created_at?: string
+          created_by?: string | null
+          editor_vs_source_score?: number | null
+          engine_version?: string | null
+          export_parity_mode?: string | null
+          export_parity_status?: string | null
+          export_vs_editor_score?: number | null
+          export_vs_source_score?: number | null
+          failure_count?: number
+          failures?: Json
+          gate_summary?: Json
+          golden_regression_summary?: Json
+          id?: string
+          import_id?: string
+          import_page_count?: number | null
+          import_status?: string | null
+          operator_decision?: string
+          orchestrator_version?: string | null
+          quality_gate_status?: string
+          repair_final_score?: number | null
+          repair_requires_fallback?: boolean | null
+          repair_requires_manual_review?: boolean | null
+          repair_status?: string | null
+          run_batch_id?: string | null
+          run_decision?: string | null
+          run_id?: string
+          run_status?: string | null
+          source_filename?: string | null
+          summary_version?: string | null
+          template_id?: string | null
+          template_page_count?: number | null
+          triage_summary?: Json
+          updated_at?: string
+          visual_qa_manual_review_required?: boolean | null
+          visual_qa_score?: number | null
+          warning_count?: number
+          warnings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_import_golden_runs_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "template_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_golden_runs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdf_import_jobs: {
         Row: {
           attempts: Json
