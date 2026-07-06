@@ -101,7 +101,7 @@ export default function AgentQuality() {
       </div>
 
       <Tabs defaultValue="evals">
-        <TabsList><TabsTrigger value="evals">Evaluations</TabsTrigger><TabsTrigger value="traces">Trace log</TabsTrigger><TabsTrigger value="tools">Tool summary</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="evals">Evaluations</TabsTrigger><TabsTrigger value="traces">Trace log</TabsTrigger><TabsTrigger value="tools">Tool summary</TabsTrigger><TabsTrigger value="baselines">Baselines</TabsTrigger></TabsList>
 
         <TabsContent value="evals" className="mt-4">
           {loading ? <div className="text-sm text-muted-foreground p-4">Loading…</div> :
@@ -164,6 +164,8 @@ export default function AgentQuality() {
             ))}
           </div>
         </TabsContent>
+
+        <TabsContent value="baselines" className="mt-4"><AgentEvalBaselinesPanel /></TabsContent>
       </Tabs>
 
       <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
