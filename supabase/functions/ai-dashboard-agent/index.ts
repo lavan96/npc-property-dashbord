@@ -7797,6 +7797,11 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
     success: true, response: finalResponse,
     requires_confirmation: pendingConfirmation,
     pending_tool_calls: pendingConfirmation ? pendingToolCalls : undefined,
+    recalled_memories: semanticMemories.map((m: any) => ({
+      id: m.id, content: m.content, tags: m.tags, importance: m.importance,
+      similarity: Number(m.similarity?.toFixed?.(3) ?? m.similarity),
+      feedback_score: m.feedback_score ?? 0,
+    })),
   }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
