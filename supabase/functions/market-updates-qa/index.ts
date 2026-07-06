@@ -192,6 +192,9 @@ function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+const RATE_LIMIT_HOUR = Number(Deno.env.get('MARKET_QA_RATE_LIMIT_HOUR') || 30);
+const RATE_LIMIT_DAY = Number(Deno.env.get('MARKET_QA_RATE_LIMIT_DAY') || 200);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   const auth = req.headers.get('authorization');
@@ -205,6 +208,15 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     auth ? { global: { headers: { Authorization: auth } } } : {},
   );
+
+  // Resolve caller identity for rate limiting + attribution.
+  let userId: string | null = null;
+  if (auth) {
+    try {
+      const { data: u } = await sb.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
+      userId = u?.user?.id ?? null;
+    } catch { /* ignore */ }
+  }
 
   const payload = await req.json().catch(() => ({}));
   const question = String(payload?.question ?? '').trim();
@@ -224,7 +236,27 @@ Deno.serve(async (req) => {
       answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0,
       limitations: ['A specific question is required.'],
       follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
+      retrieved: [], question_id: null,
     });
+  }
+
+  // Rate limiting — per authenticated user.
+  if (userId) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+    const [{ count: hourCount }, { count: dayCount }] = await Promise.all([
+      sb.from('market_update_questions').select('id', { count: 'exact', head: true }).eq('created_by', userId).gte('created_at', oneHourAgo),
+      sb.from('market_update_questions').select('id', { count: 'exact', head: true }).eq('created_by', userId).gte('created_at', oneDayAgo),
+    ]);
+    if ((hourCount ?? 0) >= RATE_LIMIT_HOUR || (dayCount ?? 0) >= RATE_LIMIT_DAY) {
+      return json({
+        answer: `You have reached the Market Q&A rate limit (${RATE_LIMIT_HOUR}/hour, ${RATE_LIMIT_DAY}/day). Please wait and try again.`,
+        citations: [], source_update_ids: [], confidence_score: 0,
+        limitations: ['Rate limit exceeded — protects the shared model budget.'],
+        follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
+        retrieved: [], question_id: null, rate_limited: true,
+      }, 429);
+    }
   }
 
   const terms = pickTerms(question);
