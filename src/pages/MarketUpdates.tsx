@@ -681,7 +681,7 @@ export default function MarketUpdates() {
         </Dialog>
 
         {/* Q&A Dialog */}
-        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); setQaThread([]); } }}>
+        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); setQaThread([]); setDialogConversationId(crypto.randomUUID()); } }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ask AI about this update</DialogTitle>
