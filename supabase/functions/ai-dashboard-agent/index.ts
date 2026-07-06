@@ -2701,7 +2701,7 @@ const TOOL_DOMAINS: Record<string, { description: string; tools: string[] }> = {
   },
   collaboration: {
     description: "Conversation sharing, team members, user preferences, contextual memory, audit trail, undo.",
-    tools: ["share_conversation", "get_shared_conversations", "get_conversation_collaborators", "revoke_conversation_share", "get_team_members", "get_user_preferences", "set_user_preference", "save_memory", "recall_memories", "get_audit_trail", "undo_action"],
+    tools: ["share_conversation", "get_shared_conversations", "get_conversation_collaborators", "revoke_conversation_share", "get_team_members", "get_user_preferences", "set_user_preference", "save_memory", "recall_memories", "search_semantic_memory", "save_semantic_memory", "get_audit_trail", "undo_action"],
   },
   listings: {
     description: "Airtable property listings and listing sources.",
