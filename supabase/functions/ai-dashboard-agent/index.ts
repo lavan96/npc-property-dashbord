@@ -7912,6 +7912,11 @@ async function handleChatStream(
             }
 
             messages.push({ role: 'assistant', content: content || '', tool_calls });
+
+            // Phase 3: process meta inline, then batch non-meta tool executions in parallel.
+            type StreamJob = { tc: any; name: string; args: any };
+            const parallelJobs: StreamJob[] = [];
+
             for (const tc of tool_calls) {
               if (aborted) break;
               const name = tc.function.name;
@@ -7934,11 +7939,24 @@ async function handleChatStream(
               }
 
               ensureToolLoaded(name, loadedToolNames);
-
+              parallelJobs.push({ tc, name, args });
               emit('tool', { phase: 'start', name, id: tc.id });
-              const result = await executeTool(sb, name, args, userId);
-              emit('tool', { phase: 'end', name, id: tc.id });
-              messages.push({ role: 'tool', tool_call_id: tc.id, content: smartTruncateResult(result) });
+            }
+
+            if (parallelJobs.length && !aborted) {
+              const settled = await Promise.all(parallelJobs.map(async (job) => {
+                try {
+                  const { content: toolContent, cached } = await runToolCached(sb, job.name, job.args, userId);
+                  return { tc: job.tc, name: job.name, content: toolContent, cached, error: null as any };
+                } catch (err: any) {
+                  return { tc: job.tc, name: job.name, content: JSON.stringify({ error: err?.message || String(err) }), cached: false, error: err };
+                }
+              }));
+              for (const r of settled) {
+                emit('tool', { phase: 'end', name: r.name, id: r.tc.id });
+                messages.push({ role: 'tool', tool_call_id: r.tc.id, content: r.content });
+                if (r.cached) console.log(`[ai-dashboard-agent] cache hit (stream): ${r.name}`);
+              }
             }
             continue;
           }
