@@ -74,6 +74,9 @@ import TemplateImportQuality from "./pages/admin/TemplateImportQuality";
 import PdfGoldenRegression from "./pages/admin/PdfGoldenRegression";
 import MarketQAQuality from "./pages/admin/MarketQAQuality";
 import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
+import AgentQuality from "./pages/admin/AgentQuality";
+import AgentMemoryManager from "./pages/agent/MemoryManager";
+import AgentInsights from "./pages/agent/AgentInsights";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
