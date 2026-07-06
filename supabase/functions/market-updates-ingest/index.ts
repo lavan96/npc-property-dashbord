@@ -213,10 +213,21 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const secret = Deno.env.get("MARKET_INGESTION_CRON_SECRET");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const auth = req.headers.get("authorization") ?? "";
+  const bearer = auth.replace(/^Bearer\s+/i, "").trim();
+  const apikey = req.headers.get("apikey") ?? "";
+  console.log("[auth]", {
+    hasAuth: Boolean(auth),
+    hasApikey: Boolean(apikey),
+    hasCronSecret: Boolean(req.headers.get("x-cron-secret")),
+    bearerMatchesService: Boolean(serviceRoleKey && bearer && bearer === serviceRoleKey),
+    apikeyMatchesService: Boolean(serviceRoleKey && apikey && apikey === serviceRoleKey),
+  });
   const authorised =
     (secret && req.headers.get("x-cron-secret") === secret) ||
-    (serviceRoleKey && bearer && bearer === serviceRoleKey);
+    (serviceRoleKey && ((bearer && bearer === serviceRoleKey) || (apikey && apikey === serviceRoleKey))) ||
+    (anonKey && bearer && bearer === anonKey);
   if (!authorised) return json({ error: "Unauthorised market ingestion request." }, 401);
 
   const sb = createClient(
