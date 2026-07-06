@@ -731,6 +731,9 @@ export default function MarketUpdates() {
                         </div>
                       )}
                       {turn.limitations && turn.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{turn.limitations.map((l, j) => <li key={j}>{l}</li>)}</ul>}
+                      {turn.role === 'assistant' && !turn.streaming && (
+                        <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} />
+                      )}
                     </div>
                   ))}
                   {asking && <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Thinking…</div>}
