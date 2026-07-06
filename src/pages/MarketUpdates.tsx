@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, BarChart3, Building2, ExternalLink, FileText, Globe2, Loader2, Newspaper, RefreshCw, Search, Settings, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Building2, ExternalLink, FileText, Globe2, Loader2, Newspaper, RefreshCw, Search, Settings, ShieldCheck, Sparkles, TrendingUp, Zap, Clock, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,82 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest24h } from '@/services/marketUpdatesService';
-import type { MarketAudienceTag, MarketDigest24h, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { answerMarketUpdateQuestion, fetchLatestMarketDigest, fetchMarketSourceHealth, fetchMarketSources, fetchMarketUpdates, generateMarketDigest, triggerMarketIngestion } from '@/services/marketUpdatesService';
+import type { MarketAudienceTag, MarketDigest24h, MarketDigestPeriod, MarketFreshnessTier, MarketGeography, MarketImpactLevel, MarketQAMessage, MarketSegment, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateCategory } from '@/types/marketUpdates';
+
+const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
+  { id: '24h', label: '24 Hours', hint: 'Last day' },
+  { id: 'weekly', label: 'Weekly', hint: 'Past 7 days' },
+  { id: 'biweekly', label: 'Bi-weekly', hint: 'Past 14 days' },
+  { id: 'monthly', label: 'Monthly', hint: 'Past 30 days' },
+  { id: 'quarterly', label: 'Quarterly', hint: 'Past 90 days' },
+  { id: 'annual', label: 'Annual', hint: 'Past 12 months' },
+];
+
+const SEGMENTS: MarketSegment[] = ['finance','property','construction','political','economic','social','policy_regulation','rental'];
+const FRESHNESS: Array<{ id: MarketFreshnessTier | 'all'; label: string; icon: any }> = [
+  { id: 'all', label: 'All', icon: Radio },
+  { id: 'breaking', label: 'Breaking', icon: Zap },
+  { id: 'today', label: 'Today', icon: Clock },
+  { id: 'this_week', label: 'This Week', icon: Newspaper },
+  { id: 'older', label: 'Older', icon: FileText },
+];
 
 const categories: Array<'all' | MarketUpdateCategory> = ['all','finance','property_market','construction','policy_regulation','rental_market','economy','political','planning_supply','other'];
 const geographies: Array<'all' | MarketGeography> = ['all','Australia','NSW','VIC','QLD','WA','SA','TAS','ACT','NT','Multi'];
 const impacts: Array<'all' | MarketImpactLevel> = ['all','high','medium','low'];
 const audiences: Array<'all' | MarketAudienceTag> = ['all','investors','owner_occupiers','first_home_buyers','smsf','developers','buyers_agents','mortgage_brokers','property_managers','builders','finance_brokers'];
-const label = (value: string) => value === 'all' ? 'All' : value.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ');
+
+const titleCase = (v: string) => v.split('_').map(p => p[0].toUpperCase() + p.slice(1)).join(' ');
+const label = (v: string) => v === 'all' ? 'All' : titleCase(v);
 const dateLabel = (v?: string | null) => v ? new Date(v).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }) : 'Not available';
+
+const FRESHNESS_STYLE: Record<MarketFreshnessTier, string> = {
+  breaking: 'bg-destructive/15 text-destructive border-destructive/30',
+  today: 'bg-primary/15 text-primary border-primary/30',
+  this_week: 'bg-info/15 text-[hsl(var(--info))] border-info/30',
+  older: 'bg-muted text-muted-foreground border-border',
+};
+const IMPACT_STYLE: Record<MarketImpactLevel, string> = {
+  high: 'bg-destructive/15 text-destructive border-destructive/30',
+  medium: 'bg-warning/15 text-[hsl(var(--warning))] border-warning/30',
+  low: 'bg-muted text-muted-foreground border-border',
+};
+
+function FreshnessBadge({ tier }: { tier: MarketFreshnessTier }) {
+  const Icon = tier === 'breaking' ? Zap : tier === 'today' ? Clock : tier === 'this_week' ? Newspaper : FileText;
+  return <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', FRESHNESS_STYLE[tier])}><Icon className="h-3 w-3" />{titleCase(tier)}</span>;
+}
+
+function ConfidenceBar({ score }: { score?: number | null }) {
+  const n = Math.round(score ?? 0);
+  const color = n >= 80 ? 'bg-success' : n >= 55 ? 'bg-primary' : 'bg-muted-foreground/50';
+  return (
+    <div className="flex items-center gap-2" title={`AI confidence ${n}%`}>
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted"><div className={cn('h-full', color)} style={{ width: `${Math.min(100, Math.max(0, n))}%` }} /></div>
+      <span className="text-[10px] font-medium text-muted-foreground">{n}%</span>
+    </div>
+  );
+}
+
+function SegmentChip({ seg, active, onClick }: { seg: MarketSegment | 'all'; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+        active
+          ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+      )}
+    >
+      {seg === 'all' ? 'All Segments' : titleCase(seg)}
+    </button>
+  );
+}
 
 export default function MarketUpdates() {
   const navigate = useNavigate();
@@ -24,46 +91,495 @@ export default function MarketUpdates() {
   const [sources, setSources] = useState<MarketSource[]>([]);
   const [sourceHealth, setSourceHealth] = useState<MarketSourceHealth>({ totalSources:0, enabledSources:0, failedSources:0 });
   const [loading, setLoading] = useState(true);
+  const [ingesting, setIngesting] = useState(false);
   const [digestLoading, setDigestLoading] = useState(false);
+  const [period, setPeriod] = useState<MarketDigestPeriod>('24h');
   const [digest, setDigest] = useState<MarketDigest24h | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [selectedUpdate, setSelectedUpdate] = useState<MarketUpdate | null>(null);
   const [qaUpdate, setQaUpdate] = useState<MarketUpdate | null>(null);
   const [question, setQuestion] = useState('');
   const [qaMessage, setQaMessage] = useState<MarketQAMessage | null>(null);
+  const [search, setSearch] = useState('');
+  const [activeSegment, setActiveSegment] = useState<MarketSegment | 'all'>('all');
+  const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
   const [filters, setFilters] = useState({ category: 'all', geography: 'all', impact: 'all', audience: 'all' });
 
-  const loadWorkspace = async () => { setLoading(true); setMessage(null); const [u,d,s,h] = await Promise.all([fetchMarketUpdates(), fetchLatestMarketDigest(), fetchMarketSources(), fetchMarketSourceHealth()]); setUpdates(u); setDigest(d); setSources(s); setSourceHealth(h); setLoading(false); };
-  useEffect(() => { void loadWorkspace(); }, []);
+  const loadUpdates = async () => {
+    setLoading(true);
+    const [u, s, h] = await Promise.all([fetchMarketUpdates({ limit: 200 }), fetchMarketSources(), fetchMarketSourceHealth()]);
+    setUpdates(u); setSources(s); setSourceHealth(h);
+    setLoading(false);
+  };
+  const loadDigest = async (p: MarketDigestPeriod) => { setDigest(await fetchLatestMarketDigest(p)); };
 
-  const filteredUpdates = useMemo(() => updates.filter((u) => (filters.category === 'all' || u.category === filters.category) && (filters.geography === 'all' || u.geography.includes(filters.geography as MarketGeography)) && (filters.impact === 'all' || u.impact_level === filters.impact) && (filters.audience === 'all' || u.audience_tags.includes(filters.audience as MarketAudienceTag))), [filters, updates]);
-  const kpis = useMemo(() => { const today = new Date().toDateString(); return [
-    { label:'Updates Today', value: updates.filter(u => new Date(u.ingested_at).toDateString() === today).length, icon: Newspaper },
-    { label:'High Impact', value: updates.filter(u => u.impact_level === 'high').length, icon: TrendingUp },
-    { label:'Finance & Lending', value: updates.filter(u => u.category === 'finance').length, icon: BarChart3 },
-    { label:'Property Market', value: updates.filter(u => u.category === 'property_market').length, icon: Building2 },
-    { label:'Policy / Regulation', value: updates.filter(u => u.category === 'policy_regulation').length, icon: ShieldCheck },
-    { label:'Construction & Supply', value: updates.filter(u => u.category === 'construction' || u.category === 'planning_supply').length, icon: Activity },
-  ]; }, [updates]);
-  const highImpact = updates.filter(u => u.impact_level === 'high').slice(0, 4);
+  useEffect(() => { void loadUpdates(); }, []);
+  useEffect(() => { void loadDigest(period); }, [period]);
 
-  const handleDigest = async () => { setDigestLoading(true); const result = await generateMarketDigest24h(); setMessage(result.message); setDigest(result.digest ?? await fetchLatestMarketDigest()); setDigestLoading(false); };
-  const handleAsk = async () => { if (!question.trim()) return; setQaMessage(await answerMarketUpdateQuestion(question, qaUpdate ? [qaUpdate.id] : undefined)); };
+  const filteredUpdates = useMemo(() => updates.filter((u) => {
+    if (filters.category !== 'all' && u.category !== filters.category) return false;
+    if (filters.geography !== 'all' && !u.geography.includes(filters.geography as MarketGeography)) return false;
+    if (filters.impact !== 'all' && u.impact_level !== filters.impact) return false;
+    if (filters.audience !== 'all' && !u.audience_tags.includes(filters.audience as MarketAudienceTag)) return false;
+    if (activeSegment !== 'all' && !u.segments.includes(activeSegment)) return false;
+    if (activeFreshness !== 'all' && u.freshness_tier !== activeFreshness) return false;
+    if (search && !`${u.title} ${u.ai_summary ?? ''} ${u.source_name}`.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  }), [updates, filters, activeSegment, activeFreshness, search]);
 
-  return <main className="min-h-screen bg-slate-950 text-slate-100"><div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 md:px-8">
-    <section className="w-full overflow-hidden rounded-[2rem] border border-cyan-400/20 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 p-6 shadow-2xl shadow-cyan-950/30 md:p-8">
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between"><div className="space-y-4"><Badge className="bg-cyan-400/10 text-cyan-200">AI MARKET INTELLIGENCE</Badge><h1 className="text-4xl font-bold tracking-tight md:text-5xl">Market Updates</h1><p className="max-w-4xl text-base text-slate-300 md:text-lg">Source-backed Australian property, finance, construction, rental, policy and economic intelligence in one report-ready workspace.</p><div className="flex flex-wrap gap-2 text-xs text-slate-400"><Badge variant="outline">Last success: {dateLabel(sourceHealth.lastSuccessAt)}</Badge><Badge variant="outline">Coverage: Australia-wide</Badge><Badge variant="outline">Refresh cycle: 24 hours</Badge></div></div>
-        <div className="flex flex-wrap gap-2"><Button onClick={loadWorkspace}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button><Button onClick={handleDigest} disabled={digestLoading}>{digestLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}Generate 24h Digest</Button><Button disabled variant="outline" title="Export available after digest generation."><FileText className="mr-2 h-4 w-4" />Export Summary</Button><Button variant="outline" onClick={() => navigate('/sources')}><Settings className="mr-2 h-4 w-4" />Sources</Button></div></div>
-    </section>
-    {message && <Card className="border-cyan-400/20 bg-cyan-950/20"><CardContent className="p-4 text-cyan-100">{message}</CardContent></Card>}
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">{kpis.map((kpi) => <Card key={kpi.label} className="border-white/10 bg-white/[0.04] text-slate-100"><CardContent className="p-5"><kpi.icon className="mb-4 h-5 w-5 text-cyan-300" /><div className="text-3xl font-semibold">{kpi.value}</div><p className="text-xs text-slate-400">{kpi.label}</p></CardContent></Card>)}</section>
-    <section className="grid gap-3 rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:grid-cols-4">{([['category',categories],['geography',geographies],['impact',impacts],['audience',audiences]] as const).map(([key, values]) => <div key={key} className="space-y-2"><Label>{label(key)}</Label><Select value={(filters as any)[key]} onValueChange={(value) => setFilters(f => ({ ...f, [key]: value }))}><SelectTrigger className="border-white/10 bg-slate-950/70"><SelectValue /></SelectTrigger><SelectContent>{(values as readonly string[]).map(value => <SelectItem key={value} value={value}>{key === 'impact' && value === 'all' ? 'All Impact' : key === 'audience' && value === 'all' ? 'All Audiences' : label(value)}</SelectItem>)}</SelectContent></Select></div>)}</section>
-    <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]"><div className="space-y-6">
-      <Card className="border-purple-400/20 bg-slate-900/80 text-slate-100"><CardHeader><CardTitle>Daily Market Digest</CardTitle></CardHeader><CardContent>{digest ? <div className="space-y-3"><p>{digest.executive_summary}</p><div className="flex flex-wrap gap-2">{digest.source_urls.slice(0,4).map(url => <Badge key={url} variant="outline">Source cited</Badge>)}</div></div> : <p className="text-slate-400">No source-backed updates were found in the last 24 hours.</p>}</CardContent></Card>
-      <Card className="border-white/10 bg-slate-900/80 text-slate-100"><CardHeader><CardTitle>Source-backed Update Cards</CardTitle></CardHeader><CardContent className="space-y-4">{loading ? <p>Loading market workspace…</p> : filteredUpdates.length === 0 ? <div className="rounded-2xl border border-dashed border-cyan-300/30 bg-cyan-950/10 p-10 text-center"><Globe2 className="mx-auto mb-3 h-10 w-10 text-cyan-300" /><h2 className="text-xl font-semibold">No source-backed market updates have been ingested yet</h2><p className="mx-auto mt-2 max-w-2xl text-slate-400">Configure enabled sources and run the 24-hour ingestion job to begin. This workspace will remain empty rather than showing fake market news.</p><div className="mt-5 flex justify-center gap-2"><Button variant="outline" onClick={() => navigate('/sources')}>Sources</Button><Button variant="ghost" onClick={() => window.open('/docs/market-updates-phase-2.md','_blank')}>View Setup Guide</Button></div></div> : filteredUpdates.map(update => <article key={update.id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-5"><div className="flex flex-wrap gap-2"><Badge>{label(update.category)}</Badge><Badge variant="outline">Impact: {label(update.impact_level)}</Badge>{update.geography.map(geo => <Badge key={geo} variant="secondary">{geo}</Badge>)}</div><h3 className="mt-3 text-xl font-semibold">{update.title}</h3><p className="text-sm text-slate-400">{update.source_name} · {dateLabel(update.source_published_at ?? update.ingested_at)}</p><p className="mt-3 text-slate-200">{update.ai_summary ?? 'Summary awaiting source-grounded AI processing.'}</p><p className="mt-2 text-sm text-slate-300"><strong>Why it matters:</strong> {update.why_it_matters ?? 'Implications will appear once summarisation is connected.'}</p><div className="mt-3 flex flex-wrap gap-1">{update.citation_urls.map(url => <Badge key={url} variant="outline" className="border-cyan-300/30 text-cyan-200">Citation</Badge>)}</div><div className="mt-4 flex flex-wrap gap-2"><Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button><Button size="sm" variant="outline" onClick={() => setQaUpdate(update)}>Ask AI</Button><Button asChild size="sm" variant="ghost"><a href={update.source_url} target="_blank" rel="noreferrer">Source <ExternalLink className="ml-1 h-3 w-3" /></a></Button></div></article>)}</CardContent></Card></div>
-      <aside className="space-y-4"><Card className="border-white/10 bg-white/[0.04] text-slate-100"><CardHeader><CardTitle>Category Breakdown</CardTitle></CardHeader><CardContent className="space-y-2">{categories.filter(c => c !== 'all').map(cat => <div key={cat} className="flex justify-between text-sm"><span>{label(cat)}</span><span>{updates.filter(u => u.category === cat).length}</span></div>)}</CardContent></Card><Card className="border-white/10 bg-white/[0.04] text-slate-100"><CardHeader><CardTitle>High Impact Watchlist</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-slate-300">{highImpact.length ? highImpact.map(u => <button key={u.id} onClick={() => setSelectedUpdate(u)} className="block w-full rounded-lg border border-white/10 p-2 text-left hover:border-cyan-300/30">{u.title}</button>) : 'No high impact sourced updates yet.'}</CardContent></Card><Card className="border-white/10 bg-white/[0.04] text-slate-100"><CardHeader><CardTitle>Ask AI about market updates</CardTitle></CardHeader><CardContent className="space-y-3"><Search className="h-5 w-5 text-cyan-300" /><p className="text-sm text-slate-400">{updates.length ? 'Ask source-grounded questions about published updates only.' : 'Market Q&A will activate once source-backed updates are available.'}</p><Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask about sourced market updates…" disabled={!updates.length} /><Button size="sm" onClick={handleAsk} disabled={!updates.length || !question.trim()}>Ask safely</Button>{qaMessage && <p className="rounded-lg bg-slate-950/60 p-3 text-sm">{qaMessage.content}</p>}</CardContent></Card><Card className="border-white/10 bg-white/[0.04] text-slate-100"><CardHeader><CardTitle>Source Health</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-slate-300"><div className="grid grid-cols-3 gap-2 text-center"><div><b>{sourceHealth.totalSources}</b><p className="text-xs text-slate-500">Total</p></div><div><b>{sourceHealth.enabledSources}</b><p className="text-xs text-slate-500">Enabled</p></div><div><b>{sourceHealth.failedSources}</b><p className="text-xs text-slate-500">Failed</p></div></div><p>Last fetched: {dateLabel(sourceHealth.lastFetchedAt)}</p><p>Last success: {dateLabel(sourceHealth.lastSuccessAt)}</p>{sourceHealth.lastError ? <p className="text-amber-200"><AlertTriangle className="mr-1 inline h-4 w-4" />{sourceHealth.lastError}</p> : <p className="text-slate-400">{sources.length ? 'No source errors reported.' : 'Source registry ready. No enabled sources connected yet.'}</p>}</CardContent></Card></aside></section>
-    <p className="pb-6 text-xs text-slate-500">General market intelligence only. Review source material and obtain professional advice before acting.</p>
-    <Dialog open={Boolean(selectedUpdate)} onOpenChange={(open) => !open && setSelectedUpdate(null)}><DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>{selectedUpdate?.title}</DialogTitle></DialogHeader><div className="space-y-4 text-sm"><p><strong>Source:</strong> <a className="text-cyan-500" href={selectedUpdate?.source_url} target="_blank" rel="noreferrer">{selectedUpdate?.source_name}</a></p><p><strong>Published:</strong> {dateLabel(selectedUpdate?.source_published_at)}</p><p><strong>AI summary:</strong> {selectedUpdate?.ai_summary ?? 'Awaiting source-grounded analysis.'}</p>{Boolean(selectedUpdate?.key_points?.length) && <ul className="list-disc pl-5">{selectedUpdate?.key_points.map(p => <li key={p}>{p}</li>)}</ul>}<p><strong>Why it matters:</strong> {selectedUpdate?.why_it_matters ?? 'Not available yet.'}</p><p><strong>Property implications:</strong> {selectedUpdate?.property_implications ?? 'Not available yet.'}</p><p><strong>Finance implications:</strong> {selectedUpdate?.finance_implications ?? 'Not available yet.'}</p><p><strong>Policy implications:</strong> {selectedUpdate?.policy_implications ?? 'Not available yet.'}</p><p><strong>Risk flags:</strong> {selectedUpdate?.risk_flags?.join(', ') || 'Not available yet.'}</p><p><strong>Confidence:</strong> {selectedUpdate?.confidence_score ?? 0}%</p><p><strong>Citations:</strong> {selectedUpdate?.citation_urls?.map(url => <a key={url} className="ml-2 text-cyan-500" href={url} target="_blank" rel="noreferrer">Open source</a>)}</p></div></DialogContent></Dialog>
-    <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); } }}><DialogContent><DialogHeader><DialogTitle>Ask AI about this update</DialogTitle></DialogHeader><Label htmlFor="market-question">Question</Label><Textarea id="market-question" value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ask a source-grounded question…" /><Button onClick={handleAsk}>Ask safely</Button><p className="text-sm text-slate-500">{qaMessage?.content ?? 'Answers are limited to ingested, published market updates with citations.'}</p>{qaMessage?.citations.map(url => <a key={url} className="block text-sm text-cyan-600" href={url} target="_blank" rel="noreferrer">Citation</a>)}</DialogContent></Dialog>
-  </div></main>;
+  const freshnessCounts = useMemo(() => ({
+    all: updates.length,
+    breaking: updates.filter(u => u.freshness_tier === 'breaking').length,
+    today: updates.filter(u => u.freshness_tier === 'today').length,
+    this_week: updates.filter(u => u.freshness_tier === 'this_week').length,
+    older: updates.filter(u => u.freshness_tier === 'older').length,
+  }), [updates]);
+
+  const segmentCounts = useMemo(() => {
+    const c: Record<string, number> = { all: updates.length };
+    for (const seg of SEGMENTS) c[seg] = updates.filter(u => u.segments.includes(seg)).length;
+    return c;
+  }, [updates]);
+
+  const kpis = useMemo(() => [
+    { label: 'Breaking Now', value: freshnessCounts.breaking, icon: Zap, tone: 'text-destructive' },
+    { label: 'Today', value: freshnessCounts.today, icon: Clock, tone: 'text-primary' },
+    { label: 'High Impact', value: updates.filter(u => u.impact_level === 'high').length, icon: TrendingUp, tone: 'text-warning' },
+    { label: 'Finance', value: segmentCounts.finance ?? 0, icon: BarChart3, tone: 'text-primary' },
+    { label: 'Property', value: segmentCounts.property ?? 0, icon: Building2, tone: 'text-info' },
+    { label: 'Policy', value: segmentCounts.policy_regulation ?? 0, icon: ShieldCheck, tone: 'text-success' },
+  ], [freshnessCounts, updates, segmentCounts]);
+
+  const highImpact = updates.filter(u => u.impact_level === 'high').slice(0, 5);
+
+  const handleGenerateDigest = async () => {
+    setDigestLoading(true);
+    const result = await generateMarketDigest(period);
+    setMessage(result.message || null);
+    setDigest(result.digest);
+    setDigestLoading(false);
+  };
+
+  const handleIngest = async () => {
+    setIngesting(true);
+    const summary = await triggerMarketIngestion({ force: true });
+    setMessage(summary.message ?? `Ingested ${summary.ingested} · Published ${summary.published} · Candidates ${summary.candidates}`);
+    await loadUpdates();
+    setIngesting(false);
+  };
+
+  const handleAsk = async () => {
+    if (!question.trim()) return;
+    setQaMessage(await answerMarketUpdateQuestion(question, qaUpdate ? [qaUpdate.id] : undefined));
+  };
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 md:px-8">
+        {/* Hero */}
+        <section className="w-full overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-6 shadow-xl md:p-8">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="bg-primary/15 text-primary hover:bg-primary/20">AI Market Intelligence</Badge>
+                <Badge variant="outline">Australia · RBA · APRA · Treasury</Badge>
+                <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" />Gemini 3 Flash</Badge>
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Market Updates</h1>
+              <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
+                Source-backed finance, property, construction, policy, rental and economic intelligence — auto-ingested hourly, AI-classified across 8 segments, cited to origin.
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">Last ingest: {dateLabel(sourceHealth.lastSuccessAt)}</Badge>
+                <Badge variant="outline">{sourceHealth.enabledSources}/{sourceHealth.totalSources} sources live</Badge>
+                {sourceHealth.failedSources > 0 && <Badge variant="outline" className="text-destructive"><AlertTriangle className="mr-1 h-3 w-3" />{sourceHealth.failedSources} failing</Badge>}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={loadUpdates} variant="outline"><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+              <Button onClick={handleIngest} disabled={ingesting} variant="outline">{ingesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}Run Ingest</Button>
+              <Button onClick={handleGenerateDigest} disabled={digestLoading}>{digestLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}Generate {PERIODS.find(p => p.id === period)?.label} Digest</Button>
+              <Button variant="ghost" onClick={() => navigate('/sources')}><Settings className="mr-2 h-4 w-4" />Sources</Button>
+            </div>
+          </div>
+        </section>
+
+        {message && (
+          <Card className="border-primary/25 bg-primary/5">
+            <CardContent className="flex items-start justify-between gap-4 p-4">
+              <p className="text-sm text-foreground">{message}</p>
+              <Button size="sm" variant="ghost" onClick={() => setMessage(null)}>Dismiss</Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* KPIs */}
+        <section className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {kpis.map(k => (
+            <Card key={k.label} className="border-border/60">
+              <CardContent className="p-4">
+                <k.icon className={cn('mb-3 h-5 w-5', k.tone)} />
+                <div className="text-2xl font-semibold tabular-nums">{k.value}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{k.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+
+        {/* Period tabs + Digest */}
+        <section>
+          <Tabs value={period} onValueChange={(v) => setPeriod(v as MarketDigestPeriod)}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <TabsList className="w-full sm:w-auto">
+                {PERIODS.map(p => (
+                  <TabsTrigger key={p.id} value={p.id} className="text-xs sm:text-sm">{p.label}</TabsTrigger>
+                ))}
+              </TabsList>
+              <p className="text-xs text-muted-foreground">Digest period: <strong className="text-foreground">{PERIODS.find(p => p.id === period)?.hint}</strong></p>
+            </div>
+
+            {PERIODS.map(p => (
+              <TabsContent key={p.id} value={p.id} className="mt-4">
+                <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/[0.03]">
+                  <CardHeader className="pb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        {p.label} Digest
+                      </CardTitle>
+                      {digest && <div className="flex items-center gap-3"><ConfidenceBar score={digest.confidence_score} /><span className="text-xs text-muted-foreground">Generated {dateLabel(digest.generated_at)}</span></div>}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {!digest ? (
+                      <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                        <FileText className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
+                        <p className="text-sm text-muted-foreground">No {p.label.toLowerCase()} digest generated yet.</p>
+                        <Button size="sm" className="mt-4" onClick={handleGenerateDigest} disabled={digestLoading}>
+                          {digestLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                          Generate now
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm leading-relaxed text-foreground">{digest.executive_summary}</p>
+
+                        {Object.keys(digest.segment_breakdown ?? {}).length > 0 && (
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {Object.entries(digest.segment_breakdown).map(([seg, data]) => (
+                              <div key={seg} className="rounded-xl border border-border/60 bg-background/50 p-3">
+                                <div className="mb-1 flex items-center justify-between">
+                                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titleCase(seg)}</h4>
+                                </div>
+                                {data.headline && <p className="text-sm font-medium">{data.headline}</p>}
+                                {Array.isArray(data.highlights) && data.highlights.length > 0 && (
+                                  <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+                                    {data.highlights.slice(0, 4).map((h, i) => <li key={i}>{h}</li>)}
+                                  </ul>
+                                )}
+                                {data.implications && <p className="mt-2 text-xs italic text-foreground/80">{data.implications}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {digest.client_advisory_implications.length > 0 && (
+                          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">Client Advisory Implications</h4>
+                            <ul className="list-disc space-y-1 pl-4 text-sm">
+                              {digest.client_advisory_implications.map((c, i) => <li key={i}>{c}</li>)}
+                            </ul>
+                          </div>
+                        )}
+
+                        {digest.source_urls.length > 0 && (
+                          <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
+                            <span className="text-xs font-medium text-muted-foreground">Sources:</span>
+                            {digest.source_urls.slice(0, 8).map((url, i) => (
+                              <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-primary">
+                                <ExternalLink className="h-2.5 w-2.5" />Source {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </section>
+
+        {/* Filters: Segment chips + Freshness pills + advanced */}
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Segments</span>
+            <SegmentChip seg="all" active={activeSegment === 'all'} onClick={() => setActiveSegment('all')} />
+            {SEGMENTS.map(seg => (
+              <SegmentChip key={seg} seg={seg} active={activeSegment === seg} onClick={() => setActiveSegment(seg)} />
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Freshness</span>
+            {FRESHNESS.map(f => {
+              const active = activeFreshness === f.id;
+              const count = freshnessCounts[f.id as keyof typeof freshnessCounts];
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFreshness(f.id)}
+                  className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground')}
+                >
+                  <f.icon className="h-3 w-3" />{f.label}
+                  <span className={cn('rounded-full px-1.5 py-0 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-muted')}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="grid gap-3 rounded-2xl border border-border/60 bg-card/40 p-3 md:grid-cols-5">
+            <div className="space-y-1 md:col-span-1">
+              <Label className="text-xs">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Title, summary, source…" className="pl-8" />
+              </div>
+            </div>
+            {([['category', categories],['geography', geographies],['impact', impacts],['audience', audiences]] as const).map(([key, values]) => (
+              <div key={key} className="space-y-1">
+                <Label className="text-xs">{titleCase(key)}</Label>
+                <Select value={(filters as any)[key]} onValueChange={(v) => setFilters(f => ({ ...f, [key]: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{(values as readonly string[]).map(v => <SelectItem key={v} value={v}>{label(v)}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Feed + Sidebar */}
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">
+                {filteredUpdates.length} {filteredUpdates.length === 1 ? 'update' : 'updates'}
+                <span className="ml-2 text-sm font-normal text-muted-foreground">of {updates.length} published</span>
+              </h2>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <Card key={i} className="animate-pulse"><CardContent className="h-40 p-6" /></Card>)}
+              </div>
+            ) : filteredUpdates.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="p-10 text-center">
+                  <Globe2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
+                  <h3 className="text-lg font-semibold">No updates match your filters</h3>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Try clearing segment or freshness filters, or run the ingest job to fetch the latest source-backed items.</p>
+                  <div className="mt-4 flex justify-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setActiveSegment('all'); setActiveFreshness('all'); setSearch(''); setFilters({ category:'all', geography:'all', impact:'all', audience:'all' }); }}>Clear filters</Button>
+                    <Button size="sm" onClick={handleIngest} disabled={ingesting}>{ingesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}Run Ingest</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredUpdates.map(update => (
+                <article key={update.id} className="group rounded-2xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-md">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FreshnessBadge tier={update.freshness_tier} />
+                    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', IMPACT_STYLE[update.impact_level])}>
+                      {update.impact_level} impact
+                    </span>
+                    <Badge variant="outline" className="text-[10px]">{titleCase(update.category)}</Badge>
+                    {update.geography.slice(0, 3).map(g => <Badge key={g} variant="secondary" className="text-[10px]">{g}</Badge>)}
+                    <div className="ml-auto"><ConfidenceBar score={update.confidence_score} /></div>
+                  </div>
+
+                  <h3 className="mt-3 text-lg font-semibold leading-snug text-foreground group-hover:text-primary">{update.title}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground/80">{update.source_name}</span> · {dateLabel(update.source_published_at ?? update.ingested_at)}
+                  </p>
+
+                  {update.ai_summary && <p className="mt-3 text-sm leading-relaxed text-foreground/90">{update.ai_summary}</p>}
+
+                  {update.why_it_matters && (
+                    <div className="mt-3 rounded-lg border-l-2 border-primary/60 bg-primary/5 py-2 pl-3 pr-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">Why it matters</p>
+                      <p className="mt-0.5 text-sm text-foreground/90">{update.why_it_matters}</p>
+                    </div>
+                  )}
+
+                  {update.segments.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {update.segments.map(s => (
+                        <button key={s} onClick={() => setActiveSegment(s)} className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
+                          {titleCase(s)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                    <Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button>
+                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQuestion(''); }}>Ask AI</Button>
+                    <div className="ml-auto flex flex-wrap items-center gap-1">
+                      {update.citation_urls.slice(0, 3).map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
+                          <ExternalLink className="h-2.5 w-2.5" />Cite {i + 1}
+                        </a>
+                      ))}
+                      <a href={update.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/20">
+                        <ExternalLink className="h-2.5 w-2.5" />Source
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <aside className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">High Impact Watchlist</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {highImpact.length ? highImpact.map(u => (
+                  <button key={u.id} onClick={() => setSelectedUpdate(u)} className="block w-full rounded-lg border border-border/60 bg-background/50 p-2 text-left transition-colors hover:border-primary/40">
+                    <div className="mb-1 flex items-center gap-1.5"><FreshnessBadge tier={u.freshness_tier} /></div>
+                    <p className="line-clamp-2 text-xs font-medium">{u.title}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">{u.source_name}</p>
+                  </button>
+                )) : <p className="text-xs text-muted-foreground">No high impact updates yet.</p>}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Segment Coverage</CardTitle></CardHeader>
+              <CardContent className="space-y-1.5">
+                {SEGMENTS.map(seg => {
+                  const count = segmentCounts[seg] ?? 0;
+                  const pct = updates.length ? (count / updates.length) * 100 : 0;
+                  return (
+                    <div key={seg}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground/80">{titleCase(seg)}</span>
+                        <span className="tabular-nums text-muted-foreground">{count}</span>
+                      </div>
+                      <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full bg-primary/60" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-xs text-muted-foreground">Source-grounded answers from published market updates only.</p>
+                <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="e.g. What's the RBA signalling this month?" disabled={!updates.length} className="min-h-[80px] text-sm" />
+                <Button size="sm" className="w-full" onClick={handleAsk} disabled={!updates.length || !question.trim()}>Ask safely</Button>
+                {qaMessage && (
+                  <div className="rounded-lg border border-border/60 bg-background/60 p-3">
+                    <p className="text-xs leading-relaxed">{qaMessage.content}</p>
+                    {qaMessage.citations.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {qaMessage.citations.map((url, i) => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
+                            <ExternalLink className="h-2.5 w-2.5" />Cite {i + 1}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Source Health</CardTitle></CardHeader>
+              <CardContent className="space-y-2 text-xs">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg border border-border/60 bg-background/50 p-2"><div className="text-lg font-semibold">{sourceHealth.totalSources}</div><p className="text-[10px] text-muted-foreground">Total</p></div>
+                  <div className="rounded-lg border border-success/30 bg-success/10 p-2"><div className="text-lg font-semibold text-success">{sourceHealth.enabledSources}</div><p className="text-[10px] text-muted-foreground">Enabled</p></div>
+                  <div className={cn('rounded-lg border p-2', sourceHealth.failedSources > 0 ? 'border-destructive/30 bg-destructive/10' : 'border-border/60 bg-background/50')}>
+                    <div className={cn('text-lg font-semibold', sourceHealth.failedSources > 0 && 'text-destructive')}>{sourceHealth.failedSources}</div>
+                    <p className="text-[10px] text-muted-foreground">Failed</p>
+                  </div>
+                </div>
+                <p className="text-muted-foreground">Last success: {dateLabel(sourceHealth.lastSuccessAt)}</p>
+                {sourceHealth.lastError && <p className="text-destructive"><AlertTriangle className="mr-1 inline h-3 w-3" />{sourceHealth.lastError}</p>}
+              </CardContent>
+            </Card>
+          </aside>
+        </section>
+
+        <p className="pb-6 text-center text-xs text-muted-foreground">General market intelligence only. Review source material and obtain professional advice before acting.</p>
+
+        {/* Analysis Dialog */}
+        <Dialog open={Boolean(selectedUpdate)} onOpenChange={(open) => !open && setSelectedUpdate(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedUpdate && <FreshnessBadge tier={selectedUpdate.freshness_tier} />}
+                {selectedUpdate && <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase', IMPACT_STYLE[selectedUpdate.impact_level])}>{selectedUpdate.impact_level} impact</span>}
+                {selectedUpdate && <ConfidenceBar score={selectedUpdate.confidence_score} />}
+              </div>
+              <DialogTitle className="text-xl leading-snug">{selectedUpdate?.title}</DialogTitle>
+              <p className="text-xs text-muted-foreground">{selectedUpdate?.source_name} · {dateLabel(selectedUpdate?.source_published_at)}</p>
+            </DialogHeader>
+            {selectedUpdate && (
+              <div className="space-y-4 text-sm">
+                {selectedUpdate.ai_summary && <div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI Summary</h4><p className="mt-1">{selectedUpdate.ai_summary}</p></div>}
+                {selectedUpdate.key_points.length > 0 && <div><h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Key Points</h4><ul className="mt-1 list-disc space-y-1 pl-5">{selectedUpdate.key_points.map((p, i) => <li key={i}>{p}</li>)}</ul></div>}
+                {selectedUpdate.why_it_matters && <div className="rounded-lg border-l-2 border-primary/60 bg-primary/5 py-2 pl-3"><h4 className="text-xs font-semibold uppercase tracking-wide text-primary">Why it matters</h4><p className="mt-1">{selectedUpdate.why_it_matters}</p></div>}
+                <div className="grid gap-3 md:grid-cols-3">
+                  {selectedUpdate.property_implications && <div className="rounded-lg border border-border/60 p-3"><h4 className="text-xs font-semibold uppercase text-info">Property</h4><p className="mt-1 text-xs">{selectedUpdate.property_implications}</p></div>}
+                  {selectedUpdate.finance_implications && <div className="rounded-lg border border-border/60 p-3"><h4 className="text-xs font-semibold uppercase text-primary">Finance</h4><p className="mt-1 text-xs">{selectedUpdate.finance_implications}</p></div>}
+                  {selectedUpdate.policy_implications && <div className="rounded-lg border border-border/60 p-3"><h4 className="text-xs font-semibold uppercase text-success">Policy</h4><p className="mt-1 text-xs">{selectedUpdate.policy_implications}</p></div>}
+                </div>
+                {selectedUpdate.risk_flags.length > 0 && <div><h4 className="text-xs font-semibold uppercase tracking-wide text-destructive">Risk Flags</h4><div className="mt-1 flex flex-wrap gap-1">{selectedUpdate.risk_flags.map(r => <Badge key={r} variant="outline" className="border-destructive/30 text-destructive">{r}</Badge>)}</div></div>}
+                <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
+                  <a href={selectedUpdate.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20"><ExternalLink className="h-3 w-3" />Original source</a>
+                  {selectedUpdate.citation_urls.map((url, i) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Citation {i + 1}</a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Q&A Dialog */}
+        <Dialog open={Boolean(qaUpdate)} onOpenChange={(open) => { if (!open) { setQaUpdate(null); setQaMessage(null); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ask AI about this update</DialogTitle>
+              <p className="text-xs text-muted-foreground">{qaUpdate?.title}</p>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask a source-grounded question…" className="min-h-[100px]" />
+              <Button onClick={handleAsk} className="w-full"><Sparkles className="mr-2 h-4 w-4" />Ask safely</Button>
+              {qaMessage && (
+                <div className="rounded-lg border border-border/60 bg-background/60 p-3">
+                  <p className="text-sm">{qaMessage.content}</p>
+                  {qaMessage.citations.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {qaMessage.citations.map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {i + 1}</a>
+                      ))}
+                    </div>
+                  )}
+                  {qaMessage.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{qaMessage.limitations.map((l, i) => <li key={i}>{l}</li>)}</ul>}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </main>
+  );
 }
