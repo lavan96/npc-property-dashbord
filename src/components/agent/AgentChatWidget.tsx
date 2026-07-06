@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
+import { MemoryCitations, type RecalledMemory } from '@/components/agent/MemoryCitations';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
 
 // Consistent color palette for sender attribution in collaborative conversations
