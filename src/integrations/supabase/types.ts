@@ -475,6 +475,42 @@ export type Database = {
           },
         ]
       }
+      agent_eval_baselines: {
+        Row: {
+          created_at: string
+          eval_count: number
+          id: string
+          name: string
+          notes: string | null
+          pass_count: number
+          pass_rate: number
+          promoted_by: string
+          results: Json
+        }
+        Insert: {
+          created_at?: string
+          eval_count?: number
+          id?: string
+          name: string
+          notes?: string | null
+          pass_count?: number
+          pass_rate?: number
+          promoted_by: string
+          results?: Json
+        }
+        Update: {
+          created_at?: string
+          eval_count?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          pass_count?: number
+          pass_rate?: number
+          promoted_by?: string
+          results?: Json
+        }
+        Relationships: []
+      }
       agent_eval_runs: {
         Row: {
           created_at: string
@@ -859,6 +895,119 @@ export type Database = {
           temperature?: number | null
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      agent_plan_steps: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          error: string | null
+          expected_output: string | null
+          id: string
+          plan_id: string
+          result: Json | null
+          seq: number
+          started_at: string | null
+          status: string
+          title: string
+          tool_calls: Json
+          tool_hint: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          error?: string | null
+          expected_output?: string | null
+          id?: string
+          plan_id: string
+          result?: Json | null
+          seq: number
+          started_at?: string | null
+          status?: string
+          title: string
+          tool_calls?: Json
+          tool_hint?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          error?: string | null
+          expected_output?: string | null
+          id?: string
+          plan_id?: string
+          result?: Json | null
+          seq?: number
+          started_at?: string | null
+          status?: string
+          title?: string
+          tool_calls?: Json
+          tool_hint?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_plan_steps_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_plans: {
+        Row: {
+          completed_at: string | null
+          completed_steps: number
+          context: Json
+          created_at: string
+          goal: string
+          id: string
+          planner_model: string | null
+          requires_approval: boolean
+          skill_slug: string | null
+          status: string
+          title: string
+          total_steps: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_steps?: number
+          context?: Json
+          created_at?: string
+          goal: string
+          id?: string
+          planner_model?: string | null
+          requires_approval?: boolean
+          skill_slug?: string | null
+          status?: string
+          title: string
+          total_steps?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_steps?: number
+          context?: Json
+          created_at?: string
+          goal?: string
+          id?: string
+          planner_model?: string | null
+          requires_approval?: boolean
+          skill_slug?: string | null
+          status?: string
+          title?: string
+          total_steps?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -12678,6 +12827,48 @@ export type Database = {
         }
         Relationships: []
       }
+      market_qa_quality_baselines: {
+        Row: {
+          avg_confidence: number | null
+          avg_retrieved_ids: number | null
+          avg_used_ids: number | null
+          created_at: string
+          id: string
+          low_confidence_count: number
+          model_mix: Json
+          refusal_count: number
+          refusal_rate: number
+          snapshot_date: string
+          total_questions: number
+        }
+        Insert: {
+          avg_confidence?: number | null
+          avg_retrieved_ids?: number | null
+          avg_used_ids?: number | null
+          created_at?: string
+          id?: string
+          low_confidence_count?: number
+          model_mix?: Json
+          refusal_count?: number
+          refusal_rate?: number
+          snapshot_date: string
+          total_questions?: number
+        }
+        Update: {
+          avg_confidence?: number | null
+          avg_retrieved_ids?: number | null
+          avg_used_ids?: number | null
+          created_at?: string
+          id?: string
+          low_confidence_count?: number
+          model_mix?: Json
+          refusal_count?: number
+          refusal_rate?: number
+          snapshot_date?: string
+          total_questions?: number
+        }
+        Relationships: []
+      }
       market_sources: {
         Row: {
           category: string
@@ -12731,6 +12922,53 @@ export type Database = {
           url?: string
         }
         Relationships: []
+      }
+      market_update_qa_shares: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_revoked: boolean
+          last_viewed_at: string | null
+          question_id: string
+          slug: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_revoked?: boolean
+          last_viewed_at?: string | null
+          question_id: string
+          slug: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_revoked?: boolean
+          last_viewed_at?: string | null
+          question_id?: string
+          slug?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_update_qa_shares_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "market_update_questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_update_questions: {
         Row: {
@@ -12792,6 +13030,8 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           dedupe_hash: string
+          embedding: string | null
+          embedding_generated_at: string | null
           failure_reason: string | null
           finance_implications: string | null
           freshness_tier: string | null
@@ -12825,6 +13065,8 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           dedupe_hash: string
+          embedding?: string | null
+          embedding_generated_at?: string | null
           failure_reason?: string | null
           finance_implications?: string | null
           freshness_tier?: string | null
@@ -12858,6 +13100,8 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           dedupe_hash?: string
+          embedding?: string | null
+          embedding_generated_at?: string | null
           failure_reason?: string | null
           finance_implications?: string | null
           freshness_tier?: string | null
