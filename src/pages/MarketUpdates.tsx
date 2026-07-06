@@ -190,7 +190,7 @@ export default function MarketUpdates() {
     }
   };
 
-  const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleQuestionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void handleAsk();
