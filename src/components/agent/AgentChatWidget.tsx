@@ -670,12 +670,28 @@ export function AgentChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="dashboard-floating-action-button fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-105 group md:bottom-6 md:right-6 md:z-40"
-        aria-label="Open AI Assistant"
+        className="group fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full transition-transform hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 md:bottom-6 md:right-6 md:z-40"
+        aria-label="Open Aurixa"
+        title="Ask Aurixa"
       >
-        <Diamond className="h-6 w-6 text-primary-foreground group-hover:animate-pulse" />
+        {/* Outer aurora glow ring */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-full opacity-80 blur-[10px] transition-opacity group-hover:opacity-100"
+          style={{
+            background:
+              'conic-gradient(from 180deg, hsl(var(--aurixa-aurora-1)/0.9), hsl(var(--aurixa-aurora-2)/0.8), hsl(var(--aurixa-aurora-3)/0.85), hsl(var(--aurixa-aurora-1)/0.9))',
+            animation: 'aurixa-orb-spin 12s linear infinite',
+          }}
+        />
+        {/* Inner glass disc */}
+        <span
+          aria-hidden
+          className="absolute inset-[3px] rounded-full aurixa-glass"
+        />
+        <AurixaMark size="md" state={loading ? 'thinking' : 'idle'} className="relative z-10" />
         {notifCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 z-20 flex h-5 min-w-5 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground shadow-[0_0_0_2px_hsl(var(--background))]">
             {notifCount > 9 ? '9+' : notifCount}
           </span>
         )}
@@ -684,12 +700,12 @@ export function AgentChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-[5.5rem] right-4 z-[60] flex flex-col rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300
+    <div className="fixed bottom-[5.5rem] right-4 z-[60] flex flex-col overflow-hidden rounded-[20px] aurixa-glass animate-in slide-in-from-bottom-4 fade-in duration-300
       w-[calc(100vw-2rem)] max-w-[440px] h-[min(75vh,580px)]
       md:bottom-6 md:right-6 md:h-[min(85vh,640px)]">
       {/* Header */}
-      <div className="dashboard-floating-report-widget flex items-center justify-between border-b px-4 py-3 shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="relative flex items-center justify-between border-b border-[hsl(var(--aurixa-glass-border)/0.5)] px-4 py-3 shrink-0 bg-gradient-to-b from-[hsl(var(--aurixa-glass-bg)/0.6)] to-transparent">
+        <div className="flex items-center gap-2.5 min-w-0">
           {!showSidebar && activeConversation && panelView === 'chat' && (
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowSidebar(true)}>
               <ChevronLeft className="h-4 w-4" />
@@ -700,9 +716,11 @@ export function AgentChatWidget() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <Diamond className="h-5 w-5 text-primary-foreground dark:text-primary" />
-          <span className="font-semibold text-sm">Aurixa Agent</span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary-foreground/15 text-primary-foreground dark:bg-primary/10 dark:text-primary">Gemini</span>
+          <AurixaMark size="sm" state={loading ? 'thinking' : 'idle'} />
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-heading text-[15px] font-semibold tracking-tight text-foreground">Aurixa</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Gemini · Live</span>
+          </div>
         </div>
         <div className="flex items-center gap-0.5">
           {/* Notification bell */}
