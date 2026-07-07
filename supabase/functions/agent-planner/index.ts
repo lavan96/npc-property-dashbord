@@ -305,73 +305,66 @@ Deno.serve(async (req) => {
       return json({ plan: data });
     }
 
-    if (action === 'run-scheduled') {
-      // Cron-invoked: accept matching secret if configured; otherwise public (aligned with existing cron pattern).
-      const secret = req.headers.get('x-cron-secret');
-      if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
-      const nowIso = new Date().toISOString();
-      const { data: due } = await sb.from('agent_plans').select('*')
-        .not('schedule_cron', 'is', null)
-        .lte('next_run_at', nowIso)
-        .in('status', ['approved', 'awaiting_approval', 'running', 'paused'])
-        .limit(20);
-      let launched = 0;
-      for (const plan of due ?? []) {
-        try {
-          // Reset step statuses if plan was completed but re-scheduled — otherwise leave.
-          const { data: run } = await sb.from('agent_plan_runs').insert({
-            plan_id: plan.id, user_id: plan.user_id, status: 'running', triggered_by: 'cron',
-          }).select().single();
-
-          // If auto_execute, drive the loop for up to N steps.
-          if (plan.auto_execute) {
-            let steps = 0, failed = 0;
-            for (let i = 0; i < 6; i++) {
-              const r = await fetch(`${SUPABASE_URL}/functions/v1/agent-planner`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}`, 'apikey': SERVICE_KEY, 'x-effective-user-id': plan.user_id },
-                body: JSON.stringify({ action: 'execute-next-step', plan_id: plan.id }),
-              });
-              const j = await r.json();
-              if (j?.done) break;
-              if (j?.error) { failed++; break; }
-              steps++;
-            }
-            await sb.from('agent_plan_runs').update({
-              status: failed ? 'failed' : 'completed',
-              steps_executed: steps, steps_failed: failed,
-              finished_at: new Date().toISOString(),
-            }).eq('id', run!.id);
-          } else {
-            // Notify user that the scheduled run is awaiting approval.
-            await sb.from('notifications').insert({
-              user_id: plan.user_id, type: 'agent_plan_scheduled',
-              title: 'Scheduled plan is ready',
-              message: `${plan.title} is awaiting your approval.`,
-              metadata: { plan_id: plan.id, run_id: run?.id },
-              is_read: false,
-            });
-            await sb.from('agent_plan_runs').update({
-              status: 'awaiting_approval', finished_at: new Date().toISOString(),
-            }).eq('id', run!.id);
-          }
-
-          // Advance next_run_at
-          const nxt = nextFromCron(plan.schedule_cron);
-          await sb.from('agent_plans').update({
-            last_run_at: new Date().toISOString(),
-            next_run_at: nxt ? nxt.toISOString() : null,
-          }).eq('id', plan.id);
-          launched++;
-        } catch (err) {
-          console.warn('run-scheduled err', (err as Error).message);
-        }
-      }
-      return json({ launched });
-    }
-
     return json({ error: 'unknown_action' }, 400);
   } catch (err) {
     return json({ error: String((err as Error).message) }, 500);
   }
 });
+
+async function runScheduled(sb: any) {
+  const nowIso = new Date().toISOString();
+  const { data: due } = await sb.from('agent_plans').select('*')
+    .not('schedule_cron', 'is', null)
+    .lte('next_run_at', nowIso)
+    .in('status', ['approved', 'awaiting_approval', 'running', 'paused'])
+    .limit(20);
+  let launched = 0;
+  for (const plan of due ?? []) {
+    try {
+      const { data: run } = await sb.from('agent_plan_runs').insert({
+        plan_id: plan.id, user_id: plan.user_id, status: 'running', triggered_by: 'cron',
+      }).select().single();
+
+      if (plan.auto_execute) {
+        let steps = 0, failed = 0;
+        for (let i = 0; i < 6; i++) {
+          const r = await fetch(`${SUPABASE_URL}/functions/v1/agent-planner`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}`, 'apikey': SERVICE_KEY, 'x-effective-user-id': plan.user_id },
+            body: JSON.stringify({ action: 'execute-next-step', plan_id: plan.id }),
+          });
+          const j = await r.json();
+          if (j?.done) break;
+          if (j?.error) { failed++; break; }
+          steps++;
+        }
+        await sb.from('agent_plan_runs').update({
+          status: failed ? 'failed' : 'completed',
+          steps_executed: steps, steps_failed: failed,
+          finished_at: new Date().toISOString(),
+        }).eq('id', run!.id);
+      } else {
+        await sb.from('notifications').insert({
+          user_id: plan.user_id, type: 'agent_plan_scheduled',
+          title: 'Scheduled plan is ready',
+          message: `${plan.title} is awaiting your approval.`,
+          metadata: { plan_id: plan.id, run_id: run?.id },
+          is_read: false,
+        });
+        await sb.from('agent_plan_runs').update({
+          status: 'awaiting_approval', finished_at: new Date().toISOString(),
+        }).eq('id', run!.id);
+      }
+
+      const nxt = nextFromCron(plan.schedule_cron);
+      await sb.from('agent_plans').update({
+        last_run_at: new Date().toISOString(),
+        next_run_at: nxt ? nxt.toISOString() : null,
+      }).eq('id', plan.id);
+      launched++;
+    } catch (err) {
+      console.warn('run-scheduled err', (err as Error).message);
+    }
+  }
+  return json({ launched });
+}
