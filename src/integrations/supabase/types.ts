@@ -1267,14 +1267,46 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_skill_installs: {
+        Row: {
+          id: string
+          installed_at: string
+          overrides: Json
+          skill_id: string
+          skill_snapshot: Json
+          uninstalled_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          installed_at?: string
+          overrides?: Json
+          skill_id: string
+          skill_snapshot?: Json
+          uninstalled_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          installed_at?: string
+          overrides?: Json
+          skill_id?: string
+          skill_snapshot?: Json
+          uninstalled_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       agent_skills: {
         Row: {
           allowed_tools: string[]
+          avg_success_rate: number | null
           created_at: string
           default_model: string | null
           description: string | null
           icon: string | null
           id: string
+          install_count: number
           is_enabled: boolean
           is_public: boolean
           last_run_at: string | null
@@ -1287,11 +1319,13 @@ export type Database = {
         }
         Insert: {
           allowed_tools?: string[]
+          avg_success_rate?: number | null
           created_at?: string
           default_model?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          install_count?: number
           is_enabled?: boolean
           is_public?: boolean
           last_run_at?: string | null
@@ -1304,11 +1338,13 @@ export type Database = {
         }
         Update: {
           allowed_tools?: string[]
+          avg_success_rate?: number | null
           created_at?: string
           default_model?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          install_count?: number
           is_enabled?: boolean
           is_public?: boolean
           last_run_at?: string | null
@@ -12901,6 +12937,45 @@ export type Database = {
         }
         Relationships: []
       }
+      market_qa_digests: {
+        Row: {
+          cadence: string
+          created_at: string
+          delivery_channels: string[]
+          digest_group: string | null
+          id: string
+          metadata: Json
+          question_ids: string[]
+          sent_at: string
+          summary_md: string
+          user_id: string
+        }
+        Insert: {
+          cadence: string
+          created_at?: string
+          delivery_channels?: string[]
+          digest_group?: string | null
+          id?: string
+          metadata?: Json
+          question_ids?: string[]
+          sent_at?: string
+          summary_md: string
+          user_id: string
+        }
+        Update: {
+          cadence?: string
+          created_at?: string
+          delivery_channels?: string[]
+          digest_group?: string | null
+          id?: string
+          metadata?: Json
+          question_ids?: string[]
+          sent_at?: string
+          summary_md?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_qa_quality_baselines: {
         Row: {
           avg_confidence: number | null
@@ -12940,6 +13015,51 @@ export type Database = {
           refusal_rate?: number
           snapshot_date?: string
           total_questions?: number
+        }
+        Relationships: []
+      }
+      market_qa_quality_daily: {
+        Row: {
+          avg_citations: number | null
+          created_at: string
+          fallback_count: number
+          hybrid_count: number
+          hybrid_win_rate: number | null
+          id: string
+          lexical_count: number
+          p50_latency_ms: number | null
+          p95_latency_ms: number | null
+          snapshot_date: string
+          total_questions: number
+          vector_count: number
+        }
+        Insert: {
+          avg_citations?: number | null
+          created_at?: string
+          fallback_count?: number
+          hybrid_count?: number
+          hybrid_win_rate?: number | null
+          id?: string
+          lexical_count?: number
+          p50_latency_ms?: number | null
+          p95_latency_ms?: number | null
+          snapshot_date: string
+          total_questions?: number
+          vector_count?: number
+        }
+        Update: {
+          avg_citations?: number | null
+          created_at?: string
+          fallback_count?: number
+          hybrid_count?: number
+          hybrid_win_rate?: number | null
+          id?: string
+          lexical_count?: number
+          p50_latency_ms?: number | null
+          p95_latency_ms?: number | null
+          snapshot_date?: string
+          total_questions?: number
+          vector_count?: number
         }
         Relationships: []
       }
@@ -12990,6 +13110,7 @@ export type Database = {
           cadence: string
           channels: string[]
           created_at: string
+          digest_group: string | null
           id: string
           is_active: boolean
           last_run_at: string | null
@@ -13002,6 +13123,7 @@ export type Database = {
           cadence?: string
           channels?: string[]
           created_at?: string
+          digest_group?: string | null
           id?: string
           is_active?: boolean
           last_run_at?: string | null
@@ -13014,6 +13136,7 @@ export type Database = {
           cadence?: string
           channels?: string[]
           created_at?: string
+          digest_group?: string | null
           id?: string
           is_active?: boolean
           last_run_at?: string | null
