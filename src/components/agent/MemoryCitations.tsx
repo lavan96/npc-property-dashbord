@@ -54,39 +54,68 @@ export function MemoryCitations({ messageId, memories, defaultOpen = false }: Pr
   };
 
   return (
-    <div className="mt-2 pt-2 border-t border-border/40">
+    <div className="mt-3 pt-3 border-t border-[hsl(var(--aurixa-hairline))]">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        className="group flex items-center gap-2 text-[11px] text-muted-foreground hover:text-primary transition-colors"
       >
-        <Brain className="h-3 w-3" />
-        <span>{memories.length} long-term {memories.length === 1 ? 'memory' : 'memories'} used</span>
+        <span className="h-5 w-5 rounded-full grid place-items-center bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+          <Brain className="h-3 w-3" />
+        </span>
+        <span className="font-mono uppercase tracking-[0.14em] text-[10px]">
+          {memories.length} recalled {memories.length === 1 ? 'memory' : 'memories'}
+        </span>
         {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
 
       {open && (
-        <ul className="mt-2 space-y-1.5">
+        <div className="mt-2.5 -mx-1 px-1 flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1
+                        [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5
+                        [&::-webkit-scrollbar-thumb]:bg-primary/20 [&::-webkit-scrollbar-thumb]:rounded-full">
           {memories.map((m, i) => {
             const rating = ratings[m.id] ?? null;
             const sim = typeof m.similarity === 'number' ? Math.round(m.similarity * 100) : null;
+            const confidence = sim ?? (typeof m.importance === 'number' ? m.importance * 20 : 50);
+
             return (
-              <li
+              <div
                 key={m.id}
-                className="rounded-md border border-border/40 bg-background/40 px-2.5 py-1.5 text-[11px] leading-snug"
+                className="snap-start shrink-0 w-[240px] aurixa-glass rounded-xl p-2.5 flex flex-col gap-2 animate-aurixa-rise"
+                style={{ animationDelay: `${i * 40}ms` }}
               >
-                <div className="flex items-start gap-2">
-                  <span className="font-mono text-[10px] text-muted-foreground shrink-0 mt-0.5">[{i + 1}]</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-foreground/90 whitespace-pre-wrap break-words">{m.content}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                      {sim !== null && <span>match {sim}%</span>}
-                      {typeof m.importance === 'number' && <span>· imp {m.importance}/5</span>}
-                      {m.kind && <span>· {m.kind}</span>}
-                      {m.tags?.length ? <span>· {m.tags.slice(0, 4).join(', ')}</span> : null}
-                    </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-[9px] text-primary/70 px-1.5 py-0.5 rounded bg-primary/10 uppercase tracking-wider">
+                    {m.kind || 'memory'}
+                  </span>
+                  <span className="font-mono text-[9px] text-muted-foreground ml-auto">[{i + 1}]</span>
+                </div>
+
+                <p className="text-[11px] leading-snug text-foreground/90 line-clamp-4 break-words">
+                  {m.content}
+                </p>
+
+                {m.tags?.length ? (
+                  <div className="flex flex-wrap gap-1">
+                    {m.tags.slice(0, 3).map(t => (
+                      <span key={t} className="text-[9px] font-mono text-muted-foreground/80 px-1 py-0.5 rounded bg-muted/40">{t}</span>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
+                ) : null}
+
+                <div className="mt-auto space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">Recall</span>
+                    <div className="flex-1 h-[3px] rounded-full bg-muted/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary"
+                        style={{ width: `${Math.min(100, Math.max(4, confidence))}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-primary">{Math.round(confidence)}%</span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-0.5">
                     <Button
                       size="icon"
                       variant="ghost"
@@ -115,10 +144,10 @@ export function MemoryCitations({ messageId, memories, defaultOpen = false }: Pr
                     </Button>
                   </div>
                 </div>
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </div>
   );
