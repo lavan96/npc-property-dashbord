@@ -4,7 +4,7 @@
  * a used/considered badge so the user can audit the grounding.
  */
 import { useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLink, Share2, Loader2 } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink, Share2, Loader2, Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -14,13 +14,15 @@ interface Props {
   content: string;
   retrieved?: MarketQARetrievedItem[];
   questionId?: string | null;
+  questionText?: string | null;
   compact?: boolean;
 }
 
-export function MarketQAAnswerActions({ content, retrieved = [], questionId, compact }: Props) {
+export function MarketQAAnswerActions({ content, retrieved = [], questionId, questionText, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -53,6 +55,25 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
     }
   };
 
+  const handleSubscribe = async () => {
+    if (!questionText || subscribing) return;
+    const cadence = window.prompt('Cadence — type "daily" or "weekly":', 'weekly');
+    if (!cadence || !['daily', 'weekly'].includes(cadence)) return;
+    setSubscribing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('market-qa-subscriptions', {
+        body: { action: 'create', question_template: questionText, cadence, channels: ['in_app'] },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error ?? error?.message ?? 'Subscribe failed');
+      toast.success('Subscribed — manage at /qa/subscriptions');
+    } catch (err) {
+      toast.error(String((err as Error).message));
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+
 
   const used = retrieved.filter(r => r.used).length;
   const total = retrieved.length;
@@ -79,6 +100,18 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
           >
             {sharing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Share2 className="h-2.5 w-2.5" />}
             Share
+          </button>
+        )}
+        {questionText && (
+          <button
+            type="button"
+            onClick={handleSubscribe}
+            disabled={subscribing}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-50"
+            title="Get fresh answers on a schedule"
+          >
+            {subscribing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Bell className="h-2.5 w-2.5" />}
+            Subscribe
           </button>
         )}
         {total > 0 && (

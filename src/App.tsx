@@ -79,6 +79,7 @@ import AgentMemoryManager from "./pages/agent/MemoryManager";
 import AgentInsights from "./pages/agent/AgentInsights";
 import AgentPlans from "./pages/agent/AgentPlans";
 import SharedMarketQAAnswer from "./pages/qa/SharedMarketQAAnswer";
+import MarketQASubscriptions from "./pages/qa/MarketQASubscriptions";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
@@ -355,6 +356,7 @@ const App = () => (
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
+                <Route path="qa/subscriptions" element={<MarketQASubscriptions />} />
 
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
