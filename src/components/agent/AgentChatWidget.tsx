@@ -1275,6 +1275,7 @@ export function AgentChatWidget() {
                       <MemoryCitations messageId={msg.id} memories={msg.recalled_memories} />
                     )}
                   </div>
+                  )}
                 </div>
                 );
               });
