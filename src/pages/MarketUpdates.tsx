@@ -601,7 +601,7 @@ export default function MarketUpdates() {
                           </ul>
                         )}
                         {turn.role === 'assistant' && !turn.streaming && (
-                          <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} compact />
+                          <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} questionText={qaThread[i-1]?.role === "user" ? qaThread[i-1].content : undefined} compact />
                         )}
                       </div>
                     ))}
@@ -732,7 +732,7 @@ export default function MarketUpdates() {
                       )}
                       {turn.limitations && turn.limitations.length > 0 && <ul className="mt-2 list-disc pl-4 text-[10px] text-muted-foreground">{turn.limitations.map((l, j) => <li key={j}>{l}</li>)}</ul>}
                       {turn.role === 'assistant' && !turn.streaming && (
-                        <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} />
+                        <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} questionText={qaThread[i-1]?.role === "user" ? qaThread[i-1].content : undefined} />
                       )}
                     </div>
                   ))}
