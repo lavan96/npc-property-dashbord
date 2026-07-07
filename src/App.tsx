@@ -78,8 +78,11 @@ import AgentQuality from "./pages/admin/AgentQuality";
 import AgentMemoryManager from "./pages/agent/MemoryManager";
 import AgentInsights from "./pages/agent/AgentInsights";
 import AgentPlans from "./pages/agent/AgentPlans";
+import AgentSkills from "./pages/agent/AgentSkills";
 import SharedMarketQAAnswer from "./pages/qa/SharedMarketQAAnswer";
 import MarketQASubscriptions from "./pages/qa/MarketQASubscriptions";
+import MarketQADigests from "./pages/qa/MarketQADigests";
+import MarketQAQuality from "./pages/admin/MarketQAQuality";
 
 import Integrations from "./pages/Integrations";
 import MarketingAnalytics from "./pages/MarketingAnalytics";
