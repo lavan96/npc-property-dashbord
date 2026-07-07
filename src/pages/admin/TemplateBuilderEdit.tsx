@@ -2747,6 +2747,7 @@ export default function TemplateBuilderEdit() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Preview sample data</Label>
               <p className="text-xs text-muted-foreground mt-1">
                 Edit the JSON used to render the live preview. Bindings like <code>{'{{property.address}}'}</code> resolve against this object.
+                Placeholder <code>sections.*</code> content is auto-merged from the report structure for previews — add your own <code>sections</code> keys here to override it.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">

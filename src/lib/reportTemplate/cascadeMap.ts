@@ -108,8 +108,11 @@ export interface CascadeMap {
   };
 }
 
+// `body` is the section's generated content and the only field a design must
+// land; `title`/`highlights` are optional decoration (designs usually carry
+// their own static headings), so mapping the body alone marks a section mapped.
 const DEFAULT_FIELD_SUFFIXES = [
-  { key: 'title', label: 'Title', type: 'text' as const, required: true },
+  { key: 'title', label: 'Title', type: 'text' as const, required: false },
   { key: 'body', label: 'Body', type: 'richText' as const, required: true },
   { key: 'highlights', label: 'Highlights', type: 'list' as const, required: false, repeatable: true },
 ];
@@ -380,7 +383,14 @@ export function buildCascadeMap(
         ? 'partially_mapped'
         : 'mapped';
     if (section.required && targets.length === 0) {
-      issues.push({ severity: 'error', code: 'missing_required_anchor', message: `Required report section “${section.label}” has no PDF anchor.`, sectionId: section.id });
+      // A section whose field bindings already exist in the design is one
+      // auto-map click away — surface it as a warning, not an activation
+      // blocker. Only sections with no landing point at all hard-block.
+      const hasAutoMappableBinding = Array.from(bindingPaths).some((path) => path.startsWith(`sections.${section.id}.`))
+        || section.fields.some((field) => bindingPaths.has(field.path));
+      issues.push(hasAutoMappableBinding
+        ? { severity: 'warning', code: 'missing_required_anchor', message: `Required report section “${section.label}” has matching bindings but no cascade anchor yet — apply auto-map.`, sectionId: section.id }
+        : { severity: 'error', code: 'missing_required_anchor', message: `Required report section “${section.label}” has no PDF anchor.`, sectionId: section.id });
     }
     for (const field of section.fields) {
       const hasGeneratedValue = getValueAtPath(data, field.path) != null;

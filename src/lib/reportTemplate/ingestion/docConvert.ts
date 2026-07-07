@@ -80,6 +80,10 @@ function mimeForImagePath(path: string): string {
 interface DocxContext {
   /** relationship id → data: URL for embedded media (empty when unresolvable). */
   media: Map<string, string>;
+  /** relationship id → external hyperlink target. */
+  links: Map<string, string>;
+  /** numbering id → true when the list format is ordered (decimal/roman/letter). */
+  orderedNumbering: Map<string, boolean>;
 }
 
 function headingTagForStyle(styleVal: string | null): string | null {
@@ -90,11 +94,16 @@ function headingTagForStyle(styleVal: string | null): string | null {
   return null;
 }
 
+const SAFE_HREF = /^(https?:|mailto:)/i;
+
 function renderDocxRuns(container: Element, ctx: DocxContext): string {
   let html = '';
   for (const child of Array.from(container.children)) {
     if (child.localName === 'hyperlink') {
-      html += renderDocxRuns(child, ctx);
+      const rel = attrByLocalName(child, 'id');
+      const href = rel ? ctx.links.get(rel) : undefined;
+      const inner = renderDocxRuns(child, ctx);
+      html += href && SAFE_HREF.test(href) ? `<a href="${escapeHtml(href)}">${inner}</a>` : inner;
       continue;
     }
     if (child.localName !== 'r') continue;
@@ -128,18 +137,41 @@ interface DocxBlock {
   kind: 'paragraph' | 'list-item' | 'heading' | 'table';
   tag?: string;
   html: string;
+  /** list-item only: render inside <ol> instead of <ul>. */
+  ordered?: boolean;
+  /** CSS text-align when the paragraph declares one. */
+  align?: string;
+}
+
+function alignmentForJc(jcVal: string | null): string | undefined {
+  if (!jcVal) return undefined;
+  if (jcVal === 'center') return 'center';
+  if (jcVal === 'right' || jcVal === 'end') return 'right';
+  if (jcVal === 'both' || jcVal === 'distribute') return 'justify';
+  return undefined;
 }
 
 function renderDocxParagraph(p: Element, ctx: DocxContext): DocxBlock | null {
   const pPr = firstByLocalName(p, 'pPr');
-  const styleVal = pPr ? attrByLocalName(firstByLocalName(pPr, 'pStyle') ?? p, 'val') : null;
-  const headingTag = headingTagForStyle(styleVal);
-  const isListItem = !!(pPr && firstByLocalName(pPr, 'numPr'));
+  const pStyle = pPr ? firstByLocalName(pPr, 'pStyle') : null;
+  const styleVal = pStyle ? attrByLocalName(pStyle, 'val') : null;
+  // Outline level is the style-agnostic heading signal (0-based, h1–h4 cap).
+  const outlineLvlEl = pPr ? firstByLocalName(pPr, 'outlineLvl') : null;
+  const outlineLvl = outlineLvlEl ? Number(attrByLocalName(outlineLvlEl, 'val')) : NaN;
+  const headingTag = headingTagForStyle(styleVal)
+    ?? (Number.isInteger(outlineLvl) && outlineLvl >= 0 ? `h${Math.min(4, outlineLvl + 1)}` : null);
+  const numPr = pPr ? firstByLocalName(pPr, 'numPr') : null;
+  const jc = pPr ? firstByLocalName(pPr, 'jc') : null;
+  const align = alignmentForJc(jc ? attrByLocalName(jc, 'val') : null);
   const inner = renderDocxRuns(p, ctx).trim();
   if (!inner) return null;
-  if (headingTag) return { kind: 'heading', tag: headingTag, html: inner };
-  if (isListItem) return { kind: 'list-item', html: inner };
-  return { kind: 'paragraph', html: inner };
+  if (headingTag) return { kind: 'heading', tag: headingTag, html: inner, align };
+  if (numPr) {
+    const numIdEl = firstByLocalName(numPr, 'numId');
+    const numId = numIdEl ? attrByLocalName(numIdEl, 'val') : null;
+    return { kind: 'list-item', html: inner, ordered: !!(numId && ctx.orderedNumbering.get(numId)) };
+  }
+  return { kind: 'paragraph', html: inner, align };
 }
 
 function renderDocxTable(tbl: Element, ctx: DocxContext): DocxBlock {
@@ -158,41 +190,85 @@ function renderDocxTable(tbl: Element, ctx: DocxContext): DocxBlock {
 function blocksToHtml(blocks: DocxBlock[]): string {
   const out: string[] = [];
   let listBuffer: string[] = [];
+  let listOrdered = false;
   const flushList = () => {
     if (listBuffer.length) {
-      out.push(`<ul>${listBuffer.map((item) => `<li>${item}</li>`).join('')}</ul>`);
+      const tag = listOrdered ? 'ol' : 'ul';
+      out.push(`<${tag}>${listBuffer.map((item) => `<li>${item}</li>`).join('')}</${tag}>`);
       listBuffer = [];
     }
   };
+  const alignStyle = (align?: string) => (align ? ` style="text-align:${align}"` : '');
   for (const block of blocks) {
-    if (block.kind === 'list-item') { listBuffer.push(block.html); continue; }
+    if (block.kind === 'list-item') {
+      const ordered = !!block.ordered;
+      if (listBuffer.length && ordered !== listOrdered) flushList();
+      listOrdered = ordered;
+      listBuffer.push(block.html);
+      continue;
+    }
     flushList();
-    if (block.kind === 'heading') out.push(`<${block.tag}>${block.html}</${block.tag}>`);
+    if (block.kind === 'heading') out.push(`<${block.tag}${alignStyle(block.align)}>${block.html}</${block.tag}>`);
     else if (block.kind === 'table') out.push(block.html);
-    else out.push(`<p>${block.html}</p>`);
+    else out.push(`<p${alignStyle(block.align)}>${block.html}</p>`);
   }
   flushList();
   return out.join('');
 }
 
-async function loadDocxMedia(zip: JSZip): Promise<Map<string, string>> {
+async function loadDocxRels(zip: JSZip): Promise<{ media: Map<string, string>; links: Map<string, string> }> {
   const media = new Map<string, string>();
+  const links = new Map<string, string>();
   const relsFile = zip.file('word/_rels/document.xml.rels');
-  if (!relsFile) return media;
+  if (!relsFile) return { media, links };
   try {
     const relsXml = new DOMParser().parseFromString(await relsFile.async('text'), 'application/xml');
     for (const rel of Array.from(relsXml.getElementsByTagName('*')).filter((el) => el.localName === 'Relationship')) {
       const id = rel.getAttribute('Id');
       const target = rel.getAttribute('Target');
-      if (!id || !target || !/media\//i.test(target)) continue;
+      if (!id || !target) continue;
+      if (/\/hyperlink$/i.test(rel.getAttribute('Type') ?? '')) {
+        links.set(id, target);
+        continue;
+      }
+      if (!/media\//i.test(target)) continue;
       const path = `word/${target.replace(/^\//, '').replace(/^word\//, '')}`;
       const mime = mimeForImagePath(path);
       const entry = zip.file(path);
       if (!entry || !mime) continue;
       media.set(id, `data:${mime};base64,${await entry.async('base64')}`);
     }
-  } catch { /* embedded images are best-effort */ }
-  return media;
+  } catch { /* embedded images/links are best-effort */ }
+  return { media, links };
+}
+
+/** numbering id → ordered? — read from word/numbering.xml level-0 formats. */
+async function loadDocxNumbering(zip: JSZip): Promise<Map<string, boolean>> {
+  const ordered = new Map<string, boolean>();
+  const numberingFile = zip.file('word/numbering.xml');
+  if (!numberingFile) return ordered;
+  try {
+    const xml = new DOMParser().parseFromString(await numberingFile.async('text'), 'application/xml');
+    const all = Array.from(xml.getElementsByTagName('*'));
+    const ORDERED_FMT = /^(decimal|lowerLetter|upperLetter|lowerRoman|upperRoman|ordinal)/i;
+
+    const abstractOrdered = new Map<string, boolean>();
+    for (const abstractNum of all.filter((el) => el.localName === 'abstractNum')) {
+      const abstractId = attrByLocalName(abstractNum, 'abstractNumId');
+      if (abstractId == null) continue;
+      const level0 = descendantsByLocalName(abstractNum, 'lvl')
+        .find((lvl) => attrByLocalName(lvl, 'ilvl') === '0');
+      const fmt = level0 ? firstByLocalName(level0, 'numFmt') : null;
+      abstractOrdered.set(abstractId, ORDERED_FMT.test(fmt ? attrByLocalName(fmt, 'val') ?? '' : ''));
+    }
+    for (const num of all.filter((el) => el.localName === 'num')) {
+      const numId = attrByLocalName(num, 'numId');
+      const abstractRef = firstByLocalName(num, 'abstractNumId');
+      const abstractId = abstractRef ? attrByLocalName(abstractRef, 'val') : null;
+      if (numId != null && abstractId != null) ordered.set(numId, abstractOrdered.get(abstractId) ?? false);
+    }
+  } catch { /* numbering detail is best-effort — bullets are a safe default */ }
+  return ordered;
 }
 
 export async function convertDocxToHtml(file: File): Promise<string> {
@@ -203,7 +279,8 @@ export async function convertDocxToHtml(file: File): Promise<string> {
   const body = Array.from(xml.getElementsByTagName('*')).find((el) => el.localName === 'body');
   if (!body) throw new Error('Could not read the Word document structure.');
 
-  const ctx: DocxContext = { media: await loadDocxMedia(zip) };
+  const { media, links } = await loadDocxRels(zip);
+  const ctx: DocxContext = { media, links, orderedNumbering: await loadDocxNumbering(zip) };
   const blocks: DocxBlock[] = [];
   for (const child of Array.from(body.children)) {
     if (child.localName === 'p') {

@@ -121,7 +121,8 @@ export function formatBytes(bytes = 0): string {
   const units = ['B', 'KB', 'MB', 'GB'];
   const idx = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   const value = bytes / (1024 ** idx);
-  return `${value >= 10 || idx === 0 ? Math.round(value) : value.toFixed(1)} ${units[idx]}`;
+  const text = value >= 10 || idx === 0 ? String(Math.round(value)) : value.toFixed(1).replace(/\.0$/, '');
+  return `${text} ${units[idx]}`;
 }
 
 function displayPath(file: CodeIntakeFileLike): string {

@@ -14,12 +14,30 @@ function docxXml(body: string): string {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W_NS}><w:body>${body}</w:body></w:document>`;
 }
 
-async function makeDocxFile(bodyXml: string, name = 'sample.docx'): Promise<File> {
+async function makeDocxFile(
+  bodyXml: string,
+  name = 'sample.docx',
+  extras: Record<string, string> = {},
+): Promise<File> {
   const zip = new JSZip();
   zip.file('word/document.xml', docxXml(bodyXml));
+  for (const [path, content] of Object.entries(extras)) zip.file(path, content);
   const blob = await zip.generateAsync({ type: 'blob' });
   return new File([blob], name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
+
+const RELS_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId7" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/detail" TargetMode="External"/>
+</Relationships>`;
+
+const NUMBERING_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering ${W_NS}>
+  <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/></w:lvl></w:abstractNum>
+  <w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>
+  <w:num w:numId="10"><w:abstractNumId w:val="0"/></w:num>
+  <w:num w:numId="11"><w:abstractNumId w:val="1"/></w:num>
+</w:numbering>`;
 
 describe('documentKindForFile', () => {
   it('classifies by extension and mime', () => {
@@ -50,6 +68,31 @@ describe('convertDocumentToHtml (docx)', () => {
     expect(html).toContain('<ul><li>First bullet</li><li>Second bullet</li></ul>');
     expect(html).toContain('<td>Metric</td>');
     expect(html).toContain('<td>Value</td>');
+  });
+
+  it('renders ordered vs bullet lists from numbering.xml', async () => {
+    const li = (numId: string, text: string) =>
+      `<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="${numId}"/></w:numPr></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`;
+    const file = await makeDocxFile(
+      `${li('10', 'Step one')}${li('10', 'Step two')}${li('11', 'Loose point')}`,
+      'lists.docx',
+      { 'word/numbering.xml': NUMBERING_XML },
+    );
+    const { html } = await convertDocumentToHtml(file);
+    expect(html).toContain('<ol><li>Step one</li><li>Step two</li></ol>');
+    expect(html).toContain('<ul><li>Loose point</li></ul>');
+  });
+
+  it('resolves hyperlinks, alignment, and outline-level headings', async () => {
+    const file = await makeDocxFile(`
+      <w:p><w:pPr><w:outlineLvl w:val="1"/></w:pPr><w:r><w:t>Outline Heading</w:t></w:r></w:p>
+      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>Centered line</w:t></w:r></w:p>
+      <w:p><w:hyperlink r:id="rId7" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:r><w:t>Read more</w:t></w:r></w:hyperlink></w:p>
+    `, 'rich.docx', { 'word/_rels/document.xml.rels': RELS_XML });
+    const { html } = await convertDocumentToHtml(file);
+    expect(html).toContain('<h2>Outline Heading</h2>');
+    expect(html).toContain('<p style="text-align:center">Centered line</p>');
+    expect(html).toContain('<a href="https://example.com/detail">Read more</a>');
   });
 
   it('rejects an empty or bodyless docx with an actionable error', async () => {

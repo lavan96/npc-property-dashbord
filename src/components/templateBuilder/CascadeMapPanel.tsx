@@ -419,6 +419,9 @@ export function CascadeMapPanel({
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Report structure</h4>
             {cascade.sections.map((sectionStatus) => {
               const section = contract.sections.find((s) => s.id === sectionStatus.sectionId)!;
+              const generated = (sampleData as any)?.sections?.[section.id];
+              const generatedBody = typeof generated?.body === 'string' ? generated.body.trim() : '';
+              const generatedHighlights = Array.isArray(generated?.highlights) ? generated.highlights.length : 0;
               return (
                 <Card key={section.id} className="p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
@@ -435,6 +438,20 @@ export function CascadeMapPanel({
                       <Target className="h-3.5 w-3.5 mr-1" /> Anchor section
                     </Button>
                   </div>
+
+                  {generatedBody ? (
+                    <div className="rounded border bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
+                      <span className="font-medium text-foreground/80">Ingests:</span>{' '}
+                      {generatedBody.slice(0, 200)}{generatedBody.length > 200 ? '…' : ''}
+                      {generatedHighlights > 0 && (
+                        <span className="ml-1">· {generatedHighlights} highlight{generatedHighlights === 1 ? '' : 's'}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      No generated content for this section in the current sample data — load a real report or check the section heading matches the structure.
+                    </p>
+                  )}
 
                   {sectionStatus.targets.length > 0 && (
                     <div className="space-y-1">

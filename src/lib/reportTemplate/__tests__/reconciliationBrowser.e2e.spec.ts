@@ -5,7 +5,17 @@ import {
   createImageImportAsset,
 } from '../ingestion/reconciliation';
 
-const hasBrowserCanvas = typeof document !== 'undefined' && typeof HTMLCanvasElement !== 'undefined';
+// jsdom exposes HTMLCanvasElement but getContext('2d') returns null unless the
+// optional `canvas` package is installed — probe for a real 2D context so this
+// browser-only spec skips (instead of failing) in the headless CI environment.
+const hasBrowserCanvas = (() => {
+  if (typeof document === 'undefined' || typeof HTMLCanvasElement === 'undefined') return false;
+  try {
+    return !!document.createElement('canvas').getContext('2d');
+  } catch {
+    return false;
+  }
+})();
 
 describe.skipIf(!hasBrowserCanvas)('Template import reconciliation browser E2E', () => {
   it('captures real canvas pixels and produces a visual-diff repair report', () => {
