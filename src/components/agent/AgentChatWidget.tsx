@@ -1160,11 +1160,11 @@ export function AgentChatWidget() {
           <div className="flex-1 flex flex-col min-h-0">
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                  <Diamond className="h-10 w-10 text-black/20 dark:text-primary/20 mb-3" />
-                  <p className="text-sm font-medium text-foreground/80 mb-1">How can I help?</p>
-                  <p className="text-xs text-muted-foreground max-w-[280px]">Ask about clients, deals, emails, reminders, pipeline status, calendar, or borrowing capacity.</p>
-                  <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
+                <div className="flex flex-col items-center justify-center h-full text-center px-4 py-6">
+                  <AurixaMark size="hero" state="idle" className="mb-4" />
+                  <p className="font-heading text-lg font-medium text-foreground tracking-tight mb-1">How can I help?</p>
+                  <p className="text-xs text-muted-foreground max-w-[280px] leading-relaxed">Ask about clients, deals, emails, reminders, pipeline, calendar, or borrowing capacity.</p>
+                  <div className="flex flex-wrap gap-1.5 mt-5 justify-center">
                     {[
                       '☀️ Morning briefing',
                       '🔍 Proactive insights scan',
@@ -1184,7 +1184,7 @@ export function AgentChatWidget() {
                       '📝 Generate report for...',
                     ].map((prompt) => (
                       <button key={prompt} onClick={() => sendMessage(prompt)}
-                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground">
+                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-[hsl(var(--aurixa-glass-border)/0.6)] bg-[hsl(var(--aurixa-glass-bg)/0.4)] hover:border-brand/40 hover:bg-brand/5 hover:text-foreground transition-colors text-muted-foreground backdrop-blur">
                         {prompt}
                       </button>
                     ))}
