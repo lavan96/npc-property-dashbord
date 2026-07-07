@@ -22,7 +22,11 @@ describe('classifyReferenceFile', () => {
     expect(classifyReferenceFile(f('design.fig'))).toBe('make');
     expect(classifyReferenceFile(f('component.tsx'))).toBe('code');
     expect(classifyReferenceFile(f('site.zip', 'application/zip'))).toBe('code');
-    expect(classifyReferenceFile(f('notes.docx'))).toBe('unsupported');
+    expect(classifyReferenceFile(f('notes.docx'))).toBe('document');
+    expect(classifyReferenceFile(f('notes.txt', 'text/plain'))).toBe('document');
+    expect(classifyReferenceFile(f('letter.rtf'))).toBe('document');
+    expect(classifyReferenceFile(f('legacy.doc', 'application/msword'))).toBe('document');
+    expect(classifyReferenceFile(f('data.bin'))).toBe('unsupported');
   });
 });
 

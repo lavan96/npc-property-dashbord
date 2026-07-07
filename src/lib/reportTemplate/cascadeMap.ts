@@ -429,6 +429,43 @@ export function buildCascadeMap(
   };
 }
 
+/**
+ * Placeholder `sections.*` data for the editor: lets `{{sections.<id>.*}}`
+ * bindings preview with readable copy before a real report is loaded. At
+ * production render time the adapter binding context supplies the real
+ * chunked report content (`reportSections.ts`) under the same ids.
+ */
+export function buildSampleSectionsData(
+  contract: ReportOutputContract | null | undefined,
+): Record<string, { title: string; body: string; highlights: string[] }> {
+  const sections: Record<string, { title: string; body: string; highlights: string[] }> = {};
+  for (const section of contract?.sections ?? []) {
+    sections[section.id] = {
+      title: section.label,
+      body: `Sample content for “${section.label}”. When a real report is rendered, the generated ${section.label.toLowerCase()} copy from the report structure lands here.`,
+      highlights: [
+        `${section.label} — key point one`,
+        `${section.label} — key point two`,
+      ],
+    };
+  }
+  return sections;
+}
+
+/**
+ * Merge placeholder section data into editor sample data without overriding
+ * anything the user typed into the Data tab (existing `sections` keys win).
+ */
+export function withSampleSectionData(
+  data: Record<string, any>,
+  contract: ReportOutputContract | null | undefined,
+): Record<string, any> {
+  const sample = buildSampleSectionsData(contract);
+  if (!Object.keys(sample).length) return data;
+  const existing = data?.sections && typeof data.sections === 'object' ? data.sections : {};
+  return { ...data, sections: { ...sample, ...existing } };
+}
+
 export function makeSectionAnchor(section: ReportOutputSectionContract): ReportAnchor {
   return {
     id: `anchor_${section.id}`,
