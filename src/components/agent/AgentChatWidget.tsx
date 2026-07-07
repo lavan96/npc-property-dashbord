@@ -1392,8 +1392,8 @@ export function AgentChatWidget() {
                     </div>
                   )}
                   <div className="p-3">
-                    <div className="flex gap-2 items-end">
-                      <div className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${loading || attachedFiles.length >= 5 || extractingFiles ? 'opacity-50' : 'hover:bg-accent hover:text-accent-foreground'}`} title="Attach files">
+                    <div className="aurixa-hairline flex gap-1.5 items-end rounded-2xl p-1.5 shadow-[0_10px_30px_-15px_hsl(var(--aurixa-glow)/0.35)]">
+                      <div className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${loading || attachedFiles.length >= 5 || extractingFiles ? 'opacity-50' : 'hover:bg-brand/10 text-muted-foreground hover:text-brand'}`} title="Attach files">
                         <input
                           ref={fileInputRef}
                           id="agent-file-input"
@@ -1413,12 +1413,25 @@ export function AgentChatWidget() {
                         ta.style.height = 'auto';
                         ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
                       }} onKeyDown={handleKeyDown}
-                        placeholder="Ask Aurixa..." className="!min-h-[40px] max-h-[160px] resize-none text-sm rounded-xl overflow-y-auto" rows={1} disabled={loading} style={{ height: 'auto' }} />
+                        placeholder={ROTATING_PLACEHOLDERS[placeholderIdx]}
+                        className="!min-h-[36px] max-h-[160px] resize-none text-sm rounded-xl overflow-y-auto border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 transition-[background]" rows={1} disabled={loading} style={{ height: 'auto' }} />
                       <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
                       {streamingId ? (
-                        <Button size="icon" variant="destructive" onClick={stopStreaming} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Stop generating"><Square className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="destructive" onClick={stopStreaming} className="h-9 w-9 shrink-0 rounded-xl" aria-label="Stop generating"><Square className="h-4 w-4" /></Button>
                       ) : (
-                        <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Send"><Send className="h-4 w-4" /></Button>
+                        <Button
+                          size="icon"
+                          onClick={() => sendMessage()}
+                          disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles}
+                          aria-label="Send"
+                          className={cn(
+                            "h-9 w-9 shrink-0 rounded-xl border-0 text-brand-foreground shadow-[0_6px_18px_-6px_hsl(var(--brand)/0.55)] transition-all",
+                            "bg-[linear-gradient(135deg,hsl(var(--brand-500)),hsl(var(--brand-700)))] hover:brightness-110",
+                            "disabled:opacity-40 disabled:shadow-none disabled:bg-none disabled:bg-muted disabled:text-muted-foreground"
+                          )}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                     {activeTool && (
@@ -1426,7 +1439,10 @@ export function AgentChatWidget() {
                         <Loader2 className="h-3 w-3 animate-spin" /> Running <span className="font-mono">{activeTool}</span>…
                       </p>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes • 📎 Up to 5 files (50MB each)</p>
+                    <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-muted-foreground/80">
+                      <span className="font-mono uppercase tracking-[0.14em]">↵ send · ⇧↵ newline</span>
+                      <span>Aurixa may make mistakes</span>
+                    </div>
                   </div>
                 </div>
               );
