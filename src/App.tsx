@@ -356,6 +356,7 @@ const App = () => (
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
+                <Route path="qa/subscriptions" element={<MarketQASubscriptions />} />
 
                 <Route path="integrations" element={<ModuleGuard moduleKey="integrations"><Integrations /></ModuleGuard>} />
                 <Route path="integrations/ghl-migration" element={<GhlMigration />} />
