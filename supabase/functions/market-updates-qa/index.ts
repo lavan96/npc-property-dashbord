@@ -444,6 +444,7 @@ Deno.serve(async (req) => {
     context_size: context.length,
     conversation_id,
     retrieved,
+    retrieval_mode: retrievalMode,
     question_id,
   };
 
