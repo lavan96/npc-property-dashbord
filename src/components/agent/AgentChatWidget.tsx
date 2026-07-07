@@ -118,6 +118,17 @@ export function AgentChatWidget() {
     try { return localStorage.getItem('aurixa_active_skill') || null; } catch { return null; }
   });
   const [skillPickerOpen, setSkillPickerOpen] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+
+  // Rotate composer placeholder while idle for signature "living" feel.
+  useEffect(() => {
+    if (loading || input.length > 0) return;
+    const id = window.setInterval(
+      () => setPlaceholderIdx((i) => (i + 1) % ROTATING_PLACEHOLDERS.length),
+      4000
+    );
+    return () => window.clearInterval(id);
+  }, [loading, input.length]);
 
   // Auto-resize textarea when input changes (covers voice transcription + typing)
   useEffect(() => {
