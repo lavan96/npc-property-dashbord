@@ -745,6 +745,20 @@ export function AgentChatWidget() {
             <X className="h-4 w-4" />
           </Button>
         </div>
+        {/* Streaming aurora bar — becomes visible during generation */}
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 h-[2px] transition-opacity',
+            loading || streamingId ? 'opacity-100' : 'opacity-0'
+          )}
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, hsl(var(--aurixa-aurora-1)), hsl(var(--aurixa-aurora-2)), hsl(var(--aurixa-aurora-3)), transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'aurixa-shimmer 2.4s linear infinite',
+          }}
+        />
       </div>
 
       <div className="flex flex-1 min-h-0">
