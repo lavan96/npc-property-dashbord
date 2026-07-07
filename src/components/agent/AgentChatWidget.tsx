@@ -17,7 +17,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 import { MemoryCitations, type RecalledMemory } from '@/components/agent/MemoryCitations';
+import { AurixaMark } from '@/components/agent/AurixaMark';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
+
+const ROTATING_PLACEHOLDERS = [
+  'Ask Aurixa anything…',
+  'Draft a client email…',
+  'Plan tomorrow\u2019s briefing…',
+  'What moved in my pipeline?',
+  'Summarise this week\u2019s wins…',
+];
 
 // Consistent color palette for sender attribution in collaborative conversations
 const SENDER_COLORS = [
