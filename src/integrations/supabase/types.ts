@@ -240,11 +240,13 @@ export type Database = {
           id: string
           is_rolled_back: boolean
           message_id: string | null
+          plan_id: string | null
           rollback_data: Json | null
           rollback_sql: string | null
           rolled_back_at: string | null
           rolled_back_by: string | null
           status: string
+          step_id: string | null
           tool_arguments: Json | null
           tool_name: string
           tool_result: Json | null
@@ -261,11 +263,13 @@ export type Database = {
           id?: string
           is_rolled_back?: boolean
           message_id?: string | null
+          plan_id?: string | null
           rollback_data?: Json | null
           rollback_sql?: string | null
           rolled_back_at?: string | null
           rolled_back_by?: string | null
           status?: string
+          step_id?: string | null
           tool_arguments?: Json | null
           tool_name: string
           tool_result?: Json | null
@@ -282,11 +286,13 @@ export type Database = {
           id?: string
           is_rolled_back?: boolean
           message_id?: string | null
+          plan_id?: string | null
           rollback_data?: Json | null
           rollback_sql?: string | null
           rolled_back_at?: string | null
           rolled_back_by?: string | null
           status?: string
+          step_id?: string | null
           tool_arguments?: Json | null
           tool_name?: string
           tool_result?: Json | null
@@ -788,10 +794,12 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          plan_id: string | null
           recalled_memory_ids: string[]
           requires_confirmation: boolean | null
           role: string
           sent_by: string | null
+          step_id: string | null
           tool_calls: Json | null
           tool_results: Json | null
         }
@@ -801,10 +809,12 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          plan_id?: string | null
           recalled_memory_ids?: string[]
           requires_confirmation?: boolean | null
           role: string
           sent_by?: string | null
+          step_id?: string | null
           tool_calls?: Json | null
           tool_results?: Json | null
         }
@@ -814,10 +824,12 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          plan_id?: string | null
           recalled_memory_ids?: string[]
           requires_confirmation?: boolean | null
           role?: string
           sent_by?: string | null
+          step_id?: string | null
           tool_calls?: Json | null
           tool_results?: Json | null
         }
@@ -898,6 +910,53 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_plan_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          plan_id: string
+          started_at: string
+          status: string
+          steps_executed: number
+          steps_failed: number
+          triggered_by: string
+          user_id: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          plan_id: string
+          started_at?: string
+          status?: string
+          steps_executed?: number
+          steps_failed?: number
+          triggered_by?: string
+          user_id: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          plan_id?: string
+          started_at?: string
+          status?: string
+          steps_executed?: number
+          steps_failed?: number
+          triggered_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_plan_runs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_plan_steps: {
         Row: {
           completed_at: string | null
@@ -962,14 +1021,19 @@ export type Database = {
       }
       agent_plans: {
         Row: {
+          auto_execute: boolean
           completed_at: string | null
           completed_steps: number
           context: Json
           created_at: string
           goal: string
           id: string
+          is_template: boolean
+          last_run_at: string | null
+          next_run_at: string | null
           planner_model: string | null
           requires_approval: boolean
+          schedule_cron: string | null
           skill_slug: string | null
           status: string
           title: string
@@ -978,14 +1042,19 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_execute?: boolean
           completed_at?: string | null
           completed_steps?: number
           context?: Json
           created_at?: string
           goal: string
           id?: string
+          is_template?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
           planner_model?: string | null
           requires_approval?: boolean
+          schedule_cron?: string | null
           skill_slug?: string | null
           status?: string
           title: string
@@ -994,14 +1063,19 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_execute?: boolean
           completed_at?: string | null
           completed_steps?: number
           context?: Json
           created_at?: string
           goal?: string
           id?: string
+          is_template?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
           planner_model?: string | null
           requires_approval?: boolean
+          schedule_cron?: string | null
           skill_slug?: string | null
           status?: string
           title?: string
@@ -12869,6 +12943,87 @@ export type Database = {
         }
         Relationships: []
       }
+      market_qa_subscription_runs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          question_id: string | null
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          question_id?: string | null
+          status?: string
+          subscription_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          question_id?: string | null
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_qa_subscription_runs_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "market_update_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_qa_subscription_runs_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "market_qa_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_qa_subscriptions: {
+        Row: {
+          cadence: string
+          channels: string[]
+          created_at: string
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          next_run_at: string
+          question_template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cadence?: string
+          channels?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string
+          question_template: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cadence?: string
+          channels?: string[]
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string
+          question_template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_sources: {
         Row: {
           category: string
@@ -13046,6 +13201,7 @@ export type Database = {
           raw_excerpt: string | null
           relevance_score: number
           risk_flags: Json
+          search_tsv: unknown
           segments: Json
           slug: string | null
           source_id: string | null
@@ -13081,6 +13237,7 @@ export type Database = {
           raw_excerpt?: string | null
           relevance_score?: number
           risk_flags?: Json
+          search_tsv?: unknown
           segments?: Json
           slug?: string | null
           source_id?: string | null
@@ -13116,6 +13273,7 @@ export type Database = {
           raw_excerpt?: string | null
           relevance_score?: number
           risk_flags?: Json
+          search_tsv?: unknown
           segments?: Json
           slug?: string | null
           source_id?: string | null
