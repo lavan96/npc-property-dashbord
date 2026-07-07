@@ -97,11 +97,18 @@ Deno.serve(async (req) => {
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   let body: any = {};
   try { body = await req.json(); } catch {}
+  const action = body?.action ?? 'list-plans';
+
+  // Public cron path — no user auth required. Runs due scheduled plans.
+  if (action === 'run-scheduled') {
+    const secret = req.headers.get('x-cron-secret');
+    if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+    return await runScheduled(sb);
+  }
 
   const auth = await verifyAuth(sb, req.headers, body);
   if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
   const userId = auth.userId as string;
-  const action = body?.action ?? 'list-plans';
 
   try {
     if (action === 'draft-plan') {
