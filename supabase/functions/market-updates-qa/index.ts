@@ -288,6 +288,8 @@ Deno.serve(async (req) => {
   }
 
   let { data, error } = await q;
+  // Phase 8: track how retrieval assembled the context.
+  let retrievalMode: 'hybrid' | 'vector' | 'lexical' | 'fallback' = (data && data.length) ? 'vector' : 'fallback';
 
   // Phase 7 hybrid lexical: supplement with full-text search over the tsvector column.
   if (!error && !updateIds.length && terms.length) {
@@ -301,7 +303,10 @@ Deno.serve(async (req) => {
         .limit(60);
       if (Array.isArray(lex) && lex.length) {
         const existing = new Set((data ?? []).map((r: any) => r.id));
-        data = [...(data ?? []), ...lex.filter((r: any) => !existing.has(r.id))];
+        const added = lex.filter((r: any) => !existing.has(r.id));
+        data = [...(data ?? []), ...added];
+        if (added.length && (data?.length ?? 0) > added.length) retrievalMode = 'hybrid';
+        else if (added.length) retrievalMode = 'lexical';
       }
     } catch (e) { console.warn('[qa] lexical supplement skipped:', (e as Error).message); }
   }
@@ -314,6 +319,7 @@ Deno.serve(async (req) => {
       .order('source_published_at', { ascending: false, nullsFirst: false })
       .limit(80);
     data = fallback.data ?? [];
+    retrievalMode = 'fallback';
   }
 
 
