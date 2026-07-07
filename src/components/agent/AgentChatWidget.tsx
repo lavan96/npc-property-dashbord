@@ -1280,11 +1280,10 @@ export function AgentChatWidget() {
                 );
               });
               })()}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /><span className="text-xs text-muted-foreground">Thinking...</span></div>
-                  </div>
+              {loading && !streamingId && (
+                <div className="flex items-center gap-2.5 pt-1 animate-aurixa-rise">
+                  <AurixaMark size="sm" state="thinking" />
+                  <span className="text-sm aurixa-shimmer-text font-medium">Thinking…</span>
                 </div>
               )}
               {retryMessage && !loading && (
