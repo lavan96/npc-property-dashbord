@@ -6,11 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Plus, PlayCircle, Pause, RotateCcw, X, CheckCircle2, SkipForward, Trash2 } from 'lucide-react';
+import { Loader2, Plus, PlayCircle, Pause, RotateCcw, X, CheckCircle2, SkipForward, Trash2, CalendarClock, History } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Plan { id: string; title: string; goal: string; status: string; skill_slug?: string | null; requires_approval: boolean; total_steps: number; completed_steps: number; created_at: string; planner_model?: string | null; }
+interface Plan { id: string; title: string; goal: string; status: string; skill_slug?: string | null; requires_approval: boolean; total_steps: number; completed_steps: number; created_at: string; planner_model?: string | null; schedule_cron?: string | null; next_run_at?: string | null; last_run_at?: string | null; auto_execute?: boolean; }
 interface Step { id: string; plan_id: string; seq: number; title: string; description?: string | null; expected_output?: string | null; tool_hint?: string | null; status: string; result?: any; error?: string | null; }
+interface PlanRun { id: string; plan_id: string; status: string; triggered_by: string; steps_executed: number; steps_failed: number; error?: string | null; started_at: string; finished_at?: string | null; }
+
+const CRON_PRESETS: Array<{ label: string; expr: string }> = [
+  { label: 'Every hour', expr: '0 * * * *' },
+  { label: 'Every day 09:00 UTC', expr: '0 9 * * *' },
+  { label: 'Weekdays 09:00 UTC', expr: '0 9 * * 1-5' },
+  { label: 'Weekly Monday 09:00 UTC', expr: '0 9 * * 1' },
+];
 
 const STATUS_COLOR: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
