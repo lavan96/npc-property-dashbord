@@ -6,6 +6,7 @@
  * against — works with service_role from edge functions (no RLS hop required).
  */
 import type { SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { chunkReportContent, extractStructureHeadings, selectStructureTemplate } from './reportSections.ts';
 
 export interface TemplateBindingContext {
   data: Record<string, any>;
@@ -13,6 +14,29 @@ export interface TemplateBindingContext {
 }
 
 const flatten = (o: any): Record<string, any> => (o && typeof o === 'object' ? { ...o } : {});
+
+/**
+ * Best-effort headings of the active report-structure guide for this report's
+ * type/tier, so `sections.*` chunk ids line up with the Cascade contract ids.
+ */
+async function loadStructureHeadings(
+  supabase: SupabaseClient,
+  tier: string | null,
+  category: string | null,
+): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('report_structure_templates')
+      .select('id,name,parsed_content,report_tier,report_category,priority')
+      .eq('template_type', 'ai_structure')
+      .eq('is_active', true);
+    if (error || !data) return [];
+    const row = selectStructureTemplate(data as any[], { tier, category });
+    return extractStructureHeadings((row as any)?.parsed_content || '');
+  } catch {
+    return [];
+  }
+}
 
 export async function buildTemplateBindingContext(
   supabase: SupabaseClient,
@@ -29,6 +53,7 @@ export async function buildTemplateBindingContext(
   const reportType = String((row as any).report_type ?? (row as any).report_scope ?? '').toLowerCase();
   const variant = ((row as any).report_variant ?? null) as string | null;
   const tier = ((row as any).report_tier ?? null) as string | null;
+  const structureHeadings = await loadStructureHeadings(supabase, tier, reportType);
 
   const data: Record<string, any> = {
     report: {
@@ -46,7 +71,7 @@ export async function buildTemplateBindingContext(
     demographics: flatten((row as any).demographics_data),
     economic: flatten((row as any).economic_data),
     location: flatten((row as any).location_intelligence),
-    sections: flatten((row as any).report_content),
+    sections: chunkReportContent((row as any).report_content, { structureHeadings }),
     sources: flatten((row as any).sources_content),
     overrides: flatten((row as any).manual_overrides),
     tier,

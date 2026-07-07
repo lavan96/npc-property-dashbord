@@ -27,10 +27,15 @@ What V2 adds (all renderer-safe — it only authors the same `ReportTemplate` JS
   (tables/charts/KPIs) flow into the page. A dashed outline marks the drop target.
 - **Floating text toolbar** — select a text element for inline size / bold / italic / align /
   colour without opening the inspector.
-- **"Start from a reference"** (Import menu) — drag/click/paste a **PDF or image**: PDFs re-sync
-  with a fidelity-mode chooser + staged progress; images are reconstructed by AI
-  (`template-design-agent` `screenshot_to_block`) into editable blocks. The result is
-  **validated** (`validateReconstructedSchema`) before it is applied.
+- **"Start from a reference"** (Import menu) — drag/click/paste a **PDF, image, or document**:
+  PDFs re-sync with a fidelity-mode chooser + staged progress; images are reconstructed by AI
+  (`template-design-agent` `screenshot_to_block`) into editable blocks; **Word/plain-text/RTF
+  documents** (`.docx`/`.txt`/`.rtf`) are converted to semantic HTML (`ingestion/docConvert.ts` —
+  headings, formatted runs, lists, tables, embedded images) and replicated onto the canvas through
+  the C1 code pipeline (render → measure DOM → CDIR editable pages). The result is
+  **validated** (`validateReconstructedSchema`) before it is applied, and the success card offers
+  a one-click jump to the **Cascade** tab to map which imported sections ingest the
+  report-structure chunks.
 - **Required-data hints** on data components, and a one-time **coachmark** on first use.
 
 **Isolation guarantee:** V2 never touches the jsPDF or WeasyPrint renderers. A golden-render
@@ -62,7 +67,9 @@ Open the **bindings popover** in the header to see every unresolved binding and 
 
 The Template Builder can map the configured report-generation structure to exact visual targets in the final PDF. Use the **Cascade** tab to load the active `report_structure_templates` AI-structure guide for the template's report type/tier, then assign section or field anchors to the currently selected block or overlay. If the design already contains `{{sections.*}}` bindings, the tab suggests matching anchors and can auto-map them in bulk before manual cleanup; designers can also opt into anchoring repeated uses of the same generated field when every repeated occurrence should be traceable.
 
-Anchors are stored in the template schema on blocks/overlays as optional `anchors[]` metadata. They do not replace normal `{{binding.path}}` values; they explain which report-structure section/field owns a visual region and let the builder warn about required sections with no landing point, bindings outside the selected structure, duplicate anchors, and generated data that is not used in the design.
+Anchors are stored in the template schema on blocks/overlays as optional `anchors[]` metadata. They do not replace normal `{{binding.path}}` values; they explain which report-structure section/field owns a visual region and let the builder warn about required sections with no landing point, bindings outside the selected structure, duplicate anchors, and generated data that is not used in the design. Mapping a **field** anchor onto a selected text/image/table overlay also rewrites the overlay's value to the matching `{{sections.<id>.<field>}}` binding, so the section content flows into that region at render time.
+
+**Render-time section ingestion.** Generated reports store their body as one combined markdown string (`investment_reports.report_content`). At render time the binding context chunks that markdown into `sections.<sectionId>.{title, body, highlights}` (`src/lib/reportTemplate/reportSections.ts`, edge mirror `supabase/functions/_shared/reportSections.ts`): the report is split at its section headings, each chunk is keyed with the same slugification the Cascade contract uses, and report headings are alias-matched against the active `report_structure_templates` guide's headings (numbering and "&"/"and" differences are tolerated) so chunk ids line up with the contract ids shown in the Cascade tab. Bodies are delivered as renderer-safe plain text (markdown emphasis, citations, tables, and legacy `{{bars:…}}`/`{{timeline:…}}` directives are cleaned), `highlights` carries the section's first bullet points, and structured (object) `report_content` passes through unchanged. In the editor, placeholder `sections.*` sample content is derived from the cascade contract (`withSampleSectionData`) so mapped bindings preview with copy before a real report is loaded — user-typed sample `sections` keys always win.
 
 In final PDF preview, enable **Cascade tags** to render visible proof labels and append a debug-only Cascade anchor index page. Normal client PDFs remain clean, while the WeasyPrint HTML render can still emit non-visual `data-cascade-*` metadata for traceability. Activation readiness includes cascade coverage and QA approval, so approved templates cannot be activated while required report-structure sections have no mapped, QA-approved PDF anchor. The activation popover also summarizes Cascade coverage, missing required sections, and outstanding auto-map suggestions before activation. Selected blocks/overlays expose a **Cascade anchors** editor for reviewing, removing, manually adjusting mappings created from the Cascade tab, and recording QA owner/status/notes for signoff. The Cascade tab can also bulk-update QA status for filtered anchors, assign reviewer ownership/notes, copy a JSON manifest, or download JSON/CSV diagnostics that list every configured structure section, field, mapped page/block/overlay target, and activation issue for QA handoff. Version snapshots record a concise Cascade readiness note and the Versions tab recomputes Cascade coverage/QA chips plus a side-by-side comparison for saved schemas so reviewers can compare mapping health across revisions.
 

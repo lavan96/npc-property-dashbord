@@ -29,6 +29,7 @@ import { groundDomBoxTree } from '../codeGrounding';
 import { figmaNodesToBoxTree } from '../figmaGrounding';
 import { normalizeImportUrl, isHttpUrl, suggestedName } from '../importUrl';
 import { extractMakeAssets, isFigmaMakeFile, MAKE_NO_RASTER_GUIDANCE } from './makeImport';
+import { convertDocumentToHtml, documentKindForFile } from './docConvert';
 import { renderCodeLocally, isRenderSourceUnconfigured, URL_NEEDS_SERVICE_GUIDANCE } from './localRender';
 import { ensureCatalogFontFaces } from '../fontCatalog';
 import { pickInkColor } from '../pdfImport/tokenDerivation';
@@ -48,13 +49,14 @@ export type CodeSourceFlavor = ReturnType<typeof codeFlavorForFile>;
 
 // ─── classification ────────────────────────────────────────────────────────────
 
-export type ReferenceImportKind = 'pdf' | 'image' | 'make' | 'code' | 'unsupported';
+export type ReferenceImportKind = 'pdf' | 'image' | 'make' | 'code' | 'document' | 'unsupported';
 
 /** One classifier for every file the import surface accepts. */
 export function classifyReferenceFile(file: File): ReferenceImportKind {
   if (isFigmaMakeFile(file.name)) return 'make';
   const ref = detectReferenceKind(file);
   if (ref === 'pdf' || ref === 'image') return ref;
+  if (documentKindForFile(file)) return 'document';
   return codeFlavorForFile(file.name) ? 'code' : 'unsupported';
 }
 
@@ -65,7 +67,8 @@ export type ReferenceImportSource =
   | { kind: 'image'; file?: File; dataUrl?: string; imageMode: 'reconciled' | 'faithful' | 'redesign' | 'background'; grounded?: GroundedReference }
   | { kind: 'code'; text?: string; filename?: string | null; flavor?: CodeSourceFlavor; zipFile?: File }
   | { kind: 'url'; url: string }
-  | { kind: 'make'; file: File };
+  | { kind: 'make'; file: File }
+  | { kind: 'document'; file: File };
 
 export interface ReferenceImportContext {
   /** Editor schema — required by the agent-backed paths (image/url/claude-pdf). */
@@ -582,6 +585,20 @@ async function importCode(
   };
 }
 
+/**
+ * Word / plain-text / RTF documents: convert to semantic HTML, then reuse the
+ * C1 code pipeline (render → measure → CDIR editable pages) so the document is
+ * replicated onto the canvas exactly like an HTML import.
+ */
+async function importDocument(
+  source: Extract<ReferenceImportSource, { kind: 'document' }>,
+  ctx: ReferenceImportContext,
+): Promise<ReferenceImportOutcome> {
+  ctx.onStage?.(`Converting ${source.file.name}…`);
+  const converted = await convertDocumentToHtml(source.file);
+  return importCode({ kind: 'code', text: converted.html, filename: converted.filename, flavor: 'html' }, ctx);
+}
+
 async function importUrlSource(
   source: Extract<ReferenceImportSource, { kind: 'url' }>,
   ctx: ReferenceImportContext,
@@ -669,6 +686,7 @@ export async function runReferenceImport(
     case 'code': return importCode(source, ctx);
     case 'url': return importUrlSource(source, ctx);
     case 'make': return importMake(source, ctx);
+    case 'document': return importDocument(source, ctx);
   }
 }
 

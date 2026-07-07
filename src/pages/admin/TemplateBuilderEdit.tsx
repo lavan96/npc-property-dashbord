@@ -118,6 +118,7 @@ import {
   buildCascadeMap,
   contractFromStructureTemplate,
   selectStructureTemplate,
+  withSampleSectionData,
   type ReportStructureTemplateLike,
 } from '@/lib/reportTemplate/cascadeMap';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -310,7 +311,9 @@ export default function TemplateBuilderEdit() {
     try { return { data: JSON.parse(sampleDataText), valid: true }; }
     catch { return { data: DEFAULT_SAMPLE_DATA, valid: false }; }
   }, [sampleDataText]);
-  const sampleData = parsedSampleData.data;
+  // NB: `sampleData` (the parsed data merged with placeholder `sections.*`
+  // content from the cascade contract) is derived below, after the cascade
+  // structure query — nothing consumes it before then.
   const sampleDataValid = parsedSampleData.valid;
   const [sampleDataError, setSampleDataError] = useState<string | null>(null);
   const [templateJsonText, setTemplateJsonText] = useState('');
@@ -537,6 +540,12 @@ export default function TemplateBuilderEdit() {
   const cascadeContract = useMemo(
     () => contractFromStructureTemplate(cascadeStructure, { reportType: reportType || null, tier: tier || null, category: reportType || null }),
     [cascadeStructure, reportType, tier],
+  );
+  // Placeholder section content keyed by the cascade contract ids, so mapped
+  // {{sections.*}} bindings preview with copy before a real report is loaded.
+  const sampleData = useMemo(
+    () => withSampleSectionData(parsedSampleData.data, cascadeContract),
+    [parsedSampleData, cascadeContract],
   );
   const cascadeMap = useMemo(
     () => buildCascadeMap(template, cascadeContract, { data: sampleData, templateId: id }),
@@ -3257,6 +3266,7 @@ export default function TemplateBuilderEdit() {
             sampleData={sampleData}
             onResynced={() => window.location.reload()}
             onApplySchema={(s) => { setTemplate(s); toast.success('Reconstruction applied — review and Save'); }}
+            onOpenCascade={() => setActiveMainTab('cascade')}
           />
         </MountOnFirstOpen>
       )}

@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import {
-  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2, Code2, FolderOpen,
+  Upload, FileText, Image as ImageIcon, Sparkles, CheckCircle2, AlertCircle, Loader2, Link2, Code2, FolderOpen, MapPinned,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -67,6 +67,8 @@ interface Props {
   onResynced?: () => void;
   /** Image path completed — apply the reconstructed schema to the editor. */
   onApplySchema?: (schema: ReportTemplate) => void;
+  /** Open the Cascade tab so imported sections can ingest report-structure chunks. */
+  onOpenCascade?: () => void;
 }
 
 const PDF_MAX = 50 * 1024 * 1024;
@@ -82,6 +84,7 @@ export function ReferenceImportDialog({
   sampleData,
   onResynced,
   onApplySchema,
+  onOpenCascade,
 }: Props) {
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -122,7 +125,7 @@ export function ReferenceImportDialog({
   const onFile = useCallback((f: File | null) => {
     if (!f) return;
     const k = classifyReferenceFile(f);
-    if (k !== 'pdf' && k !== 'image') { toast.error('Unsupported file. Drop a PDF, an image, a code file, a ZIP, or a Figma .make/.fig export.'); return; }
+    if (k !== 'pdf' && k !== 'image') { toast.error('Unsupported file. Drop a PDF, an image, a document (.docx/.txt/.rtf), a code file, a ZIP, or a Figma .make/.fig export.'); return; }
     if (k === 'pdf' && f.size > PDF_MAX) { toast.error('PDF too large (max 50 MB).'); return; }
     if (k === 'image' && f.size > IMG_MAX) { toast.error('Image too large (max 6 MB).'); return; }
     setFile(f); setKind(k as ReferenceKind); setError(null); setDone(null);
@@ -283,14 +286,28 @@ export function ReferenceImportDialog({
     }
   }, [importCtx, handleOutcome]);
 
+  // Word / text / RTF documents: convert to HTML and replicate onto the canvas
+  // through the C1 code pipeline (same editable-CDIR output as an HTML import).
+  const onDocumentFile = useCallback(async (f: File) => {
+    setCodeBusy(true); setError(null); setDone(null);
+    try {
+      handleOutcome(await runReferenceImport({ kind: 'document', file: f }, importCtx()));
+    } catch (e) {
+      setError(`Couldn't import document: ${(e as Error).message}`);
+    } finally {
+      setCodeBusy(false); setStage(null);
+    }
+  }, [importCtx, handleOutcome]);
+
   /** Primary drop-zone router — every supported format lands in one place. */
   const onAnyFile = useCallback((f: File | null) => {
     if (!f) return;
     const k = classifyReferenceFile(f);
     if (k === 'make') { void onMakeFile(f); return; }
+    if (k === 'document') { void onDocumentFile(f); return; }
     if (k === 'code') { void onCodeFileRef.current?.(f); return; }
     onFile(f);
-  }, [onFile, onMakeFile]);
+  }, [onFile, onMakeFile, onDocumentFile]);
 
   // C3/C4: a dropped .jsx/.tsx/.html/.css loads into the textarea for review; a
   // .zip project is built + imported immediately.
@@ -327,10 +344,10 @@ export function ReferenceImportDialog({
             <Sparkles className="h-5 w-5 text-primary" /> Start from a reference
           </DialogTitle>
           <DialogDescription>
-            Drop a <strong>PDF</strong>, an <strong>image / screenshot</strong>, or a <strong>Figma .make/.fig export</strong>,
-            paste an image or a link, or use the dedicated <strong>Code / ZIP template import</strong> section below. PDFs are
-            re-synced with selectable fidelity; images and Figma exports are faithfully reconstructed; code/ZIP imports are
-            rendered through CDIR into editable pages.
+            Drop a <strong>PDF</strong>, an <strong>image / screenshot</strong>, a <strong>document (.docx / .txt / .rtf)</strong>,
+            or a <strong>Figma .make/.fig export</strong>, paste an image or a link, or use the dedicated
+            <strong> Code / ZIP template import</strong> section below. PDFs are re-synced with selectable fidelity; images and
+            Figma exports are faithfully reconstructed; documents and code/ZIP imports are rendered through CDIR into editable pages.
           </DialogDescription>
         </DialogHeader>
 
@@ -361,6 +378,22 @@ export function ReferenceImportDialog({
                 </Button>
               </div>
             )}
+            {onOpenCascade && (
+              <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+                <p className="text-xs font-medium">
+                  Ingest generated report content
+                  <span className="text-muted-foreground font-normal"> — pick which imported sections receive the report-structure chunks, so generated copy lands there in the final export.</span>
+                </p>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="mt-2"
+                  onClick={() => { handleClose(false); onOpenCascade(); }}
+                >
+                  <MapPinned className="h-3.5 w-3.5 mr-1" /> Map report sections
+                </Button>
+              </div>
+            )}
           </Card>
         ) : (
           <div className="space-y-4">
@@ -382,13 +415,13 @@ export function ReferenceImportDialog({
               ) : (
                 <>
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                  <div className="text-sm text-muted-foreground">Drag a PDF or image here, click to browse, or paste an image</div>
+                  <div className="text-sm text-muted-foreground">Drag a PDF, image, or document (.docx / .txt / .rtf) here, click to browse, or paste an image</div>
                 </>
               )}
               <input
                 ref={fileRef}
                 type="file"
-                accept="application/pdf,image/*,.make,.fig"
+                accept="application/pdf,image/*,.make,.fig,.docx,.doc,.txt,.rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/rtf,text/plain"
                 className="hidden"
                 onChange={(e) => onAnyFile(e.target.files?.[0] ?? null)}
               />

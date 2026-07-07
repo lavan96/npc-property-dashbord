@@ -1,10 +1,32 @@
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { extractStructureHeadings, selectStructureTemplate } from '@/lib/reportTemplate/cascadeMap';
+import { chunkReportContent } from '@/lib/reportTemplate/reportSections';
 import type { BrandContext, ReportTemplateAdapter, RoutingContext, TemplateBindingContext } from './types';
 
 function flatten(obj: any): Record<string, any> {
   if (!obj || typeof obj !== 'object') return {};
   return { ...obj };
+}
+
+/**
+ * Best-effort headings of the active report-structure guide for this report's
+ * type/tier, so `sections.*` chunk ids line up with the Cascade contract ids.
+ * Failures (RLS, offline) degrade to chunking by the report's own headings.
+ */
+async function loadStructureHeadings(tier: string | null, category: string | null): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('report_structure_templates')
+      .select('id,name,parsed_content,report_tier,report_category,priority')
+      .eq('template_type', 'ai_structure')
+      .eq('is_active', true);
+    if (error || !data) return [];
+    const row = selectStructureTemplate(data as any[], { tier, category });
+    return extractStructureHeadings((row as any)?.parsed_content || '');
+  } catch {
+    return [];
+  }
 }
 
 async function loadInvestmentReport(reportId: string): Promise<any | null> {
@@ -63,6 +85,7 @@ export const investmentReportAdapter: ReportTemplateAdapter = {
     const reportType = getReportType(row);
     const variant = (row.report_variant ?? null) as string | null;
     const tier = (row.report_tier ?? null) as string | null;
+    const structureHeadings = await loadStructureHeadings(tier, reportType);
 
     const data: Record<string, any> = {
       report: {
@@ -80,7 +103,7 @@ export const investmentReportAdapter: ReportTemplateAdapter = {
       demographics: flatten(row.demographics_data),
       economic: flatten(row.economic_data),
       location: flatten(row.location_intelligence),
-      sections: flatten(row.report_content),
+      sections: chunkReportContent(row.report_content, { structureHeadings }),
       sources: flatten(row.sources_content),
       overrides: flatten(row.manual_overrides),
       tier,
