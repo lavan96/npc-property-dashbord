@@ -15,6 +15,42 @@ const corsHeaders = {
 };
 
 const PLANNER_MODEL = 'google/gemini-2.5-pro';
+const CRON_SECRET = Deno.env.get('MARKET_INGESTION_CRON_SECRET') ?? '';
+
+// Minimal cron parser — only supports common patterns.
+// Returns the next fire time strictly after `from`.
+function nextFromCron(expr: string, from = new Date()): Date | null {
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [mn, hr, dom, mon, dow] = parts;
+  const anyStar = (v: string) => v === '*';
+  // Support forms: "* * * * *", "M * * * *", "M H * * *", "M H * * D", "*/N * * * *"
+  const stepMin = mn.startsWith('*/') ? Number(mn.slice(2)) : null;
+  const fixedMin = anyStar(mn) ? null : (Number.isInteger(Number(mn)) ? Number(mn) : null);
+  const fixedHr = anyStar(hr) ? null : (Number.isInteger(Number(hr)) ? Number(hr) : null);
+  const fixedDow = anyStar(dow) ? null : (Number.isInteger(Number(dow)) ? Number(dow) : null);
+  if (!anyStar(dom) || !anyStar(mon)) return null; // keep it simple
+  const d = new Date(from.getTime() + 60_000);
+  d.setUTCSeconds(0, 0);
+  for (let i = 0; i < 60 * 24 * 8; i++) {
+    const okMin = stepMin ? (d.getUTCMinutes() % stepMin === 0) : (fixedMin === null ? true : d.getUTCMinutes() === fixedMin);
+    const okHr = fixedHr === null ? true : d.getUTCHours() === fixedHr;
+    const okDow = fixedDow === null ? true : d.getUTCDay() === fixedDow;
+    if (okMin && okHr && okDow) return d;
+    d.setUTCMinutes(d.getUTCMinutes() + 1);
+  }
+  return null;
+}
+
+function validateCron(expr: string): { ok: boolean; error?: string; next?: Date } {
+  const next = nextFromCron(expr);
+  if (!next) return { ok: false, error: 'Unsupported cron expression' };
+  // Enforce >= 5-min cadence
+  const parts = expr.trim().split(/\s+/);
+  if (parts[0] === '*') return { ok: false, error: 'Every-minute cadence not allowed' };
+  if (parts[0].startsWith('*/') && Number(parts[0].slice(2)) < 5) return { ok: false, error: 'Minimum cadence is 5 minutes' };
+  return { ok: true, next };
+}
 
 const PLANNER_SYSTEM = `You are the Aurixa Agent Planner. Given a user goal, decompose it into 3 to 8 concrete, verifiable steps a downstream execution agent can perform, in order.
 Each step must have:
@@ -221,6 +257,110 @@ Deno.serve(async (req) => {
       const { error } = await sb.from('agent_plans').delete().eq('id', planId).eq('user_id', userId);
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
+    }
+
+    if (action === 'list-runs') {
+      const planId = String(body?.plan_id ?? '');
+      const { data, error } = await sb.from('agent_plan_runs').select('*')
+        .eq('plan_id', planId).eq('user_id', userId).order('started_at', { ascending: false }).limit(50);
+      if (error) return json({ error: error.message }, 500);
+      return json({ runs: data ?? [] });
+    }
+
+    if (action === 'schedule-plan') {
+      const planId = String(body?.plan_id ?? '');
+      const cron = String(body?.schedule_cron ?? '').trim();
+      const autoExecute = Boolean(body?.auto_execute);
+      const v = validateCron(cron);
+      if (!v.ok) return json({ error: v.error }, 400);
+      // Per-user cap (10 scheduled)
+      const { count } = await sb.from('agent_plans').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).not('schedule_cron', 'is', null);
+      if ((count ?? 0) >= 10) {
+        const { data: existing } = await sb.from('agent_plans').select('schedule_cron').eq('id', planId).eq('user_id', userId).maybeSingle();
+        if (!existing?.schedule_cron) return json({ error: 'Scheduled-plan limit reached (10 per user)' }, 400);
+      }
+      const { data, error } = await sb.from('agent_plans').update({
+        schedule_cron: cron,
+        auto_execute: autoExecute,
+        next_run_at: v.next!.toISOString(),
+      }).eq('id', planId).eq('user_id', userId).select().maybeSingle();
+      if (error) return json({ error: error.message }, 500);
+      return json({ plan: data });
+    }
+
+    if (action === 'unschedule-plan') {
+      const planId = String(body?.plan_id ?? '');
+      const { data, error } = await sb.from('agent_plans').update({
+        schedule_cron: null, next_run_at: null, auto_execute: false,
+      }).eq('id', planId).eq('user_id', userId).select().maybeSingle();
+      if (error) return json({ error: error.message }, 500);
+      return json({ plan: data });
+    }
+
+    if (action === 'run-scheduled') {
+      // Cron-invoked: sweep plans whose next_run_at has passed.
+      const secret = req.headers.get('x-cron-secret');
+      if (!CRON_SECRET || secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+      const nowIso = new Date().toISOString();
+      const { data: due } = await sb.from('agent_plans').select('*')
+        .not('schedule_cron', 'is', null)
+        .lte('next_run_at', nowIso)
+        .in('status', ['approved', 'awaiting_approval', 'running', 'paused'])
+        .limit(20);
+      let launched = 0;
+      for (const plan of due ?? []) {
+        try {
+          // Reset step statuses if plan was completed but re-scheduled — otherwise leave.
+          const { data: run } = await sb.from('agent_plan_runs').insert({
+            plan_id: plan.id, user_id: plan.user_id, status: 'running', triggered_by: 'cron',
+          }).select().single();
+
+          // If auto_execute, drive the loop for up to N steps.
+          if (plan.auto_execute) {
+            let steps = 0, failed = 0;
+            for (let i = 0; i < 6; i++) {
+              const r = await fetch(`${SUPABASE_URL}/functions/v1/agent-planner`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}`, 'apikey': SERVICE_KEY, 'x-effective-user-id': plan.user_id },
+                body: JSON.stringify({ action: 'execute-next-step', plan_id: plan.id }),
+              });
+              const j = await r.json();
+              if (j?.done) break;
+              if (j?.error) { failed++; break; }
+              steps++;
+            }
+            await sb.from('agent_plan_runs').update({
+              status: failed ? 'failed' : 'completed',
+              steps_executed: steps, steps_failed: failed,
+              finished_at: new Date().toISOString(),
+            }).eq('id', run!.id);
+          } else {
+            // Notify user that the scheduled run is awaiting approval.
+            await sb.from('notifications').insert({
+              user_id: plan.user_id, type: 'agent_plan_scheduled',
+              title: 'Scheduled plan is ready',
+              message: `${plan.title} is awaiting your approval.`,
+              metadata: { plan_id: plan.id, run_id: run?.id },
+              is_read: false,
+            });
+            await sb.from('agent_plan_runs').update({
+              status: 'awaiting_approval', finished_at: new Date().toISOString(),
+            }).eq('id', run!.id);
+          }
+
+          // Advance next_run_at
+          const nxt = nextFromCron(plan.schedule_cron);
+          await sb.from('agent_plans').update({
+            last_run_at: new Date().toISOString(),
+            next_run_at: nxt ? nxt.toISOString() : null,
+          }).eq('id', plan.id);
+          launched++;
+        } catch (err) {
+          console.warn('run-scheduled err', (err as Error).message);
+        }
+      }
+      return json({ launched });
     }
 
     return json({ error: 'unknown_action' }, 400);

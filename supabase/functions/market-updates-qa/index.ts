@@ -289,6 +289,23 @@ Deno.serve(async (req) => {
 
   let { data, error } = await q;
 
+  // Phase 7 hybrid lexical: supplement with full-text search over the tsvector column.
+  if (!error && !updateIds.length && terms.length) {
+    try {
+      const tsQuery = terms.slice(0, 8).join(' | ');
+      const { data: lex } = await sb.from('market_updates')
+        .select('id,title,source_name,source_url,source_published_at,category,segments,geography,impact_level,ai_summary,why_it_matters,key_points,citation_urls')
+        .eq('status', 'published')
+        .textSearch('search_tsv', tsQuery, { type: 'websearch', config: 'english' })
+        .order('source_published_at', { ascending: false, nullsFirst: false })
+        .limit(60);
+      if (Array.isArray(lex) && lex.length) {
+        const existing = new Set((data ?? []).map((r: any) => r.id));
+        data = [...(data ?? []), ...lex.filter((r: any) => !existing.has(r.id))];
+      }
+    } catch (e) { console.warn('[qa] lexical supplement skipped:', (e as Error).message); }
+  }
+
   // Semantic fallback: if term-restricted query returned nothing, pull recent high-impact pool.
   if (!error && (!data || data.length === 0) && !updateIds.length) {
     const fallback = await sb.from('market_updates')
@@ -298,6 +315,7 @@ Deno.serve(async (req) => {
       .limit(80);
     data = fallback.data ?? [];
   }
+
 
   // Ensure anchor updates are always in the pool.
   if (anchorIds.length) {
