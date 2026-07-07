@@ -17,7 +17,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 import { MemoryCitations, type RecalledMemory } from '@/components/agent/MemoryCitations';
+import { AurixaMark } from '@/components/agent/AurixaMark';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
+
+const ROTATING_PLACEHOLDERS = [
+  'Ask Aurixa anything…',
+  'Draft a client email…',
+  'Plan tomorrow\u2019s briefing…',
+  'What moved in my pipeline?',
+  'Summarise this week\u2019s wins…',
+];
 
 // Consistent color palette for sender attribution in collaborative conversations
 const SENDER_COLORS = [
@@ -109,6 +118,17 @@ export function AgentChatWidget() {
     try { return localStorage.getItem('aurixa_active_skill') || null; } catch { return null; }
   });
   const [skillPickerOpen, setSkillPickerOpen] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+
+  // Rotate composer placeholder while idle for signature "living" feel.
+  useEffect(() => {
+    if (loading || input.length > 0) return;
+    const id = window.setInterval(
+      () => setPlaceholderIdx((i) => (i + 1) % ROTATING_PLACEHOLDERS.length),
+      4000
+    );
+    return () => window.clearInterval(id);
+  }, [loading, input.length]);
 
   // Auto-resize textarea when input changes (covers voice transcription + typing)
   useEffect(() => {
@@ -650,12 +670,28 @@ export function AgentChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="dashboard-floating-action-button fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-105 group md:bottom-6 md:right-6 md:z-40"
-        aria-label="Open AI Assistant"
+        className="group fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full transition-transform hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 md:bottom-6 md:right-6 md:z-40"
+        aria-label="Open Aurixa"
+        title="Ask Aurixa"
       >
-        <Diamond className="h-6 w-6 text-primary-foreground group-hover:animate-pulse" />
+        {/* Outer aurora glow ring */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-full opacity-80 blur-[10px] transition-opacity group-hover:opacity-100"
+          style={{
+            background:
+              'conic-gradient(from 180deg, hsl(var(--aurixa-aurora-1)/0.9), hsl(var(--aurixa-aurora-2)/0.8), hsl(var(--aurixa-aurora-3)/0.85), hsl(var(--aurixa-aurora-1)/0.9))',
+            animation: 'aurixa-orb-spin 12s linear infinite',
+          }}
+        />
+        {/* Inner glass disc */}
+        <span
+          aria-hidden
+          className="absolute inset-[3px] rounded-full aurixa-glass"
+        />
+        <AurixaMark size="md" state={loading ? 'thinking' : 'idle'} className="relative z-10" />
         {notifCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
+          <span className="absolute -top-0.5 -right-0.5 z-20 flex h-5 min-w-5 items-center justify-center rounded-full border border-background bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground shadow-[0_0_0_2px_hsl(var(--background))]">
             {notifCount > 9 ? '9+' : notifCount}
           </span>
         )}
@@ -664,12 +700,12 @@ export function AgentChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-[5.5rem] right-4 z-[60] flex flex-col rounded-2xl border border-border/50 bg-background shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300
+    <div className="fixed bottom-[5.5rem] right-4 z-[60] flex flex-col overflow-hidden rounded-[20px] aurixa-glass animate-in slide-in-from-bottom-4 fade-in duration-300
       w-[calc(100vw-2rem)] max-w-[440px] h-[min(75vh,580px)]
       md:bottom-6 md:right-6 md:h-[min(85vh,640px)]">
       {/* Header */}
-      <div className="dashboard-floating-report-widget flex items-center justify-between border-b px-4 py-3 shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="relative flex items-center justify-between border-b border-[hsl(var(--aurixa-glass-border)/0.5)] px-4 py-3 shrink-0 bg-gradient-to-b from-[hsl(var(--aurixa-glass-bg)/0.6)] to-transparent">
+        <div className="flex items-center gap-2.5 min-w-0">
           {!showSidebar && activeConversation && panelView === 'chat' && (
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowSidebar(true)}>
               <ChevronLeft className="h-4 w-4" />
@@ -680,9 +716,11 @@ export function AgentChatWidget() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <Diamond className="h-5 w-5 text-primary-foreground dark:text-primary" />
-          <span className="font-semibold text-sm">Aurixa Agent</span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary-foreground/15 text-primary-foreground dark:bg-primary/10 dark:text-primary">Gemini</span>
+          <AurixaMark size="sm" state={loading ? 'thinking' : 'idle'} />
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-heading text-[15px] font-semibold tracking-tight text-foreground">Aurixa</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Gemini · Live</span>
+          </div>
         </div>
         <div className="flex items-center gap-0.5">
           {/* Notification bell */}
@@ -707,6 +745,20 @@ export function AgentChatWidget() {
             <X className="h-4 w-4" />
           </Button>
         </div>
+        {/* Streaming aurora bar — becomes visible during generation */}
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 h-[2px] transition-opacity',
+            loading || streamingId ? 'opacity-100' : 'opacity-0'
+          )}
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, hsl(var(--aurixa-aurora-1)), hsl(var(--aurixa-aurora-2)), hsl(var(--aurixa-aurora-3)), transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'aurixa-shimmer 2.4s linear infinite',
+          }}
+        />
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -1108,11 +1160,11 @@ export function AgentChatWidget() {
           <div className="flex-1 flex flex-col min-h-0">
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                  <Diamond className="h-10 w-10 text-black/20 dark:text-primary/20 mb-3" />
-                  <p className="text-sm font-medium text-foreground/80 mb-1">How can I help?</p>
-                  <p className="text-xs text-muted-foreground max-w-[280px]">Ask about clients, deals, emails, reminders, pipeline status, calendar, or borrowing capacity.</p>
-                  <div className="flex flex-wrap gap-1.5 mt-4 justify-center">
+                <div className="flex flex-col items-center justify-center h-full text-center px-4 py-6">
+                  <AurixaMark size="hero" state="idle" className="mb-4" />
+                  <p className="font-heading text-lg font-medium text-foreground tracking-tight mb-1">How can I help?</p>
+                  <p className="text-xs text-muted-foreground max-w-[280px] leading-relaxed">Ask about clients, deals, emails, reminders, pipeline, calendar, or borrowing capacity.</p>
+                  <div className="flex flex-wrap gap-1.5 mt-5 justify-center">
                     {[
                       '☀️ Morning briefing',
                       '🔍 Proactive insights scan',
@@ -1132,7 +1184,7 @@ export function AgentChatWidget() {
                       '📝 Generate report for...',
                     ].map((prompt) => (
                       <button key={prompt} onClick={() => sendMessage(prompt)}
-                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/50 hover:bg-accent/50 hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground">
+                        className="text-[11px] px-2.5 py-1.5 rounded-full border border-[hsl(var(--aurixa-glass-border)/0.6)] bg-[hsl(var(--aurixa-glass-bg)/0.4)] hover:border-brand/40 hover:bg-brand/5 hover:text-foreground transition-colors text-muted-foreground backdrop-blur">
                         {prompt}
                       </button>
                     ))}
@@ -1146,24 +1198,36 @@ export function AgentChatWidget() {
                 const isOtherUser = msg.role === 'user' && msg.sent_by && msg.sent_by !== user?.id;
                 const senderColor = msg.sent_by ? getSenderColor(msg.sent_by, senderColorMap) : '';
                 return (
-                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? (isOtherUser ? "items-start" : "items-end") : "items-start")}>
+                <div key={msg.id} className={cn("flex flex-col animate-aurixa-rise", msg.role === 'user' ? (isOtherUser ? "items-start" : "items-end") : "items-start")}>
                   {showAttribution && (
                     <span className={cn("text-[10px] font-medium mb-0.5 px-1", senderColor)}>
                       {msg.sent_by_username}{isOtherUser ? '' : ' (You)'}
                     </span>
                   )}
-                  <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
+                  {msg.role === 'assistant' ? (
+                    <div className="flex w-full gap-2.5 items-start">
+                      <span className="pt-0.5 shrink-0"><AurixaMark size="sm" state={streamingId === msg.id ? 'thinking' : 'idle'} /></span>
+                      <div className={cn(
+                        "flex-1 min-w-0 text-sm leading-relaxed text-foreground",
+                        streamingId === msg.id && msg.content.length > 0 && "[&_p:last-child]:aurixa-shimmer-text"
+                      )}>
+                        <AgentMessageRenderer content={msg.content} />
+                      </div>
+                    </div>
+                  ) : (
+                  <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm",
                     msg.role === 'user'
                       ? isOtherUser
-                        ? "bg-accent/60 border border-border/30 text-foreground rounded-bl-md"
+                        ? "bg-[hsl(var(--aurixa-glass-bg)/0.7)] border border-[hsl(var(--aurixa-glass-border)/0.5)] text-foreground rounded-bl-md backdrop-blur"
                         : "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted/60 border border-border/30 rounded-bl-md"
+                      : "aurixa-hairline rounded-bl-md"
                   )}>
-                    {msg.role === 'assistant' ? (
-                      <AgentMessageRenderer content={msg.content} />
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    )}
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                  )}
+                  {msg.role === 'assistant' && (
+                  <div className="w-full pl-[calc(22px+0.625rem)]">
+                    {/* Confirmation + email preview + memory citations rendered under assistant text without a bubble */}
                     {/* Email preview */}
                     {msg.requires_confirmation && msg.tool_calls?.some((tc: any) => tc.function?.name === 'send_email') && (
                       <div className="mt-2 rounded-lg border border-primary/20 overflow-hidden text-xs">
@@ -1211,15 +1275,15 @@ export function AgentChatWidget() {
                       <MemoryCitations messageId={msg.id} memories={msg.recalled_memories} />
                     )}
                   </div>
+                  )}
                 </div>
                 );
               });
               })()}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted/60 border border-border/30 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /><span className="text-xs text-muted-foreground">Thinking...</span></div>
-                  </div>
+              {loading && !streamingId && (
+                <div className="flex items-center gap-2.5 pt-1 animate-aurixa-rise">
+                  <AurixaMark size="sm" state="thinking" />
+                  <span className="text-sm aurixa-shimmer-text font-medium">Thinking…</span>
                 </div>
               )}
               {retryMessage && !loading && (
@@ -1328,8 +1392,8 @@ export function AgentChatWidget() {
                     </div>
                   )}
                   <div className="p-3">
-                    <div className="flex gap-2 items-end">
-                      <div className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${loading || attachedFiles.length >= 5 || extractingFiles ? 'opacity-50' : 'hover:bg-accent hover:text-accent-foreground'}`} title="Attach files">
+                    <div className="aurixa-hairline flex gap-1.5 items-end rounded-2xl p-1.5 shadow-[0_10px_30px_-15px_hsl(var(--aurixa-glow)/0.35)]">
+                      <div className={`relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${loading || attachedFiles.length >= 5 || extractingFiles ? 'opacity-50' : 'hover:bg-brand/10 text-muted-foreground hover:text-brand'}`} title="Attach files">
                         <input
                           ref={fileInputRef}
                           id="agent-file-input"
@@ -1349,12 +1413,25 @@ export function AgentChatWidget() {
                         ta.style.height = 'auto';
                         ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
                       }} onKeyDown={handleKeyDown}
-                        placeholder="Ask Aurixa..." className="!min-h-[40px] max-h-[160px] resize-none text-sm rounded-xl overflow-y-auto" rows={1} disabled={loading} style={{ height: 'auto' }} />
+                        placeholder={ROTATING_PLACEHOLDERS[placeholderIdx]}
+                        className="!min-h-[36px] max-h-[160px] resize-none text-sm rounded-xl overflow-y-auto border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 transition-[background]" rows={1} disabled={loading} style={{ height: 'auto' }} />
                       <VoiceToTextButton onTranscript={(text) => setInput(prev => prev ? `${prev} ${text}` : text)} disabled={loading} size="sm" className="shrink-0" />
                       {streamingId ? (
-                        <Button size="icon" variant="destructive" onClick={stopStreaming} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Stop generating"><Square className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="destructive" onClick={stopStreaming} className="h-9 w-9 shrink-0 rounded-xl" aria-label="Stop generating"><Square className="h-4 w-4" /></Button>
                       ) : (
-                        <Button size="icon" onClick={() => sendMessage()} disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles} className="h-10 w-10 shrink-0 rounded-xl" aria-label="Send"><Send className="h-4 w-4" /></Button>
+                        <Button
+                          size="icon"
+                          onClick={() => sendMessage()}
+                          disabled={(!input.trim() && extractedFiles.length === 0) || loading || extractingFiles}
+                          aria-label="Send"
+                          className={cn(
+                            "h-9 w-9 shrink-0 rounded-xl border-0 text-brand-foreground shadow-[0_6px_18px_-6px_hsl(var(--brand)/0.55)] transition-all",
+                            "bg-[linear-gradient(135deg,hsl(var(--brand-500)),hsl(var(--brand-700)))] hover:brightness-110",
+                            "disabled:opacity-40 disabled:shadow-none disabled:bg-none disabled:bg-muted disabled:text-muted-foreground"
+                          )}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
                     {activeTool && (
@@ -1362,7 +1439,10 @@ export function AgentChatWidget() {
                         <Loader2 className="h-3 w-3 animate-spin" /> Running <span className="font-mono">{activeTool}</span>…
                       </p>
                     )}
-                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">Powered by Gemini • Aurixa may make mistakes • 📎 Up to 5 files (50MB each)</p>
+                    <div className="mt-1.5 flex items-center justify-between px-1 text-[10px] text-muted-foreground/80">
+                      <span className="font-mono uppercase tracking-[0.14em]">↵ send · ⇧↵ newline</span>
+                      <span>Aurixa may make mistakes</span>
+                    </div>
                   </div>
                 </div>
               );
