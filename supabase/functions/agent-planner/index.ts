@@ -15,6 +15,42 @@ const corsHeaders = {
 };
 
 const PLANNER_MODEL = 'google/gemini-2.5-pro';
+const CRON_SECRET = Deno.env.get('MARKET_INGESTION_CRON_SECRET') ?? '';
+
+// Minimal cron parser — only supports common patterns.
+// Returns the next fire time strictly after `from`.
+function nextFromCron(expr: string, from = new Date()): Date | null {
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [mn, hr, dom, mon, dow] = parts;
+  const anyStar = (v: string) => v === '*';
+  // Support forms: "* * * * *", "M * * * *", "M H * * *", "M H * * D", "*/N * * * *"
+  const stepMin = mn.startsWith('*/') ? Number(mn.slice(2)) : null;
+  const fixedMin = anyStar(mn) ? null : (Number.isInteger(Number(mn)) ? Number(mn) : null);
+  const fixedHr = anyStar(hr) ? null : (Number.isInteger(Number(hr)) ? Number(hr) : null);
+  const fixedDow = anyStar(dow) ? null : (Number.isInteger(Number(dow)) ? Number(dow) : null);
+  if (!anyStar(dom) || !anyStar(mon)) return null; // keep it simple
+  const d = new Date(from.getTime() + 60_000);
+  d.setUTCSeconds(0, 0);
+  for (let i = 0; i < 60 * 24 * 8; i++) {
+    const okMin = stepMin ? (d.getUTCMinutes() % stepMin === 0) : (fixedMin === null ? true : d.getUTCMinutes() === fixedMin);
+    const okHr = fixedHr === null ? true : d.getUTCHours() === fixedHr;
+    const okDow = fixedDow === null ? true : d.getUTCDay() === fixedDow;
+    if (okMin && okHr && okDow) return d;
+    d.setUTCMinutes(d.getUTCMinutes() + 1);
+  }
+  return null;
+}
+
+function validateCron(expr: string): { ok: boolean; error?: string; next?: Date } {
+  const next = nextFromCron(expr);
+  if (!next) return { ok: false, error: 'Unsupported cron expression' };
+  // Enforce >= 5-min cadence
+  const parts = expr.trim().split(/\s+/);
+  if (parts[0] === '*') return { ok: false, error: 'Every-minute cadence not allowed' };
+  if (parts[0].startsWith('*/') && Number(parts[0].slice(2)) < 5) return { ok: false, error: 'Minimum cadence is 5 minutes' };
+  return { ok: true, next };
+}
 
 const PLANNER_SYSTEM = `You are the Aurixa Agent Planner. Given a user goal, decompose it into 3 to 8 concrete, verifiable steps a downstream execution agent can perform, in order.
 Each step must have:
