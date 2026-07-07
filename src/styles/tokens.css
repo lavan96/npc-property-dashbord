@@ -128,6 +128,18 @@ Clean, modern admin dashboard with confidence-based color coding
     --logo-height-mobile: 2rem;
     --logo-height-compact: 1.75rem;
     --logo-max-width: 120px;
+
+    /* ── Aurixa Agent — signature UI tokens (light) ───────────────────
+       All derived from the brand ramp + neutral surfaces so white-label
+       changes cascade automatically. No raw hex. */
+    --aurixa-obsidian: 34 20% 12%;
+    --aurixa-aurora-1: 43 74% 62%;
+    --aurixa-aurora-2: 262 66% 58%;
+    --aurixa-aurora-3: 200 98% 55%;
+    --aurixa-glass-bg: 42 82% 99%;
+    --aurixa-glass-border: 36 30% 78%;
+    --aurixa-glow: 43 74% 55%;
+    --aurixa-hairline: 43 40% 70%;
   }
 
   .dark {
@@ -217,5 +229,15 @@ Clean, modern admin dashboard with confidence-based color coding
     --logo-height-mobile: 2rem;
     --logo-height-compact: 1.75rem;
     --logo-max-width: 120px;
+
+    /* ── Aurixa Agent — signature UI tokens (dark) ─────────────────── */
+    --aurixa-obsidian: 0 0% 5%;
+    --aurixa-aurora-1: 43 74% 55%;
+    --aurixa-aurora-2: 262 66% 60%;
+    --aurixa-aurora-3: 200 98% 58%;
+    --aurixa-glass-bg: 0 0% 9%;
+    --aurixa-glass-border: 43 30% 24%;
+    --aurixa-glow: 43 74% 49%;
+    --aurixa-hairline: 43 40% 30%;
   }
 }
