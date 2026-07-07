@@ -196,6 +196,9 @@ export default function AgentPlans() {
                   {steps.length === 0 && !stepsLoading && <p className="text-sm text-muted-foreground">No steps yet.</p>}
                 </CardContent>
               </Card>
+
+              <PlanScheduleCard plan={activePlan} onChanged={() => { loadPlan(activePlan.id); refreshPlans(); }} />
+              <PlanRunsCard planId={activePlan.id} />
             </>
           )}
         </div>
