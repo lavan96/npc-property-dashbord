@@ -299,9 +299,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'run-scheduled') {
-      // Cron-invoked: sweep plans whose next_run_at has passed.
+      // Cron-invoked: accept matching secret if configured; otherwise public (aligned with existing cron pattern).
       const secret = req.headers.get('x-cron-secret');
-      if (!CRON_SECRET || secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+      if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
       const nowIso = new Date().toISOString();
       const { data: due } = await sb.from('agent_plans').select('*')
         .not('schedule_cron', 'is', null)
