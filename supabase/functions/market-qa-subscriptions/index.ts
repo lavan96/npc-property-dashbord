@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
           question_template,
           cadence,
           channels,
+          digest_group: body?.digest_group ? String(body.digest_group).slice(0, 64) : null,
           next_run_at: nextRunAt(cadence),
         })
         .select()
