@@ -305,6 +305,56 @@ Deno.serve(async (req) => {
       return json({ plan: data });
     }
 
+    if (action === 'propose-subscription') {
+      // Agent-authored draft. Records into agent_insights_feed so the user can approve
+      // (via the "Approve subscription" card in the chat) before we actually create it.
+      const question_template = String(body?.question_template ?? '').trim();
+      const cadence = body?.cadence === 'daily' ? 'daily' : 'weekly';
+      const digest_group = body?.digest_group ? String(body.digest_group).slice(0, 64) : null;
+      const rationale = String(body?.rationale ?? '').slice(0, 500);
+      if (question_template.length < 6) return json({ error: 'question too short' }, 400);
+      const payload = { question_template, cadence, digest_group, rationale };
+      const { data, error } = await sb.from('agent_insights_feed').insert({
+        user_id: userId,
+        kind: 'proposed_subscription',
+        title: `Subscribe to: "${question_template.slice(0, 80)}"?`,
+        summary: rationale || `The agent recommends a ${cadence} subscription.`,
+        body_markdown: rationale ? `**Why:** ${rationale}\n\n**Question:** ${question_template}\n\n**Cadence:** ${cadence}` : null,
+        severity: 'info',
+        source: 'agent-planner',
+        payload,
+      }).select().single();
+      if (error) return json({ error: error.message }, 500);
+      return json({ proposal: data });
+    }
+
+    if (action === 'approve-subscription') {
+      // Called from AgentChatWidget's approval card. Creates the subscription and
+      // marks the insight as acted-on.
+      const insightId = String(body?.insight_id ?? '');
+      const { data: insight } = await sb.from('agent_insights_feed')
+        .select('id, payload, user_id').eq('id', insightId).eq('user_id', userId).maybeSingle();
+      if (!insight) return json({ error: 'not_found' }, 404);
+      const p = insight.payload || {};
+      const nextRunAt = new Date();
+      if (p.cadence === 'daily') nextRunAt.setUTCDate(nextRunAt.getUTCDate() + 1);
+      else nextRunAt.setUTCDate(nextRunAt.getUTCDate() + 7);
+      const { data: sub, error: subErr } = await sb.from('market_qa_subscriptions').insert({
+        user_id: userId,
+        question_template: p.question_template,
+        cadence: p.cadence ?? 'weekly',
+        digest_group: p.digest_group ?? null,
+        channels: ['in_app'],
+        next_run_at: nextRunAt.toISOString(),
+      }).select().single();
+      if (subErr) return json({ error: subErr.message }, 500);
+      await sb.from('agent_insights_feed').update({
+        acted_on_at: new Date().toISOString(),
+        is_read: true,
+      }).eq('id', insightId).eq('user_id', userId);
+      return json({ subscription: sub });
+    }
+
     return json({ error: 'unknown_action' }, 400);
   } catch (err) {
     return json({ error: String((err as Error).message) }, 500);

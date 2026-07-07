@@ -412,6 +412,12 @@ Deno.serve(async (req) => {
     sentiment,
     model_used: model,
     created_by: userId,
+    metadata: {
+      retrieval_mode: retrievalMode,
+      context_size: context.length,
+      terms,
+      segment: segment ?? null,
+    },
   };
   const persistPromise = sb.from('market_update_questions').insert(insertRow).select('id').maybeSingle()
     .then((res: any) => { if (res?.error) console.warn('[qa] log insert', res.error.message); return res?.data?.id ?? null; });
@@ -438,6 +444,7 @@ Deno.serve(async (req) => {
     context_size: context.length,
     conversation_id,
     retrieved,
+    retrieval_mode: retrievalMode,
     question_id,
   };
 

@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
           question_template,
           cadence,
           channels,
+          digest_group: body?.digest_group ? String(body.digest_group).slice(0, 64) : null,
           next_run_at: nextRunAt(cadence),
         })
         .select()
@@ -104,6 +105,9 @@ Deno.serve(async (req) => {
       }
       if (Array.isArray(body?.channels)) {
         patch.channels = body.channels.filter((c: any) => ['in_app', 'email'].includes(c));
+      }
+      if (body?.digest_group !== undefined) {
+        patch.digest_group = body.digest_group ? String(body.digest_group).slice(0, 64) : null;
       }
       const { data, error } = await sb
         .from('market_qa_subscriptions')
