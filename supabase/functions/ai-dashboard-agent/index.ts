@@ -7606,11 +7606,13 @@ async function loadSkillOverlay(sb: any, userId: string, skillSlug: string | und
 
 async function handleChat(sb: any, body: any, userId: string, username: string, cors: Record<string, string>) {
   const { conversation_id, message, image_attachments } = body;
+  const planId: string | null = typeof body?.plan_id === 'string' ? body.plan_id : null;
+  const stepId: string | null = typeof body?.step_id === 'string' ? body.step_id : null;
   if (!conversation_id || !message) {
     return new Response(JSON.stringify({ error: 'conversation_id and message are required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
-  await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message, sent_by: userId });
+  await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message, sent_by: userId, plan_id: planId, step_id: stepId });
 
   // Load user preferences to inject into context
   const { data: prefs } = await sb.from('agent_user_preferences')
