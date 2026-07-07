@@ -151,16 +151,13 @@ function Callout({
   );
 }
 
-function TipBlock({ content })     { return <Callout tone="primary" eyebrow="Tip"      icon={<Lightbulb className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
-function WarningBlock({ content }) { return <Callout tone="warning" eyebrow="Warning"  icon={<AlertTriangle className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
-function SuccessBlock({ content }) { return <Callout tone="success" eyebrow="Success"  icon={<CheckCircle2 className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
-function NoteBlock({ content })    { return <Callout tone="muted"   eyebrow="Note"     icon={<Info className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
-function InsightBlock({ content }) { return <Callout tone="insight" eyebrow="Insight"  icon={<Brain className="h-3.5 w-3.5" />} italic><MarkdownContent content={content} /></Callout>; }
-
-// TS-friendly wrappers (Callout children types)
 type StrProps = { content: string };
-const _wrap: Record<string, (p: StrProps) => JSX.Element> = { TipBlock, WarningBlock, SuccessBlock, NoteBlock, InsightBlock };
-void _wrap;
+
+function TipBlock({ content }: StrProps)     { return <Callout tone="primary" eyebrow="Tip"      icon={<Lightbulb className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
+function WarningBlock({ content }: StrProps) { return <Callout tone="warning" eyebrow="Warning"  icon={<AlertTriangle className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
+function SuccessBlock({ content }: StrProps) { return <Callout tone="success" eyebrow="Success"  icon={<CheckCircle2 className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
+function NoteBlock({ content }: StrProps)    { return <Callout tone="muted"   eyebrow="Note"     icon={<Info className="h-3.5 w-3.5" />}><MarkdownContent content={content} /></Callout>; }
+function InsightBlock({ content }: StrProps) { return <Callout tone="insight" eyebrow="Insight"  icon={<Brain className="h-3.5 w-3.5" />} italic><MarkdownContent content={content} /></Callout>; }
 
 // ──────────────────────────────────────────────
 // Metric — glass tile with aurora tint
