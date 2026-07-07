@@ -1,64 +1,68 @@
-# Phase 7 — Market Q&A + Aurixa Agent (parallel, continues from Phase 6)
+# Phase 8 — Cross-surface Intelligence & Autonomy
 
-Phase 6 shipped persistent embeddings, share links, quality baselines, and long-horizon plans. Phase 7 closes the deliberate gaps we left, adds the "unattended" surfaces (scheduled/recurring plans, digest subscriptions), and moves Market Q&A retrieval to hybrid search.
+Phases 6–7 shipped persistent embeddings, hybrid retrieval, subscriptions, scheduled agent plans, and full plan/step traceability. Phase 8 unifies the two tracks and closes the last unattended-mode gaps: a shared insight feed, digest emails, agent-authored subscriptions, an internal skill marketplace, and evaluation dashboards.
 
 ---
 
-## Track A — Market Updates Q&A Phase 7
+## Track A — Market Updates Q&A Phase 8
 
-**Goal:** actually consume the persistent embeddings, add hybrid (vector + lexical) retrieval, and let people subscribe to answers.
+**Goal:** turn Q&A subscriptions from single-question pings into curated daily/weekly digests, and expose retrieval quality.
 
 ### DB (additive)
-- `market_updates.search_tsv tsvector` generated column (`title || summary || why_it_matters`) + GIN index for lexical scoring.
-- `market_qa_subscriptions` — `user_id, question_template, cadence (daily|weekly), channels (email|in_app), last_run_at, next_run_at, is_active`.
-- `market_qa_subscription_runs` — one row per run, links to the resulting `market_update_questions.id`.
+- `market_qa_digests` — `user_id, cadence, sent_at, question_ids uuid[], summary_md, delivery_channels[]`.
+- `market_qa_subscriptions`: `+ digest_group text` so multiple questions can roll into one digest.
+- `market_qa_quality_baselines` already exists → add `market_qa_quality_daily` MV or scheduled snapshot with per-day p50/p95 latency, avg citations, hybrid-vs-vector win rate.
 
-### Edge function edits (additive)
-- `market-updates-qa`: prefer `market_updates.embedding` when present; add lexical scoring path (`ts_rank_cd`) blended with cosine similarity (0.7 semantic / 0.3 lexical), configurable via body flag. No API shape change.
-- New `market-qa-subscriptions` — CRUD + `run-due` action (cron-invoked hourly) that re-asks each due question via `market-updates-qa`, writes result, notifies subscriber via existing `notifications` insert (+ optional email when a mailer exists).
+### Edge function edits
+- New `market-qa-digest-runner` — hourly cron, groups due subscriptions by `(user_id, digest_group, cadence)`, runs each question through `market-updates-qa`, synthesises a single markdown digest via Lovable AI, writes `market_qa_digests`, notifies via `notifications` + optional email.
+- `market-updates-qa`: emit `retrieval_mode` (`hybrid|vector|lexical|fallback`) and per-result score breakdown; persist to `market_update_questions.metadata`.
+- New `market-qa-quality-report` — read-only aggregation endpoint for the dashboard.
 
 ### Frontend
-- `MarketQAConversation`: add "Subscribe to updates on this question" button (opens dialog: cadence + channels).
-- New `/qa/subscriptions` page listing user's subscriptions with pause/resume/delete and last-run summary.
-
-### Cron
-- Hourly `market-qa-subscriptions-run-due`.
+- `/qa/subscriptions`: add "Group into digest" field; new `/qa/digests` history page.
+- `/admin/market-qa-quality` (superadmin) — retrieval mode mix, latency, citation coverage, hybrid win rate charts.
 
 ---
 
-## Track B — Aurixa Agent Phase 7
+## Track B — Aurixa Agent Phase 8
 
-**Goal:** unattended execution, recurring plans, and full plan/step traceability in the agent chat.
+**Goal:** let the agent create its own subscriptions/plans, expose a skill marketplace, and surface eval health.
 
 ### DB (additive)
-- `agent_plans`: `+ schedule_cron text, next_run_at timestamptz, last_run_at timestamptz, auto_execute boolean default false`.
-- `agent_plan_runs` — `plan_id, started_at, finished_at, status, step_ids uuid[]` so recurring plans keep run history separate from step lifecycle.
-- `agent_action_log`: `+ plan_id, step_id` for cross-linking (already in schema check — additive only if missing).
+- `agent_skills`: `+ is_public boolean, install_count int, avg_success_rate numeric` (skills already exist; adding marketplace metadata).
+- `agent_skill_installs` — `user_id, skill_id, installed_at, overrides jsonb`.
+- `agent_insights_feed` — unified feed rows produced by scheduled plans, Q&A digests, and eval regressions (`source, ref_id, title, body_md, severity, created_at, read_at`).
 
-### Edge function edits (additive)
-- `ai-dashboard-agent`: accept optional `plan_id`/`step_id` in chat body, persist them on `agent_messages` + `agent_action_log` rows so the trace lines up with `/agent/plans`.
-- `agent-planner`: add `schedule-plan` (validate cron), `unschedule-plan`, `run-scheduled` (cron-invoked; instantiates a plan_run and calls `execute-next-step` in a loop until an approval boundary or terminal state, respecting `auto_execute`).
+### Edge function edits
+- `agent-planner`: new `propose-subscription` tool the agent can call to draft a `market_qa_subscription` for the user (requires approval boundary, same governance as other write actions).
+- New `agent-skill-marketplace` — list/install/uninstall public skills, snapshot into user's `agent_skills` on install.
+- New `agent-insights-feed-runner` — cron every 15 min, materialises new items (recent plan_runs, new digests, eval baseline regressions > 10%).
+- `agent-eval-runs`: extend `agent-planner` `run-eval` action to write a regression row into `agent_insights_feed` when score drops vs baseline.
 
 ### Frontend
-- `/agent/plans` detail page: new "Schedule" card (cron picker with 4 presets + custom, auto-execute toggle, next-run/last-run readout), and a "Runs" tab showing historic `agent_plan_runs`.
-- `AgentChatWidget`: if a message is streamed with `plan_id`/`step_id`, add a small "Step 3 of 5 · plan: X" chip linking back to the plan.
-
-### Cron
-- Every 5 min `agent-planner-run-scheduled`.
+- New `/agent/skills` — marketplace grid (installed vs available, install/uninstall, per-skill success/latency).
+- New `/agent/insights` — unified feed with source filters (plan_run | qa_digest | eval_regression), mark read, deep-link back to source page.
+- `/agent/plans` detail: add "Eval status" chip (green/amber/red) pulled from latest `agent_eval_runs`.
+- `AgentChatWidget`: when the agent proposes a subscription, render an inline "Approve subscription" card that hits `market-qa-subscriptions.create`.
 
 ---
 
-## Delivery order (single response)
+## Cron
+- Hourly `market-qa-digest-runner`.
+- Every 15 min `agent-insights-feed-runner`.
+- Daily 06:00 AEST `market-qa-quality-snapshot`.
 
-1. Single `supabase--migration` — tsvector column + GIN, subscriptions tables, plan scheduling columns, plan_runs table.
-2. New edge functions: `market-qa-subscriptions`, and the edits to `market-updates-qa`, `ai-dashboard-agent`, `agent-planner`.
-3. New pages / dialogs: `/qa/subscriptions`, subscribe dialog in `MarketQAConversation`, schedule card + runs tab in `AgentPlans`, plan/step chip in `AgentChatWidget`.
-4. Two `supabase--insert` cron entries (5-min agent runner, hourly Q&A subscriptions runner).
+## Delivery order (single response after approval)
+1. One `supabase--migration` — digests, digest_group, marketplace metadata, installs, insights feed, quality snapshot table.
+2. New edge functions + edits above.
+3. New pages: `/qa/digests`, `/admin/market-qa-quality`, `/agent/skills`, `/agent/insights`; plus subscription-approval card in `AgentChatWidget`.
+4. `supabase--insert` for three cron entries (idempotent by name).
 
 ## Technical notes
-- Hybrid score: `0.7 * (1 - cosine) + 0.3 * ts_rank_cd_norm`. Fall back to pure vector when tsvector is unpopulated for a row.
-- Cron validation: reject anything more frequent than every 5 minutes; enforce a per-user cap of 10 scheduled plans.
-- Auto-execute plans still write every tool call to `agent_action_log` and honour skill safety bounds.
-- No breaking changes to Phase 6 shapes; every DB and function edit is additive.
+- Digest synthesis uses Lovable AI (`google/gemini-2.5-flash`) with the same citation-preserving prompt already used in `market-updates-qa`; token metering via existing `reportMetering` path.
+- Insights feed is append-only; `read_at` per-user; the runner is idempotent on `(source, ref_id)`.
+- Marketplace installs snapshot the skill definition so upstream edits don't silently mutate a user's agent behaviour.
+- All new tables follow the standard 4-step grant/RLS pattern; every insert scoped to `auth.uid()`; feed + digests readable only by owner.
+- No breaking changes to Phase 6/7 shapes — every addition is additive.
 
 Reply **"Proceed"** to ship, or tell me what to trim/expand.
