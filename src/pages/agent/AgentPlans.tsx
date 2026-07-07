@@ -16,8 +16,8 @@ interface PlanRun { id: string; plan_id: string; status: string; triggered_by: s
 const CRON_PRESETS: Array<{ label: string; expr: string }> = [
   { label: 'Every hour', expr: '0 * * * *' },
   { label: 'Every day 09:00 UTC', expr: '0 9 * * *' },
-  { label: 'Weekdays 09:00 UTC', expr: '0 9 * * 1-5' },
   { label: 'Weekly Monday 09:00 UTC', expr: '0 9 * * 1' },
+  { label: 'Weekly Friday 15:00 UTC', expr: '0 15 * * 5' },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
