@@ -1198,24 +1198,36 @@ export function AgentChatWidget() {
                 const isOtherUser = msg.role === 'user' && msg.sent_by && msg.sent_by !== user?.id;
                 const senderColor = msg.sent_by ? getSenderColor(msg.sent_by, senderColorMap) : '';
                 return (
-                <div key={msg.id} className={cn("flex flex-col", msg.role === 'user' ? (isOtherUser ? "items-start" : "items-end") : "items-start")}>
+                <div key={msg.id} className={cn("flex flex-col animate-aurixa-rise", msg.role === 'user' ? (isOtherUser ? "items-start" : "items-end") : "items-start")}>
                   {showAttribution && (
                     <span className={cn("text-[10px] font-medium mb-0.5 px-1", senderColor)}>
                       {msg.sent_by_username}{isOtherUser ? '' : ' (You)'}
                     </span>
                   )}
-                  <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm",
+                  {msg.role === 'assistant' ? (
+                    <div className="flex w-full gap-2.5 items-start">
+                      <span className="pt-0.5 shrink-0"><AurixaMark size="sm" state={streamingId === msg.id ? 'thinking' : 'idle'} /></span>
+                      <div className={cn(
+                        "flex-1 min-w-0 text-sm leading-relaxed text-foreground",
+                        streamingId === msg.id && msg.content.length > 0 && "[&_p:last-child]:aurixa-shimmer-text"
+                      )}>
+                        <AgentMessageRenderer content={msg.content} />
+                      </div>
+                    </div>
+                  ) : (
+                  <div className={cn("max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm",
                     msg.role === 'user'
                       ? isOtherUser
-                        ? "bg-accent/60 border border-border/30 text-foreground rounded-bl-md"
+                        ? "bg-[hsl(var(--aurixa-glass-bg)/0.7)] border border-[hsl(var(--aurixa-glass-border)/0.5)] text-foreground rounded-bl-md backdrop-blur"
                         : "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted/60 border border-border/30 rounded-bl-md"
+                      : "aurixa-hairline rounded-bl-md"
                   )}>
-                    {msg.role === 'assistant' ? (
-                      <AgentMessageRenderer content={msg.content} />
-                    ) : (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    )}
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                  )}
+                  {msg.role === 'assistant' && (
+                  <div className="w-full pl-[calc(22px+0.625rem)]">
+                    {/* Confirmation + email preview + memory citations rendered under assistant text without a bubble */}
                     {/* Email preview */}
                     {msg.requires_confirmation && msg.tool_calls?.some((tc: any) => tc.function?.name === 'send_email') && (
                       <div className="mt-2 rounded-lg border border-primary/20 overflow-hidden text-xs">
