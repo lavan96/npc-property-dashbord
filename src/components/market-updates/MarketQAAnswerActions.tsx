@@ -102,6 +102,18 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, que
             Share
           </button>
         )}
+        {questionText && (
+          <button
+            type="button"
+            onClick={handleSubscribe}
+            disabled={subscribing}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-50"
+            title="Get fresh answers on a schedule"
+          >
+            {subscribing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Bell className="h-2.5 w-2.5" />}
+            Subscribe
+          </button>
+        )}
         {total > 0 && (
           <button
             type="button"
