@@ -34,8 +34,10 @@ Deno.serve(async (req) => {
 
   // Cron-only action
   if (action === 'run-due') {
+    // Cron-triggered — accept either matching cron secret, or fall back to public
+    // (align with existing market-* cron functions which are public).
     const secret = req.headers.get('x-cron-secret');
-    if (!CRON_SECRET || secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+    if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
     return await runDue(sb);
   }
 
