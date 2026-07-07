@@ -13259,6 +13259,7 @@ export type Database = {
           follow_up_questions: Json
           id: string
           key_figures: Json
+          metadata: Json
           model_used: string | null
           question: string
           sentiment: string | null
@@ -13275,6 +13276,7 @@ export type Database = {
           follow_up_questions?: Json
           id?: string
           key_figures?: Json
+          metadata?: Json
           model_used?: string | null
           question: string
           sentiment?: string | null
@@ -13291,6 +13293,7 @@ export type Database = {
           follow_up_questions?: Json
           id?: string
           key_figures?: Json
+          metadata?: Json
           model_used?: string | null
           question?: string
           sentiment?: string | null
