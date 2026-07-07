@@ -1,0 +1,96 @@
+// Phase 8 — Market Q&A retrieval-quality snapshot + reader.
+// - action=snapshot (cron/superadmin): aggregates the previous day's questions,
+//   writes a row into market_qa_quality_daily.
+// - action=report (superadmin): returns the last N days of snapshots.
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const CRON_SECRET = Deno.env.get('MARKET_INGESTION_CRON_SECRET') ?? '';
+const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+};
+const json = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+function percentile(sorted: number[], p: number): number | null {
+  if (!sorted.length) return null;
+  const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+  return sorted[idx];
+}
+
+async function snapshot(sb: any, dayIso?: string) {
+  const day = dayIso ? new Date(dayIso) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+  day.setUTCHours(0, 0, 0, 0);
+  const start = day.toISOString();
+  const end = new Date(day.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const snapshot_date = day.toISOString().slice(0, 10);
+
+  const { data: rows } = await sb.from('market_update_questions')
+    .select('id, metadata, source_update_ids, confidence_score, created_at')
+    .gte('created_at', start).lt('created_at', end)
+    .limit(2000);
+
+  const list = rows ?? [];
+  const modes = { hybrid: 0, vector: 0, lexical: 0, fallback: 0 };
+  const citationCounts: number[] = [];
+  for (const r of list) {
+    const mode = r?.metadata?.retrieval_mode ?? 'vector';
+    if (mode in modes) (modes as any)[mode]++;
+    const cite = Array.isArray(r?.source_update_ids) ? r.source_update_ids.length : 0;
+    citationCounts.push(cite);
+  }
+  citationCounts.sort((a, b) => a - b);
+  const total = list.length;
+  const avgCitations = total ? citationCounts.reduce((a, b) => a + b, 0) / total : null;
+  const withCites = citationCounts.filter((n) => n > 0).length;
+  const winRate = total ? (modes.hybrid + modes.lexical) / total : null;
+
+  // Simple latency proxy = citations found > 0 rate — we don't yet store latency ms.
+  const row = {
+    snapshot_date,
+    total_questions: total,
+    p50_latency_ms: null,
+    p95_latency_ms: null,
+    avg_citations: avgCitations,
+    hybrid_count: modes.hybrid,
+    vector_count: modes.vector,
+    lexical_count: modes.lexical,
+    fallback_count: modes.fallback,
+    hybrid_win_rate: winRate,
+  };
+  await sb.from('market_qa_quality_daily').upsert(row, { onConflict: 'snapshot_date' });
+  return { snapshot_date, total, coverage: total ? withCites / total : null, ...row };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+  const action = body?.action ?? 'report';
+
+  if (action === 'snapshot') {
+    const secret = req.headers.get('x-cron-secret');
+    if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+    const result = await snapshot(sb, body?.day);
+    return json(result);
+  }
+
+  if (action === 'report') {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
+    const userSb = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: authHeader } } });
+    const days = Math.min(90, Math.max(1, Number(body?.days ?? 30)));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { data, error } = await userSb.from('market_qa_quality_daily')
+      .select('*').gte('snapshot_date', since).order('snapshot_date', { ascending: true });
+    if (error) return json({ error: error.message }, 403);
+    return json({ snapshots: data ?? [] });
+  }
+
+  return json({ error: 'unknown_action' }, 400);
+});
