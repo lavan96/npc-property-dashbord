@@ -4,7 +4,7 @@
  * a used/considered badge so the user can audit the grounding.
  */
 import { useState } from 'react';
-import { Check, ChevronDown, Copy, ExternalLink, Share2, Loader2 } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink, Share2, Loader2, Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -14,13 +14,15 @@ interface Props {
   content: string;
   retrieved?: MarketQARetrievedItem[];
   questionId?: string | null;
+  questionText?: string | null;
   compact?: boolean;
 }
 
-export function MarketQAAnswerActions({ content, retrieved = [], questionId, compact }: Props) {
+export function MarketQAAnswerActions({ content, retrieved = [], questionId, questionText, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   const handleCopy = async () => {
     try {
@@ -52,6 +54,25 @@ export function MarketQAAnswerActions({ content, retrieved = [], questionId, com
       setSharing(false);
     }
   };
+
+  const handleSubscribe = async () => {
+    if (!questionText || subscribing) return;
+    const cadence = window.prompt('Cadence — type "daily" or "weekly":', 'weekly');
+    if (!cadence || !['daily', 'weekly'].includes(cadence)) return;
+    setSubscribing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('market-qa-subscriptions', {
+        body: { action: 'create', question_template: questionText, cadence, channels: ['in_app'] },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error ?? error?.message ?? 'Subscribe failed');
+      toast.success('Subscribed — manage at /qa/subscriptions');
+    } catch (err) {
+      toast.error(String((err as Error).message));
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
 
 
   const used = retrieved.filter(r => r.used).length;
