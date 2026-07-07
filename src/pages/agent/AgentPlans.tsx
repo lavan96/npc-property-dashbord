@@ -261,3 +261,97 @@ function DraftPlanDialog({ onCreated }: { onCreated: (planId: string) => void })
     </DialogContent>
   );
 }
+
+function PlanScheduleCard({ plan, onChanged }: { plan: Plan; onChanged: () => void }) {
+  const [cron, setCron] = useState(plan.schedule_cron ?? '');
+  const [autoExec, setAutoExec] = useState(Boolean(plan.auto_execute));
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await invoke('schedule-plan', { plan_id: plan.id, schedule_cron: cron.trim(), auto_execute: autoExec });
+      toast.success('Schedule saved');
+      onChanged();
+    } catch (err) { toast.error(String((err as Error).message)); }
+    finally { setBusy(false); }
+  };
+  const clear = async () => {
+    setBusy(true);
+    try {
+      await invoke('unschedule-plan', { plan_id: plan.id });
+      setCron(''); setAutoExec(false);
+      toast.success('Schedule cleared');
+      onChanged();
+    } catch (err) { toast.error(String((err as Error).message)); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm flex items-center gap-2"><CalendarClock className="h-4 w-4" />Schedule</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-1">
+          {CRON_PRESETS.map((p) => (
+            <button key={p.expr} type="button" onClick={() => setCron(p.expr)}
+              className={`rounded-full border px-2 py-0.5 text-[11px] hover:border-primary/40 ${cron === p.expr ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input value={cron} onChange={(e) => setCron(e.target.value)} placeholder="Custom cron: e.g. 0 9 * * 1" className="font-mono text-xs" />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={autoExec} onChange={(e) => setAutoExec(e.target.checked)} />
+          Auto-execute steps without approval (up to 6 per run)
+        </label>
+        <div className="text-[11px] text-muted-foreground">
+          {plan.schedule_cron ? (
+            <>Next run: {plan.next_run_at ? new Date(plan.next_run_at).toLocaleString() : '—'} · Last run: {plan.last_run_at ? new Date(plan.last_run_at).toLocaleString() : '—'}</>
+          ) : 'No schedule set — plan runs on demand only.'}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={save} disabled={busy || !cron.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save schedule'}</Button>
+          {plan.schedule_cron && <Button size="sm" variant="outline" onClick={clear} disabled={busy}>Clear</Button>}
+        </div>
+        <p className="text-[10px] text-muted-foreground">Format: minute hour day month weekday. Minimum cadence 5 minutes.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PlanRunsCard({ planId }: { planId: string }) {
+  const [runs, setRuns] = useState<PlanRun[]>([]);
+  const [loading, setLoading] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { runs } = await invoke('list-runs', { plan_id: planId });
+      setRuns(runs ?? []);
+    } catch (err) { toast.error(String((err as Error).message)); }
+    finally { setLoading(false); }
+  }, [planId]);
+  useEffect(() => { load(); }, [load]);
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Run history</CardTitle>
+        {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {runs.length === 0 && !loading && <p className="text-xs text-muted-foreground">No runs yet.</p>}
+        {runs.map((r) => (
+          <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Badge className={`text-[10px] ${STATUS_COLOR[r.status] ?? ''}`}>{r.status.replace(/_/g, ' ')}</Badge>
+              <span className="text-muted-foreground">via {r.triggered_by}</span>
+              <span className="text-muted-foreground">{new Date(r.started_at).toLocaleString()}</span>
+            </div>
+            <div className="text-muted-foreground">{r.steps_executed} steps{r.steps_failed ? ` · ${r.steps_failed} failed` : ''}</div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
