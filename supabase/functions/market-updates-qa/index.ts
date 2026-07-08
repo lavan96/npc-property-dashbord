@@ -374,18 +374,37 @@ Deno.serve(async (req) => {
   let time_horizon = 'unclear';
   let sentiment = 'neutral';
 
-  if (!ai || !ai.used_ids.length || ai.used_ids.some(id => !contextIds.has(id)) || ai.answer.length < 4) {
+  // Defensive: some models return the "[[N]]" display label or a bare index
+  // instead of the raw id. Remap those to the real context id before validation
+  // so a well-grounded answer isn't dropped into the extractive fallback.
+  const remapCitedId = (raw: string): string => {
+    const s = String(raw).trim();
+    if (contextIds.has(s)) return s;
+    const m = s.match(/^\[?\[?\s*(\d+)\s*\]?\]?$/);
+    if (m) {
+      const idx = Number(m[1]) - 1;
+      if (idx >= 0 && idx < context.length) return context[idx].id;
+    }
+    return s;
+  };
+  const aiUsedIds = ai ? Array.from(new Set(ai.used_ids.map(remapCitedId))) : [];
+  const aiKeyFigures = ai ? ai.key_figures.map(k => ({
+    ...k,
+    source_id: k.source_id ? remapCitedId(k.source_id) : undefined,
+  })) : [];
+
+  if (!ai || !aiUsedIds.length || aiUsedIds.some(id => !contextIds.has(id)) || ai.answer.length < 4) {
     answer = context.slice(0, 3).map(c => `• ${c.title} (${c.source_name}): ${c.ai_summary || c.why_it_matters || 'Limited sourced context.'}`).join('\n');
     used_ids = context.slice(0, 3).map(c => c.id);
     confidence = 45;
     limitations = ['Extractive fallback used because the AI response was ungrounded or unavailable.', 'Not financial, legal, tax or investment advice.'];
   } else {
     answer = ai.answer;
-    used_ids = ai.used_ids.filter(id => contextIds.has(id));
+    used_ids = aiUsedIds.filter(id => contextIds.has(id));
     confidence = Math.max(0, Math.min(100, ai.confidence));
     limitations = ai.limitations.length ? ai.limitations : ['Answer limited to stored market update summaries and citations; not financial, legal, tax or investment advice.'];
     follow_up_questions = ai.follow_up_questions;
-    key_figures = ai.key_figures.filter(k => !k.source_id || contextIds.has(k.source_id));
+    key_figures = aiKeyFigures.filter(k => !k.source_id || contextIds.has(k.source_id));
     time_horizon = ai.time_horizon;
     sentiment = ai.sentiment;
   }
