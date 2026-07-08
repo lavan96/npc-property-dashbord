@@ -261,6 +261,22 @@ export function GoldenRegressionRunConsole({
               <Switch id="persistExportParity" checked={form.persistExportParity} disabled={!form.runExportParity}
                 onCheckedChange={(v) => setBool('persistExportParity', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="buildImportIntelligenceProfile" className="text-sm">Build import intelligence profile</Label>
+                <p className="text-xs text-muted-foreground">Deterministically classifies document type, complexity, and risk. Read-only unless persistence is enabled.</p>
+              </div>
+              <Switch id="buildImportIntelligenceProfile" checked={form.buildImportIntelligenceProfile}
+                onCheckedChange={(v) => setBool('buildImportIntelligenceProfile', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistImportIntelligenceProfile" className="text-sm">Persist import intelligence profile</Label>
+                <p className="text-xs text-muted-foreground">Stores a safe structured profile in <code>template_imports.meta.import_intelligence_profile</code> (only when persisting the run). Does not store raw PDF contents.</p>
+              </div>
+              <Switch id="persistImportIntelligenceProfile" checked={form.persistImportIntelligenceProfile} disabled={!form.buildImportIntelligenceProfile}
+                onCheckedChange={(v) => setBool('persistImportIntelligenceProfile', v)} />
+            </div>
           </div>
 
           {corpusItem && (
@@ -384,7 +400,14 @@ export function GoldenRegressionRunConsole({
               <code className="mx-1">template_imports.meta.golden_regression_summary</code>
               and{form.saveHistory ? ' also append a history row to ' : ' (history saving is off, so it will NOT write to) '}
               <code className="mx-1">pdf_import_golden_runs</code>
-              for the selected import. Failing or blocked results may be persisted as evidence. Continue?
+              for the selected import. Failing or blocked results may be persisted as evidence.
+              {form.buildImportIntelligenceProfile && form.persistImportIntelligenceProfile && (
+                <span className="block mt-2">
+                  This will also save the <code className="mx-1">import_intelligence_profile</code> metadata for this import.
+                  It does not store raw PDF text or PDF files.
+                </span>
+              )}
+              {' '}Continue?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

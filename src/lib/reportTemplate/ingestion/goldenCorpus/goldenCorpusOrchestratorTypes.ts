@@ -24,6 +24,10 @@ import type {
   SaveGoldenRunHistoryResult,
 } from './goldenRunHistoryTypes';
 import type { ExportParityRunnerResult } from '../exportParity/exportParityRunnerTypes';
+import type {
+  ImportIntelligenceProfile,
+  SaveImportIntelligenceProfileResult,
+} from '../importIntelligence/importIntelligenceTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -47,7 +51,9 @@ export type GoldenCorpusOrchestratorStepId =
   | 'load_baseline'
   | 'compare_baseline'
   | 'persist_summary'
-  | 'save_history';
+  | 'save_history'
+  | 'build_import_intelligence_profile'
+  | 'persist_import_intelligence_profile';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -88,6 +94,14 @@ export interface GoldenCorpusOrchestratorRequest {
    * becomes the next baseline).
    */
   compareBaseline?: boolean;
+  /** Phase 10B — build the deterministic import intelligence profile. Off by default. */
+  buildImportIntelligenceProfile?: boolean;
+  /**
+   * Phase 10B — persist the import intelligence profile to
+   * template_imports.meta.import_intelligence_profile. Off by default; requires
+   * buildImportIntelligenceProfile and an importId. Read-only otherwise.
+   */
+  persistImportIntelligenceProfile?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -124,6 +138,10 @@ export interface GoldenCorpusOrchestratorResult {
   historyPersistenceResult: SaveGoldenRunHistoryResult | null;
   historyRecord: GoldenRunHistoryRecord | null;
   historySaved: boolean;
+
+  // Phase 10B — import intelligence profile.
+  importIntelligenceProfile: ImportIntelligenceProfile | null;
+  importIntelligencePersistenceResult: SaveImportIntelligenceProfileResult | null;
 
   warnings: string[];
   failures: string[];

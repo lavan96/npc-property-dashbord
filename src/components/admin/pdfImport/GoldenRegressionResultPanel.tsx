@@ -17,6 +17,7 @@ import {
   type GoldenRunMetricComparison,
 } from '@/lib/reportTemplate/ingestion/goldenCorpus';
 import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
+import { ImportIntelligenceProfilePanel } from './ImportIntelligenceProfilePanel';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -230,6 +231,25 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
           )}
         </CardContent>
       </Card>
+
+      <div className="space-y-2">
+        <ImportIntelligenceProfilePanel profile={result.importIntelligenceProfile} />
+        {result.importIntelligencePersistenceResult && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Import intelligence persistence</CardTitle></CardHeader>
+            <CardContent className="pt-0">
+              <Row label="Result">
+                <Badge variant={result.importIntelligencePersistenceResult.kind === 'ok' ? 'default' : 'destructive'}>
+                  {result.importIntelligencePersistenceResult.kind}
+                </Badge>
+              </Row>
+              {result.importIntelligencePersistenceResult.kind === 'error' && (
+                <p className="text-xs text-destructive break-all">{result.importIntelligencePersistenceResult.message}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Export parity automation</CardTitle></CardHeader>
