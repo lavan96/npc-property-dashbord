@@ -18,6 +18,7 @@ import {
 } from '@/lib/reportTemplate/ingestion/goldenCorpus';
 import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 import { ImportIntelligenceProfilePanel } from './ImportIntelligenceProfilePanel';
+import { RepairPatternAnalysisPanel } from './RepairPatternAnalysisPanel';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -245,6 +246,25 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
               </Row>
               {result.importIntelligencePersistenceResult.kind === 'error' && (
                 <p className="text-xs text-destructive break-all">{result.importIntelligencePersistenceResult.message}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <RepairPatternAnalysisPanel analysis={result.repairPatternAnalysis} />
+        {result.repairPatternPersistenceResult && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Repair pattern persistence</CardTitle></CardHeader>
+            <CardContent className="pt-0">
+              <Row label="Result">
+                <Badge variant={result.repairPatternPersistenceResult.kind === 'ok' ? 'default' : 'destructive'}>
+                  {result.repairPatternPersistenceResult.kind}
+                </Badge>
+              </Row>
+              {result.repairPatternPersistenceResult.kind === 'error' && (
+                <p className="text-xs text-destructive break-all">{result.repairPatternPersistenceResult.message}</p>
               )}
             </CardContent>
           </Card>

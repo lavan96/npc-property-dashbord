@@ -277,6 +277,22 @@ export function GoldenRegressionRunConsole({
               <Switch id="persistImportIntelligenceProfile" checked={form.persistImportIntelligenceProfile} disabled={!form.buildImportIntelligenceProfile}
                 onCheckedChange={(v) => setBool('persistImportIntelligenceProfile', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="buildRepairPatternAnalysis" className="text-sm">Build repair pattern analysis</Label>
+                <p className="text-xs text-muted-foreground">Deterministically classifies repair issues into known patterns. Read-only and advisory; never applies repairs.</p>
+              </div>
+              <Switch id="buildRepairPatternAnalysis" checked={form.buildRepairPatternAnalysis}
+                onCheckedChange={(v) => setBool('buildRepairPatternAnalysis', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistRepairPatternAnalysis" className="text-sm">Persist repair pattern analysis</Label>
+                <p className="text-xs text-muted-foreground">Stores safe structured repair pattern metadata in <code>template_imports.meta.repair_pattern_analysis</code> (only when persisting the run). Does not apply repairs or mutate templates.</p>
+              </div>
+              <Switch id="persistRepairPatternAnalysis" checked={form.persistRepairPatternAnalysis} disabled={!form.buildRepairPatternAnalysis}
+                onCheckedChange={(v) => setBool('persistRepairPatternAnalysis', v)} />
+            </div>
           </div>
 
           {corpusItem && (
@@ -405,6 +421,11 @@ export function GoldenRegressionRunConsole({
                 <span className="block mt-2">
                   This will also save the <code className="mx-1">import_intelligence_profile</code> metadata for this import.
                   It does not store raw PDF text or PDF files.
+                </span>
+              )}
+              {form.buildRepairPatternAnalysis && form.persistRepairPatternAnalysis && (
+                <span className="block mt-2">
+                  This will also save <code className="mx-1">repair_pattern_analysis</code> metadata. It does not apply repair changes.
                 </span>
               )}
               {' '}Continue?
