@@ -102,7 +102,7 @@ Citations: ${cites.join(' ')}`;
 STRICT RULES:
 1. Answer ONLY from the numbered CONTEXT items below. Never use outside knowledge, memory, or assumptions.
 2. If the CONTEXT does not contain enough grounded evidence to answer, respond with EXACTLY: "${REFUSAL}" and set used_ids to [].
-3. Cite the update ids you relied on in used_ids. Do not fabricate ids.
+3. Cite the update ids you relied on in used_ids. IMPORTANT: used_ids MUST contain the raw id value shown after "id=" in each context item — never the "[[N]]" display marker, never the title, never a shortened form. Copy the id string verbatim. Do not fabricate ids.
 4. Never give personal financial, tax, legal or investment advice. Attribute claims to their source.
 5. Keep the main answer under 260 words, plain Australian English, factual, quantitative where the sources support it.
 6. Extract concrete numbers (rates, percentages, prices, volumes, dates) into key_figures with the source id.
