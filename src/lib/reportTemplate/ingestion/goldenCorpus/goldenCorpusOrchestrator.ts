@@ -19,6 +19,10 @@ import {
 } from './goldenRunHistoryPersistence';
 import { compareGoldenRunToBaseline } from './goldenRunBaselineComparison';
 import { runExportParityAutomation } from '../exportParity/exportParityRunner';
+import {
+  buildImportIntelligenceProfile,
+  saveImportIntelligenceProfile,
+} from '../importIntelligence';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -58,6 +62,8 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   compare_baseline: 'Compare to baseline',
   persist_summary: 'Persist regression summary',
   save_history: 'Save run history',
+  build_import_intelligence_profile: 'Build import intelligence profile',
+  persist_import_intelligence_profile: 'Persist import intelligence profile',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -147,6 +153,8 @@ function baseResult(
     historyPersistenceResult: null,
     historyRecord: null,
     historySaved: false,
+    importIntelligenceProfile: null,
+    importIntelligencePersistenceResult: null,
     warnings: [],
     failures: [],
     generatedAt,
@@ -525,6 +533,86 @@ async function applySaveHistoryPhase(
 }
 
 /**
+ * Phase 10B phase (async-only): builds the deterministic import intelligence
+ * profile from the snapshot and optionally persists it via `append_meta`. The
+ * build step is inserted after `run_export_parity`; the persist step is appended
+ * at the end. Non-gating: a build/persist problem only adds a warning — it never
+ * invalidates the golden regression result.
+ */
+async function applyImportIntelligencePhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  snapshot: GoldenCorpusImportQualitySnapshot,
+  now: () => Date,
+): Promise<void> {
+  const insertBuild = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = insertAfterStep(result.steps, 'run_export_parity', step);
+  };
+  const appendPersist = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = [...result.steps, step];
+  };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  if (request.buildImportIntelligenceProfile !== true) {
+    insertBuild(skippedStep('build_import_intelligence_profile', 'Import intelligence profile not requested.'));
+    appendPersist(skippedStep('persist_import_intelligence_profile', 'Import intelligence profile not requested.'));
+    return;
+  }
+
+  let profile;
+  try {
+    profile = buildImportIntelligenceProfile({
+      importId: result.importId ?? request.importId,
+      templateId: result.templateId ?? request.templateId ?? snapshot.templateId,
+      sourceFilename: request.sourceFilename ?? snapshot.sourceFilename,
+      snapshot,
+      goldenRegressionSummary: result.goldenRegressionSummary ?? undefined,
+      now,
+    });
+  } catch (err) {
+    result.importIntelligenceProfile = null;
+    insertBuild(createGoldenCorpusOrchestratorStep('build_import_intelligence_profile', 'fail', (err as Error).message));
+    appendPersist(skippedStep('persist_import_intelligence_profile', 'Profile unavailable (build failed).'));
+    addWarning('import_intelligence_build_failed');
+    return;
+  }
+
+  result.importIntelligenceProfile = profile;
+  const buildStepStatus: GoldenCorpusOrchestratorStepStatus =
+    profile.blockers.length > 0 || profile.warnings.length > 0 ? 'warning' : 'pass';
+  insertBuild(createGoldenCorpusOrchestratorStep(
+    'build_import_intelligence_profile',
+    buildStepStatus,
+    `Import profile: ${profile.profileCategory} (${profile.riskLevel}).`,
+    { category: profile.profileCategory, riskLevel: profile.riskLevel, blockers: profile.blockers },
+  ));
+
+  if (request.persistImportIntelligenceProfile !== true) {
+    appendPersist(skippedStep('persist_import_intelligence_profile', 'Persistence not requested.'));
+    return;
+  }
+
+  const importId = (result.importId ?? '').trim();
+  if (!importId) {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_import_intelligence_profile', 'warning', 'No importId to persist the profile.'));
+    addWarning('import_intelligence_persist_skipped_no_import_id');
+    return;
+  }
+
+  const saveRes = await saveImportIntelligenceProfile(importId, profile);
+  result.importIntelligencePersistenceResult = saveRes;
+  if (saveRes.kind === 'ok') {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_import_intelligence_profile', 'pass', 'Import intelligence profile persisted.'));
+  } else {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_import_intelligence_profile', 'fail', saveRes.message));
+    addWarning('import_intelligence_persistence_failed');
+  }
+}
+
+/**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
  */
@@ -660,6 +748,9 @@ export async function orchestrateGoldenCorpusRun(
   if (wantSaveHistory) {
     await applySaveHistoryPhase(pure);
   }
+
+  // Phase 10B — optional import intelligence profile build/persist. Non-gating.
+  await applyImportIntelligencePhase(pure, request, snapshot, now);
 
   // A clean run that only accrued baseline warnings drops to completed_with_warnings.
   if (pure.status === 'completed' && pure.warnings.length > 0) {

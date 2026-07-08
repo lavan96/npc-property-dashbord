@@ -31,6 +31,10 @@ export interface GoldenCorpusConsoleFormState {
   runExportParity: boolean;
   /** Phase 9D — persist the export parity summary the runner produces. */
   persistExportParity: boolean;
+  /** Phase 10B — build the deterministic import intelligence profile. */
+  buildImportIntelligenceProfile: boolean;
+  /** Phase 10B — persist the import intelligence profile (only when persisting). */
+  persistImportIntelligenceProfile: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -68,6 +72,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     compareBaseline: true,
     runExportParity: false,
     persistExportParity: true,
+    buildImportIntelligenceProfile: true,
+    persistImportIntelligenceProfile: true,
     ...overrides,
   };
 }
@@ -110,6 +116,10 @@ export function validateGoldenCorpusConsoleForm(
     warn('persistExportParity', 'export_parity_persist_without_run', 'Persist export parity has no effect unless export parity automation is enabled.');
   }
 
+  if (form.persistImportIntelligenceProfile && !form.buildImportIntelligenceProfile) {
+    warn('persistImportIntelligenceProfile', 'import_intelligence_persist_without_build', 'Persist import intelligence profile has no effect unless profile building is enabled.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -148,6 +158,11 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     // runner is enabled (and, being a write, respects the runner toggle only).
     runExportParity: form.runExportParity,
     persistExportParity: form.runExportParity && form.persistExportParity,
+    // Phase 10B — building the profile is read-only and can run in either mode;
+    // persistence only when explicitly persisting the run.
+    buildImportIntelligenceProfile: form.buildImportIntelligenceProfile,
+    persistImportIntelligenceProfile:
+      mode === 'evaluate_and_persist' && form.buildImportIntelligenceProfile && form.persistImportIntelligenceProfile,
   };
 }
 

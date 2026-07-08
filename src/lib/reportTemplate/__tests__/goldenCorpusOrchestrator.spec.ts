@@ -14,6 +14,7 @@ import {
   saveGoldenRunHistory,
 } from '@/lib/reportTemplate/ingestion/goldenCorpus/goldenRunHistoryPersistence';
 import { runExportParityAutomation } from '@/lib/reportTemplate/ingestion/exportParity/exportParityRunner';
+import { saveImportIntelligenceProfile } from '@/lib/reportTemplate/ingestion/importIntelligence';
 
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
@@ -30,6 +31,12 @@ vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenRunHistoryPersistence
 vi.mock('@/lib/reportTemplate/ingestion/exportParity/exportParityRunner', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/exportParity/exportParityRunner')>();
   return { ...actual, runExportParityAutomation: vi.fn() };
+});
+// Phase 10B — keep the real deterministic profile builder; only the network
+// persistence is mocked.
+vi.mock('@/lib/reportTemplate/ingestion/importIntelligence', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/importIntelligence')>();
+  return { ...actual, saveImportIntelligenceProfile: vi.fn() };
 });
 
 const NOW = () => new Date('2026-07-04T00:00:00.000Z');
@@ -471,5 +478,84 @@ describe('orchestrateGoldenCorpusRun (Phase 9D export parity)', () => {
     expect(runExportParityAutomation).toHaveBeenCalledWith(expect.objectContaining({
       input: expect.objectContaining({ persist: false }),
     }));
+  });
+});
+
+describe('orchestrateGoldenCorpusRun (Phase 10B import intelligence)', () => {
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+    vi.mocked(saveImportIntelligenceProfile).mockReset();
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+    vi.mocked(saveImportIntelligenceProfile).mockResolvedValue({ kind: 'ok' });
+  });
+
+  it('skips the profile step when not requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(stepOf(result, 'build_import_intelligence_profile')?.status).toBe('skipped');
+    expect(result.importIntelligenceProfile).toBeNull();
+    expect(saveImportIntelligenceProfile).not.toHaveBeenCalled();
+  });
+
+  it('builds the profile when requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildImportIntelligenceProfile: true }), now: NOW,
+    });
+    expect(result.importIntelligenceProfile).not.toBeNull();
+    expect(result.importIntelligenceProfile?.profileCategory).toBeTruthy();
+    expect(stepOf(result, 'build_import_intelligence_profile')?.status).not.toBe('skipped');
+  });
+
+  it('does not persist the profile when persist flag is off', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildImportIntelligenceProfile: true, persistImportIntelligenceProfile: false }), now: NOW,
+    });
+    expect(saveImportIntelligenceProfile).not.toHaveBeenCalled();
+    expect(stepOf(result, 'persist_import_intelligence_profile')?.status).toBe('skipped');
+  });
+
+  it('persists the profile when requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildImportIntelligenceProfile: true, persistImportIntelligenceProfile: true }), now: NOW,
+    });
+    expect(saveImportIntelligenceProfile).toHaveBeenCalledTimes(1);
+    expect(result.importIntelligencePersistenceResult?.kind).toBe('ok');
+    expect(stepOf(result, 'persist_import_intelligence_profile')?.status).toBe('pass');
+  });
+
+  it('adds a warning when profile persistence fails but does not fail the run', async () => {
+    vi.mocked(saveImportIntelligenceProfile).mockResolvedValue({ kind: 'error', message: 'db down' });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildImportIntelligenceProfile: true, persistImportIntelligenceProfile: true }), now: NOW,
+    });
+    expect(result.warnings).toContain('import_intelligence_persistence_failed');
+    expect(result.status).not.toBe('failed');
+    expect(stepOf(result, 'persist_import_intelligence_profile')?.status).toBe('fail');
+  });
+
+  it('evaluate_only with profile build but no persist remains read-only', async () => {
+    await orchestrateGoldenCorpusRun({
+      request: req({ persist: false, buildImportIntelligenceProfile: true }), now: NOW,
+    });
+    expect(saveGoldenRegressionSummary).not.toHaveBeenCalled();
+    expect(saveImportIntelligenceProfile).not.toHaveBeenCalled();
+  });
+
+  it('does not persist the profile when importId is missing', async () => {
+    // importId '' short-circuits before snapshot load; profile persistence never runs.
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ importId: '', buildImportIntelligenceProfile: true, persistImportIntelligenceProfile: true }), now: NOW,
+    });
+    expect(saveImportIntelligenceProfile).not.toHaveBeenCalled();
+    expect(result.importIntelligenceProfile).toBeNull();
+  });
+
+  it('profile blockers do not crash the orchestrator', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildImportIntelligenceProfile: true }), now: NOW,
+    });
+    expect(result.version).toBeTruthy();
+    expect(result.steps.length).toBeGreaterThan(0);
   });
 });
