@@ -23,6 +23,10 @@ import {
   buildImportIntelligenceProfile,
   saveImportIntelligenceProfile,
 } from '../importIntelligence';
+import {
+  buildRepairPatternAnalysis,
+  saveRepairPatternAnalysis,
+} from '../repairPatterns';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -64,6 +68,8 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   save_history: 'Save run history',
   build_import_intelligence_profile: 'Build import intelligence profile',
   persist_import_intelligence_profile: 'Persist import intelligence profile',
+  build_repair_pattern_analysis: 'Build repair pattern analysis',
+  persist_repair_pattern_analysis: 'Persist repair pattern analysis',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -155,6 +161,8 @@ function baseResult(
     historySaved: false,
     importIntelligenceProfile: null,
     importIntelligencePersistenceResult: null,
+    repairPatternAnalysis: null,
+    repairPatternPersistenceResult: null,
     warnings: [],
     failures: [],
     generatedAt,
@@ -613,6 +621,96 @@ async function applyImportIntelligencePhase(
 }
 
 /**
+ * Phase 10C phase (async-only): builds the deterministic repair pattern analysis
+ * from the snapshot, import intelligence profile, and quality-gate/triage output,
+ * and optionally persists it via `append_meta`. The build step is inserted after
+ * `build_import_intelligence_profile`; the persist step is appended at the end.
+ * Advisory and non-gating: a problem only adds a warning, never applies repairs.
+ */
+async function applyRepairPatternPhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  snapshot: GoldenCorpusImportQualitySnapshot,
+  now: () => Date,
+): Promise<void> {
+  const insertBuild = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = insertAfterStep(result.steps, 'build_import_intelligence_profile', step);
+  };
+  const appendPersist = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = [...result.steps, step];
+  };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  if (request.buildRepairPatternAnalysis !== true) {
+    insertBuild(skippedStep('build_repair_pattern_analysis', 'Repair pattern analysis not requested.'));
+    appendPersist(skippedStep('persist_repair_pattern_analysis', 'Repair pattern analysis not requested.'));
+    return;
+  }
+
+  let analysis;
+  try {
+    analysis = buildRepairPatternAnalysis({
+      importId: result.importId ?? request.importId,
+      templateId: result.templateId ?? request.templateId ?? snapshot.templateId,
+      sourceFilename: request.sourceFilename ?? snapshot.sourceFilename,
+      snapshot,
+      importIntelligenceProfile: result.importIntelligenceProfile,
+      goldenRegressionSummary: result.goldenRegressionSummary ?? undefined,
+      qualityGateReport: result.qualityGateReport ?? undefined,
+      triageSummary: result.triageSummary ?? undefined,
+      now,
+    });
+  } catch (err) {
+    result.repairPatternAnalysis = null;
+    insertBuild(createGoldenCorpusOrchestratorStep('build_repair_pattern_analysis', 'fail', (err as Error).message));
+    appendPersist(skippedStep('persist_repair_pattern_analysis', 'Analysis unavailable (build failed).'));
+    addWarning('repair_pattern_build_failed');
+    return;
+  }
+
+  result.repairPatternAnalysis = analysis;
+  const buildStepStatus: GoldenCorpusOrchestratorStepStatus =
+    analysis.blockers.length > 0 || analysis.matchedPatterns.length === 0 || analysis.warnings.length > 0
+      ? 'warning'
+      : 'pass';
+  insertBuild(createGoldenCorpusOrchestratorStep(
+    'build_repair_pattern_analysis',
+    buildStepStatus,
+    `Repair patterns: ${analysis.primaryPatternId ?? 'none'} (${analysis.overallSeverity}).`,
+    {
+      primaryPatternId: analysis.primaryPatternId,
+      overallSeverity: analysis.overallSeverity,
+      deterministicRepairStrategy: analysis.deterministicRepairStrategy,
+      matchedCount: analysis.matchedPatterns.length,
+    },
+  ));
+
+  if (request.persistRepairPatternAnalysis !== true) {
+    appendPersist(skippedStep('persist_repair_pattern_analysis', 'Persistence not requested.'));
+    return;
+  }
+
+  const importId = (result.importId ?? '').trim();
+  if (!importId) {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_repair_pattern_analysis', 'warning', 'No importId to persist the analysis.'));
+    addWarning('repair_pattern_persist_skipped_no_import_id');
+    return;
+  }
+
+  const saveRes = await saveRepairPatternAnalysis(importId, analysis);
+  result.repairPatternPersistenceResult = saveRes;
+  if (saveRes.kind === 'ok') {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_repair_pattern_analysis', 'pass', 'Repair pattern analysis persisted.'));
+  } else {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_repair_pattern_analysis', 'fail', saveRes.message));
+    addWarning('repair_pattern_persistence_failed');
+  }
+}
+
+/**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
  */
@@ -751,6 +849,9 @@ export async function orchestrateGoldenCorpusRun(
 
   // Phase 10B — optional import intelligence profile build/persist. Non-gating.
   await applyImportIntelligencePhase(pure, request, snapshot, now);
+
+  // Phase 10C — optional repair pattern analysis build/persist. Advisory, non-gating.
+  await applyRepairPatternPhase(pure, request, snapshot, now);
 
   // A clean run that only accrued baseline warnings drops to completed_with_warnings.
   if (pure.status === 'completed' && pure.warnings.length > 0) {
