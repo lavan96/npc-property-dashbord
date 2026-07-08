@@ -28,6 +28,10 @@ import type {
   ImportIntelligenceProfile,
   SaveImportIntelligenceProfileResult,
 } from '../importIntelligence/importIntelligenceTypes';
+import type {
+  RepairPatternAnalysis,
+  SaveRepairPatternAnalysisResult,
+} from '../repairPatterns/repairPatternTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -53,7 +57,9 @@ export type GoldenCorpusOrchestratorStepId =
   | 'persist_summary'
   | 'save_history'
   | 'build_import_intelligence_profile'
-  | 'persist_import_intelligence_profile';
+  | 'persist_import_intelligence_profile'
+  | 'build_repair_pattern_analysis'
+  | 'persist_repair_pattern_analysis';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -102,6 +108,14 @@ export interface GoldenCorpusOrchestratorRequest {
    * buildImportIntelligenceProfile and an importId. Read-only otherwise.
    */
   persistImportIntelligenceProfile?: boolean;
+  /** Phase 10C — build the deterministic repair pattern analysis. Off by default. */
+  buildRepairPatternAnalysis?: boolean;
+  /**
+   * Phase 10C — persist the repair pattern analysis to
+   * template_imports.meta.repair_pattern_analysis. Off by default; requires
+   * buildRepairPatternAnalysis and an importId. Advisory; never applies repairs.
+   */
+  persistRepairPatternAnalysis?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -142,6 +156,10 @@ export interface GoldenCorpusOrchestratorResult {
   // Phase 10B — import intelligence profile.
   importIntelligenceProfile: ImportIntelligenceProfile | null;
   importIntelligencePersistenceResult: SaveImportIntelligenceProfileResult | null;
+
+  // Phase 10C — repair pattern analysis.
+  repairPatternAnalysis: RepairPatternAnalysis | null;
+  repairPatternPersistenceResult: SaveRepairPatternAnalysisResult | null;
 
   warnings: string[];
   failures: string[];

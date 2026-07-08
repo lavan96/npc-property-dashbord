@@ -35,6 +35,10 @@ export interface GoldenCorpusConsoleFormState {
   buildImportIntelligenceProfile: boolean;
   /** Phase 10B — persist the import intelligence profile (only when persisting). */
   persistImportIntelligenceProfile: boolean;
+  /** Phase 10C — build the deterministic repair pattern analysis. */
+  buildRepairPatternAnalysis: boolean;
+  /** Phase 10C — persist the repair pattern analysis (only when persisting). */
+  persistRepairPatternAnalysis: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -74,6 +78,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     persistExportParity: true,
     buildImportIntelligenceProfile: true,
     persistImportIntelligenceProfile: true,
+    buildRepairPatternAnalysis: true,
+    persistRepairPatternAnalysis: true,
     ...overrides,
   };
 }
@@ -120,6 +126,10 @@ export function validateGoldenCorpusConsoleForm(
     warn('persistImportIntelligenceProfile', 'import_intelligence_persist_without_build', 'Persist import intelligence profile has no effect unless profile building is enabled.');
   }
 
+  if (form.persistRepairPatternAnalysis && !form.buildRepairPatternAnalysis) {
+    warn('persistRepairPatternAnalysis', 'repair_pattern_persist_without_build', 'Persist repair pattern analysis has no effect unless analysis building is enabled.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -163,6 +173,10 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     buildImportIntelligenceProfile: form.buildImportIntelligenceProfile,
     persistImportIntelligenceProfile:
       mode === 'evaluate_and_persist' && form.buildImportIntelligenceProfile && form.persistImportIntelligenceProfile,
+    // Phase 10C — advisory analysis; read-only build, persist only when persisting.
+    buildRepairPatternAnalysis: form.buildRepairPatternAnalysis,
+    persistRepairPatternAnalysis:
+      mode === 'evaluate_and_persist' && form.buildRepairPatternAnalysis && form.persistRepairPatternAnalysis,
   };
 }
 
