@@ -39,6 +39,10 @@ export interface GoldenCorpusConsoleFormState {
   buildRepairPatternAnalysis: boolean;
   /** Phase 10C — persist the repair pattern analysis (only when persisting). */
   persistRepairPatternAnalysis: boolean;
+  /** Phase 10D — build the deterministic adaptive reconciliation policy. */
+  buildAdaptiveReconciliationPolicy: boolean;
+  /** Phase 10D — persist the adaptive reconciliation policy (only when persisting). */
+  persistAdaptiveReconciliationPolicy: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -80,6 +84,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     persistImportIntelligenceProfile: true,
     buildRepairPatternAnalysis: true,
     persistRepairPatternAnalysis: true,
+    buildAdaptiveReconciliationPolicy: true,
+    persistAdaptiveReconciliationPolicy: true,
     ...overrides,
   };
 }
@@ -130,6 +136,10 @@ export function validateGoldenCorpusConsoleForm(
     warn('persistRepairPatternAnalysis', 'repair_pattern_persist_without_build', 'Persist repair pattern analysis has no effect unless analysis building is enabled.');
   }
 
+  if (form.persistAdaptiveReconciliationPolicy && !form.buildAdaptiveReconciliationPolicy) {
+    warn('persistAdaptiveReconciliationPolicy', 'adaptive_reconciliation_persist_without_build', 'Persist adaptive reconciliation policy has no effect unless policy building is enabled.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -177,6 +187,10 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     buildRepairPatternAnalysis: form.buildRepairPatternAnalysis,
     persistRepairPatternAnalysis:
       mode === 'evaluate_and_persist' && form.buildRepairPatternAnalysis && form.persistRepairPatternAnalysis,
+    // Phase 10D — governance policy; read-only build, persist only when persisting.
+    buildAdaptiveReconciliationPolicy: form.buildAdaptiveReconciliationPolicy,
+    persistAdaptiveReconciliationPolicy:
+      mode === 'evaluate_and_persist' && form.buildAdaptiveReconciliationPolicy && form.persistAdaptiveReconciliationPolicy,
   };
 }
 

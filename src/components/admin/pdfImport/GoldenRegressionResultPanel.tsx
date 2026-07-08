@@ -19,6 +19,7 @@ import {
 import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 import { ImportIntelligenceProfilePanel } from './ImportIntelligenceProfilePanel';
 import { RepairPatternAnalysisPanel } from './RepairPatternAnalysisPanel';
+import { AdaptiveReconciliationPolicyPanel } from './AdaptiveReconciliationPolicyPanel';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -265,6 +266,25 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
               </Row>
               {result.repairPatternPersistenceResult.kind === 'error' && (
                 <p className="text-xs text-destructive break-all">{result.repairPatternPersistenceResult.message}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <AdaptiveReconciliationPolicyPanel policy={result.adaptiveReconciliationPolicy} />
+        {result.adaptiveReconciliationPolicyPersistenceResult && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Adaptive reconciliation persistence</CardTitle></CardHeader>
+            <CardContent className="pt-0">
+              <Row label="Result">
+                <Badge variant={result.adaptiveReconciliationPolicyPersistenceResult.kind === 'ok' ? 'default' : 'destructive'}>
+                  {result.adaptiveReconciliationPolicyPersistenceResult.kind}
+                </Badge>
+              </Row>
+              {result.adaptiveReconciliationPolicyPersistenceResult.kind === 'error' && (
+                <p className="text-xs text-destructive break-all">{result.adaptiveReconciliationPolicyPersistenceResult.message}</p>
               )}
             </CardContent>
           </Card>

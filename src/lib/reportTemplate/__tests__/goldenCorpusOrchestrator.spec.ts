@@ -16,6 +16,7 @@ import {
 import { runExportParityAutomation } from '@/lib/reportTemplate/ingestion/exportParity/exportParityRunner';
 import { saveImportIntelligenceProfile } from '@/lib/reportTemplate/ingestion/importIntelligence';
 import { saveRepairPatternAnalysis } from '@/lib/reportTemplate/ingestion/repairPatterns';
+import { saveAdaptiveReconciliationPolicy } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
@@ -43,6 +44,11 @@ vi.mock('@/lib/reportTemplate/ingestion/importIntelligence', async (orig) => {
 vi.mock('@/lib/reportTemplate/ingestion/repairPatterns', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/repairPatterns')>();
   return { ...actual, saveRepairPatternAnalysis: vi.fn() };
+});
+// Phase 10D — keep the real deterministic policy builder; only mock persistence.
+vi.mock('@/lib/reportTemplate/ingestion/reconciliation', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/reconciliation')>();
+  return { ...actual, saveAdaptiveReconciliationPolicy: vi.fn() };
 });
 
 const NOW = () => new Date('2026-07-04T00:00:00.000Z');
@@ -670,5 +676,104 @@ describe('orchestrateGoldenCorpusRun (Phase 10C repair patterns)', () => {
     });
     // With the default clean snapshot no table pattern is expected; assert the analysis exists.
     expect(result.repairPatternAnalysis).not.toBeNull();
+  });
+});
+
+describe('orchestrateGoldenCorpusRun (Phase 10D adaptive reconciliation)', () => {
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+    vi.mocked(saveAdaptiveReconciliationPolicy).mockReset();
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+    vi.mocked(saveAdaptiveReconciliationPolicy).mockResolvedValue({ kind: 'ok' });
+  });
+
+  it('skips the policy step when not requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(stepOf(result, 'build_adaptive_reconciliation_policy')?.status).toBe('skipped');
+    expect(result.adaptiveReconciliationPolicy).toBeNull();
+    expect(saveAdaptiveReconciliationPolicy).not.toHaveBeenCalled();
+  });
+
+  it('builds the policy when requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(result.adaptiveReconciliationPolicy).not.toBeNull();
+    expect(result.adaptiveReconciliationPolicy?.decision).toBeTruthy();
+    expect(stepOf(result, 'build_adaptive_reconciliation_policy')?.status).not.toBe('skipped');
+  });
+
+  it('attaches the policy result to the orchestrator result', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(result.adaptiveReconciliationPolicy?.version).toBeTruthy();
+    expect(result.adaptiveReconciliationPolicy?.flags).toBeTruthy();
+  });
+
+  it('does not persist the policy when persist flag is off', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildAdaptiveReconciliationPolicy: true, persistAdaptiveReconciliationPolicy: false }), now: NOW,
+    });
+    expect(saveAdaptiveReconciliationPolicy).not.toHaveBeenCalled();
+    expect(stepOf(result, 'persist_adaptive_reconciliation_policy')?.status).toBe('skipped');
+  });
+
+  it('persists the policy when requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildAdaptiveReconciliationPolicy: true, persistAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(saveAdaptiveReconciliationPolicy).toHaveBeenCalledTimes(1);
+    expect(result.adaptiveReconciliationPolicyPersistenceResult?.kind).toBe('ok');
+    expect(stepOf(result, 'persist_adaptive_reconciliation_policy')?.status).toBe('pass');
+  });
+
+  it('adds a warning when policy persistence fails but does not fail the run', async () => {
+    vi.mocked(saveAdaptiveReconciliationPolicy).mockResolvedValue({ kind: 'error', message: 'db down' });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildAdaptiveReconciliationPolicy: true, persistAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(result.warnings).toContain('adaptive_reconciliation_policy_persistence_failed');
+    expect(result.status).not.toBe('failed');
+    expect(stepOf(result, 'persist_adaptive_reconciliation_policy')?.status).toBe('fail');
+  });
+
+  it('evaluate_only with policy build but no persist remains read-only', async () => {
+    await orchestrateGoldenCorpusRun({
+      request: req({ persist: false, buildAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(saveGoldenRegressionSummary).not.toHaveBeenCalled();
+    expect(saveAdaptiveReconciliationPolicy).not.toHaveBeenCalled();
+  });
+
+  it('does not persist the policy when importId is missing', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ importId: '', buildAdaptiveReconciliationPolicy: true, persistAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(saveAdaptiveReconciliationPolicy).not.toHaveBeenCalled();
+    expect(result.adaptiveReconciliationPolicy).toBeNull();
+  });
+
+  it('a blocked policy does not crash the orchestrator or invoke AI', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({
+      kind: 'ok',
+      snapshot: snap({ visualQaScore: 0.4, repairStatus: 'failed', repairRequiresManualReview: true, repairRequiresFallback: true }),
+    });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildImportIntelligenceProfile: true, buildRepairPatternAnalysis: true, buildAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(result.version).toBeTruthy();
+    expect(result.adaptiveReconciliationPolicy).not.toBeNull();
+    // Governance only — no AI is invoked by the policy layer.
+    expect(saveAdaptiveReconciliationPolicy).not.toHaveBeenCalled();
+  });
+
+  it('low-risk simple import produces a not_needed policy', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildImportIntelligenceProfile: true, buildRepairPatternAnalysis: true, buildAdaptiveReconciliationPolicy: true }), now: NOW,
+    });
+    expect(result.adaptiveReconciliationPolicy?.decision).toBe('not_needed');
   });
 });

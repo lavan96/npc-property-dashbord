@@ -293,6 +293,22 @@ export function GoldenRegressionRunConsole({
               <Switch id="persistRepairPatternAnalysis" checked={form.persistRepairPatternAnalysis} disabled={!form.buildRepairPatternAnalysis}
                 onCheckedChange={(v) => setBool('persistRepairPatternAnalysis', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="buildAdaptiveReconciliationPolicy" className="text-sm">Build adaptive reconciliation policy</Label>
+                <p className="text-xs text-muted-foreground">Deterministically decides whether AI reconciliation is not needed, optional, recommended, manual-review, or blocked. It does not call AI or apply changes.</p>
+              </div>
+              <Switch id="buildAdaptiveReconciliationPolicy" checked={form.buildAdaptiveReconciliationPolicy}
+                onCheckedChange={(v) => setBool('buildAdaptiveReconciliationPolicy', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistAdaptiveReconciliationPolicy" className="text-sm">Persist adaptive reconciliation policy</Label>
+                <p className="text-xs text-muted-foreground">Stores safe structured policy metadata in <code>template_imports.meta.adaptive_reconciliation_policy</code> (only when persisting the run). It does not run AI reconciliation or apply template changes.</p>
+              </div>
+              <Switch id="persistAdaptiveReconciliationPolicy" checked={form.persistAdaptiveReconciliationPolicy} disabled={!form.buildAdaptiveReconciliationPolicy}
+                onCheckedChange={(v) => setBool('persistAdaptiveReconciliationPolicy', v)} />
+            </div>
           </div>
 
           {corpusItem && (
@@ -426,6 +442,11 @@ export function GoldenRegressionRunConsole({
               {form.buildRepairPatternAnalysis && form.persistRepairPatternAnalysis && (
                 <span className="block mt-2">
                   This will also save <code className="mx-1">repair_pattern_analysis</code> metadata. It does not apply repair changes.
+                </span>
+              )}
+              {form.buildAdaptiveReconciliationPolicy && form.persistAdaptiveReconciliationPolicy && (
+                <span className="block mt-2">
+                  This will also save <code className="mx-1">adaptive_reconciliation_policy</code> metadata. It does not call AI and does not apply reconciliation changes.
                 </span>
               )}
               {' '}Continue?

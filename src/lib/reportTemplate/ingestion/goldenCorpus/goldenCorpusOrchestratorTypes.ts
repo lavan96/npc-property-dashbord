@@ -32,6 +32,10 @@ import type {
   RepairPatternAnalysis,
   SaveRepairPatternAnalysisResult,
 } from '../repairPatterns/repairPatternTypes';
+import type {
+  AdaptiveReconciliationPolicy,
+  SaveAdaptiveReconciliationPolicyResult,
+} from '../reconciliation/adaptiveReconciliationTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -59,7 +63,9 @@ export type GoldenCorpusOrchestratorStepId =
   | 'build_import_intelligence_profile'
   | 'persist_import_intelligence_profile'
   | 'build_repair_pattern_analysis'
-  | 'persist_repair_pattern_analysis';
+  | 'persist_repair_pattern_analysis'
+  | 'build_adaptive_reconciliation_policy'
+  | 'persist_adaptive_reconciliation_policy';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -116,6 +122,15 @@ export interface GoldenCorpusOrchestratorRequest {
    * buildRepairPatternAnalysis and an importId. Advisory; never applies repairs.
    */
   persistRepairPatternAnalysis?: boolean;
+  /** Phase 10D — build the deterministic adaptive reconciliation policy. Off by default. */
+  buildAdaptiveReconciliationPolicy?: boolean;
+  /**
+   * Phase 10D — persist the adaptive reconciliation policy to
+   * template_imports.meta.adaptive_reconciliation_policy. Off by default; requires
+   * buildAdaptiveReconciliationPolicy and an importId. Governance only; never
+   * calls AI or applies reconciliation.
+   */
+  persistAdaptiveReconciliationPolicy?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -160,6 +175,10 @@ export interface GoldenCorpusOrchestratorResult {
   // Phase 10C — repair pattern analysis.
   repairPatternAnalysis: RepairPatternAnalysis | null;
   repairPatternPersistenceResult: SaveRepairPatternAnalysisResult | null;
+
+  // Phase 10D — adaptive reconciliation policy.
+  adaptiveReconciliationPolicy: AdaptiveReconciliationPolicy | null;
+  adaptiveReconciliationPolicyPersistenceResult: SaveAdaptiveReconciliationPolicyResult | null;
 
   warnings: string[];
   failures: string[];
