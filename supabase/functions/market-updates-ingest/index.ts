@@ -217,17 +217,40 @@ Deno.serve(async (req) => {
   const auth = req.headers.get("authorization") ?? "";
   const bearer = auth.replace(/^Bearer\s+/i, "").trim();
   const apikey = req.headers.get("apikey") ?? "";
+  let authorised =
+    (secret && req.headers.get("x-cron-secret") === secret) ||
+    (serviceRoleKey && ((bearer && bearer === serviceRoleKey) || (apikey && apikey === serviceRoleKey))) ||
+    (anonKey && bearer && bearer === anonKey);
+
+  // Also allow authenticated superadmin/admin users (called from the app UI).
+  if (!authorised && bearer && bearer !== anonKey) {
+    try {
+      const authClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      const { data: userData } = await authClient.auth.getUser(bearer);
+      const uid = userData?.user?.id;
+      if (uid) {
+        const { data: roleRow } = await authClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", uid)
+          .in("role", ["superadmin", "admin"])
+          .maybeSingle();
+        if (roleRow) authorised = true;
+      }
+    } catch (e) {
+      console.warn("[auth] role check failed:", (e as Error).message);
+    }
+  }
+
   console.log("[auth]", {
     hasAuth: Boolean(auth),
     hasApikey: Boolean(apikey),
     hasCronSecret: Boolean(req.headers.get("x-cron-secret")),
-    bearerMatchesService: Boolean(serviceRoleKey && bearer && bearer === serviceRoleKey),
-    apikeyMatchesService: Boolean(serviceRoleKey && apikey && apikey === serviceRoleKey),
+    authorised,
   });
-  const authorised =
-    (secret && req.headers.get("x-cron-secret") === secret) ||
-    (serviceRoleKey && ((bearer && bearer === serviceRoleKey) || (apikey && apikey === serviceRoleKey))) ||
-    (anonKey && bearer && bearer === anonKey);
   if (!authorised) return json({ error: "Unauthorised market ingestion request." }, 401);
 
   const sb = createClient(
