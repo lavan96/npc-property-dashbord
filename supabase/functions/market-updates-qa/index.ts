@@ -203,19 +203,27 @@ Deno.serve(async (req) => {
     return json({ error: 'Authenticated user required.' }, 401);
   }
 
+  // Service-role client for retrieval + persistence (bypasses RLS so we can
+  // read published market updates and log Q&A history regardless of caller role).
   const sb = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    auth ? { global: { headers: { Authorization: auth } } } : {},
   );
 
-  // Resolve caller identity for rate limiting + attribution.
+  // Separate anon-key client that carries the caller's JWT — used only to
+  // resolve their identity for rate-limiting + attribution. Never used for
+  // data queries (would re-enable RLS and hide published rows).
   let userId: string | null = null;
   if (auth) {
     try {
-      const { data: u } = await sb.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
+      const anonClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: auth } } },
+      );
+      const { data: u } = await anonClient.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
       userId = u?.user?.id ?? null;
-    } catch { /* ignore */ }
+    } catch { /* ignore — anonymous callers still get an answer */ }
   }
 
   const payload = await req.json().catch(() => ({}));
