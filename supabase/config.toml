@@ -838,3 +838,32 @@ verify_jwt = false
 # a period digest. Auth is enforced in-function (Authorization required OR cron secret).
 verify_jwt = false
 
+
+[functions.market-updates-qa]
+# Auth enforced in-function (any Authorization header or cron secret).
+verify_jwt = false
+
+[functions.market-updates-voice-transcribe]
+# Auth enforced in-function (Bearer required).
+verify_jwt = false
+
+[functions.market-updates-source-admin]
+verify_jwt = false
+
+[functions.market-updates-embed-backfill]
+verify_jwt = false
+
+[functions.market-qa-share]
+verify_jwt = false
+
+[functions.market-qa-subscriptions]
+verify_jwt = false
+
+[functions.market-qa-digest-runner]
+verify_jwt = false
+
+[functions.market-qa-quality-report]
+verify_jwt = false
+
+[functions.market-qa-quality-snapshot]
+verify_jwt = false
