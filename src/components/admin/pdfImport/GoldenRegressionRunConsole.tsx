@@ -45,6 +45,12 @@ import { GoldenRegressionHistoryPanel } from './GoldenRegressionHistoryPanel';
 import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
+import { ProductionOperatorControlsPanel } from './ProductionOperatorControlsPanel';
+import {
+  executeOperatorControl,
+  saveProductionOperatorControlAudit,
+  type OperatorControlExecutionResult,
+} from '@/lib/reportTemplate/ingestion/operatorControls';
 
 interface GoldenRegressionRunConsoleProps {
   initialCorpusId?: string | null;
@@ -144,6 +150,75 @@ export function GoldenRegressionRunConsole({
       toast.success('Result JSON copied.');
     } catch {
       toast.error('Clipboard not available.');
+    }
+  };
+
+  const CONSOLE_OPTION_FOR_CONTROL: Record<string, keyof GoldenCorpusConsoleFormState> = {
+    build_import_intelligence_profile: 'buildImportIntelligenceProfile',
+    build_repair_pattern_analysis: 'buildRepairPatternAnalysis',
+    build_adaptive_reconciliation_policy: 'buildAdaptiveReconciliationPolicy',
+    build_self_healing_plan: 'buildSelfHealingPlan',
+    build_performance_cost_audit: 'buildPerformanceCostAudit',
+    run_export_parity_automation: 'runExportParity',
+  };
+
+  const handleEnableConsoleOption = (controlId: string) => {
+    const field = CONSOLE_OPTION_FOR_CONTROL[controlId];
+    if (!field) {
+      toast.info('Use the run console options and re-run Evaluate to perform this action.');
+      return;
+    }
+    setBool(field, true);
+    toast.success(`Enabled "${field}". Re-run Evaluate Only to apply.`);
+  };
+
+  const CONFIRM_CONTROLS = new Set([
+    'mark_accepted', 'mark_accepted_with_warnings', 'mark_rejected', 'mark_needs_rerun',
+    'mark_manual_review_required', 'mark_blocked',
+  ]);
+
+  const handleExecuteMetadataControl = async (
+    controlId: string,
+    note?: string,
+  ): Promise<OperatorControlExecutionResult | null> => {
+    if (!result?.importId) {
+      toast.error('No import ID available for operator controls.');
+      return null;
+    }
+    if (CONFIRM_CONTROLS.has(controlId)) {
+      const ok = typeof window === 'undefined' || window.confirm(`Apply operator control "${controlId}"?`);
+      if (!ok) return null;
+    }
+    try {
+      const execResult = await executeOperatorControl({
+        request: {
+          importId: result.importId,
+          templateId: result.templateId,
+          controlId: controlId as any,
+          note: note ?? null,
+          operatorConfirmed: true,
+        },
+        currentAudit: result.productionOperatorControlAudit,
+      });
+      const patchedAudit = (execResult.metadataPatch?.production_operator_control_audit ?? null) as
+        | typeof result.productionOperatorControlAudit
+        | null;
+      if (execResult.status === 'completed' && patchedAudit) {
+        const saveRes = await saveProductionOperatorControlAudit(result.importId, patchedAudit);
+        setResult((prev) => (prev ? {
+          ...prev,
+          productionOperatorControlAudit: { ...patchedAudit, persistedAt: saveRes.kind === 'ok' ? new Date().toISOString() : patchedAudit.persistedAt },
+          productionOperatorControlAuditPersistenceResult: saveRes,
+        } : prev));
+        if (saveRes.kind === 'ok') toast.success(`Operator control "${controlId}" saved.`);
+        else toast.error(`Save failed: ${saveRes.message}`);
+      } else if (execResult.status !== 'completed') {
+        toast.error(`Control not applied (${execResult.status}): ${execResult.message}`);
+      }
+      return execResult;
+    } catch (err) {
+      toast.error((err as Error).message);
+      return null;
     }
   };
 
@@ -343,6 +418,22 @@ export function GoldenRegressionRunConsole({
               <Switch id="persistPerformanceCostAudit" checked={form.persistPerformanceCostAudit} disabled={!form.buildPerformanceCostAudit}
                 onCheckedChange={(v) => setBool('persistPerformanceCostAudit', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="buildOperatorControls" className="text-sm">Build production operator controls</Label>
+                <p className="text-xs text-muted-foreground">Determines which safe operator actions are available, recommended, manual-only, or blocked for this import. Read-only unless persistence is enabled. It does not call AI, mutate templates, or apply repairs.</p>
+              </div>
+              <Switch id="buildOperatorControls" checked={form.buildOperatorControls}
+                onCheckedChange={(v) => setBool('buildOperatorControls', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistOperatorControlAudit" className="text-sm">Persist operator control audit</Label>
+                <p className="text-xs text-muted-foreground">Stores safe structured operator control metadata in <code>template_imports.meta.production_operator_control_audit</code> (only when persisting the run). It does not call AI, mutate templates, or apply repairs.</p>
+              </div>
+              <Switch id="persistOperatorControlAudit" checked={form.persistOperatorControlAudit} disabled={!form.buildOperatorControls}
+                onCheckedChange={(v) => setBool('persistOperatorControlAudit', v)} />
+            </div>
           </div>
 
           {form.buildSelfHealingPlan && (
@@ -456,6 +547,7 @@ export function GoldenRegressionRunConsole({
                 <TabsTrigger value="exportParity">Export Parity</TabsTrigger>
                 <TabsTrigger value="selfHealing">Self-Healing</TabsTrigger>
                 <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="operatorControls">Operator Controls</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
                 <TabsTrigger value="json">JSON</TabsTrigger>
               </TabsList>
@@ -474,6 +566,16 @@ export function GoldenRegressionRunConsole({
                 <PerformanceCostAuditPanel
                   audit={result.performanceCostAudit}
                   persistenceResult={result.performanceCostAuditPersistenceResult}
+                />
+              </TabsContent>
+              <TabsContent value="operatorControls" className="mt-4">
+                <ProductionOperatorControlsPanel
+                  audit={result.productionOperatorControlAudit}
+                  importId={result.importId}
+                  templateId={result.templateId}
+                  persistenceResult={result.productionOperatorControlAuditPersistenceResult}
+                  onExecuteMetadataControl={handleExecuteMetadataControl}
+                  onEnableConsoleOption={handleEnableConsoleOption}
                 />
               </TabsContent>
               <TabsContent value="history" className="mt-4">
@@ -540,6 +642,11 @@ export function GoldenRegressionRunConsole({
               {form.buildPerformanceCostAudit && form.persistPerformanceCostAudit && (
                 <span className="block mt-2">
                   This will also save <code className="mx-1">performance_cost_audit</code> metadata. It is advisory and does not change pipeline behaviour.
+                </span>
+              )}
+              {form.buildOperatorControls && form.persistOperatorControlAudit && (
+                <span className="block mt-2">
+                  This will also save <code className="mx-1">production_operator_control_audit</code> metadata. It records operator control availability and decisions. It does not apply repair or reconciliation changes.
                 </span>
               )}
               {' '}Continue?

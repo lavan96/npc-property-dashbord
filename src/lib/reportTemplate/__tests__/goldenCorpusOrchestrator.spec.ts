@@ -19,6 +19,7 @@ import { saveRepairPatternAnalysis } from '@/lib/reportTemplate/ingestion/repair
 import { saveAdaptiveReconciliationPolicy } from '@/lib/reportTemplate/ingestion/reconciliation';
 import { saveSelfHealingRetryAudit } from '@/lib/reportTemplate/ingestion/selfHealing';
 import { savePdfImportPerformanceAudit } from '@/lib/reportTemplate/ingestion/performance';
+import { saveProductionOperatorControlAudit } from '@/lib/reportTemplate/ingestion/operatorControls';
 
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
@@ -61,6 +62,11 @@ vi.mock('@/lib/reportTemplate/ingestion/selfHealing', async (orig) => {
 vi.mock('@/lib/reportTemplate/ingestion/performance', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/performance')>();
   return { ...actual, savePdfImportPerformanceAudit: vi.fn() };
+});
+// Phase 10G — keep the real deterministic control builder; only mock persistence.
+vi.mock('@/lib/reportTemplate/ingestion/operatorControls', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/operatorControls')>();
+  return { ...actual, saveProductionOperatorControlAudit: vi.fn() };
 });
 
 const NOW = () => new Date('2026-07-04T00:00:00.000Z');
@@ -1078,5 +1084,105 @@ describe('orchestrateGoldenCorpusRun (Phase 10F performance/cost audit)', () => 
     // The audit is advisory metadata only; it never sets an AI reconciliation status.
     expect(result.performanceCostAudit).not.toBeNull();
     expect(result.aiReconciliationStatus).toBeUndefined();
+  });
+});
+
+describe('orchestrateGoldenCorpusRun (Phase 10G production operator controls)', () => {
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+    vi.mocked(saveProductionOperatorControlAudit).mockReset();
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+    vi.mocked(saveProductionOperatorControlAudit).mockResolvedValue({ kind: 'ok' });
+  });
+
+  // 1
+  it('buildOperatorControls false skips operator controls', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(stepOf(result, 'build_operator_controls')?.status).toBe('skipped');
+    expect(stepOf(result, 'persist_operator_control_audit')?.status).toBe('skipped');
+    expect(result.productionOperatorControlAudit).toBeNull();
+    expect(saveProductionOperatorControlAudit).not.toHaveBeenCalled();
+  });
+
+  // 2 + 3
+  it('buildOperatorControls true builds and attaches the control audit', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true }), now: NOW });
+    expect(result.productionOperatorControlAudit).not.toBeNull();
+    expect(result.productionOperatorControlAudit?.version).toBeTruthy();
+    expect(Array.isArray(result.productionOperatorControlAudit?.controls)).toBe(true);
+    expect(stepOf(result, 'build_operator_controls')?.status).not.toBe('skipped');
+  });
+
+  // 4
+  it('persistOperatorControlAudit false does not save', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true, persistOperatorControlAudit: false }), now: NOW });
+    expect(saveProductionOperatorControlAudit).not.toHaveBeenCalled();
+    expect(stepOf(result, 'persist_operator_control_audit')?.status).toBe('skipped');
+  });
+
+  // 5 + 6
+  it('persistOperatorControlAudit true calls save and returns ok', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true, persistOperatorControlAudit: true }), now: NOW });
+    expect(saveProductionOperatorControlAudit).toHaveBeenCalledTimes(1);
+    expect(result.productionOperatorControlAuditPersistenceResult?.kind).toBe('ok');
+    expect(stepOf(result, 'persist_operator_control_audit')?.status).toBe('pass');
+  });
+
+  // 7
+  it('persistence failure adds operator_control_audit_persistence_failed without failing the run', async () => {
+    vi.mocked(saveProductionOperatorControlAudit).mockResolvedValue({ kind: 'error', message: 'db down' });
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true, persistOperatorControlAudit: true }), now: NOW });
+    expect(result.warnings).toContain('operator_control_audit_persistence_failed');
+    expect(result.status).not.toBe('failed');
+    expect(stepOf(result, 'persist_operator_control_audit')?.status).toBe('fail');
+  });
+
+  // 8
+  it('missing importId prevents persistence', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ importId: '', buildOperatorControls: true, persistOperatorControlAudit: true }), now: NOW });
+    expect(saveProductionOperatorControlAudit).not.toHaveBeenCalled();
+    expect(result.productionOperatorControlAudit).toBeNull();
+  });
+
+  // 9
+  it('pass quality gate creates an accepted recommended control', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true }), now: NOW });
+    const accepted = (result.productionOperatorControlAudit?.controls ?? []).find((c) => c.controlId === 'mark_accepted');
+    expect(accepted?.state).toBe('recommended');
+  });
+
+  // 10
+  it('blocked adaptive policy blocks the AI manual control', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({
+      kind: 'ok',
+      snapshot: snap({ visualQaScore: 0.4, repairStatus: 'failed', repairRequiresManualReview: true, repairRequiresFallback: true }),
+    });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildImportIntelligenceProfile: true, buildRepairPatternAnalysis: true, buildAdaptiveReconciliationPolicy: true, buildOperatorControls: true }), now: NOW,
+    });
+    const ai = (result.productionOperatorControlAudit?.controls ?? []).find((c) => c.controlId === 'run_ai_reconciliation_manual');
+    if (result.adaptiveReconciliationPolicy?.flags?.aiBlocked) {
+      expect(ai?.state).toBe('blocked');
+    }
+    // clear audit control is always blocked regardless.
+    const clear = (result.productionOperatorControlAudit?.controls ?? []).find((c) => c.controlId === 'clear_operator_control_audit');
+    expect(clear?.state).toBe('blocked');
+  });
+
+  // 11
+  it('operator controls do not call AI (no AI status is produced)', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true }), now: NOW });
+    expect(result.productionOperatorControlAudit).not.toBeNull();
+    expect((result as any).aiReconciliationStatus).toBeUndefined();
+  });
+
+  // 12
+  it('operator controls do not alter the golden quality gate decision', async () => {
+    const withControls = await orchestrateGoldenCorpusRun({ request: req({ buildOperatorControls: true }), now: NOW });
+    const withoutControls = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(withControls.qualityGateReport?.overallStatus).toBe(withoutControls.qualityGateReport?.overallStatus);
+    expect(withControls.goldenRegressionSummary?.qualityGateStatus).toBe(withoutControls.goldenRegressionSummary?.qualityGateStatus);
   });
 });

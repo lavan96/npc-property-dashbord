@@ -22,6 +22,7 @@ import { RepairPatternAnalysisPanel } from './RepairPatternAnalysisPanel';
 import { AdaptiveReconciliationPolicyPanel } from './AdaptiveReconciliationPolicyPanel';
 import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
+import { ProductionOperatorControlsPanel } from './ProductionOperatorControlsPanel';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -304,6 +305,15 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
         <PerformanceCostAuditPanel
           audit={result.performanceCostAudit}
           persistenceResult={result.performanceCostAuditPersistenceResult}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <ProductionOperatorControlsPanel
+          audit={result.productionOperatorControlAudit}
+          importId={result.importId}
+          templateId={result.templateId}
+          persistenceResult={result.productionOperatorControlAuditPersistenceResult}
         />
       </div>
 

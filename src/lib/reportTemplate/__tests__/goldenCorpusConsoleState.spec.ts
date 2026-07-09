@@ -229,3 +229,32 @@ describe('Phase 10F performance/cost form options', () => {
     expect(r.issues.some((i) => i.code === 'performance_cost_persist_without_build')).toBe(true);
   });
 });
+
+describe('Phase 10G operator controls form options', () => {
+  it('defaults buildOperatorControls true and persist true', () => {
+    const f = createDefaultGoldenCorpusConsoleFormState();
+    expect(f.buildOperatorControls).toBe(true);
+    expect(f.persistOperatorControlAudit).toBe(true);
+  });
+
+  it('gates persistence behind build + persist mode', () => {
+    const on = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildOperatorControls: true, persistOperatorControlAudit: true }), 'evaluate_and_persist');
+    expect(on.buildOperatorControls).toBe(true);
+    expect(on.persistOperatorControlAudit).toBe(true);
+
+    const evalOnly = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildOperatorControls: true, persistOperatorControlAudit: true }), 'evaluate_only');
+    expect(evalOnly.buildOperatorControls).toBe(true);
+    expect(evalOnly.persistOperatorControlAudit).toBe(false);
+
+    const noBuild = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildOperatorControls: false, persistOperatorControlAudit: true }), 'evaluate_and_persist');
+    expect(noBuild.persistOperatorControlAudit).toBe(false);
+  });
+
+  it('warns when persistOperatorControlAudit is on but buildOperatorControls is off', () => {
+    const r = validateGoldenCorpusConsoleForm(form({ buildOperatorControls: false, persistOperatorControlAudit: true }), 'evaluate_only');
+    expect(r.issues.some((i) => i.code === 'operator_controls_persist_without_build')).toBe(true);
+  });
+});
