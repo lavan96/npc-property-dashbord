@@ -158,9 +158,14 @@ function ModelCard({ model }: { model: CatalogModel }) {
     <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
       <CardHeader className="border-b border-border/50 bg-muted/20 pb-3 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className={`truncate text-sm font-semibold ${brand.color}`} title={model.display_name}>{model.display_name}</CardTitle>
-            <CardDescription className="truncate font-mono text-[10px]" title={model.model_id}>{model.model_id}</CardDescription>
+          <div className="flex min-w-0 flex-1 items-start gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/60">
+              <BrandMark integrationId={model.provider} size={20} fallback={<Sparkles className="h-4 w-4 text-muted-foreground" />} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <CardTitle className={`truncate text-sm font-semibold ${brand.color}`} title={model.display_name}>{model.display_name}</CardTitle>
+              <CardDescription className="truncate font-mono text-[10px]" title={model.model_id}>{model.model_id}</CardDescription>
+            </div>
           </div>
           <Badge variant="outline" className={`${statusBadge(model.status)} shrink-0 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em]`}>{model.status}</Badge>
         </div>
