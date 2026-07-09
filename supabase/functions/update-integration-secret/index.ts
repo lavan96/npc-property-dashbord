@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseAccessToken = Deno.env.get('LOVABLE_SUPABASE_ACCESS_TOKEN') ?? Deno.env.get('SUPABASE_MANAGEMENT_ACCESS_TOKEN') ?? Deno.env.get('SUPABASE_ACCESS_TOKEN');
+    const supabaseAccessToken = Deno.env.get('SB_MANAGEMENT_ACCESS_TOKEN') ?? Deno.env.get('SUPABASE_ACCESS_TOKEN');
     const projectRef = Deno.env.get('SUPABASE_URL')?.match(/https:\/\/([^.]+)/)?.[1];
 
     if (!supabaseAccessToken) {
