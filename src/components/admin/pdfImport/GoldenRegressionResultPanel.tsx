@@ -24,12 +24,19 @@ import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
 import { ProductionOperatorControlsPanel } from './ProductionOperatorControlsPanel';
 import { Phase10ProductionLockPanel } from './Phase10ProductionLockPanel';
+import { RolloutReadinessPanel } from './RolloutReadinessPanel';
 import {
   evaluatePhase10ProductionLock,
   listPhase10ProductionLockRequirements,
   type Phase10ProductionLockReport,
   type Phase10ProductionLockRequirementStatus,
 } from '@/lib/reportTemplate/ingestion/phase10Lock';
+import {
+  evaluatePdfImportRolloutReadiness,
+  listPdfImportRolloutReadinessChecks,
+  type PdfImportRolloutReadinessReport,
+  type PdfImportRolloutReadinessStatus,
+} from '@/lib/reportTemplate/ingestion/rolloutReadiness';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -59,6 +66,32 @@ function buildPhase10LockPreview(result: GoldenCorpusOrchestratorResult): Phase1
   if (result.exportParityRunnerResult) pass(['PHASE10-EXPORT-001', 'PHASE10-EXPORT-002'], 'export parity present on run result');
 
   return evaluatePhase10ProductionLock({ requirements: reqs });
+}
+
+/**
+ * Build a read-only rollout readiness *preview* from a run result. Only the
+ * operator-safety and intelligence checks that are directly observable on the run
+ * result are marked pass; deployment/permissions/monitoring/runbook checks stay
+ * `unknown` because they are verified out-of-band. This is a live hint, not the
+ * full rollout review.
+ */
+function buildRolloutReadinessPreview(result: GoldenCorpusOrchestratorResult): PdfImportRolloutReadinessReport {
+  const checks = listPdfImportRolloutReadinessChecks();
+  const set = (id: string, status: PdfImportRolloutReadinessStatus, evidence?: string) => {
+    const c = checks.find((x) => x.id === id);
+    if (c) { c.status = status; if (evidence) c.evidence = [evidence]; }
+  };
+  const pass = (ids: string[], evidence: string) => ids.forEach((id) => set(id, 'pass', evidence));
+
+  // Operator workflow safety is observable from the run result.
+  pass(['ROLL-OP-001', 'ROLL-OP-002', 'ROLL-OP-003'], 'console run produced a result');
+  if (result.productionOperatorControlAudit) {
+    pass(['ROLL-OP-004', 'ROLL-OP-005', 'ROLL-OP-006', 'ROLL-OP-007'], 'operator control audit present');
+  }
+  if (result.performanceCostAudit) pass(['ROLL-PERF-001', 'ROLL-PERF-002', 'ROLL-PERF-003'], 'performance audit present; AI operator-controlled');
+  if (result.goldenRegressionSummary) pass(['ROLL-REL-001'], 'golden regression evaluated');
+
+  return evaluatePdfImportRolloutReadiness({ checks });
 }
 
 const DASH = '—';
@@ -352,6 +385,10 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
 
       <div className="space-y-2">
         <Phase10ProductionLockPanel report={buildPhase10LockPreview(result)} />
+      </div>
+
+      <div className="space-y-2">
+        <RolloutReadinessPanel report={buildRolloutReadinessPreview(result)} />
       </div>
 
       <Card>
