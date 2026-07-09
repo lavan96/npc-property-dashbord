@@ -41,6 +41,10 @@ import type {
   SelfHealingMode,
   SelfHealingRetryAudit,
 } from '../selfHealing/selfHealingTypes';
+import type {
+  PdfImportPerformanceCostAudit,
+  SavePdfImportPerformanceAuditResult,
+} from '../performance/pdfImportPerformanceTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -73,7 +77,9 @@ export type GoldenCorpusOrchestratorStepId =
   | 'persist_adaptive_reconciliation_policy'
   | 'build_self_healing_plan'
   | 'execute_self_healing_plan'
-  | 'persist_self_healing_audit';
+  | 'persist_self_healing_audit'
+  | 'build_performance_cost_audit'
+  | 'persist_performance_cost_audit';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -147,6 +153,15 @@ export interface GoldenCorpusOrchestratorRequest {
   executeSelfHealingMode?: SelfHealingMode;
   /** Phase 10E — explicit operator confirmation for execute_confirmed mode. */
   selfHealingOperatorConfirmed?: boolean;
+  /** Phase 10F — build the advisory performance/cost optimization audit. Off by default. */
+  buildPerformanceCostAudit?: boolean;
+  /**
+   * Phase 10F — persist the performance/cost audit to
+   * template_imports.meta.performance_cost_audit. Off by default; requires
+   * buildPerformanceCostAudit and an importId. Advisory only; never changes
+   * pipeline behaviour, calls AI, or mutates templates.
+   */
+  persistPerformanceCostAudit?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -199,6 +214,10 @@ export interface GoldenCorpusOrchestratorResult {
   // Phase 10E — self-healing retry orchestration.
   selfHealingRetryAudit: SelfHealingRetryAudit | null;
   selfHealingRetryAuditPersistenceResult: SaveSelfHealingRetryAuditResult | null;
+
+  // Phase 10F — performance + cost optimization audit.
+  performanceCostAudit: PdfImportPerformanceCostAudit | null;
+  performanceCostAuditPersistenceResult: SavePdfImportPerformanceAuditResult | null;
 
   warnings: string[];
   failures: string[];

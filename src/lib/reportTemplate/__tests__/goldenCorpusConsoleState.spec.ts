@@ -198,3 +198,34 @@ describe('Phase 10E self-healing form options', () => {
     expect(r.issues.some((i) => i.code === 'self_healing_confirmation_missing')).toBe(true);
   });
 });
+
+describe('Phase 10F performance/cost form options', () => {
+  it('defaults buildPerformanceCostAudit true and persist true', () => {
+    const f = createDefaultGoldenCorpusConsoleFormState();
+    expect(f.buildPerformanceCostAudit).toBe(true);
+    expect(f.persistPerformanceCostAudit).toBe(true);
+  });
+
+  it('gates persistence behind build + persist mode', () => {
+    const on = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildPerformanceCostAudit: true, persistPerformanceCostAudit: true }), 'evaluate_and_persist');
+    expect(on.buildPerformanceCostAudit).toBe(true);
+    expect(on.persistPerformanceCostAudit).toBe(true);
+
+    // Evaluate-only never persists the audit but still builds it.
+    const evalOnly = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildPerformanceCostAudit: true, persistPerformanceCostAudit: true }), 'evaluate_only');
+    expect(evalOnly.buildPerformanceCostAudit).toBe(true);
+    expect(evalOnly.persistPerformanceCostAudit).toBe(false);
+
+    // Persist requires build.
+    const noBuild = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildPerformanceCostAudit: false, persistPerformanceCostAudit: true }), 'evaluate_and_persist');
+    expect(noBuild.persistPerformanceCostAudit).toBe(false);
+  });
+
+  it('warns when persistPerformanceCostAudit is on but buildPerformanceCostAudit is off', () => {
+    const r = validateGoldenCorpusConsoleForm(form({ buildPerformanceCostAudit: false, persistPerformanceCostAudit: true }), 'evaluate_only');
+    expect(r.issues.some((i) => i.code === 'performance_cost_persist_without_build')).toBe(true);
+  });
+});
