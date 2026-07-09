@@ -11,13 +11,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Sparkles, Zap,
   Brain, Image as ImageIcon, Search, RefreshCw, ShieldCheck, Globe,
-  Network, Workflow, FlaskConical, ArrowUpCircle
+  Network, Workflow, FlaskConical, ArrowUpCircle, LayoutGrid, Rows3, X
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getRecommendedUpgrade, isModelDeprecated } from '@/lib/agentUpgradeRecommendations';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { useSearchParams } from 'react-router-dom';
+import { useDebounce } from '@/hooks/useDebounce';
+import { AurixaSectionHeader } from '@/components/agent/AurixaSectionHeader';
+import { OpenRouterModelCard } from '@/components/model-hub/OpenRouterModelCard';
+import { OpenRouterModelTable } from '@/components/model-hub/OpenRouterModelTable';
+import { OpenRouterPager } from '@/components/model-hub/OpenRouterPager';
+import { familyFromId, familyTint, SORT_LABELS, extractExtras, type SortKey } from '@/lib/openrouter/format';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
