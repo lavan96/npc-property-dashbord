@@ -157,3 +157,44 @@ describe('Phase 9D export parity form options', () => {
     expect(r.issues.some((i) => i.code === 'export_parity_persist_without_run')).toBe(true);
   });
 });
+
+describe('Phase 10E self-healing form options', () => {
+  it('defaults buildSelfHealingPlan false, persist true, mode dry_run, unconfirmed', () => {
+    const f = createDefaultGoldenCorpusConsoleFormState();
+    expect(f.buildSelfHealingPlan).toBe(false);
+    expect(f.persistSelfHealingAudit).toBe(true);
+    expect(f.selfHealingMode).toBe('dry_run');
+    expect(f.selfHealingOperatorConfirmed).toBe(false);
+  });
+
+  it('maps mode + operator confirmation and gates persistence behind build + persist mode', () => {
+    const on = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildSelfHealingPlan: true, persistSelfHealingAudit: true, selfHealingMode: 'execute_confirmed', selfHealingOperatorConfirmed: true }),
+      'evaluate_and_persist');
+    expect(on.buildSelfHealingPlan).toBe(true);
+    expect(on.persistSelfHealingAudit).toBe(true);
+    expect(on.executeSelfHealingMode).toBe('execute_confirmed');
+    expect(on.selfHealingOperatorConfirmed).toBe(true);
+
+    // Evaluate-only never persists the audit.
+    const evalOnly = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildSelfHealingPlan: true, persistSelfHealingAudit: true }), 'evaluate_only');
+    expect(evalOnly.persistSelfHealingAudit).toBe(false);
+
+    // Persist requires build.
+    const noBuild = buildGoldenCorpusOrchestratorRequestFromForm(
+      form({ buildSelfHealingPlan: false, persistSelfHealingAudit: true }), 'evaluate_and_persist');
+    expect(noBuild.persistSelfHealingAudit).toBe(false);
+  });
+
+  it('warns when persistSelfHealingAudit is on but buildSelfHealingPlan is off', () => {
+    const r = validateGoldenCorpusConsoleForm(form({ buildSelfHealingPlan: false, persistSelfHealingAudit: true }), 'evaluate_only');
+    expect(r.issues.some((i) => i.code === 'self_healing_persist_without_build')).toBe(true);
+  });
+
+  it('warns when execute_confirmed is selected without operator confirmation', () => {
+    const r = validateGoldenCorpusConsoleForm(
+      form({ buildSelfHealingPlan: true, selfHealingMode: 'execute_confirmed', selfHealingOperatorConfirmed: false }), 'evaluate_only');
+    expect(r.issues.some((i) => i.code === 'self_healing_confirmation_missing')).toBe(true);
+  });
+});

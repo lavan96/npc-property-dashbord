@@ -20,6 +20,7 @@ import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 import { ImportIntelligenceProfilePanel } from './ImportIntelligenceProfilePanel';
 import { RepairPatternAnalysisPanel } from './RepairPatternAnalysisPanel';
 import { AdaptiveReconciliationPolicyPanel } from './AdaptiveReconciliationPolicyPanel';
+import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
@@ -289,6 +290,13 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
             </CardContent>
           </Card>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <SelfHealingRetryPanel
+          audit={result.selfHealingRetryAudit}
+          persistenceResult={result.selfHealingRetryAuditPersistenceResult}
+        />
       </div>
 
       <Card>

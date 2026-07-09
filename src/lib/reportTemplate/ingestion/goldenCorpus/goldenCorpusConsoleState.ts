@@ -43,6 +43,14 @@ export interface GoldenCorpusConsoleFormState {
   buildAdaptiveReconciliationPolicy: boolean;
   /** Phase 10D — persist the adaptive reconciliation policy (only when persisting). */
   persistAdaptiveReconciliationPolicy: boolean;
+  /** Phase 10E — build the controlled self-healing retry plan. */
+  buildSelfHealingPlan: boolean;
+  /** Phase 10E — persist the self-healing retry audit (only when persisting). */
+  persistSelfHealingAudit: boolean;
+  /** Phase 10E — self-healing execution mode. */
+  selfHealingMode: 'dry_run' | 'audit_only' | 'execute_safe' | 'execute_confirmed';
+  /** Phase 10E — explicit operator confirmation for execute_confirmed. */
+  selfHealingOperatorConfirmed: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -86,6 +94,10 @@ export function createDefaultGoldenCorpusConsoleFormState(
     persistRepairPatternAnalysis: true,
     buildAdaptiveReconciliationPolicy: true,
     persistAdaptiveReconciliationPolicy: true,
+    buildSelfHealingPlan: false,
+    persistSelfHealingAudit: true,
+    selfHealingMode: 'dry_run',
+    selfHealingOperatorConfirmed: false,
     ...overrides,
   };
 }
@@ -140,6 +152,14 @@ export function validateGoldenCorpusConsoleForm(
     warn('persistAdaptiveReconciliationPolicy', 'adaptive_reconciliation_persist_without_build', 'Persist adaptive reconciliation policy has no effect unless policy building is enabled.');
   }
 
+  if (form.persistSelfHealingAudit && !form.buildSelfHealingPlan) {
+    warn('persistSelfHealingAudit', 'self_healing_persist_without_build', 'Persist self-healing audit has no effect unless self-healing plan building is enabled.');
+  }
+
+  if (form.selfHealingMode === 'execute_confirmed' && form.buildSelfHealingPlan && !form.selfHealingOperatorConfirmed) {
+    warn('selfHealingOperatorConfirmed', 'self_healing_confirmation_missing', 'Execute-confirmed self-healing needs explicit operator confirmation; operator-confirmed actions will be held for manual action.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -191,6 +211,13 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     buildAdaptiveReconciliationPolicy: form.buildAdaptiveReconciliationPolicy,
     persistAdaptiveReconciliationPolicy:
       mode === 'evaluate_and_persist' && form.buildAdaptiveReconciliationPolicy && form.persistAdaptiveReconciliationPolicy,
+    // Phase 10E — controlled self-healing. Plan build is read-only; execution
+    // honours the selected mode; persistence only when persisting the run.
+    buildSelfHealingPlan: form.buildSelfHealingPlan,
+    persistSelfHealingAudit:
+      mode === 'evaluate_and_persist' && form.buildSelfHealingPlan && form.persistSelfHealingAudit,
+    executeSelfHealingMode: form.selfHealingMode,
+    selfHealingOperatorConfirmed: form.selfHealingOperatorConfirmed,
   };
 }
 

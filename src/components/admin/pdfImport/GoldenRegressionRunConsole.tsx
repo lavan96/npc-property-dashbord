@@ -43,6 +43,7 @@ import { GoldenRegressionQualityGatePanel } from './GoldenRegressionQualityGateP
 import { GoldenRegressionTriagePanel } from './GoldenRegressionTriagePanel';
 import { GoldenRegressionHistoryPanel } from './GoldenRegressionHistoryPanel';
 import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
+import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 
 interface GoldenRegressionRunConsoleProps {
   initialCorpusId?: string | null;
@@ -309,7 +310,53 @@ export function GoldenRegressionRunConsole({
               <Switch id="persistAdaptiveReconciliationPolicy" checked={form.persistAdaptiveReconciliationPolicy} disabled={!form.buildAdaptiveReconciliationPolicy}
                 onCheckedChange={(v) => setBool('persistAdaptiveReconciliationPolicy', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="buildSelfHealingPlan" className="text-sm">Build self-healing retry plan</Label>
+                <p className="text-xs text-muted-foreground">Deterministically inspects failures/warnings and builds a gated recovery plan. Off by default. It never calls AI, mutates templates, reruns imports, or runs browser-dependent actions automatically.</p>
+              </div>
+              <Switch id="buildSelfHealingPlan" checked={form.buildSelfHealingPlan}
+                onCheckedChange={(v) => setBool('buildSelfHealingPlan', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistSelfHealingAudit" className="text-sm">Persist self-healing audit</Label>
+                <p className="text-xs text-muted-foreground">Stores safe structured audit metadata in <code>template_imports.meta.self_healing_retry_audit</code> (only when persisting the run). It does not store raw PDF text or screenshots.</p>
+              </div>
+              <Switch id="persistSelfHealingAudit" checked={form.persistSelfHealingAudit} disabled={!form.buildSelfHealingPlan}
+                onCheckedChange={(v) => setBool('persistSelfHealingAudit', v)} />
+            </div>
           </div>
+
+          {form.buildSelfHealingPlan && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="selfHealingMode">Self-healing execution mode</Label>
+                <Select value={form.selfHealingMode} onValueChange={(v) => setField('selfHealingMode', v)}>
+                  <SelectTrigger id="selfHealingMode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dry_run">Dry run (plan only, no execution)</SelectItem>
+                    <SelectItem value="audit_only">Audit only (plan + record, no execution)</SelectItem>
+                    <SelectItem value="execute_safe">Execute safe actions</SelectItem>
+                    <SelectItem value="execute_confirmed">Execute confirmed actions</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only safe metadata-level actions ever execute. AI, template mutation, import reruns,
+                  and browser-dependent actions are always manual.
+                </p>
+              </div>
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="selfHealingOperatorConfirmed" className="text-sm">Operator confirmation</Label>
+                  <p className="text-xs text-muted-foreground">Required before <code>execute_confirmed</code> may run operator-confirmed actions.</p>
+                </div>
+                <Switch id="selfHealingOperatorConfirmed" checked={form.selfHealingOperatorConfirmed}
+                  disabled={form.selfHealingMode !== 'execute_confirmed'}
+                  onCheckedChange={(v) => setBool('selfHealingOperatorConfirmed', v)} />
+              </div>
+            </div>
+          )}
 
           {corpusItem && (
             <div className="rounded-md border bg-muted/30 p-3 text-xs">
@@ -390,6 +437,7 @@ export function GoldenRegressionRunConsole({
                 <TabsTrigger value="gates">Quality Gates</TabsTrigger>
                 <TabsTrigger value="triage">Triage</TabsTrigger>
                 <TabsTrigger value="exportParity">Export Parity</TabsTrigger>
+                <TabsTrigger value="selfHealing">Self-Healing</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
                 <TabsTrigger value="json">JSON</TabsTrigger>
               </TabsList>
@@ -398,6 +446,12 @@ export function GoldenRegressionRunConsole({
               <TabsContent value="gates" className="mt-4"><GoldenRegressionQualityGatePanel report={result.qualityGateReport} /></TabsContent>
               <TabsContent value="triage" className="mt-4"><GoldenRegressionTriagePanel triage={result.triageSummary} /></TabsContent>
               <TabsContent value="exportParity" className="mt-4"><AutomatedExportParityPanel result={result.exportParityRunnerResult} /></TabsContent>
+              <TabsContent value="selfHealing" className="mt-4">
+                <SelfHealingRetryPanel
+                  audit={result.selfHealingRetryAudit}
+                  persistenceResult={result.selfHealingRetryAuditPersistenceResult}
+                />
+              </TabsContent>
               <TabsContent value="history" className="mt-4">
                 <GoldenRegressionHistoryPanel
                   corpusId={result.corpusId}
@@ -447,6 +501,16 @@ export function GoldenRegressionRunConsole({
               {form.buildAdaptiveReconciliationPolicy && form.persistAdaptiveReconciliationPolicy && (
                 <span className="block mt-2">
                   This will also save <code className="mx-1">adaptive_reconciliation_policy</code> metadata. It does not call AI and does not apply reconciliation changes.
+                </span>
+              )}
+              {form.buildSelfHealingPlan && (
+                <span className="block mt-2">
+                  Self-healing runs in <strong>{form.selfHealingMode}</strong> mode
+                  {form.persistSelfHealingAudit
+                    ? <> and will save <code className="mx-1">self_healing_retry_audit</code> metadata.</>
+                    : <> (audit persistence off).</>}{' '}
+                  Only safe metadata-level actions can execute; it never calls AI, mutates templates,
+                  reruns imports, or performs browser-dependent actions automatically.
                 </span>
               )}
               {' '}Continue?
