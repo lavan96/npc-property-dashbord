@@ -204,7 +204,11 @@ function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, erro
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-background/50">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-          {route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
+          <BrandMark
+            integrationId={providerId}
+            size={22}
+            fallback={route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
+          />
         </div>
         <div className="min-w-0">
           <h3 className={`truncate text-lg font-semibold ${brand.color}`} title={brand.name}>{brand.name}</h3>
