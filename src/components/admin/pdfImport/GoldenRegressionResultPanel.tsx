@@ -23,9 +23,42 @@ import { AdaptiveReconciliationPolicyPanel } from './AdaptiveReconciliationPolic
 import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
 import { ProductionOperatorControlsPanel } from './ProductionOperatorControlsPanel';
+import { Phase10ProductionLockPanel } from './Phase10ProductionLockPanel';
+import {
+  evaluatePhase10ProductionLock,
+  listPhase10ProductionLockRequirements,
+  type Phase10ProductionLockReport,
+  type Phase10ProductionLockRequirementStatus,
+} from '@/lib/reportTemplate/ingestion/phase10Lock';
 
 interface GoldenRegressionResultPanelProps {
   result: GoldenCorpusOrchestratorResult | null;
+}
+
+/**
+ * Build a read-only Phase 10 lock *preview* from a run result. Only the
+ * intelligence-layer requirements are derived (pass when the audit is present on
+ * the result); documentation/SQL/DB/test requirements stay `unknown` because they
+ * are verified out-of-band. This is a live readiness hint, not the full lock.
+ */
+function buildPhase10LockPreview(result: GoldenCorpusOrchestratorResult): Phase10ProductionLockReport {
+  const reqs = listPhase10ProductionLockRequirements();
+  const set = (id: string, status: Phase10ProductionLockRequirementStatus, evidence?: string) => {
+    const r = reqs.find((x) => x.id === id);
+    if (r) { r.status = status; if (evidence) r.evidence = [evidence]; }
+  };
+  const pass = (ids: string[], evidence: string) => ids.forEach((id) => set(id, 'pass', evidence));
+
+  if (result.importIntelligenceProfile) pass(['PHASE10-INTEL-001', 'PHASE10-INTEL-002'], 'profile present on run result');
+  if (result.repairPatternAnalysis) pass(['PHASE10-REPAIRPATTERN-001', 'PHASE10-REPAIRPATTERN-002'], 'analysis present on run result');
+  if (result.adaptiveReconciliationPolicy) pass(['PHASE10-ADAPTIVE-001', 'PHASE10-ADAPTIVE-002', 'PHASE10-ADAPTIVE-003'], 'policy present on run result');
+  if (result.selfHealingRetryAudit) pass(['PHASE10-SELFHEAL-001', 'PHASE10-SELFHEAL-002', 'PHASE10-SELFHEAL-003', 'PHASE10-SELFHEAL-004'], 'audit present on run result');
+  if (result.performanceCostAudit) pass(['PHASE10-PERF-001', 'PHASE10-PERF-002', 'PHASE10-PERF-003'], 'audit present on run result');
+  if (result.productionOperatorControlAudit) pass(['PHASE10-OPERATOR-001', 'PHASE10-OPERATOR-002', 'PHASE10-OPERATOR-003', 'PHASE10-OPERATOR-004'], 'audit present on run result');
+  if (result.goldenRegressionSummary) pass(['PHASE10-GOLDEN-001', 'PHASE10-GOLDEN-002', 'PHASE10-GOLDEN-003'], 'golden summary present on run result');
+  if (result.exportParityRunnerResult) pass(['PHASE10-EXPORT-001', 'PHASE10-EXPORT-002'], 'export parity present on run result');
+
+  return evaluatePhase10ProductionLock({ requirements: reqs });
 }
 
 const DASH = '—';
@@ -315,6 +348,10 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
           templateId={result.templateId}
           persistenceResult={result.productionOperatorControlAuditPersistenceResult}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Phase10ProductionLockPanel report={buildPhase10LockPreview(result)} />
       </div>
 
       <Card>
