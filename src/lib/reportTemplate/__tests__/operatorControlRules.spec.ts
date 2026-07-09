@@ -118,3 +118,64 @@ describe('operator control rules', () => {
     expect(a.recommended).toBe(true);
   });
 });
+
+import { getRequiredCapabilityForOperatorControl } from '../ingestion/operatorControls';
+import { resolvePdfImportOperatorRole } from '../ingestion/operatorPermissions';
+
+describe('Phase 11B — operator control permission overlay', () => {
+  const adminRole = resolvePdfImportOperatorRole({ isAuthenticated: true, profile: { role: 'admin' } });
+  const operatorRole = resolvePdfImportOperatorRole({ isAuthenticated: true, profile: { role: 'operator' } });
+  const noAccessRole = resolvePdfImportOperatorRole({ isAuthenticated: false });
+
+  it('maps controls to required capabilities', () => {
+    expect(getRequiredCapabilityForOperatorControl('mark_accepted')).toBe('pdf_import.operator.mark_accepted');
+    expect(getRequiredCapabilityForOperatorControl('persist_golden_regression_summary')).toBe('pdf_import.persist_golden_summary');
+    expect(getRequiredCapabilityForOperatorControl('run_ai_reconciliation_manual')).toBe('pdf_import.manual.run_ai_reconciliation');
+    expect(getRequiredCapabilityForOperatorControl('clear_operator_control_audit')).toBeNull();
+  });
+
+  it('admin keeps mark_accepted available (recommended) with allowedByPermission true', () => {
+    const c = evaluateOperatorControl({ controlId: 'mark_accepted', signals: signals({ qualityGateStatus: 'pass' }), resolvedRole: adminRole });
+    expect(c.allowedByPermission).toBe(true);
+    expect(c.state).toBe('recommended');
+    expect(c.requiredCapability).toBe('pdf_import.operator.mark_accepted');
+  });
+
+  it('operator role is denied mark_accepted (disabled)', () => {
+    const c = evaluateOperatorControl({ controlId: 'mark_accepted', signals: signals({ qualityGateStatus: 'pass' }), resolvedRole: operatorRole });
+    expect(c.allowedByPermission).toBe(false);
+    expect(c.permissionDecision).toBe('denied');
+    expect(c.state).toBe('disabled');
+  });
+
+  it('no_access is denied evaluate-related build control', () => {
+    const c = evaluateOperatorControl({ controlId: 'build_import_intelligence_profile', signals: signals(), resolvedRole: noAccessRole });
+    expect(c.allowedByPermission).toBe(false);
+    expect(c.state).toBe('disabled');
+  });
+
+  it('safety-blocked control stays blocked even if permission would allow', () => {
+    // clear_operator_control_audit is always safety-blocked.
+    const c = evaluateOperatorControl({ controlId: 'clear_operator_control_audit', signals: signals(), resolvedRole: adminRole });
+    expect(c.state).toBe('blocked');
+  });
+
+  it('AI manual control is manual_only for admin (permitted, still manual)', () => {
+    const c = evaluateOperatorControl({ controlId: 'run_ai_reconciliation_manual', signals: signals(), resolvedRole: adminRole });
+    expect(c.state).toBe('manual_only');
+    expect(c.allowedByPermission).toBe(true);
+    expect(c.permissionDecision).toBe('manual_only');
+  });
+
+  it('AI manual control denied for operator role', () => {
+    const c = evaluateOperatorControl({ controlId: 'run_ai_reconciliation_manual', signals: signals(), resolvedRole: operatorRole });
+    expect(c.allowedByPermission).toBe(false);
+    expect(c.state).toBe('disabled');
+  });
+
+  it('without permission context the overlay is skipped (backward compatible)', () => {
+    const c = evaluateOperatorControl({ controlId: 'mark_accepted', signals: signals({ qualityGateStatus: 'pass' }) });
+    expect(c.allowedByPermission).toBeUndefined();
+    expect(c.state).toBe('recommended');
+  });
+});

@@ -154,6 +154,14 @@ export interface OperatorControlAvailability {
   reason: string;
   blockedReason: string | null;
   evidence: OperatorControlEvidence[];
+  // Phase 11B — optional permission overlay. `requiredCapability` is the
+  // capability string this control maps to; when a permission context is
+  // supplied to the rules evaluator, the remaining fields are populated. Kept as
+  // strings to avoid a hard type dependency / circular import.
+  requiredCapability?: string | null;
+  permissionDecision?: string | null;
+  permissionReason?: string | null;
+  allowedByPermission?: boolean;
 }
 
 export interface OperatorControlExecutionRequest {
@@ -162,6 +170,10 @@ export interface OperatorControlExecutionRequest {
   controlId: OperatorControlId;
   note?: string | null;
   operatorConfirmed?: boolean;
+  // Phase 11B — optional permission context/role for a second enforcement layer.
+  // Typed loosely to avoid a circular import with operatorPermissions.
+  permissionContext?: unknown;
+  resolvedRole?: unknown;
 }
 
 export interface OperatorControlExecutionResult {

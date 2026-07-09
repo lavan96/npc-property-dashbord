@@ -17,6 +17,12 @@ import {
   type ProductionOperatorState,
 } from './operatorControlTypes';
 import { getOperatorControlDefinition } from './operatorControlCatalog';
+import { getRequiredCapabilityForOperatorControl } from './operatorControlRules';
+import {
+  evaluatePdfImportPermission,
+  type PdfImportPermissionContext,
+  type PdfImportResolvedRole,
+} from '../operatorPermissions';
 
 const DECISION_CONTROLS: Record<string, OperatorDecisionState> = {
   mark_not_reviewed: 'not_reviewed',
@@ -163,6 +169,24 @@ export async function executeOperatorControl(input: {
 
   if (!def) return base('not_supported', `Unknown control: ${request.controlId}.`);
   if (!request.importId) return base('failed', 'Import ID is required.');
+
+  // Phase 11B — second permission enforcement layer (beyond UI gating). When a
+  // permission context/role is supplied, deny controls the role is not permitted
+  // to perform before any safety/execution logic runs.
+  if (request.permissionContext || request.resolvedRole) {
+    const capability = getRequiredCapabilityForOperatorControl(request.controlId);
+    if (capability) {
+      const check = evaluatePdfImportPermission({
+        context: request.permissionContext as PdfImportPermissionContext | undefined,
+        resolvedRole: request.resolvedRole as PdfImportResolvedRole | undefined,
+        capability,
+        manualOnly: def.safetyLevel === 'manual_workflow',
+      });
+      if (check.decision === 'denied') {
+        return base('blocked', check.reason || 'permission_denied');
+      }
+    }
+  }
 
   if (def.safetyLevel === 'blocked') {
     return base('blocked', def.blockedReason ?? 'Control is blocked in Phase 10G.');

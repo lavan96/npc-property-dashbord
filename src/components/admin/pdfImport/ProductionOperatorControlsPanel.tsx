@@ -20,19 +20,45 @@ import {
   getOperatorControlSafetyTone,
   getOperatorDecisionLabel,
   getOperatorDecisionTone,
+  getRequiredCapabilityForOperatorControl,
   type OperatorControlAvailability,
   type OperatorControlExecutionResult,
+  type OperatorControlId,
   type ProductionOperatorControlAudit,
   type SaveOperatorControlAuditResult,
 } from '@/lib/reportTemplate/ingestion/operatorControls';
+import {
+  evaluatePdfImportPermission,
+  getPdfImportPermissionDecisionLabel,
+  getPdfImportPermissionDecisionTone,
+  type PdfImportPermissionCheck,
+  type PdfImportResolvedRole,
+} from '@/lib/reportTemplate/ingestion/operatorPermissions';
 
 interface ProductionOperatorControlsPanelProps {
   audit: ProductionOperatorControlAudit | null;
   importId?: string | null;
   templateId?: string | null;
   persistenceResult?: SaveOperatorControlAuditResult | null;
+  resolvedRole?: PdfImportResolvedRole | null;
   onExecuteMetadataControl?: (controlId: string, note?: string) => Promise<OperatorControlExecutionResult | null>;
   onEnableConsoleOption?: (controlId: string) => void;
+}
+
+/** Resolve the permission check for a control given the current role. */
+function permissionForControl(
+  control: OperatorControlAvailability,
+  resolvedRole: PdfImportResolvedRole | null | undefined,
+): PdfImportPermissionCheck | null {
+  if (!resolvedRole) return null;
+  const capability = getRequiredCapabilityForOperatorControl(control.controlId as OperatorControlId);
+  if (!capability) return null;
+  return evaluatePdfImportPermission({
+    resolvedRole,
+    capability,
+    manualOnly: control.safetyLevel === 'manual_workflow',
+    requiresConfirmation: control.requiresConfirmation,
+  });
 }
 
 const DASH = '—';
@@ -51,11 +77,13 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function ControlRow({
   control,
   busy,
+  resolvedRole,
   onExecuteMetadataControl,
   onEnableConsoleOption,
 }: {
   control: OperatorControlAvailability;
   busy: boolean;
+  resolvedRole?: PdfImportResolvedRole | null;
   onExecuteMetadataControl?: (controlId: string, note?: string) => Promise<OperatorControlExecutionResult | null>;
   onEnableConsoleOption?: (controlId: string) => void;
 }) {
@@ -64,6 +92,10 @@ function ControlRow({
   const isBlocked = control.state === 'blocked' || control.state === 'disabled';
   const isManual = control.safetyLevel === 'manual_workflow' || control.state === 'manual_only';
   const isReadOnly = control.safetyLevel === 'read_only';
+
+  const perm = permissionForControl(control, resolvedRole);
+  const permDenied = perm?.decision === 'denied';
+  const permAllowsAction = !perm || perm.decision === 'allowed' || perm.decision === 'requires_confirmation';
 
   return (
     <div className="rounded-md border bg-muted/20 p-2 text-xs space-y-1">
@@ -75,27 +107,33 @@ function ControlRow({
         <Badge variant={getOperatorControlSafetyTone(control.safetyLevel)} className="text-[10px]">
           {getOperatorControlSafetyLabel(control.safetyLevel)}
         </Badge>
+        {perm && (
+          <Badge variant={getPdfImportPermissionDecisionTone(perm.decision)} className="text-[10px]">
+            {getPdfImportPermissionDecisionLabel(perm.decision)}
+          </Badge>
+        )}
         {control.recommended && <Badge variant="secondary" className="text-[10px]">recommended</Badge>}
         {control.requiresConfirmation && <Badge variant="outline" className="text-[10px]">confirm</Badge>}
         <span className="ml-auto">
-          {isMetadata && !isBlocked && onExecuteMetadataControl && (
+          {isMetadata && !isBlocked && permAllowsAction && onExecuteMetadataControl && (
             <Button size="sm" variant={control.recommended ? 'default' : 'outline'} disabled={busy}
               onClick={() => void onExecuteMetadataControl(control.controlId)}>
               Apply
             </Button>
           )}
-          {isOrchestrator && !isBlocked && onEnableConsoleOption && (
+          {isOrchestrator && !isBlocked && permAllowsAction && onEnableConsoleOption && (
             <Button size="sm" variant="outline" disabled={busy}
               onClick={() => onEnableConsoleOption(control.controlId)}>
               Enable in console
             </Button>
           )}
-          {isBlocked && <Badge variant="destructive" className="text-[10px]">unavailable</Badge>}
+          {(isBlocked || permDenied) && <Badge variant="destructive" className="text-[10px]">unavailable</Badge>}
           {isManual && <Badge variant="outline" className="text-[10px]">manual</Badge>}
           {isReadOnly && <Badge variant="outline" className="text-[10px]">read only</Badge>}
         </span>
       </div>
       <div className="text-muted-foreground">{control.reason}</div>
+      {permDenied && <div className="text-destructive">Your role does not allow this action.</div>}
       {control.blockedReason && (
         <div className="text-destructive">Blocked: {control.blockedReason}</div>
       )}
@@ -107,11 +145,14 @@ export function ProductionOperatorControlsPanel({
   audit,
   importId,
   persistenceResult,
+  resolvedRole,
   onExecuteMetadataControl,
   onEnableConsoleOption,
 }: ProductionOperatorControlsPanelProps) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const canAddNote = !resolvedRole
+    || evaluatePdfImportPermission({ resolvedRole, capability: 'pdf_import.operator.add_note' }).allowed;
 
   if (!audit) {
     return (
@@ -196,7 +237,7 @@ export function ProductionOperatorControlsPanel({
           <CardHeader className="pb-2"><CardTitle className="text-sm">Recommended controls ({recommended.length})</CardTitle></CardHeader>
           <CardContent className="pt-0 space-y-2">
             {recommended.map((c) => (
-              <ControlRow key={c.controlId} control={c} busy={busy}
+              <ControlRow key={c.controlId} control={c} busy={busy} resolvedRole={resolvedRole}
                 onExecuteMetadataControl={wrapExecute} onEnableConsoleOption={onEnableConsoleOption} />
             ))}
           </CardContent>
@@ -207,13 +248,13 @@ export function ProductionOperatorControlsPanel({
         <CardHeader className="pb-2"><CardTitle className="text-sm">All controls ({others.length})</CardTitle></CardHeader>
         <CardContent className="pt-0 space-y-2">
           {others.map((c) => (
-            <ControlRow key={c.controlId} control={c} busy={busy}
+            <ControlRow key={c.controlId} control={c} busy={busy} resolvedRole={resolvedRole}
               onExecuteMetadataControl={wrapExecute} onEnableConsoleOption={onEnableConsoleOption} />
           ))}
         </CardContent>
       </Card>
 
-      {onExecuteMetadataControl && (
+      {onExecuteMetadataControl && canAddNote && (
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Add operator note</CardTitle></CardHeader>
           <CardContent className="pt-0 flex gap-2">
@@ -221,6 +262,9 @@ export function ProductionOperatorControlsPanel({
             <Button variant="outline" disabled={busy || !note.trim()} onClick={() => void runNote()}>Save note</Button>
           </CardContent>
         </Card>
+      )}
+      {onExecuteMetadataControl && !canAddNote && (
+        <div className="text-xs text-muted-foreground">Your role does not allow adding operator notes.</div>
       )}
 
       {audit.notes.length > 0 && (
