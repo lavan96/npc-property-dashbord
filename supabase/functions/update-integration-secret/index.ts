@@ -165,7 +165,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Updating ${validSecrets.length} secrets for project ${projectRef}`);
+    console.log(`[update-integration-secret] Calling Management API`, {
+      projectRef,
+      names: validSecrets.map(s => s.name),
+      tokenSource,
+    });
 
     // Call Supabase Management API to update secrets
     const response = await fetch(
@@ -182,21 +186,34 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Supabase API error:', response.status, errorText);
-      
+      console.error('[update-integration-secret] Management API error', {
+        status: response.status,
+        body: errorText,
+        tokenSource,
+        names: validSecrets.map(s => s.name),
+      });
+
       if (response.status === 401) {
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Invalid SUPABASE_ACCESS_TOKEN. Please update your personal access token.',
-            setupRequired: true
+          JSON.stringify({
+            success: false,
+            error: `Invalid management token (source: ${tokenSource}). Rotate at https://supabase.com/dashboard/account/tokens and re-save via the Secrets form.`,
+            setupRequired: true,
+            managementApiStatus: response.status,
+            managementApiBody: errorText,
           }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       return new Response(
-        JSON.stringify({ success: false, error: `Failed to update secrets: ${errorText}` }),
+        JSON.stringify({
+          success: false,
+          error: `Management API ${response.status}: ${errorText}`,
+          managementApiStatus: response.status,
+          managementApiBody: errorText,
+          attemptedNames: validSecrets.map(s => s.name),
+        }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
