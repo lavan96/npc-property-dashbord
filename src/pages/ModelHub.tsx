@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { getRecommendedUpgrade, isModelDeprecated } from '@/lib/agentUpgradeRecommendations';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { cn } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AurixaSectionHeader } from '@/components/agent/AurixaSectionHeader';
