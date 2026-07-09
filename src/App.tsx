@@ -70,6 +70,7 @@ import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import BcSegmentEngineAdmin from "./pages/admin/BcSegmentEngineAdmin";
 import PdfImportDiagnostics from "./pages/admin/PdfImportDiagnostics";
+import PdfImportMonitoring from "./pages/admin/PdfImportMonitoring";
 import TemplateImportQuality from "./pages/admin/TemplateImportQuality";
 import PdfGoldenRegression from "./pages/admin/PdfGoldenRegression";
 import MarketQAQuality from "./pages/admin/MarketQAQuality";
@@ -349,6 +350,7 @@ const App = () => (
                 <Route path="admin/figma-templates" element={<ModuleGuard moduleKey="templates"><FigmaTemplates /></ModuleGuard>} />
                 <Route path="admin/pdf-import-engine" element={<ModuleGuard moduleKey="templates"><PdfImportEngineAdmin /></ModuleGuard>} />
                 <Route path="admin/pdf-import-diagnostics" element={<ModuleGuard moduleKey="templates"><PdfImportDiagnostics /></ModuleGuard>} />
+                <Route path="admin/pdf-import-monitoring" element={<ModuleGuard moduleKey="templates"><PdfImportMonitoring /></ModuleGuard>} />
                 <Route path="admin/template-import-quality" element={<ModuleGuard moduleKey="templates"><TemplateImportQuality /></ModuleGuard>} />
                 <Route path="admin/pdf-golden-regression" element={<ModuleGuard moduleKey="templates"><PdfGoldenRegression /></ModuleGuard>} />
                 <Route path="admin/market-qa-quality" element={<ModuleGuard moduleKey="activity_logs"><MarketQAQuality /></ModuleGuard>} />

@@ -42,6 +42,7 @@ export type PdfImportCapability =
   | 'pdf_import.view_engine_admin'
   | 'pdf_import.view_storage_artifacts_reference'
   | 'pdf_import.view_golden_history'
+  | 'pdf_import.view_monitoring'
 
   | 'pdf_import.evaluate_only'
   | 'pdf_import.run_golden_regression_preview'
@@ -74,6 +75,7 @@ export type PdfImportCapability =
 
   | 'pdf_import.run_export_parity_automation'
   | 'pdf_import.run_self_healing_execute_safe'
+  | 'pdf_import.manage_monitoring_alerts'
 
   | 'pdf_import.manual.rerun_visual_qa'
   | 'pdf_import.manual.rerun_repair'
