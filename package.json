@@ -16,7 +16,10 @@
     "test": "vitest run",
     "test:messaging-governance": "node scripts/validate-messaging-governance.cjs",
     "test:messaging-phase8": "node scripts/validate-messaging-phase8-scenarios.cjs",
-    "test:messaging-phase9": "node scripts/validate-messaging-phase9-deployment.cjs"
+    "test:messaging-phase9": "node scripts/validate-messaging-phase9-deployment.cjs",
+    "pdf-import:release-gate": "node scripts/regression/pdf-import-release-gate.mjs",
+    "pdf-import:release-gate:static": "node scripts/regression/pdf-import-release-gate.mjs --mode=static",
+    "pdf-import:release-gate:no-build": "node scripts/regression/pdf-import-release-gate.mjs --no-build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

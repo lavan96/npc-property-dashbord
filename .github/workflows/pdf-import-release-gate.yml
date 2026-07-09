@@ -1,0 +1,57 @@
+name: PDF Import Release Gate
+
+# Phase 11D release gate: static, local/CI-safe checks only. No secrets, no
+# Supabase SQL, no Cloud Run access, no deployment, no AI. Live checks are
+# disabled by default and are opt-in via PDF_IMPORT_ENABLE_LIVE_CHECKS.
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/reportTemplate/**'
+      - 'src/components/admin/pdfImport/**'
+      - 'src/pages/admin/**'
+      - 'docs/pdf-import/**'
+      - 'scripts/regression/**'
+      - 'supabase/functions/pdf-import-monitoring/**'
+      - 'supabase/migrations/**'
+      - 'package.json'
+      - '.github/workflows/pdf-import-release-gate.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pdf-import-release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pdf-import-release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the gate can diff staged/changed files.
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Matches the repo's existing ci.yml: `npm ci` is intentionally NOT used
+      # because the committed package-lock.json is out of sync with package.json
+      # on main. `npm install` reconciles the lockfile and installs.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run PDF import release gate (static)
+        run: npm run pdf-import:release-gate:static
+
+      - name: Upload release gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-import-release-gate-report
+          path: reports/pdf-import-release-gate/
+          if-no-files-found: ignore
