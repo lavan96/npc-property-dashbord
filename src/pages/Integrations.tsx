@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PlannedIntegrations } from '@/components/integrations/PlannedIntegrations';
+import { BrandMark } from '@/components/integrations/BrandMark';
+import { getBrandProfile } from '@/lib/integrations/brandProfiles';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface IntegrationConfig {
@@ -490,65 +492,33 @@ export default function Integrations() {
   };
 
   const getIntegrationTone = (integrationId: string) => {
-    const aiTone = {
-      card: 'hover:border-accent/30',
-      header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(124,58,237,0.075))]',
-      icon: 'border-accent/20 bg-accent/10 text-accent group-hover:border-accent/35 group-hover:bg-accent/15 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.18)]',
-      field: 'focus-within:border-accent/30',
+    const profile = getBrandProfile(integrationId);
+    const hex = profile?.color ?? '6467F2';
+    const hex2 = profile?.color2 ?? hex;
+    const rgb = (h: string) => {
+      const n = parseInt(h, 16);
+      return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
     };
+    const c1 = rgb(hex);
+    const c2 = rgb(hex2);
 
-    const tones: Record<string, typeof aiTone> = {
-      airtable: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      vapi: {
-        card: 'hover:border-success/30',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.075))]',
-        icon: 'border-success/20 bg-success/10 text-success group-hover:border-success/35 group-hover:bg-success/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
-        field: 'focus-within:border-success/30',
-      },
-      gohighlevel: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      twilio: {
-        card: 'hover:border-success/30',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.07))]',
-        icon: 'border-success/20 bg-success/10 text-success group-hover:border-success/35 group-hover:bg-success/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
-        field: 'focus-within:border-success/30',
-      },
-      microsoft: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      make: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      cloudflare: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      openai: aiTone,
-      perplexity: aiTone,
-      anthropic: aiTone,
-      gemini: aiTone,
-      openrouter: aiTone,
+    return {
+      card: 'hover:border-[color:var(--brand-border)]',
+      cardStyle: {
+        // consumed by hover ring + focus-within accents via CSS var
+        ['--brand-rgb' as string]: c1,
+        ['--brand-border' as string]: `rgba(${c1}, 0.45)`,
+      } as React.CSSProperties,
+      header:
+        'bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.12),rgba(var(--brand-rgb),0.02)_60%,transparent)]',
+      icon:
+        'border-[color:rgba(var(--brand-rgb),0.35)] bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.14),rgba(var(--brand-rgb),0.04))] shadow-[0_14px_34px_rgba(var(--brand-rgb),0.22)] group-hover:border-[color:rgba(var(--brand-rgb),0.55)] group-hover:shadow-[0_18px_42px_rgba(var(--brand-rgb),0.30)]',
+      field: 'focus-within:border-[color:rgba(var(--brand-rgb),0.45)]',
+      accentBar:
+        'bg-[linear-gradient(90deg,rgba(' + c1 + ',0.9),rgba(' + c2 + ',0.55),transparent)]',
     };
-
-    return tones[integrationId] || tones.gohighlevel;
   };
+
 
   const getFieldGridClass = (integration: IntegrationConfig) => {
     if (integration.id === 'microsoft' || integration.id === 'cloudflare') {
@@ -652,13 +622,15 @@ export default function Integrations() {
     return (
       <Card
         key={integration.id}
-        className={`group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
+        style={tone.cardStyle}
+        className={`group relative min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_rgba(var(--brand-rgb),0.18)] dark:border-white/10 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
       >
+        <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-[3px] ${tone.accentBar}`} />
         <CardHeader className={`border-b border-border/50 pb-4 ${tone.header}`}>
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_hsl(var(--primary)/0.14)] transition-all duration-300 ${tone.icon}`}>
-                {integration.icon}
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border backdrop-blur-sm transition-all duration-300 ${tone.icon}`}>
+                <BrandMark integrationId={integration.id} fallback={integration.icon} size={26} />
               </div>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="break-words text-lg font-semibold leading-tight tracking-tight text-foreground">
@@ -675,6 +647,7 @@ export default function Integrations() {
             </div>
           </div>
         </CardHeader>
+
         <CardContent className="space-y-4 p-4 sm:p-6">
           <div className={getFieldGridClass(integration)}>
             {integration.fields.map(field => {
