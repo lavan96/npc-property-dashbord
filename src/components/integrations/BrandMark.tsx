@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { brandLogoUrl, getBrandProfile } from '@/lib/integrations/brandProfiles';
+import { INLINE_GLYPHS } from './brandGlyphs';
 
 interface BrandMarkProps {
   integrationId: string;
-  /** Fallback lucide (or arbitrary) node when no logo slug or the CDN 404s */
+  /** Fallback lucide (or arbitrary) node when no brand asset is available */
   fallback: ReactNode;
   /** Rendered SVG size in px */
   size?: number;
@@ -11,13 +12,19 @@ interface BrandMarkProps {
 }
 
 /**
- * Renders the brand's Simple Icons SVG in its official color.
- * Falls back to the provided lucide icon if the profile has no slug
- * or the CDN request fails (offline, blocked, etc.).
+ * Renders the brand's mark in its official color.
+ * Priority: inline SVG (for brands Simple Icons dropped for trademark reasons)
+ *   → Simple Icons CDN (colored SVG)
+ *   → provided lucide fallback.
  */
 export function BrandMark({ integrationId, fallback, size = 24, className }: BrandMarkProps) {
   const profile = getBrandProfile(integrationId);
   const [errored, setErrored] = useState(false);
+
+  const Inline = INLINE_GLYPHS[integrationId];
+  if (Inline) {
+    return <Inline size={size} color={profile ? `#${profile.color}` : undefined} className={className} />;
+  }
 
   if (!profile?.slug || errored) {
     return <>{fallback}</>;
