@@ -1083,7 +1083,7 @@ describe('orchestrateGoldenCorpusRun (Phase 10F performance/cost audit)', () => 
     const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true }), now: NOW });
     // The audit is advisory metadata only; it never sets an AI reconciliation status.
     expect(result.performanceCostAudit).not.toBeNull();
-    expect(result.aiReconciliationStatus).toBeUndefined();
+    expect((result as any).aiReconciliationStatus).toBeUndefined();
   });
 });
 
