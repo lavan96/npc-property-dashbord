@@ -11,13 +11,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Sparkles, Zap,
   Brain, Image as ImageIcon, Search, RefreshCw, ShieldCheck, Globe,
-  Network, Workflow, FlaskConical, ArrowUpCircle
+  Network, Workflow, FlaskConical, ArrowUpCircle, LayoutGrid, Rows3, X
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getRecommendedUpgrade, isModelDeprecated } from '@/lib/agentUpgradeRecommendations';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { cn } from '@/lib/utils';
+import { useSearchParams } from 'react-router-dom';
+import { useDebounce } from '@/hooks/useDebounce';
+import { AurixaSectionHeader } from '@/components/agent/AurixaSectionHeader';
+import { OpenRouterModelCard } from '@/components/model-hub/OpenRouterModelCard';
+import { OpenRouterModelTable } from '@/components/model-hub/OpenRouterModelTable';
+import { OpenRouterPager } from '@/components/model-hub/OpenRouterPager';
+import { familyFromId, familyTint, SORT_LABELS, extractExtras, type SortKey } from '@/lib/openrouter/format';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
@@ -34,6 +42,7 @@ interface CatalogModel {
   pricing_output_per_1m: number | null;
   last_probed_at: string;
   probe_error: string | null;
+  raw_metadata?: unknown;
 }
 
 interface ProviderResult {
@@ -452,83 +461,288 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
 
 // ===== OpenRouter tab =====
 
-function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
-  const [search, setSearch] = useState('');
-  const [family, setFamily] = useState<string>('all');
+const MODALITY_OPTS = ['text', 'image', 'audio', 'file'] as const;
 
+function OpenRouterCatalog({ models, lastProbedAt }: { models: CatalogModel[]; lastProbedAt?: string }) {
+  const [params, setParams] = useSearchParams();
   const orModels = useMemo(() => models.filter((m) => m.route === 'openrouter'), [models]);
 
-  const families = useMemo(() => {
-    const f = new Set<string>();
-    for (const m of orModels) {
-      const prefix = m.model_id.split('/')[0];
-      if (prefix) f.add(prefix);
+  // URL-synced state
+  const search = params.get('or_q') ?? '';
+  const family = params.get('or_family') ?? 'all';
+  const modalitiesParam = params.get('or_mod') ?? '';
+  const modalities = useMemo(() => modalitiesParam ? modalitiesParam.split(',').filter(Boolean) : [], [modalitiesParam]);
+  const sort = (params.get('or_sort') as SortKey) || 'popular';
+  const view = (params.get('or_view') as 'grid' | 'table') || 'grid';
+  const page = Math.max(1, Number(params.get('or_page') ?? '1') || 1);
+  const pageSizeRaw = params.get('or_size') ?? '24';
+  const pageSize: number | 'all' = pageSizeRaw === 'all' ? 'all' : Math.max(1, Number(pageSizeRaw) || 24);
+
+  const debouncedSearch = useDebounce(search, 200);
+
+  const patch = (updates: Record<string, string | null>, resetPage = true) => {
+    const next = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null || v === '') next.delete(k);
+      else next.set(k, v);
     }
-    return ['all', ...Array.from(f).sort()];
+    if (resetPage) next.delete('or_page');
+    setParams(next, { replace: true });
+  };
+
+  const families = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of orModels) {
+      const f = familyFromId(m.model_id);
+      counts.set(f, (counts.get(f) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
   }, [orModels]);
 
   const filtered = useMemo(() => {
-    return orModels.filter((m) => {
-      if (family !== 'all' && !m.model_id.startsWith(family + '/')) return false;
-      if (search && !m.model_id.toLowerCase().includes(search.toLowerCase()) && !m.display_name.toLowerCase().includes(search.toLowerCase())) return false;
+    const q = debouncedSearch.toLowerCase().trim();
+    const arr = orModels.filter((m) => {
+      if (family !== 'all' && familyFromId(m.model_id) !== family) return false;
+      if (q && !m.model_id.toLowerCase().includes(q) && !m.display_name.toLowerCase().includes(q)) return false;
+      if (modalities.length > 0) {
+        const ex = extractExtras(m.raw_metadata);
+        const all = new Set([...ex.inputModalities, ...ex.outputModalities]);
+        if (!modalities.every((mod) => all.has(mod))) return false;
+      }
       return true;
     });
-  }, [orModels, search, family]);
+    const sorted = [...arr];
+    switch (sort) {
+      case 'newest':
+        sorted.sort((a, b) => {
+          const at = extractExtras(a.raw_metadata).releasedAt ?? '';
+          const bt = extractExtras(b.raw_metadata).releasedAt ?? '';
+          return bt.localeCompare(at);
+        });
+        break;
+      case 'context-desc':
+        sorted.sort((a, b) => (b.context_window ?? 0) - (a.context_window ?? 0));
+        break;
+      case 'price-asc':
+        sorted.sort((a, b) => (a.pricing_input_per_1m ?? Infinity) - (b.pricing_input_per_1m ?? Infinity));
+        break;
+      case 'name-asc':
+        sorted.sort((a, b) => a.display_name.localeCompare(b.display_name));
+        break;
+      // 'popular' = original OpenRouter order
+    }
+    return sorted;
+  }, [orModels, debouncedSearch, family, modalities, sort]);
+
+  const [cheapestInput, priciestInput] = useMemo(() => {
+    const prices = filtered.map((m) => m.pricing_input_per_1m).filter((n): n is number => typeof n === 'number' && n > 0);
+    if (!prices.length) return [undefined, undefined] as const;
+    return [Math.min(...prices), Math.max(...prices)] as const;
+  }, [filtered]);
+
+  const total = filtered.length;
+  const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visible = pageSize === 'all' ? filtered : filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const maxFamCount = families[0]?.[1] ?? 1;
+  const activeFilterCount = (family !== 'all' ? 1 : 0) + modalities.length + (debouncedSearch ? 1 : 0);
 
   if (orModels.length === 0) {
     return (
-      <Alert className="relative overflow-hidden border-warning/30 bg-[linear-gradient(135deg,hsl(var(--warning)/0.14),hsl(var(--card)/0.92)_48%,hsl(var(--background)/0.78))] p-6 shadow-lg shadow-brand-500/10 dark:border-warning/25">
-        <div className="absolute inset-y-0 left-0 w-1 bg-warning/80" />
-        <KeyRound className="h-5 w-5 text-warning dark:text-brand-300" />
-        <AlertTitle className="text-base font-semibold text-foreground">OpenRouter not configured</AlertTitle>
-        <AlertDescription className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Add <code className="rounded bg-background/70 px-1.5 py-0.5 font-mono text-foreground">OPENROUTER_API_KEY</code> in the <strong>Integrations</strong> page → OpenRouter card.
-          Once enabled, 300+ models from Anthropic, OpenAI, Meta, Mistral, DeepSeek, Qwen and more will appear here.
-        </AlertDescription>
-      </Alert>
+      <div className="aurixa-aurora-bg relative overflow-hidden rounded-[24px] p-6">
+        <div className="aurixa-glass flex flex-col items-start gap-3 rounded-[20px] p-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-warning/30 bg-warning/10 text-warning">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="font-heading text-xl font-medium text-foreground">OpenRouter not configured</h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Add <code className="rounded bg-background/70 px-1.5 py-0.5 font-mono text-foreground">OPENROUTER_API_KEY</code> in <strong>Integrations → OpenRouter</strong>.
+              Once enabled, 300+ models from Anthropic, OpenAI, Meta, Mistral, DeepSeek, Qwen and more will appear here.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" asChild className="rounded-xl border-primary/30 bg-primary/10 text-primary hover:bg-primary/15">
+            <a href="/integrations">Open Integrations <ExternalLink className="ml-1 h-3 w-3" /></a>
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <Alert className="border-accent/25 bg-accent/10 p-5 shadow-lg shadow-accent/5">
-        <Network className="h-5 w-5 text-accent dark:text-accent" />
-        <AlertTitle className="text-base font-semibold text-foreground">OpenRouter unified gateway active</AlertTitle>
-        <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
-          {orModels.length} models available. Per-model pricing shown where published. Any agent in the <strong>Agent Bindings</strong> tab can be pointed at any model here.
-        </AlertDescription>
-      </Alert>
-      <DashboardThemeFrame variant="toolbar" className="items-center p-3">
-        <Input aria-label="Search OpenRouter models" placeholder="Search models…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 min-w-[220px] max-w-sm flex-1 rounded-xl bg-background/80 focus-visible:ring-ring" />
-        <Select value={family} onValueChange={setFamily}>
-          <SelectTrigger aria-label="Filter OpenRouter model family" className="h-9 w-full rounded-xl bg-background/80 focus:ring-ring sm:w-[220px]"><SelectValue /></SelectTrigger>
+    <div className="aurixa-aurora-bg relative overflow-hidden rounded-[24px] p-4 sm:p-6">
+      {/* Hero */}
+      <div className="mb-5">
+        <AurixaSectionHeader
+          eyebrow="OpenRouter · unified gateway"
+          title="Model Catalog"
+          description={<>Browse the full live OpenRouter catalog — filter, sort, and page through every model, with pricing and modalities surfaced inline.</>}
+          actions={
+            <div className="flex flex-col items-end gap-1 text-right">
+              <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+                {orModels.length} models · {families.length} providers
+              </span>
+              {lastProbedAt && (
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  probed {new Date(lastProbedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+          }
+        />
+        {/* Provider-mix sparkline */}
+        <div className="mt-4 flex flex-wrap items-end gap-2">
+          {families.slice(0, 8).map(([f, c]) => {
+            const tint = familyTint(f);
+            const active = family === f;
+            return (
+              <button
+                key={f}
+                type="button"
+                onClick={() => patch({ or_family: active ? null : f })}
+                className={cn(
+                  'group flex min-w-[64px] flex-col items-start gap-1 rounded-xl border px-2.5 py-1.5 text-left transition-all',
+                  active ? 'border-primary/40 bg-primary/10' : 'border-border/40 bg-background/40 hover:border-primary/30'
+                )}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] font-medium text-foreground">
+                  <span className={cn('h-1.5 w-1.5 rounded-full', tint.dot)} />
+                  {f}
+                </div>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                  <div className={cn('h-full rounded-full', tint.dot)} style={{ width: `${Math.max(6, (c / maxFamCount) * 100)}%` }} />
+                </div>
+                <span className="font-mono text-[9px] text-muted-foreground">{c}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Command bar */}
+      <div className="aurixa-glass mb-4 flex flex-wrap items-center gap-2 rounded-[18px] p-2.5">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label="Search OpenRouter models"
+            placeholder="Search by name, ID, or provider…"
+            value={search}
+            onChange={(e) => patch({ or_q: e.target.value || null })}
+            className="h-9 rounded-xl bg-background/60 pl-9 pr-3 focus-visible:ring-ring"
+          />
+        </div>
+        <Select value={family} onValueChange={(v) => patch({ or_family: v === 'all' ? null : v })}>
+          <SelectTrigger aria-label="Filter family" className="h-9 w-[180px] rounded-xl bg-background/60"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {families.map((f) => <SelectItem key={f} value={f}>{f === 'all' ? 'All families' : f}</SelectItem>)}
+            <SelectItem value="all">All providers</SelectItem>
+            {families.map(([f, c]) => <SelectItem key={f} value={f}>{f} · {c}</SelectItem>)}
           </SelectContent>
         </Select>
-        <span className="ml-auto rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">{filtered.length} shown</span>
-      </DashboardThemeFrame>
-      {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 p-6 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-              <Search className="h-4 w-4" />
-            </div>
-            <div className="space-y-1">
-              <p className="font-medium text-foreground">No OpenRouter models match this filter</p>
-              <p className="text-xs leading-5">Clear the search term or choose a different family to show the existing OpenRouter catalogue data.</p>
-            </div>
+        <div className="flex items-center gap-1">
+          {MODALITY_OPTS.map((mod) => {
+            const active = modalities.includes(mod);
+            return (
+              <button
+                key={mod}
+                type="button"
+                onClick={() => {
+                  const next = active ? modalities.filter((m) => m !== mod) : [...modalities, mod];
+                  patch({ or_mod: next.length ? next.join(',') : null });
+                }}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors',
+                  active ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border/50 text-muted-foreground hover:border-primary/30 hover:text-primary'
+                )}
+              >
+                {mod}
+              </button>
+            );
+          })}
+        </div>
+        <Select value={sort} onValueChange={(v) => patch({ or_sort: v === 'popular' ? null : v })}>
+          <SelectTrigger aria-label="Sort" className="h-9 w-[180px] rounded-xl bg-background/60"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => <SelectItem key={k} value={k}>{SORT_LABELS[k]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center rounded-xl border border-border/50 bg-background/60 p-0.5">
+          <button
+            type="button"
+            onClick={() => patch({ or_view: null }, false)}
+            className={cn('flex h-8 w-8 items-center justify-center rounded-lg', view === 'grid' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+            aria-label="Grid view"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => patch({ or_view: 'table' }, false)}
+            className={cn('flex h-8 w-8 items-center justify-center rounded-lg', view === 'table' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+            aria-label="Table view"
+          >
+            <Rows3 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {activeFilterCount > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1 rounded-full text-[11px] text-muted-foreground hover:text-foreground"
+            onClick={() => setParams(new URLSearchParams(), { replace: true })}
+          >
+            <X className="h-3 w-3" /> Clear ({activeFilterCount})
+          </Button>
+        )}
+      </div>
+
+      {/* Results */}
+      {total === 0 ? (
+        <div className="aurixa-glass flex flex-col items-center gap-3 rounded-[20px] p-8 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <Search className="h-4 w-4" />
           </div>
+          <div>
+            <p className="font-heading text-base font-medium text-foreground">No models match these filters</p>
+            <p className="mt-1 text-xs text-muted-foreground">Try a different provider, clear a modality chip, or reset all filters.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setParams(new URLSearchParams(), { replace: true })} className="rounded-full border-primary/30 bg-primary/10 text-primary hover:bg-primary/15">
+            Clear all filters
+          </Button>
+        </div>
+      ) : view === 'table' ? (
+        <div className="space-y-4">
+          <OpenRouterModelTable models={visible} sort={sort} onSort={(k) => patch({ or_sort: k === 'popular' ? null : k })} />
+          <OpenRouterPager
+            page={safePage}
+            pageCount={pageCount}
+            total={total}
+            pageSize={pageSize}
+            onPage={(p) => patch({ or_page: p === 1 ? null : String(p) }, false)}
+            onPageSize={(s) => patch({ or_size: s === 24 ? null : String(s) })}
+          />
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.slice(0, 60).map((m) => <ModelCard key={m.model_id} model={m} />)}
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {visible.map((m) => (
+              <OpenRouterModelCard key={m.model_id} model={m} cheapestInput={cheapestInput} priciestInput={priciestInput} />
+            ))}
+          </div>
+          <OpenRouterPager
+            page={safePage}
+            pageCount={pageCount}
+            total={total}
+            pageSize={pageSize}
+            onPage={(p) => patch({ or_page: p === 1 ? null : String(p) }, false)}
+            onPageSize={(s) => patch({ or_size: s === 24 ? null : String(s) })}
+          />
         </div>
       )}
-      {filtered.length > 60 && <p className="text-center text-xs text-muted-foreground">Showing first 60 of {filtered.length} — refine search to see more.</p>}
     </div>
   );
 }
+
 
 // ===== Page =====
 
@@ -692,7 +906,7 @@ export default function ModelHub() {
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
               </div>
             </div>
-          ) : <OpenRouterCatalog models={data?.models ?? []} />}
+          ) : <OpenRouterCatalog models={data?.models ?? []} lastProbedAt={data?.checkedAt} />}
         </TabsContent>
       </Tabs>
 
