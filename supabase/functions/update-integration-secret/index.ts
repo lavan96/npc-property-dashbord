@@ -55,15 +55,25 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseAccessToken = Deno.env.get('SB_MANAGEMENT_ACCESS_TOKEN') ?? Deno.env.get('SUPABASE_ACCESS_TOKEN');
+    const sbMgmt = Deno.env.get('SB_MANAGEMENT_ACCESS_TOKEN');
+    const legacyMgmt = Deno.env.get('SUPABASE_ACCESS_TOKEN');
+    const supabaseAccessToken = sbMgmt ?? legacyMgmt;
+    const tokenSource = sbMgmt ? 'SB_MANAGEMENT_ACCESS_TOKEN' : (legacyMgmt ? 'SUPABASE_ACCESS_TOKEN' : 'none');
     const projectRef = Deno.env.get('SUPABASE_URL')?.match(/https:\/\/([^.]+)/)?.[1];
 
+    console.log('[update-integration-secret] Boot check', {
+      tokenSource,
+      tokenLen: supabaseAccessToken?.length ?? 0,
+      tokenPrefix: supabaseAccessToken ? supabaseAccessToken.substring(0, 4) : null,
+      projectRef,
+    });
+
     if (!supabaseAccessToken) {
-      console.error('SUPABASE_ACCESS_TOKEN not configured');
+      console.error('Management access token not configured');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'SUPABASE_ACCESS_TOKEN not configured. Please add your Supabase personal access token to the secrets.',
+          error: 'SB_MANAGEMENT_ACCESS_TOKEN not configured. Please add your Supabase personal access token to the secrets.',
           setupRequired: true
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
