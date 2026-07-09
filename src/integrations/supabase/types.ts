@@ -14520,6 +14520,90 @@ export type Database = {
         }
         Relationships: []
       }
+      pdf_import_monitoring_events: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          context: Json
+          created_at: string
+          domain: string
+          event_key: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          metric_value: string | null
+          note: string | null
+          occurrence_count: number
+          owner: string
+          release_blocking: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          rule_id: string
+          runbook_anchor: string
+          severity: string
+          status: string
+          summary: string
+          suppressed_until: string | null
+          threshold: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          context?: Json
+          created_at?: string
+          domain: string
+          event_key: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          metric_value?: string | null
+          note?: string | null
+          occurrence_count?: number
+          owner?: string
+          release_blocking?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id: string
+          runbook_anchor?: string
+          severity: string
+          status?: string
+          summary?: string
+          suppressed_until?: string | null
+          threshold?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          context?: Json
+          created_at?: string
+          domain?: string
+          event_key?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          metric_value?: string | null
+          note?: string | null
+          occurrence_count?: number
+          owner?: string
+          release_blocking?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          rule_id?: string
+          runbook_anchor?: string
+          severity?: string
+          status?: string
+          summary?: string
+          suppressed_until?: string | null
+          threshold?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       permission_invite_tokens: {
         Row: {
           created_at: string
