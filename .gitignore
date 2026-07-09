@@ -25,3 +25,6 @@ dist-ssr
 
 # Local-only PDF import testing artifacts (Phase 7 baselines, private PDFs/screenshots)
 audit-output/
+
+# Phase 11D release gate generated reports (local-only)
+reports/
