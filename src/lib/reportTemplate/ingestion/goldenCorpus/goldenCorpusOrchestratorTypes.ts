@@ -45,6 +45,10 @@ import type {
   PdfImportPerformanceCostAudit,
   SavePdfImportPerformanceAuditResult,
 } from '../performance/pdfImportPerformanceTypes';
+import type {
+  ProductionOperatorControlAudit,
+  SaveOperatorControlAuditResult,
+} from '../operatorControls/operatorControlTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -79,7 +83,9 @@ export type GoldenCorpusOrchestratorStepId =
   | 'execute_self_healing_plan'
   | 'persist_self_healing_audit'
   | 'build_performance_cost_audit'
-  | 'persist_performance_cost_audit';
+  | 'persist_performance_cost_audit'
+  | 'build_operator_controls'
+  | 'persist_operator_control_audit';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -162,6 +168,15 @@ export interface GoldenCorpusOrchestratorRequest {
    * pipeline behaviour, calls AI, or mutates templates.
    */
   persistPerformanceCostAudit?: boolean;
+  /** Phase 10G — build the production operator control audit. Off by default. */
+  buildOperatorControls?: boolean;
+  /**
+   * Phase 10G — persist the operator control audit to
+   * template_imports.meta.production_operator_control_audit. Off by default;
+   * requires buildOperatorControls and an importId. Records control availability
+   * and operator decisions; never calls AI or mutates templates automatically.
+   */
+  persistOperatorControlAudit?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -218,6 +233,10 @@ export interface GoldenCorpusOrchestratorResult {
   // Phase 10F — performance + cost optimization audit.
   performanceCostAudit: PdfImportPerformanceCostAudit | null;
   performanceCostAuditPersistenceResult: SavePdfImportPerformanceAuditResult | null;
+
+  // Phase 10G — production operator control audit.
+  productionOperatorControlAudit: ProductionOperatorControlAudit | null;
+  productionOperatorControlAuditPersistenceResult: SaveOperatorControlAuditResult | null;
 
   warnings: string[];
   failures: string[];

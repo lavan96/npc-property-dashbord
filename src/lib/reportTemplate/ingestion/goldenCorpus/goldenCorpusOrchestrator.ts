@@ -40,6 +40,10 @@ import {
   buildPdfImportPerformanceCostAudit,
   savePdfImportPerformanceAudit,
 } from '../performance';
+import {
+  buildProductionOperatorControlAudit,
+  saveProductionOperatorControlAudit,
+} from '../operatorControls';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -90,6 +94,8 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   persist_self_healing_audit: 'Persist self-healing audit',
   build_performance_cost_audit: 'Build performance/cost audit',
   persist_performance_cost_audit: 'Persist performance/cost audit',
+  build_operator_controls: 'Build production operator controls',
+  persist_operator_control_audit: 'Persist operator control audit',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -189,6 +195,8 @@ function baseResult(
     selfHealingRetryAuditPersistenceResult: null,
     performanceCostAudit: null,
     performanceCostAuditPersistenceResult: null,
+    productionOperatorControlAudit: null,
+    productionOperatorControlAuditPersistenceResult: null,
     warnings: [],
     failures: [],
     generatedAt,
@@ -1024,6 +1032,85 @@ async function applyPerformanceCostPhase(
 }
 
 /**
+ * Phase 10G phase (async-only): builds the production operator control audit from
+ * the snapshot and all Phase 10B–10F result modules, and optionally persists it
+ * via `append_meta`. It only builds/displays/persists controls — it never
+ * executes operator actions, calls AI, or mutates templates. Non-gating.
+ */
+async function applyOperatorControlsPhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  snapshot: GoldenCorpusImportQualitySnapshot,
+  now: () => Date,
+): Promise<void> {
+  const appendStep = (step: GoldenCorpusOrchestratorStep) => { result.steps = [...result.steps, step]; };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  if (request.buildOperatorControls !== true) {
+    appendStep(skippedStep('build_operator_controls', 'Operator controls not requested.'));
+    appendStep(skippedStep('persist_operator_control_audit', 'Operator controls not requested.'));
+    return;
+  }
+
+  let audit;
+  try {
+    audit = buildProductionOperatorControlAudit({
+      importId: result.importId ?? request.importId,
+      templateId: result.templateId ?? request.templateId ?? snapshot.templateId,
+      sourceFilename: request.sourceFilename ?? snapshot.sourceFilename,
+      snapshot,
+      goldenRegressionSummary: result.goldenRegressionSummary ?? undefined,
+      importIntelligenceProfile: result.importIntelligenceProfile,
+      repairPatternAnalysis: result.repairPatternAnalysis,
+      adaptiveReconciliationPolicy: result.adaptiveReconciliationPolicy,
+      selfHealingRetryAudit: result.selfHealingRetryAudit,
+      performanceCostAudit: result.performanceCostAudit,
+      qualityGateReport: result.qualityGateReport ?? undefined,
+      triageSummary: result.triageSummary ?? undefined,
+      now,
+    });
+  } catch (err) {
+    result.productionOperatorControlAudit = null;
+    appendStep(createGoldenCorpusOrchestratorStep('build_operator_controls', 'fail', (err as Error).message));
+    appendStep(skippedStep('persist_operator_control_audit', 'Audit unavailable (build failed).'));
+    addWarning('operator_controls_build_failed');
+    return;
+  }
+
+  result.productionOperatorControlAudit = audit;
+  const recommended = audit.controls.filter((c) => c.recommended).length;
+  const blockedOrManual = audit.controls.filter((c) => c.state === 'blocked' || c.state === 'manual_only').length;
+  const buildStepStatus: GoldenCorpusOrchestratorStepStatus =
+    audit.operatorState.blocked || recommended > 0 || blockedOrManual > 0 ? 'warning' : 'pass';
+  appendStep(createGoldenCorpusOrchestratorStep(
+    'build_operator_controls', buildStepStatus,
+    `Operator controls: decision ${audit.operatorState.decision} (${recommended} recommended).`,
+    { decision: audit.operatorState.decision, recommended, manualReviewRequired: audit.operatorState.manualReviewRequired, blocked: audit.operatorState.blocked },
+  ));
+
+  if (request.persistOperatorControlAudit !== true) {
+    appendStep(skippedStep('persist_operator_control_audit', 'Persistence not requested.'));
+    return;
+  }
+
+  const importId = (result.importId ?? '').trim();
+  if (!importId) {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_operator_control_audit', 'warning', 'No importId to persist the audit.'));
+    addWarning('operator_control_audit_persist_skipped_no_import_id');
+    return;
+  }
+
+  const saveRes = await saveProductionOperatorControlAudit(importId, audit);
+  result.productionOperatorControlAuditPersistenceResult = saveRes;
+  if (saveRes.kind === 'ok') {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_operator_control_audit', 'pass', 'Operator control audit persisted.'));
+  } else {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_operator_control_audit', 'fail', saveRes.message));
+    addWarning('operator_control_audit_persistence_failed');
+  }
+}
+
+/**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
  */
@@ -1177,6 +1264,11 @@ export async function orchestrateGoldenCorpusRun(
   // Phase 10F — optional advisory performance/cost audit build/persist. Advisory
   // only; never skips gates, calls AI, or mutates templates. Non-gating.
   await applyPerformanceCostPhase(pure, request, snapshot, now);
+
+  // Phase 10G — optional production operator control audit build/persist. Records
+  // control availability/decisions; never executes actions, calls AI, or mutates
+  // templates. Non-gating.
+  await applyOperatorControlsPhase(pure, request, snapshot, now);
 
   // A clean run that only accrued baseline warnings drops to completed_with_warnings.
   if (pure.status === 'completed' && pure.warnings.length > 0) {

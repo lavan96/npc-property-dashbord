@@ -55,6 +55,10 @@ export interface GoldenCorpusConsoleFormState {
   buildPerformanceCostAudit: boolean;
   /** Phase 10F — persist the performance/cost audit (only when persisting). */
   persistPerformanceCostAudit: boolean;
+  /** Phase 10G — build the production operator control audit. */
+  buildOperatorControls: boolean;
+  /** Phase 10G — persist the operator control audit (only when persisting). */
+  persistOperatorControlAudit: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -104,6 +108,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     selfHealingOperatorConfirmed: false,
     buildPerformanceCostAudit: true,
     persistPerformanceCostAudit: true,
+    buildOperatorControls: true,
+    persistOperatorControlAudit: true,
     ...overrides,
   };
 }
@@ -170,6 +176,10 @@ export function validateGoldenCorpusConsoleForm(
     warn('persistPerformanceCostAudit', 'performance_cost_persist_without_build', 'Persist performance/cost audit has no effect unless audit building is enabled.');
   }
 
+  if (form.persistOperatorControlAudit && !form.buildOperatorControls) {
+    warn('persistOperatorControlAudit', 'operator_controls_persist_without_build', 'Persist operator control audit has no effect unless operator controls building is enabled.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -233,6 +243,11 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
     buildPerformanceCostAudit: form.buildPerformanceCostAudit,
     persistPerformanceCostAudit:
       mode === 'evaluate_and_persist' && form.buildPerformanceCostAudit && form.persistPerformanceCostAudit,
+    // Phase 10G — operator control audit; read-only build in either mode, persist
+    // only when explicitly persisting the run.
+    buildOperatorControls: form.buildOperatorControls,
+    persistOperatorControlAudit:
+      mode === 'evaluate_and_persist' && form.buildOperatorControls && form.persistOperatorControlAudit,
   };
 }
 
