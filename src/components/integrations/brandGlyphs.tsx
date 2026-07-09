@@ -63,4 +63,6 @@ export const INLINE_GLYPHS: Record<string, (p: GlyphProps) => JSX.Element> = {
   twilio: TwilioGlyph,
   microsoft: MicrosoftGlyph,
   xai: XAIGlyph,
+  // OpenRouter family aliases
+  'x-ai': XAIGlyph,
 };
