@@ -34,6 +34,11 @@ export default function PdfImportMonitoring() {
           <p className="mt-1 text-xs text-muted-foreground">
             Related runbook: <code>docs/pdf-import/runbooks/pdf-import-monitoring-alert-response-sop.md</code>
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Monitoring details are internal. Use{' '}
+            <Link to="/admin/pdf-import-client-reports" className="text-primary underline underline-offset-2">Client Reports</Link>{' '}
+            for external-safe summaries.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">

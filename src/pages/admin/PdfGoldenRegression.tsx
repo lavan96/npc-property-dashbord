@@ -2,7 +2,7 @@
  * PdfGoldenRegression — Phase 9B admin page.
  * Thin wrapper around GoldenRegressionRunConsole; prefills from URL query params.
  */
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { GoldenRegressionRunConsole } from '@/components/admin/pdfImport/GoldenRegressionRunConsole';
 
 export default function PdfGoldenRegression() {
@@ -21,6 +21,14 @@ export default function PdfGoldenRegression() {
         <p className="mt-1 text-xs text-muted-foreground">
           Related runbooks: <code>docs/pdf-import/runbooks/pdf-import-evaluate-only-sop.md</code>,{' '}
           <code>pdf-import-evaluate-persist-sop.md</code>, <code>pdf-import-golden-regression-review-sop.md</code>
+        </p>
+        <p className="mt-1 text-xs">
+          <Link
+            to={importId ? `/admin/pdf-import-client-reports?importId=${encodeURIComponent(importId)}` : '/admin/pdf-import-client-reports'}
+            className="text-primary underline underline-offset-2"
+          >
+            Create client-safe report
+          </Link>
         </p>
       </div>
       <GoldenRegressionRunConsole

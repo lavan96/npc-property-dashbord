@@ -76,6 +76,11 @@ const ADMIN_CAPS: PdfImportCapability[] = [
   'pdf_import.view_retention',
   'pdf_import.run_retention_scan',
   'pdf_import.manage_retention_candidates',
+  'pdf_import.view_client_reports',
+  'pdf_import.generate_client_report_preview',
+  'pdf_import.save_client_report_draft',
+  'pdf_import.approve_client_report',
+  'pdf_import.export_client_report',
 ];
 
 const DEVELOPER_CAPS: PdfImportCapability[] = [
@@ -207,6 +212,14 @@ export function assertPdfImportPermissionMatrixIntegrity(): {
   if (!roleHasPdfImportCapability('developer_admin', 'pdf_import.manage_retention_candidates')) errors.push('developer_admin_missing_manage_retention_candidates');
   if (roleHasPdfImportCapability('pdf_qa_operator', 'pdf_import.view_retention')) errors.push('pdf_qa_operator_has_view_retention');
   if (roleHasPdfImportCapability('pdf_operator', 'pdf_import.run_retention_scan')) errors.push('pdf_operator_has_run_retention_scan');
+
+  // Phase 11G — client report capabilities are admin/developer only.
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.view_client_reports')) errors.push('pdf_admin_missing_view_client_reports');
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.approve_client_report')) errors.push('pdf_admin_missing_approve_client_report');
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.export_client_report')) errors.push('pdf_admin_missing_export_client_report');
+  if (!roleHasPdfImportCapability('developer_admin', 'pdf_import.export_client_report')) errors.push('developer_admin_missing_export_client_report');
+  if (roleHasPdfImportCapability('pdf_qa_operator', 'pdf_import.approve_client_report')) errors.push('pdf_qa_operator_has_approve_client_report');
+  if (roleHasPdfImportCapability('pdf_operator', 'pdf_import.view_client_reports')) errors.push('pdf_operator_has_view_client_reports');
 
   return { ok: errors.length === 0, errors, warnings };
 }
