@@ -36,6 +36,10 @@ import {
   executeSelfHealingRetryPlan,
   saveSelfHealingRetryAudit,
 } from '../selfHealing';
+import {
+  buildPdfImportPerformanceCostAudit,
+  savePdfImportPerformanceAudit,
+} from '../performance';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -84,6 +88,8 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   build_self_healing_plan: 'Build self-healing retry plan',
   execute_self_healing_plan: 'Execute self-healing retry plan',
   persist_self_healing_audit: 'Persist self-healing audit',
+  build_performance_cost_audit: 'Build performance/cost audit',
+  persist_performance_cost_audit: 'Persist performance/cost audit',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -181,6 +187,8 @@ function baseResult(
     adaptiveReconciliationPolicyPersistenceResult: null,
     selfHealingRetryAudit: null,
     selfHealingRetryAuditPersistenceResult: null,
+    performanceCostAudit: null,
+    performanceCostAuditPersistenceResult: null,
     warnings: [],
     failures: [],
     generatedAt,
@@ -936,6 +944,86 @@ async function applySelfHealingPhase(
 }
 
 /**
+ * Phase 10F phase (async-only): builds the advisory Performance + Cost audit from
+ * the snapshot and all Phase 10B–10E result modules, and optionally persists it
+ * via `append_meta`. It is advisory only — it never skips required quality gates,
+ * calls AI, mutates templates, or changes orchestration decisions. Non-gating: a
+ * problem only adds a warning.
+ */
+async function applyPerformanceCostPhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  snapshot: GoldenCorpusImportQualitySnapshot,
+  now: () => Date,
+): Promise<void> {
+  const appendStep = (step: GoldenCorpusOrchestratorStep) => { result.steps = [...result.steps, step]; };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  if (request.buildPerformanceCostAudit !== true) {
+    appendStep(skippedStep('build_performance_cost_audit', 'Performance/cost audit not requested.'));
+    appendStep(skippedStep('persist_performance_cost_audit', 'Performance/cost audit not requested.'));
+    return;
+  }
+
+  let audit;
+  try {
+    audit = buildPdfImportPerformanceCostAudit({
+      importId: result.importId ?? request.importId,
+      templateId: result.templateId ?? request.templateId ?? snapshot.templateId,
+      sourceFilename: request.sourceFilename ?? snapshot.sourceFilename,
+      snapshot,
+      importIntelligenceProfile: result.importIntelligenceProfile,
+      repairPatternAnalysis: result.repairPatternAnalysis,
+      adaptiveReconciliationPolicy: result.adaptiveReconciliationPolicy,
+      selfHealingRetryAudit: result.selfHealingRetryAudit,
+      goldenRegressionSummary: result.goldenRegressionSummary ?? undefined,
+      goldenHistory: result.historyRecord ? [result.historyRecord] : undefined,
+      now,
+    });
+  } catch (err) {
+    result.performanceCostAudit = null;
+    appendStep(createGoldenCorpusOrchestratorStep('build_performance_cost_audit', 'fail', (err as Error).message));
+    appendStep(skippedStep('persist_performance_cost_audit', 'Audit unavailable (build failed).'));
+    addWarning('performance_cost_audit_build_failed');
+    return;
+  }
+
+  result.performanceCostAudit = audit;
+  const buildStepStatus: GoldenCorpusOrchestratorStepStatus =
+    audit.overallRiskLevel === 'high' || audit.overallRiskLevel === 'critical' || audit.blockers.length > 0
+      ? 'warning'
+      : audit.recommendations.some((r) => r.action !== 'no_action')
+        ? 'warning'
+        : 'pass';
+  appendStep(createGoldenCorpusOrchestratorStep(
+    'build_performance_cost_audit', buildStepStatus,
+    `Performance/cost: risk ${audit.overallRiskLevel}, cost ${audit.overallCostLevel} (${audit.recommendations.length} recommendation(s)).`,
+    { cost: audit.overallCostLevel, risk: audit.overallRiskLevel, waste: audit.estimatedWasteScore, recommendations: audit.recommendations.length },
+  ));
+
+  if (request.persistPerformanceCostAudit !== true) {
+    appendStep(skippedStep('persist_performance_cost_audit', 'Persistence not requested.'));
+    return;
+  }
+
+  const importId = (result.importId ?? '').trim();
+  if (!importId) {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_performance_cost_audit', 'warning', 'No importId to persist the audit.'));
+    addWarning('performance_cost_audit_persist_skipped_no_import_id');
+    return;
+  }
+
+  const saveRes = await savePdfImportPerformanceAudit(importId, audit);
+  result.performanceCostAuditPersistenceResult = saveRes;
+  if (saveRes.kind === 'ok') {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_performance_cost_audit', 'pass', 'Performance/cost audit persisted.'));
+  } else {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_performance_cost_audit', 'fail', saveRes.message));
+    addWarning('performance_cost_audit_persistence_failed');
+  }
+}
+
+/**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
  */
@@ -1085,6 +1173,10 @@ export async function orchestrateGoldenCorpusRun(
   // Phase 10E — optional controlled self-healing retry plan/execute/persist.
   // Never calls AI, mutates templates, or reruns imports. Non-gating.
   await applySelfHealingPhase(pure, request, snapshot, now);
+
+  // Phase 10F — optional advisory performance/cost audit build/persist. Advisory
+  // only; never skips gates, calls AI, or mutates templates. Non-gating.
+  await applyPerformanceCostPhase(pure, request, snapshot, now);
 
   // A clean run that only accrued baseline warnings drops to completed_with_warnings.
   if (pure.status === 'completed' && pure.warnings.length > 0) {

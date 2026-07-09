@@ -51,6 +51,10 @@ export interface GoldenCorpusConsoleFormState {
   selfHealingMode: 'dry_run' | 'audit_only' | 'execute_safe' | 'execute_confirmed';
   /** Phase 10E — explicit operator confirmation for execute_confirmed. */
   selfHealingOperatorConfirmed: boolean;
+  /** Phase 10F — build the advisory performance/cost audit. */
+  buildPerformanceCostAudit: boolean;
+  /** Phase 10F — persist the performance/cost audit (only when persisting). */
+  persistPerformanceCostAudit: boolean;
 }
 
 export interface GoldenCorpusConsoleValidationIssue {
@@ -98,6 +102,8 @@ export function createDefaultGoldenCorpusConsoleFormState(
     persistSelfHealingAudit: true,
     selfHealingMode: 'dry_run',
     selfHealingOperatorConfirmed: false,
+    buildPerformanceCostAudit: true,
+    persistPerformanceCostAudit: true,
     ...overrides,
   };
 }
@@ -160,6 +166,10 @@ export function validateGoldenCorpusConsoleForm(
     warn('selfHealingOperatorConfirmed', 'self_healing_confirmation_missing', 'Execute-confirmed self-healing needs explicit operator confirmation; operator-confirmed actions will be held for manual action.');
   }
 
+  if (form.persistPerformanceCostAudit && !form.buildPerformanceCostAudit) {
+    warn('persistPerformanceCostAudit', 'performance_cost_persist_without_build', 'Persist performance/cost audit has no effect unless audit building is enabled.');
+  }
+
   if (mode === 'evaluate_and_persist') {
     if (form.operatorDecision === 'not_reviewed') {
       warn('operatorDecision', 'operator_not_reviewed', 'Operator decision is still "not reviewed" before persisting.');
@@ -218,6 +228,11 @@ export function buildGoldenCorpusOrchestratorRequestFromForm(
       mode === 'evaluate_and_persist' && form.buildSelfHealingPlan && form.persistSelfHealingAudit,
     executeSelfHealingMode: form.selfHealingMode,
     selfHealingOperatorConfirmed: form.selfHealingOperatorConfirmed,
+    // Phase 10F — advisory audit; read-only build in either mode, persist only
+    // when explicitly persisting the run.
+    buildPerformanceCostAudit: form.buildPerformanceCostAudit,
+    persistPerformanceCostAudit:
+      mode === 'evaluate_and_persist' && form.buildPerformanceCostAudit && form.persistPerformanceCostAudit,
   };
 }
 

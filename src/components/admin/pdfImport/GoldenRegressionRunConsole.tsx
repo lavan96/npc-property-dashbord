@@ -44,6 +44,7 @@ import { GoldenRegressionTriagePanel } from './GoldenRegressionTriagePanel';
 import { GoldenRegressionHistoryPanel } from './GoldenRegressionHistoryPanel';
 import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
+import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
 
 interface GoldenRegressionRunConsoleProps {
   initialCorpusId?: string | null;
@@ -326,6 +327,22 @@ export function GoldenRegressionRunConsole({
               <Switch id="persistSelfHealingAudit" checked={form.persistSelfHealingAudit} disabled={!form.buildSelfHealingPlan}
                 onCheckedChange={(v) => setBool('persistSelfHealingAudit', v)} />
             </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="buildPerformanceCostAudit" className="text-sm">Build performance/cost audit</Label>
+                <p className="text-xs text-muted-foreground">Advisory: identifies expensive steps, stale metadata, duplicate work, and safe reuse opportunities. Read-only unless persistence is enabled. It does not skip steps, call AI, or mutate templates.</p>
+              </div>
+              <Switch id="buildPerformanceCostAudit" checked={form.buildPerformanceCostAudit}
+                onCheckedChange={(v) => setBool('buildPerformanceCostAudit', v)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="persistPerformanceCostAudit" className="text-sm">Persist performance/cost audit</Label>
+                <p className="text-xs text-muted-foreground">Stores safe structured performance/cost metadata in <code>template_imports.meta.performance_cost_audit</code> (only when persisting the run). It does not skip steps, call AI, or mutate templates.</p>
+              </div>
+              <Switch id="persistPerformanceCostAudit" checked={form.persistPerformanceCostAudit} disabled={!form.buildPerformanceCostAudit}
+                onCheckedChange={(v) => setBool('persistPerformanceCostAudit', v)} />
+            </div>
           </div>
 
           {form.buildSelfHealingPlan && (
@@ -438,6 +455,7 @@ export function GoldenRegressionRunConsole({
                 <TabsTrigger value="triage">Triage</TabsTrigger>
                 <TabsTrigger value="exportParity">Export Parity</TabsTrigger>
                 <TabsTrigger value="selfHealing">Self-Healing</TabsTrigger>
+                <TabsTrigger value="performance">Performance</TabsTrigger>
                 <TabsTrigger value="history">History</TabsTrigger>
                 <TabsTrigger value="json">JSON</TabsTrigger>
               </TabsList>
@@ -450,6 +468,12 @@ export function GoldenRegressionRunConsole({
                 <SelfHealingRetryPanel
                   audit={result.selfHealingRetryAudit}
                   persistenceResult={result.selfHealingRetryAuditPersistenceResult}
+                />
+              </TabsContent>
+              <TabsContent value="performance" className="mt-4">
+                <PerformanceCostAuditPanel
+                  audit={result.performanceCostAudit}
+                  persistenceResult={result.performanceCostAuditPersistenceResult}
                 />
               </TabsContent>
               <TabsContent value="history" className="mt-4">
@@ -511,6 +535,11 @@ export function GoldenRegressionRunConsole({
                     : <> (audit persistence off).</>}{' '}
                   Only safe metadata-level actions can execute; it never calls AI, mutates templates,
                   reruns imports, or performs browser-dependent actions automatically.
+                </span>
+              )}
+              {form.buildPerformanceCostAudit && form.persistPerformanceCostAudit && (
+                <span className="block mt-2">
+                  This will also save <code className="mx-1">performance_cost_audit</code> metadata. It is advisory and does not change pipeline behaviour.
                 </span>
               )}
               {' '}Continue?

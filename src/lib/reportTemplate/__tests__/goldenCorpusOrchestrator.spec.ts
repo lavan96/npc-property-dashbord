@@ -18,6 +18,7 @@ import { saveImportIntelligenceProfile } from '@/lib/reportTemplate/ingestion/im
 import { saveRepairPatternAnalysis } from '@/lib/reportTemplate/ingestion/repairPatterns';
 import { saveAdaptiveReconciliationPolicy } from '@/lib/reportTemplate/ingestion/reconciliation';
 import { saveSelfHealingRetryAudit } from '@/lib/reportTemplate/ingestion/selfHealing';
+import { savePdfImportPerformanceAudit } from '@/lib/reportTemplate/ingestion/performance';
 
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
@@ -55,6 +56,11 @@ vi.mock('@/lib/reportTemplate/ingestion/reconciliation', async (orig) => {
 vi.mock('@/lib/reportTemplate/ingestion/selfHealing', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/selfHealing')>();
   return { ...actual, saveSelfHealingRetryAudit: vi.fn() };
+});
+// Phase 10F — keep the real deterministic optimizer; only mock persistence.
+vi.mock('@/lib/reportTemplate/ingestion/performance', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/performance')>();
+  return { ...actual, savePdfImportPerformanceAudit: vi.fn() };
 });
 
 const NOW = () => new Date('2026-07-04T00:00:00.000Z');
@@ -973,5 +979,104 @@ describe('orchestrateGoldenCorpusRun (Phase 10E self-healing retry)', () => {
     if (ai) {
       expect(['manual_required', 'blocked', 'skipped', 'pending', 'not_supported']).toContain(ai.status);
     }
+  });
+});
+
+describe('orchestrateGoldenCorpusRun (Phase 10F performance/cost audit)', () => {
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+    vi.mocked(savePdfImportPerformanceAudit).mockReset();
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+    vi.mocked(savePdfImportPerformanceAudit).mockResolvedValue({ kind: 'ok' });
+  });
+
+  // 1
+  it('buildPerformanceCostAudit false skips performance audit step', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(stepOf(result, 'build_performance_cost_audit')?.status).toBe('skipped');
+    expect(stepOf(result, 'persist_performance_cost_audit')?.status).toBe('skipped');
+    expect(result.performanceCostAudit).toBeNull();
+    expect(savePdfImportPerformanceAudit).not.toHaveBeenCalled();
+  });
+
+  // 2
+  it('buildPerformanceCostAudit true builds audit', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true }), now: NOW });
+    expect(result.performanceCostAudit).not.toBeNull();
+    expect(result.performanceCostAudit?.version).toBeTruthy();
+    expect(stepOf(result, 'build_performance_cost_audit')?.status).not.toBe('skipped');
+  });
+
+  // 3
+  it('performance audit result is attached to orchestrator result', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true }), now: NOW });
+    expect(result.performanceCostAudit?.overallCostLevel).toBeTruthy();
+    expect(result.performanceCostAudit?.overallRiskLevel).toBeTruthy();
+    expect(Array.isArray(result.performanceCostAudit?.stepCosts)).toBe(true);
+  });
+
+  // 4
+  it('persistPerformanceCostAudit false does not call save', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true, persistPerformanceCostAudit: false }), now: NOW });
+    expect(savePdfImportPerformanceAudit).not.toHaveBeenCalled();
+    expect(stepOf(result, 'persist_performance_cost_audit')?.status).toBe('skipped');
+  });
+
+  // 5 + 6
+  it('persistPerformanceCostAudit true calls save and returns ok', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true, persistPerformanceCostAudit: true }), now: NOW });
+    expect(savePdfImportPerformanceAudit).toHaveBeenCalledTimes(1);
+    expect(result.performanceCostAuditPersistenceResult?.kind).toBe('ok');
+    expect(stepOf(result, 'persist_performance_cost_audit')?.status).toBe('pass');
+  });
+
+  // 7
+  it('persistence failure adds performance_cost_audit_persistence_failed warning without failing the run', async () => {
+    vi.mocked(savePdfImportPerformanceAudit).mockResolvedValue({ kind: 'error', message: 'db down' });
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true, persistPerformanceCostAudit: true }), now: NOW });
+    expect(result.warnings).toContain('performance_cost_audit_persistence_failed');
+    expect(result.status).not.toBe('failed');
+    expect(stepOf(result, 'persist_performance_cost_audit')?.status).toBe('fail');
+  });
+
+  // 8
+  it('evaluate_only with audit build but no persist remains read-only', async () => {
+    await orchestrateGoldenCorpusRun({ request: req({ persist: false, buildPerformanceCostAudit: true }), now: NOW });
+    expect(saveGoldenRegressionSummary).not.toHaveBeenCalled();
+    expect(savePdfImportPerformanceAudit).not.toHaveBeenCalled();
+  });
+
+  // 9
+  it('missing importId prevents audit persistence', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ importId: '', buildPerformanceCostAudit: true, persistPerformanceCostAudit: true }), now: NOW });
+    expect(savePdfImportPerformanceAudit).not.toHaveBeenCalled();
+    expect(result.performanceCostAudit).toBeNull();
+  });
+
+  // 10
+  it('high-cost audit does not alter the golden quality gate decision', async () => {
+    const withAudit = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true }), now: NOW });
+    const withoutAudit = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(withAudit.qualityGateReport?.overallStatus).toBe(withoutAudit.qualityGateReport?.overallStatus);
+    expect(withAudit.goldenRegressionSummary?.qualityGateStatus).toBe(withoutAudit.goldenRegressionSummary?.qualityGateStatus);
+  });
+
+  // 11
+  it('audit does not skip Visual QA/export parity gates automatically', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true }), now: NOW });
+    // Quality gates still evaluate the visual QA and export parity gates.
+    const gateIds = (result.qualityGateReport?.gates ?? []).map((g) => g.id);
+    expect(gateIds).toContain('visual_quality_artifact_present');
+    expect(gateIds).toContain('export_parity_artifact_present');
+  });
+
+  // 12
+  it('audit does not call AI (no AI reconciliation status is produced by the audit)', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req({ buildPerformanceCostAudit: true }), now: NOW });
+    // The audit is advisory metadata only; it never sets an AI reconciliation status.
+    expect(result.performanceCostAudit).not.toBeNull();
+    expect(result.aiReconciliationStatus).toBeUndefined();
   });
 });
