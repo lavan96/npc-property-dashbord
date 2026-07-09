@@ -71,7 +71,7 @@ export function OpenRouterModelTable({ models, sort, onSort }: Props) {
                   </TableCell>
                   <TableCell>
                     <span className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium', tint.chip)}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full', tint.dot)} />
+                      <BrandMark integrationId={family} size={12} fallback={<Boxes className="h-3 w-3" />} />
                       {family}
                     </span>
                   </TableCell>
