@@ -30,6 +30,9 @@ export default function PdfImportRetention() {
             risk-classified recommendations only — no files or rows are deleted, archived,
             or compacted. Managing candidates requires the retention-management capability.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Related runbook: <code>docs/pdf-import/runbooks/pdf-import-retention-candidate-review-sop.md</code>
+          </p>
         </div>
         <Button asChild variant="outline" size="sm">
           <Link to="/admin/pdf-import-monitoring">

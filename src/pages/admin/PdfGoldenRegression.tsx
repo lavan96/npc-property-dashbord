@@ -18,6 +18,10 @@ export default function PdfGoldenRegression() {
         <p className="text-sm text-muted-foreground">
           Run golden corpus evaluation and persistence for existing PDF imports.
         </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Related runbooks: <code>docs/pdf-import/runbooks/pdf-import-evaluate-only-sop.md</code>,{' '}
+          <code>pdf-import-evaluate-persist-sop.md</code>, <code>pdf-import-golden-regression-review-sop.md</code>
+        </p>
       </div>
       <GoldenRegressionRunConsole
         initialCorpusId={corpusId}
