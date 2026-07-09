@@ -906,7 +906,7 @@ export default function ModelHub() {
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
               </div>
             </div>
-          ) : <OpenRouterCatalog models={data?.models ?? []} />}
+          ) : <OpenRouterCatalog models={data?.models ?? []} lastProbedAt={data?.checkedAt} />}
         </TabsContent>
       </Tabs>
 
