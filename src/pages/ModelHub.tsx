@@ -607,7 +607,7 @@ function OpenRouterCatalog({ models, lastProbedAt }: { models: CatalogModel[]; l
                 )}
               >
                 <div className="flex items-center gap-1.5 text-[10px] font-medium text-foreground">
-                  <span className={cn('h-1.5 w-1.5 rounded-full', tint.dot)} />
+                  <BrandMark integrationId={f} size={12} fallback={<span className={cn('h-1.5 w-1.5 rounded-full', tint.dot)} />} />
                   {f}
                 </div>
                 <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
