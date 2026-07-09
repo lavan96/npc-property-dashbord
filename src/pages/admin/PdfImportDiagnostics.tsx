@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   Database as DatabaseZap,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Button } from '@/components/ui/button';
@@ -316,23 +317,36 @@ export default function PdfImportDiagnostics() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-10 rounded-xl border-primary/25 bg-background/70 font-semibold shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
-          onClick={() => {
-            loadStats();
-            loadRows();
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl border-primary/25 bg-background/70 font-semibold shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+          >
+            <Link to="/admin/pdf-import-monitoring">
+              <Activity className="mr-2 h-4 w-4" />
+              Monitoring
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl border-primary/25 bg-background/70 font-semibold shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+            onClick={() => {
+              loadStats();
+              loadRows();
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Refresh
+          </Button>
+        </div>
       </DashboardThemeFrame>
 
       {/* Stats strip */}

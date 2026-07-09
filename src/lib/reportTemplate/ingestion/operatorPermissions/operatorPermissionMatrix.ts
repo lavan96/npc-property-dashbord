@@ -71,6 +71,8 @@ const ADMIN_CAPS: PdfImportCapability[] = [
   'pdf_import.manual.apply_reconciliation',
   'pdf_import.manual.rerun_import',
   'pdf_import.view_diagnostics',
+  'pdf_import.view_monitoring',
+  'pdf_import.manage_monitoring_alerts',
 ];
 
 const DEVELOPER_CAPS: PdfImportCapability[] = [
@@ -187,6 +189,13 @@ export function assertPdfImportPermissionMatrixIntegrity(): {
   if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.persist_operator_control_audit')) errors.push('pdf_admin_missing_persist_operator_control_audit');
   if (roleHasPdfImportCapability('pdf_operator', 'pdf_import.append_meta')) errors.push('pdf_operator_has_append_meta');
   if (roleHasPdfImportCapability('pdf_viewer', 'pdf_import.evaluate_only')) errors.push('pdf_viewer_has_evaluate_only');
+
+  // Phase 11C — monitoring capabilities are admin/developer only.
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.view_monitoring')) errors.push('pdf_admin_missing_view_monitoring');
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.manage_monitoring_alerts')) errors.push('pdf_admin_missing_manage_monitoring_alerts');
+  if (!roleHasPdfImportCapability('developer_admin', 'pdf_import.manage_monitoring_alerts')) errors.push('developer_admin_missing_manage_monitoring_alerts');
+  if (roleHasPdfImportCapability('pdf_qa_operator', 'pdf_import.view_monitoring')) errors.push('pdf_qa_operator_has_view_monitoring');
+  if (roleHasPdfImportCapability('pdf_operator', 'pdf_import.manage_monitoring_alerts')) errors.push('pdf_operator_has_manage_monitoring_alerts');
 
   return { ok: errors.length === 0, errors, warnings };
 }

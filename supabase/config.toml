@@ -797,6 +797,11 @@ request_timeout = 1500
 verify_jwt = false
 request_timeout = 1500
 
+[functions.pdf-import-monitoring]
+# Admin/superadmin role re-checked inside the function against user_roles.
+verify_jwt = false
+request_timeout = 1500
+
 [functions.pdf-import-ssim-score]
 verify_jwt = false
 request_timeout = 1500
