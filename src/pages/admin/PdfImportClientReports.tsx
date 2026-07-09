@@ -126,6 +126,10 @@ export default function PdfImportClientReports() {
             Generate sanitized, approval-gated client-safe summaries. No raw PDFs, screenshots, signed
             URLs, storage paths, or logs are ever included. No email or public links are created.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Client-report safety is validated as part of the final rollout lock:{' '}
+            <code>docs/pdf-import/phase-11h-final-production-rollout-lock.md</code>
+          </p>
         </div>
         <Button asChild variant="outline" size="sm">
           <Link to="/admin/pdf-import-monitoring"><Activity className="mr-1 h-4 w-4" />Monitoring</Link>

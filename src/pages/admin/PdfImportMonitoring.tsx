@@ -35,6 +35,9 @@ export default function PdfImportMonitoring() {
             Related runbook: <code>docs/pdf-import/runbooks/pdf-import-monitoring-alert-response-sop.md</code>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
+            Final rollout lock: <code>docs/pdf-import/phase-11h-final-production-rollout-lock.md</code>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
             Monitoring details are internal. Use{' '}
             <Link to="/admin/pdf-import-client-reports" className="text-primary underline underline-offset-2">Client Reports</Link>{' '}
             for external-safe summaries.
