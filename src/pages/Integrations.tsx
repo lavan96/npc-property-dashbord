@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PlannedIntegrations } from '@/components/integrations/PlannedIntegrations';
+import { BrandMark } from '@/components/integrations/BrandMark';
+import { getBrandProfile } from '@/lib/integrations/brandProfiles';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface IntegrationConfig {
