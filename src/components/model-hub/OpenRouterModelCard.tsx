@@ -71,8 +71,8 @@ export function OpenRouterModelCard({ model, cheapestInput, priciestInput }: Pro
       )}
 
       <div className="flex min-w-0 items-start gap-3">
-        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border font-mono text-[11px] font-semibold uppercase', tint.chip)}>
-          {family.slice(0, 2)}
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border', tint.chip)}>
+          <BrandMark integrationId={family} size={22} fallback={<Boxes className="h-4 w-4" />} />
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-heading text-[15px] font-medium leading-tight text-foreground" title={model.display_name}>
