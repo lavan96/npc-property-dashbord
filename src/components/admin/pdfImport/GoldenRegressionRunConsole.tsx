@@ -46,11 +46,14 @@ import { AutomatedExportParityPanel } from './AutomatedExportParityPanel';
 import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
 import { ProductionOperatorControlsPanel } from './ProductionOperatorControlsPanel';
+import { OperatorPermissionStatusPanel } from './OperatorPermissionStatusPanel';
 import {
   executeOperatorControl,
   saveProductionOperatorControlAudit,
   type OperatorControlExecutionResult,
 } from '@/lib/reportTemplate/ingestion/operatorControls';
+import { usePdfImportPermissions } from '@/hooks/usePdfImportPermissions';
+import type { PdfImportCapability } from '@/lib/reportTemplate/ingestion/operatorPermissions';
 
 interface GoldenRegressionRunConsoleProps {
   initialCorpusId?: string | null;
@@ -89,6 +92,32 @@ export function GoldenRegressionRunConsole({
   const persistValidation = useMemo(() => validateGoldenCorpusConsoleForm(form, 'evaluate_and_persist'), [form]);
   const corpusItem = useMemo(() => getGoldenCorpusItem(form.corpusId), [form.corpusId]);
 
+  // Phase 11B — resolve the current user's PDF import role and gate write actions.
+  const { resolvedRole, allows } = usePdfImportPermissions();
+  const canEvaluate = allows('pdf_import.evaluate_only')
+    && (!form.runExportParity || allows('pdf_import.run_export_parity_automation'));
+
+  const missingPersistCapabilities = useMemo(() => {
+    const required: Array<[boolean, PdfImportCapability, string]> = [
+      [true, 'pdf_import.persist_golden_summary', 'Persist golden regression summary'],
+      [form.saveHistory, 'pdf_import.persist_golden_history', 'Save golden run history'],
+      [form.persistImportIntelligenceProfile && form.buildImportIntelligenceProfile, 'pdf_import.persist_import_intelligence', 'Persist import intelligence profile'],
+      [form.persistRepairPatternAnalysis && form.buildRepairPatternAnalysis, 'pdf_import.persist_repair_patterns', 'Persist repair pattern analysis'],
+      [form.persistAdaptiveReconciliationPolicy && form.buildAdaptiveReconciliationPolicy, 'pdf_import.persist_adaptive_policy', 'Persist adaptive reconciliation policy'],
+      [form.persistSelfHealingAudit && form.buildSelfHealingPlan, 'pdf_import.persist_self_healing_audit', 'Persist self-healing audit'],
+      [form.persistPerformanceCostAudit && form.buildPerformanceCostAudit, 'pdf_import.persist_performance_audit', 'Persist performance/cost audit'],
+      [form.persistOperatorControlAudit && form.buildOperatorControls, 'pdf_import.persist_operator_control_audit', 'Persist operator control audit'],
+      [form.runExportParity && form.persistExportParity, 'pdf_import.persist_export_parity', 'Persist export parity'],
+      [form.runExportParity, 'pdf_import.run_export_parity_automation', 'Run export parity automation'],
+    ];
+    const missing: string[] = [];
+    for (const [selected, cap, label] of required) {
+      if (selected && !allows(cap)) missing.push(label);
+    }
+    return missing;
+  }, [form, allows]);
+  const canPersist = missingPersistCapabilities.length === 0;
+
   const errors = persistValidation.issues.filter((i) => i.severity === 'error');
   const persistWarnings = persistValidation.issues.filter((i) => i.severity === 'warning');
 
@@ -124,11 +153,13 @@ export function GoldenRegressionRunConsole({
 
   const onEvaluateOnly = () => {
     if (!evalValidation.ok) return;
+    if (!canEvaluate) { toast.error('Your role does not allow Evaluate Only.'); return; }
     void run('evaluate_only');
   };
 
   const onEvaluateAndPersist = () => {
     if (!persistValidation.ok) return;
+    if (!canPersist) { toast.error(`Missing permission to persist: ${missingPersistCapabilities.join(', ')}.`); return; }
     setConfirmPersistOpen(true);
   };
 
@@ -197,6 +228,7 @@ export function GoldenRegressionRunConsole({
           controlId: controlId as any,
           note: note ?? null,
           operatorConfirmed: true,
+          resolvedRole,
         },
         currentAudit: result.productionOperatorControlAudit,
       });
@@ -246,6 +278,8 @@ export function GoldenRegressionRunConsole({
           </Alert>
         </CardContent>
       </Card>
+
+      <OperatorPermissionStatusPanel resolvedRole={resolvedRole} />
 
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Run inputs</CardTitle></CardHeader>
@@ -503,12 +537,29 @@ export function GoldenRegressionRunConsole({
             </Alert>
           )}
 
+          {!canEvaluate && (
+            <Alert variant="destructive">
+              <AlertTitle>Evaluate Only not permitted</AlertTitle>
+              <AlertDescription className="text-xs">
+                Your role ({resolvedRole.role}) does not allow Evaluate Only{form.runExportParity ? ' with export parity automation' : ''}.
+              </AlertDescription>
+            </Alert>
+          )}
+          {canEvaluate && !canPersist && missingPersistCapabilities.length > 0 && (
+            <Alert>
+              <AlertTitle>Persist restricted for your role</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-4 text-xs">{missingPersistCapabilities.map((m) => <li key={m}>{m}</li>)}</ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex flex-wrap gap-2">
-            <Button onClick={onEvaluateOnly} disabled={loading || !evalValidation.ok}>
+            <Button onClick={onEvaluateOnly} disabled={loading || !evalValidation.ok || !canEvaluate}>
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
               Evaluate Only
             </Button>
-            <Button variant="secondary" onClick={onEvaluateAndPersist} disabled={loading || !persistValidation.ok}>
+            <Button variant="secondary" onClick={onEvaluateAndPersist} disabled={loading || !persistValidation.ok || !canPersist}>
               <Save className="h-4 w-4 mr-2" /> Evaluate + Persist
             </Button>
             <Button variant="outline" onClick={onReset} disabled={loading}>
@@ -574,6 +625,7 @@ export function GoldenRegressionRunConsole({
                   importId={result.importId}
                   templateId={result.templateId}
                   persistenceResult={result.productionOperatorControlAuditPersistenceResult}
+                  resolvedRole={resolvedRole}
                   onExecuteMetadataControl={handleExecuteMetadataControl}
                   onEnableConsoleOption={handleEnableConsoleOption}
                 />

@@ -19,6 +19,55 @@ import type {
   OperatorControlSignals,
   OperatorControlState,
 } from './operatorControlTypes';
+import {
+  evaluatePdfImportPermission,
+  type PdfImportCapability,
+  type PdfImportPermissionContext,
+  type PdfImportResolvedRole,
+} from '../operatorPermissions';
+
+/**
+ * Phase 11B — map an operator control to the capability required to perform it.
+ * Read-only navigation/inspection controls map to view/developer capabilities;
+ * write/decision controls map to their persist/operator/manual capabilities.
+ */
+const CONTROL_CAPABILITY_MAP: Partial<Record<OperatorControlId, PdfImportCapability>> = {
+  mark_not_reviewed: 'pdf_import.operator.mark_not_reviewed',
+  mark_accepted: 'pdf_import.operator.mark_accepted',
+  mark_accepted_with_warnings: 'pdf_import.operator.mark_accepted_with_warnings',
+  mark_rejected: 'pdf_import.operator.mark_rejected',
+  mark_needs_rerun: 'pdf_import.operator.mark_needs_rerun',
+  mark_manual_review_required: 'pdf_import.operator.mark_manual_review_required',
+  mark_blocked: 'pdf_import.operator.mark_blocked',
+  add_operator_note: 'pdf_import.operator.add_note',
+  build_import_intelligence_profile: 'pdf_import.build_import_intelligence',
+  build_repair_pattern_analysis: 'pdf_import.build_repair_patterns',
+  build_adaptive_reconciliation_policy: 'pdf_import.build_adaptive_policy',
+  build_self_healing_plan: 'pdf_import.build_self_healing_plan',
+  build_performance_cost_audit: 'pdf_import.build_performance_audit',
+  run_export_parity_automation: 'pdf_import.run_export_parity_automation',
+  rerun_golden_regression: 'pdf_import.run_golden_regression_preview',
+  persist_golden_regression_summary: 'pdf_import.persist_golden_summary',
+  save_golden_run_history: 'pdf_import.persist_golden_history',
+  run_self_healing_execute_safe: 'pdf_import.run_self_healing_execute_safe',
+  run_ai_reconciliation_manual: 'pdf_import.manual.run_ai_reconciliation',
+  rerun_visual_qa_manual: 'pdf_import.manual.rerun_visual_qa',
+  rerun_repair_manual: 'pdf_import.manual.rerun_repair',
+  apply_repair_manual: 'pdf_import.manual.apply_repair',
+  apply_reconciliation_manual: 'pdf_import.manual.apply_reconciliation',
+  rerun_import_manual: 'pdf_import.manual.rerun_import',
+  open_template_editor: 'pdf_import.view_console',
+  open_template_import_quality: 'pdf_import.view_quality',
+  inspect_pdf_import_jobs: 'pdf_import.developer.inspect_jobs',
+  inspect_storage_artifacts: 'pdf_import.developer.inspect_storage',
+  inspect_logs: 'pdf_import.developer.inspect_logs',
+};
+
+export function getRequiredCapabilityForOperatorControl(
+  controlId: OperatorControlId,
+): PdfImportCapability | null {
+  return CONTROL_CAPABILITY_MAP[controlId] ?? null;
+}
 
 type Gate = 'pass' | 'warning' | 'fail' | 'blocked' | null;
 
@@ -212,6 +261,8 @@ export function evaluateOperatorControl(input: {
   signals: OperatorControlSignals;
   evidence?: OperatorControlEvidence[];
   definition?: OperatorControlDefinition | null;
+  permissionContext?: PdfImportPermissionContext;
+  resolvedRole?: PdfImportResolvedRole;
 }): OperatorControlAvailability {
   const def = input.definition ?? getOperatorControlDefinition(input.controlId);
   const resolved = resolveOperatorControlState({ controlId: input.controlId, signals: input.signals });
@@ -224,7 +275,7 @@ export function evaluateOperatorControl(input: {
     || (baseConfirm && (resolved.state === 'recommended' || resolved.state === 'available')
       && (def?.safetyLevel === 'metadata_write' || def?.safetyLevel === 'orchestrator_safe'));
 
-  return {
+  const availability: OperatorControlAvailability = {
     controlId: input.controlId,
     label: def?.label ?? input.controlId,
     description: def?.description ?? '',
@@ -235,13 +286,73 @@ export function evaluateOperatorControl(input: {
     reason: resolved.reason,
     blockedReason: resolved.blockedReason,
     evidence: input.evidence ?? [],
+    requiredCapability: getRequiredCapabilityForOperatorControl(input.controlId),
   };
+
+  // Phase 11B — overlay permission. Precedence:
+  //   safety blocked > permission denied > manual_only > requires_confirmation > normal.
+  if (input.permissionContext || input.resolvedRole) {
+    return applyPermissionOverlay(availability, def?.safetyLevel ?? 'read_only', {
+      permissionContext: input.permissionContext,
+      resolvedRole: input.resolvedRole,
+    });
+  }
+  return availability;
+}
+
+function applyPermissionOverlay(
+  availability: OperatorControlAvailability,
+  safetyLevel: OperatorControlAvailability['safetyLevel'],
+  perm: { permissionContext?: PdfImportPermissionContext; resolvedRole?: PdfImportResolvedRole },
+): OperatorControlAvailability {
+  const capability = availability.requiredCapability as PdfImportCapability | null | undefined;
+  // Controls with no capability requirement (e.g. clear_operator_control_audit)
+  // are governed only by safety.
+  if (!capability) {
+    return { ...availability, allowedByPermission: availability.state !== 'blocked' && availability.state !== 'disabled' };
+  }
+
+  const check = evaluatePdfImportPermission({
+    context: perm.permissionContext,
+    resolvedRole: perm.resolvedRole,
+    capability,
+    manualOnly: safetyLevel === 'manual_workflow',
+    requiresConfirmation: availability.requiresConfirmation,
+  });
+
+  const out: OperatorControlAvailability = {
+    ...availability,
+    requiredCapability: capability,
+    permissionDecision: check.decision,
+    permissionReason: check.reason,
+    allowedByPermission: check.allowed,
+  };
+
+  // Safety block always wins.
+  if (availability.state === 'blocked') return out;
+
+  // Permission denied → disable the control regardless of its base state.
+  if (check.decision === 'denied') {
+    return {
+      ...out,
+      state: 'disabled',
+      recommended: false,
+      allowedByPermission: false,
+      reason: check.reason,
+    };
+  }
+
+  // manual_only permission keeps the control manual-only (base already reflects it
+  // for manual_workflow controls).
+  return out;
 }
 
 export function evaluateOperatorControls(input: {
   signals: OperatorControlSignals;
   evidence?: OperatorControlEvidence[];
   definitions?: OperatorControlDefinition[];
+  permissionContext?: PdfImportPermissionContext;
+  resolvedRole?: PdfImportResolvedRole;
 }): OperatorControlAvailability[] {
   const defs = input.definitions ?? listOperatorControlDefinitions();
   return defs.map((def) =>
@@ -250,6 +361,8 @@ export function evaluateOperatorControls(input: {
       signals: input.signals,
       evidence: relevantEvidence(def.controlId, input.evidence ?? []),
       definition: def,
+      permissionContext: input.permissionContext,
+      resolvedRole: input.resolvedRole,
     }),
   );
 }

@@ -23,8 +23,10 @@ import { AdaptiveReconciliationPolicyPanel } from './AdaptiveReconciliationPolic
 import { SelfHealingRetryPanel } from './SelfHealingRetryPanel';
 import { PerformanceCostAuditPanel } from './PerformanceCostAuditPanel';
 import { ProductionOperatorControlsPanel } from './ProductionOperatorControlsPanel';
+import { OperatorPermissionStatusPanel } from './OperatorPermissionStatusPanel';
 import { Phase10ProductionLockPanel } from './Phase10ProductionLockPanel';
 import { RolloutReadinessPanel } from './RolloutReadinessPanel';
+import { usePdfImportPermissions } from '@/hooks/usePdfImportPermissions';
 import {
   evaluatePhase10ProductionLock,
   listPhase10ProductionLockRequirements,
@@ -119,6 +121,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPanelProps) {
+  const { resolvedRole } = usePdfImportPermissions();
   if (!result) {
     return (
       <Card>
@@ -375,11 +378,13 @@ export function GoldenRegressionResultPanel({ result }: GoldenRegressionResultPa
       </div>
 
       <div className="space-y-2">
+        <OperatorPermissionStatusPanel resolvedRole={resolvedRole} />
         <ProductionOperatorControlsPanel
           audit={result.productionOperatorControlAudit}
           importId={result.importId}
           templateId={result.templateId}
           persistenceResult={result.productionOperatorControlAuditPersistenceResult}
+          resolvedRole={resolvedRole}
         />
       </div>
 

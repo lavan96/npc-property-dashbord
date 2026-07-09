@@ -107,3 +107,43 @@ describe('canExecuteOperatorControl', () => {
     expect(patch.notes).toEqual(['first', 'second']);
   });
 });
+
+import { resolvePdfImportOperatorRole } from '../ingestion/operatorPermissions';
+
+describe('Phase 11B — executor permission enforcement', () => {
+  const adminRole = resolvePdfImportOperatorRole({ isAuthenticated: true, profile: { role: 'admin' } });
+  const operatorRole = resolvePdfImportOperatorRole({ isAuthenticated: true, profile: { role: 'operator' } });
+
+  it('admin can execute mark_accepted (permission allowed)', async () => {
+    const r = await executeOperatorControl({ request: req({ controlId: 'mark_accepted', resolvedRole: adminRole }), now: NOW });
+    expect(r.status).toBe('completed');
+  });
+
+  it('operator role is blocked from mark_accepted by permission', async () => {
+    const r = await executeOperatorControl({ request: req({ controlId: 'mark_accepted', resolvedRole: operatorRole }), now: NOW });
+    expect(r.status).toBe('blocked');
+    expect(r.message).toMatch(/does not have|permission/i);
+  });
+
+  it('operator role can still add a note (has add_note capability)', async () => {
+    const r = await executeOperatorControl({ request: req({ controlId: 'add_operator_note', note: 'x', resolvedRole: operatorRole, operatorConfirmed: false }), now: NOW });
+    // operator role does NOT have add_note (qa+). Expect blocked.
+    expect(r.status).toBe('blocked');
+  });
+
+  it('qa role can add a note', async () => {
+    const qaRole = resolvePdfImportOperatorRole({ isAuthenticated: true, profile: { role: 'qa' } });
+    const r = await executeOperatorControl({ request: req({ controlId: 'add_operator_note', note: 'x', resolvedRole: qaRole, operatorConfirmed: false }), now: NOW });
+    expect(r.status).toBe('completed');
+  });
+
+  it('permission enforcement does not fire without a context (backward compatible)', async () => {
+    const r = await executeOperatorControl({ request: req({ controlId: 'mark_accepted' }), now: NOW });
+    expect(r.status).toBe('completed');
+  });
+
+  it('manual-only control stays manual_required even when role permits it', async () => {
+    const r = await executeOperatorControl({ request: req({ controlId: 'run_ai_reconciliation_manual', resolvedRole: adminRole, operatorConfirmed: false }), now: NOW });
+    expect(r.status).toBe('manual_required');
+  });
+});
