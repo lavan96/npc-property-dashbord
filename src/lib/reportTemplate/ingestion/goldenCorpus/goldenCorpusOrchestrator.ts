@@ -27,6 +27,10 @@ import {
   buildRepairPatternAnalysis,
   saveRepairPatternAnalysis,
 } from '../repairPatterns';
+import {
+  buildAdaptiveReconciliationPolicy,
+  saveAdaptiveReconciliationPolicy,
+} from '../reconciliation';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -70,6 +74,8 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   persist_import_intelligence_profile: 'Persist import intelligence profile',
   build_repair_pattern_analysis: 'Build repair pattern analysis',
   persist_repair_pattern_analysis: 'Persist repair pattern analysis',
+  build_adaptive_reconciliation_policy: 'Build adaptive reconciliation policy',
+  persist_adaptive_reconciliation_policy: 'Persist adaptive reconciliation policy',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -163,6 +169,8 @@ function baseResult(
     importIntelligencePersistenceResult: null,
     repairPatternAnalysis: null,
     repairPatternPersistenceResult: null,
+    adaptiveReconciliationPolicy: null,
+    adaptiveReconciliationPolicyPersistenceResult: null,
     warnings: [],
     failures: [],
     generatedAt,
@@ -711,6 +719,100 @@ async function applyRepairPatternPhase(
 }
 
 /**
+ * Phase 10D phase (async-only): builds the deterministic adaptive reconciliation
+ * policy from the snapshot, import intelligence profile, repair pattern analysis,
+ * quality-gate report, triage, and golden summary, and optionally persists it via
+ * `append_meta`. The build step is inserted after `build_repair_pattern_analysis`;
+ * the persist step is appended at the end. Governance only — it never calls AI or
+ * applies reconciliation. Non-gating: a problem only adds a warning.
+ */
+async function applyAdaptiveReconciliationPhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  snapshot: GoldenCorpusImportQualitySnapshot,
+  now: () => Date,
+): Promise<void> {
+  const insertBuild = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = insertAfterStep(result.steps, 'build_repair_pattern_analysis', step);
+  };
+  const appendPersist = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = [...result.steps, step];
+  };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  if (request.buildAdaptiveReconciliationPolicy !== true) {
+    insertBuild(skippedStep('build_adaptive_reconciliation_policy', 'Adaptive reconciliation policy not requested.'));
+    appendPersist(skippedStep('persist_adaptive_reconciliation_policy', 'Adaptive reconciliation policy not requested.'));
+    return;
+  }
+
+  let policy;
+  try {
+    policy = buildAdaptiveReconciliationPolicy({
+      importId: result.importId ?? request.importId,
+      templateId: result.templateId ?? request.templateId ?? snapshot.templateId,
+      sourceFilename: request.sourceFilename ?? snapshot.sourceFilename,
+      snapshot,
+      importIntelligenceProfile: result.importIntelligenceProfile,
+      repairPatternAnalysis: result.repairPatternAnalysis,
+      goldenRegressionSummary: result.goldenRegressionSummary ?? undefined,
+      qualityGateReport: result.qualityGateReport ?? undefined,
+      triageSummary: result.triageSummary ?? undefined,
+      now,
+    });
+  } catch (err) {
+    result.adaptiveReconciliationPolicy = null;
+    insertBuild(createGoldenCorpusOrchestratorStep('build_adaptive_reconciliation_policy', 'fail', (err as Error).message));
+    appendPersist(skippedStep('persist_adaptive_reconciliation_policy', 'Policy unavailable (build failed).'));
+    addWarning('adaptive_reconciliation_policy_build_failed');
+    return;
+  }
+
+  result.adaptiveReconciliationPolicy = policy;
+  const buildStepStatus: GoldenCorpusOrchestratorStepStatus =
+    policy.decision === 'blocked'
+      ? 'blocked'
+      : policy.decision === 'recommended' || policy.decision === 'manual_review' || policy.blockers.length > 0
+        ? 'warning'
+        : 'pass';
+  insertBuild(createGoldenCorpusOrchestratorStep(
+    'build_adaptive_reconciliation_policy',
+    buildStepStatus,
+    `Adaptive reconciliation: ${policy.decision} (${policy.severity}).`,
+    {
+      decision: policy.decision,
+      severity: policy.severity,
+      recommendedAction: policy.recommendedAction,
+      aiBlocked: policy.flags.aiBlocked,
+    },
+  ));
+
+  if (request.persistAdaptiveReconciliationPolicy !== true) {
+    appendPersist(skippedStep('persist_adaptive_reconciliation_policy', 'Persistence not requested.'));
+    return;
+  }
+
+  const importId = (result.importId ?? '').trim();
+  if (!importId) {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_adaptive_reconciliation_policy', 'warning', 'No importId to persist the policy.'));
+    addWarning('adaptive_reconciliation_policy_persist_skipped_no_import_id');
+    return;
+  }
+
+  const saveRes = await saveAdaptiveReconciliationPolicy(importId, policy);
+  result.adaptiveReconciliationPolicyPersistenceResult = saveRes;
+  if (saveRes.kind === 'ok') {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_adaptive_reconciliation_policy', 'pass', 'Adaptive reconciliation policy persisted.'));
+  } else {
+    appendPersist(createGoldenCorpusOrchestratorStep(
+      'persist_adaptive_reconciliation_policy', 'fail', saveRes.message));
+    addWarning('adaptive_reconciliation_policy_persistence_failed');
+  }
+}
+
+/**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
  */
@@ -852,6 +954,10 @@ export async function orchestrateGoldenCorpusRun(
 
   // Phase 10C — optional repair pattern analysis build/persist. Advisory, non-gating.
   await applyRepairPatternPhase(pure, request, snapshot, now);
+
+  // Phase 10D — optional adaptive reconciliation policy build/persist. Governance
+  // only; never calls AI or applies reconciliation. Non-gating.
+  await applyAdaptiveReconciliationPhase(pure, request, snapshot, now);
 
   // A clean run that only accrued baseline warnings drops to completed_with_warnings.
   if (pure.status === 'completed' && pure.warnings.length > 0) {

@@ -18,3 +18,10 @@ export * from './reviewArtifacts';
 export * from './pdfReconcile';
 export * from './reconciliationPolicy';
 export * from './reconciliationAudit';
+
+// Phase 10D — adaptive reconciliation policy layer.
+export * from './adaptiveReconciliationTypes';
+export * from './adaptiveReconciliationSignals';
+export * from './adaptiveReconciliationPolicy';
+export * from './adaptiveReconciliationPersistence';
+export * from './adaptiveReconciliationDisplay';
