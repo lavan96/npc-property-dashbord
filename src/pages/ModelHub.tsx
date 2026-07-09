@@ -34,6 +34,7 @@ interface CatalogModel {
   pricing_output_per_1m: number | null;
   last_probed_at: string;
   probe_error: string | null;
+  raw_metadata?: unknown;
 }
 
 interface ProviderResult {
