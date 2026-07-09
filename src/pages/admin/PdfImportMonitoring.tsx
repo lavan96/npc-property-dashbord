@@ -31,6 +31,9 @@ export default function PdfImportMonitoring() {
             severity- and status-aware and never triggers remediation. Managing alerts
             requires the monitoring-management capability.
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Related runbook: <code>docs/pdf-import/runbooks/pdf-import-monitoring-alert-response-sop.md</code>
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
