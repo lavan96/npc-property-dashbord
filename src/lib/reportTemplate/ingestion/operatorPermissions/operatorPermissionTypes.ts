@@ -44,6 +44,7 @@ export type PdfImportCapability =
   | 'pdf_import.view_golden_history'
   | 'pdf_import.view_monitoring'
   | 'pdf_import.view_retention'
+  | 'pdf_import.view_client_reports'
 
   | 'pdf_import.evaluate_only'
   | 'pdf_import.run_golden_regression_preview'
@@ -79,6 +80,10 @@ export type PdfImportCapability =
   | 'pdf_import.manage_monitoring_alerts'
   | 'pdf_import.run_retention_scan'
   | 'pdf_import.manage_retention_candidates'
+  | 'pdf_import.generate_client_report_preview'
+  | 'pdf_import.save_client_report_draft'
+  | 'pdf_import.approve_client_report'
+  | 'pdf_import.export_client_report'
 
   | 'pdf_import.manual.rerun_visual_qa'
   | 'pdf_import.manual.rerun_repair'
