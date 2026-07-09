@@ -492,65 +492,33 @@ export default function Integrations() {
   };
 
   const getIntegrationTone = (integrationId: string) => {
-    const aiTone = {
-      card: 'hover:border-accent/30',
-      header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(124,58,237,0.075))]',
-      icon: 'border-accent/20 bg-accent/10 text-accent group-hover:border-accent/35 group-hover:bg-accent/15 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.18)]',
-      field: 'focus-within:border-accent/30',
+    const profile = getBrandProfile(integrationId);
+    const hex = profile?.color ?? '6467F2';
+    const hex2 = profile?.color2 ?? hex;
+    const rgb = (h: string) => {
+      const n = parseInt(h, 16);
+      return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
     };
+    const c1 = rgb(hex);
+    const c2 = rgb(hex2);
 
-    const tones: Record<string, typeof aiTone> = {
-      airtable: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      vapi: {
-        card: 'hover:border-success/30',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.075))]',
-        icon: 'border-success/20 bg-success/10 text-success group-hover:border-success/35 group-hover:bg-success/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
-        field: 'focus-within:border-success/30',
-      },
-      gohighlevel: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      twilio: {
-        card: 'hover:border-success/30',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.07))]',
-        icon: 'border-success/20 bg-success/10 text-success group-hover:border-success/35 group-hover:bg-success/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
-        field: 'focus-within:border-success/30',
-      },
-      microsoft: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      make: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      cloudflare: {
-        card: 'hover:border-primary/35',
-        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
-        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
-        field: 'focus-within:border-primary/35',
-      },
-      openai: aiTone,
-      perplexity: aiTone,
-      anthropic: aiTone,
-      gemini: aiTone,
-      openrouter: aiTone,
+    return {
+      card: 'hover:border-[color:var(--brand-border)]',
+      cardStyle: {
+        // consumed by hover ring + focus-within accents via CSS var
+        ['--brand-rgb' as string]: c1,
+        ['--brand-border' as string]: `rgba(${c1}, 0.45)`,
+      } as React.CSSProperties,
+      header:
+        'bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.12),rgba(var(--brand-rgb),0.02)_60%,transparent)]',
+      icon:
+        'border-[color:rgba(var(--brand-rgb),0.35)] bg-[linear-gradient(135deg,rgba(var(--brand-rgb),0.14),rgba(var(--brand-rgb),0.04))] shadow-[0_14px_34px_rgba(var(--brand-rgb),0.22)] group-hover:border-[color:rgba(var(--brand-rgb),0.55)] group-hover:shadow-[0_18px_42px_rgba(var(--brand-rgb),0.30)]',
+      field: 'focus-within:border-[color:rgba(var(--brand-rgb),0.45)]',
+      accentBar:
+        'bg-[linear-gradient(90deg,rgba(' + c1 + ',0.9),rgba(' + c2 + ',0.55),transparent)]',
     };
-
-    return tones[integrationId] || tones.gohighlevel;
   };
+
 
   const getFieldGridClass = (integration: IntegrationConfig) => {
     if (integration.id === 'microsoft' || integration.id === 'cloudflare') {
