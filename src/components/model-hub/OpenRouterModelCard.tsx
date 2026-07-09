@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink, Image as ImageIcon, Volume2, Sparkles, ChevronDown, ChevronUp, Shield, ShieldOff } from 'lucide-react';
+import { Copy, ExternalLink, Image as ImageIcon, Volume2, Sparkles, ChevronDown, ChevronUp, Shield, ShieldOff, Boxes } from 'lucide-react';
+import { BrandMark } from '@/components/integrations/BrandMark';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
