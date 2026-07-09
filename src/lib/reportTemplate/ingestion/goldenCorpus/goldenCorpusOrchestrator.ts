@@ -31,6 +31,11 @@ import {
   buildAdaptiveReconciliationPolicy,
   saveAdaptiveReconciliationPolicy,
 } from '../reconciliation';
+import {
+  buildSelfHealingRetryPlan,
+  executeSelfHealingRetryPlan,
+  saveSelfHealingRetryAudit,
+} from '../selfHealing';
 import { evaluatePdfImportQualityGates } from '../qualityGates/pdfImportQualityGateEvaluator';
 import {
   evaluatePdfImportFailureTriage,
@@ -76,6 +81,9 @@ const STEP_LABELS: Record<GoldenCorpusOrchestratorStepId, string> = {
   persist_repair_pattern_analysis: 'Persist repair pattern analysis',
   build_adaptive_reconciliation_policy: 'Build adaptive reconciliation policy',
   persist_adaptive_reconciliation_policy: 'Persist adaptive reconciliation policy',
+  build_self_healing_plan: 'Build self-healing retry plan',
+  execute_self_healing_plan: 'Execute self-healing retry plan',
+  persist_self_healing_audit: 'Persist self-healing audit',
 };
 
 const PURE_STEP_ORDER: GoldenCorpusOrchestratorStepId[] = [
@@ -171,6 +179,8 @@ function baseResult(
     repairPatternPersistenceResult: null,
     adaptiveReconciliationPolicy: null,
     adaptiveReconciliationPolicyPersistenceResult: null,
+    selfHealingRetryAudit: null,
+    selfHealingRetryAuditPersistenceResult: null,
     warnings: [],
     failures: [],
     generatedAt,
@@ -813,6 +823,119 @@ async function applyAdaptiveReconciliationPhase(
 }
 
 /**
+ * Phase 10E phase (async-only): builds the controlled self-healing retry plan
+ * from all Phase 8/9/10 signals, optionally executes only safe/confirmed
+ * supported actions via the conservative executor, and optionally persists the
+ * audit via `append_meta`. It NEVER calls AI, mutates templates, reruns imports,
+ * or performs browser-dependent actions. Non-gating.
+ */
+async function applySelfHealingPhase(
+  result: GoldenCorpusOrchestratorResult,
+  request: GoldenCorpusOrchestratorRequest,
+  snapshot: GoldenCorpusImportQualitySnapshot,
+  now: () => Date,
+): Promise<void> {
+  const insertBuild = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = insertAfterStep(result.steps, 'build_adaptive_reconciliation_policy', step);
+  };
+  const appendStep = (step: GoldenCorpusOrchestratorStep) => {
+    result.steps = [...result.steps, step];
+  };
+  const addWarning = (code: string) => { result.warnings = uniq([...result.warnings, code]); };
+
+  if (request.buildSelfHealingPlan !== true) {
+    insertBuild(skippedStep('build_self_healing_plan', 'Self-healing plan not requested.'));
+    appendStep(skippedStep('execute_self_healing_plan', 'Self-healing plan not requested.'));
+    appendStep(skippedStep('persist_self_healing_audit', 'Self-healing plan not requested.'));
+    return;
+  }
+
+  const mode = request.executeSelfHealingMode ?? 'dry_run';
+
+  let audit;
+  try {
+    audit = buildSelfHealingRetryPlan({
+      importId: result.importId ?? request.importId,
+      templateId: result.templateId ?? request.templateId ?? snapshot.templateId,
+      sourceFilename: request.sourceFilename ?? snapshot.sourceFilename,
+      mode,
+      snapshot,
+      importIntelligenceProfile: result.importIntelligenceProfile,
+      repairPatternAnalysis: result.repairPatternAnalysis,
+      adaptiveReconciliationPolicy: result.adaptiveReconciliationPolicy,
+      goldenRegressionSummary: result.goldenRegressionSummary ?? undefined,
+      qualityGateReport: result.qualityGateReport ?? undefined,
+      triageSummary: result.triageSummary ?? undefined,
+      now,
+    });
+  } catch (err) {
+    result.selfHealingRetryAudit = null;
+    insertBuild(createGoldenCorpusOrchestratorStep('build_self_healing_plan', 'fail', (err as Error).message));
+    appendStep(skippedStep('execute_self_healing_plan', 'Plan unavailable (build failed).'));
+    appendStep(skippedStep('persist_self_healing_audit', 'Plan unavailable (build failed).'));
+    addWarning('self_healing_plan_build_failed');
+    return;
+  }
+
+  const buildStepStatus: GoldenCorpusOrchestratorStepStatus =
+    audit.status === 'blocked'
+      ? 'blocked'
+      : audit.summary.manualActions > 0 || audit.summary.blockedActions > 0 || audit.blockers.length > 0
+        ? 'warning'
+        : 'pass';
+  insertBuild(createGoldenCorpusOrchestratorStep(
+    'build_self_healing_plan', buildStepStatus,
+    `Self-healing plan: ${audit.status} (${audit.summary.totalActions} actions, mode ${audit.mode}).`,
+    { status: audit.status, mode: audit.mode, manual: audit.summary.manualActions, blocked: audit.summary.blockedActions },
+  ));
+
+  // Execution — only when a non-preview mode is requested. execute_confirmed
+  // additionally requires explicit operator confirmation. The executor never
+  // runs AI, reruns imports, or mutates templates.
+  if (mode === 'dry_run') {
+    result.selfHealingRetryAudit = audit;
+    appendStep(skippedStep('execute_self_healing_plan', 'Dry run — no actions executed.'));
+  } else if (mode === 'execute_confirmed' && request.selfHealingOperatorConfirmed !== true) {
+    result.selfHealingRetryAudit = audit;
+    appendStep(createGoldenCorpusOrchestratorStep('execute_self_healing_plan', 'warning', 'Operator confirmation required for execute_confirmed.'));
+    addWarning('self_healing_operator_confirmation_required');
+  } else {
+    const executed = await executeSelfHealingRetryPlan({
+      audit, mode, operatorConfirmed: request.selfHealingOperatorConfirmed === true, now,
+    });
+    result.selfHealingRetryAudit = executed;
+    const execStatus: GoldenCorpusOrchestratorStepStatus =
+      executed.status === 'failed' ? 'fail'
+        : executed.status === 'blocked' ? 'blocked'
+          : executed.status === 'completed' ? 'pass' : 'warning';
+    appendStep(createGoldenCorpusOrchestratorStep('execute_self_healing_plan', execStatus,
+      `Self-healing execution: ${executed.status}.`, { status: executed.status }));
+    audit = executed;
+  }
+
+  if (request.persistSelfHealingAudit !== true) {
+    appendStep(skippedStep('persist_self_healing_audit', 'Persistence not requested.'));
+    return;
+  }
+
+  const importId = (result.importId ?? '').trim();
+  if (!importId) {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_self_healing_audit', 'warning', 'No importId to persist the audit.'));
+    addWarning('self_healing_audit_persist_skipped_no_import_id');
+    return;
+  }
+
+  const saveRes = await saveSelfHealingRetryAudit(importId, result.selfHealingRetryAudit ?? audit);
+  result.selfHealingRetryAuditPersistenceResult = saveRes;
+  if (saveRes.kind === 'ok') {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_self_healing_audit', 'pass', 'Self-healing audit persisted.'));
+  } else {
+    appendStep(createGoldenCorpusOrchestratorStep('persist_self_healing_audit', 'fail', saveRes.message));
+    addWarning('self_healing_audit_persistence_failed');
+  }
+}
+
+/**
  * Async orchestration: loads the snapshot via the secure `get_status` operation,
  * runs the pure chain, and optionally persists the summary when `request.persist`.
  */
@@ -958,6 +1081,10 @@ export async function orchestrateGoldenCorpusRun(
   // Phase 10D — optional adaptive reconciliation policy build/persist. Governance
   // only; never calls AI or applies reconciliation. Non-gating.
   await applyAdaptiveReconciliationPhase(pure, request, snapshot, now);
+
+  // Phase 10E — optional controlled self-healing retry plan/execute/persist.
+  // Never calls AI, mutates templates, or reruns imports. Non-gating.
+  await applySelfHealingPhase(pure, request, snapshot, now);
 
   // A clean run that only accrued baseline warnings drops to completed_with_warnings.
   if (pure.status === 'completed' && pure.warnings.length > 0) {

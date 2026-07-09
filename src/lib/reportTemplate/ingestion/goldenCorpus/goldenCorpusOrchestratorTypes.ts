@@ -36,6 +36,11 @@ import type {
   AdaptiveReconciliationPolicy,
   SaveAdaptiveReconciliationPolicyResult,
 } from '../reconciliation/adaptiveReconciliationTypes';
+import type {
+  SaveSelfHealingRetryAuditResult,
+  SelfHealingMode,
+  SelfHealingRetryAudit,
+} from '../selfHealing/selfHealingTypes';
 
 export const GOLDEN_CORPUS_ORCHESTRATOR_VERSION = 'pdf-import-golden-corpus-orchestrator-v1';
 
@@ -65,7 +70,10 @@ export type GoldenCorpusOrchestratorStepId =
   | 'build_repair_pattern_analysis'
   | 'persist_repair_pattern_analysis'
   | 'build_adaptive_reconciliation_policy'
-  | 'persist_adaptive_reconciliation_policy';
+  | 'persist_adaptive_reconciliation_policy'
+  | 'build_self_healing_plan'
+  | 'execute_self_healing_plan'
+  | 'persist_self_healing_audit';
 
 export type GoldenCorpusOrchestratorStepStatus =
   | 'pending'
@@ -131,6 +139,14 @@ export interface GoldenCorpusOrchestratorRequest {
    * calls AI or applies reconciliation.
    */
   persistAdaptiveReconciliationPolicy?: boolean;
+  /** Phase 10E — build the controlled self-healing retry plan. Off by default. */
+  buildSelfHealingPlan?: boolean;
+  /** Phase 10E — persist the self-healing retry audit. Off by default; requires an importId. */
+  persistSelfHealingAudit?: boolean;
+  /** Phase 10E — self-healing execution mode. Defaults to dry_run (no execution). */
+  executeSelfHealingMode?: SelfHealingMode;
+  /** Phase 10E — explicit operator confirmation for execute_confirmed mode. */
+  selfHealingOperatorConfirmed?: boolean;
 }
 
 export interface GoldenCorpusOrchestratorOptions {
@@ -179,6 +195,10 @@ export interface GoldenCorpusOrchestratorResult {
   // Phase 10D — adaptive reconciliation policy.
   adaptiveReconciliationPolicy: AdaptiveReconciliationPolicy | null;
   adaptiveReconciliationPolicyPersistenceResult: SaveAdaptiveReconciliationPolicyResult | null;
+
+  // Phase 10E — self-healing retry orchestration.
+  selfHealingRetryAudit: SelfHealingRetryAudit | null;
+  selfHealingRetryAuditPersistenceResult: SaveSelfHealingRetryAuditResult | null;
 
   warnings: string[];
   failures: string[];

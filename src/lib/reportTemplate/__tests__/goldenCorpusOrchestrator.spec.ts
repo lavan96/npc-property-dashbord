@@ -17,6 +17,7 @@ import { runExportParityAutomation } from '@/lib/reportTemplate/ingestion/export
 import { saveImportIntelligenceProfile } from '@/lib/reportTemplate/ingestion/importIntelligence';
 import { saveRepairPatternAnalysis } from '@/lib/reportTemplate/ingestion/repairPatterns';
 import { saveAdaptiveReconciliationPolicy } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { saveSelfHealingRetryAudit } from '@/lib/reportTemplate/ingestion/selfHealing';
 
 vi.mock('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/goldenCorpus/goldenCorpusImportSnapshot')>();
@@ -49,6 +50,11 @@ vi.mock('@/lib/reportTemplate/ingestion/repairPatterns', async (orig) => {
 vi.mock('@/lib/reportTemplate/ingestion/reconciliation', async (orig) => {
   const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/reconciliation')>();
   return { ...actual, saveAdaptiveReconciliationPolicy: vi.fn() };
+});
+// Phase 10E — keep the real deterministic planner/executor; only mock persistence.
+vi.mock('@/lib/reportTemplate/ingestion/selfHealing', async (orig) => {
+  const actual = await orig<typeof import('@/lib/reportTemplate/ingestion/selfHealing')>();
+  return { ...actual, saveSelfHealingRetryAudit: vi.fn() };
 });
 
 const NOW = () => new Date('2026-07-04T00:00:00.000Z');
@@ -775,5 +781,197 @@ describe('orchestrateGoldenCorpusRun (Phase 10D adaptive reconciliation)', () =>
       request: req({ buildImportIntelligenceProfile: true, buildRepairPatternAnalysis: true, buildAdaptiveReconciliationPolicy: true }), now: NOW,
     });
     expect(result.adaptiveReconciliationPolicy?.decision).toBe('not_needed');
+  });
+});
+
+describe('orchestrateGoldenCorpusRun (Phase 10E self-healing retry)', () => {
+  // A failing snapshot that yields a non-trivial recovery plan.
+  const failing = () =>
+    snap({
+      importStatus: 'completed',
+      visualQaScore: 0.5,
+      repairStatus: 'failed',
+      repairFinalScore: 0.5,
+      repairRequiresManualReview: true,
+      repairRequiresFallback: true,
+      exportParityStatus: 'failed',
+      exportVsSourceScore: 0.6,
+      aiReconciliationRecommendation: 'recommended',
+      aiReconciliationStatus: null,
+    });
+
+  beforeEach(() => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockReset();
+    vi.mocked(saveGoldenRegressionSummary).mockReset();
+    vi.mocked(saveSelfHealingRetryAudit).mockReset();
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: snap() });
+    vi.mocked(saveGoldenRegressionSummary).mockResolvedValue({ kind: 'ok' });
+    vi.mocked(saveSelfHealingRetryAudit).mockResolvedValue({ kind: 'ok' });
+  });
+
+  // 1
+  it('buildSelfHealingPlan false skips self-healing steps', async () => {
+    const result = await orchestrateGoldenCorpusRun({ request: req(), now: NOW });
+    expect(stepOf(result, 'build_self_healing_plan')?.status).toBe('skipped');
+    expect(stepOf(result, 'execute_self_healing_plan')?.status).toBe('skipped');
+    expect(stepOf(result, 'persist_self_healing_audit')?.status).toBe('skipped');
+    expect(result.selfHealingRetryAudit).toBeNull();
+    expect(saveSelfHealingRetryAudit).not.toHaveBeenCalled();
+  });
+
+  // 2
+  it('builds the plan when requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit).not.toBeNull();
+    expect(result.selfHealingRetryAudit?.version).toBeTruthy();
+    expect(stepOf(result, 'build_self_healing_plan')?.status).not.toBe('skipped');
+  });
+
+  // 3
+  it('attaches the audit with a summary and plan id', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit?.planId).toBeTruthy();
+    expect(result.selfHealingRetryAudit?.summary.totalActions).toBe(
+      result.selfHealingRetryAudit?.actions.length,
+    );
+  });
+
+  // 4
+  it('dry_run builds but does not execute', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true, executeSelfHealingMode: 'dry_run' }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit?.executedAt).toBeNull();
+    expect(stepOf(result, 'execute_self_healing_plan')?.status).toBe('skipped');
+  });
+
+  // 5
+  it('audit_only records the plan without persistence unless requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true, executeSelfHealingMode: 'audit_only' }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit).not.toBeNull();
+    expect(saveSelfHealingRetryAudit).not.toHaveBeenCalled();
+    expect(stepOf(result, 'persist_self_healing_audit')?.status).toBe('skipped');
+  });
+
+  // 6
+  it('execute_safe executes and stamps executedAt', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: failing() });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildSelfHealingPlan: true, executeSelfHealingMode: 'execute_safe' }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit?.executedAt).toBeTruthy();
+    expect(stepOf(result, 'execute_self_healing_plan')?.status).not.toBe('skipped');
+  });
+
+  // 7
+  it('execute_confirmed without operator confirmation holds and warns', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true, executeSelfHealingMode: 'execute_confirmed', selfHealingOperatorConfirmed: false }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit?.executedAt).toBeNull();
+    expect(result.warnings).toContain('self_healing_operator_confirmation_required');
+    expect(stepOf(result, 'execute_self_healing_plan')?.status).toBe('warning');
+  });
+
+  // 8
+  it('execute_confirmed with operator confirmation executes', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: failing() });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildSelfHealingPlan: true, executeSelfHealingMode: 'execute_confirmed', selfHealingOperatorConfirmed: true }), now: NOW,
+    });
+    expect(result.selfHealingRetryAudit?.executedAt).toBeTruthy();
+  });
+
+  // 9
+  it('does not persist the audit when persist flag is off', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true, persistSelfHealingAudit: false }), now: NOW,
+    });
+    expect(saveSelfHealingRetryAudit).not.toHaveBeenCalled();
+    expect(stepOf(result, 'persist_self_healing_audit')?.status).toBe('skipped');
+  });
+
+  // 10
+  it('persists the audit when requested', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true, persistSelfHealingAudit: true }), now: NOW,
+    });
+    expect(saveSelfHealingRetryAudit).toHaveBeenCalledTimes(1);
+    expect(result.selfHealingRetryAuditPersistenceResult?.kind).toBe('ok');
+    expect(stepOf(result, 'persist_self_healing_audit')?.status).toBe('pass');
+  });
+
+  // 11
+  it('adds a warning when audit persistence fails but does not fail the run', async () => {
+    vi.mocked(saveSelfHealingRetryAudit).mockResolvedValue({ kind: 'error', message: 'db down' });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ buildSelfHealingPlan: true, persistSelfHealingAudit: true }), now: NOW,
+    });
+    expect(result.warnings).toContain('self_healing_audit_persistence_failed');
+    expect(result.status).not.toBe('failed');
+    expect(stepOf(result, 'persist_self_healing_audit')?.status).toBe('fail');
+  });
+
+  // 12
+  it('does not persist the audit when importId is missing', async () => {
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ importId: '', buildSelfHealingPlan: true, persistSelfHealingAudit: true }), now: NOW,
+    });
+    expect(saveSelfHealingRetryAudit).not.toHaveBeenCalled();
+    expect(result.selfHealingRetryAudit).toBeNull();
+  });
+
+  // 13
+  it('evaluate_only with plan build but no persist remains read-only', async () => {
+    await orchestrateGoldenCorpusRun({
+      request: req({ persist: false, buildSelfHealingPlan: true }), now: NOW,
+    });
+    expect(saveGoldenRegressionSummary).not.toHaveBeenCalled();
+    expect(saveSelfHealingRetryAudit).not.toHaveBeenCalled();
+  });
+
+  // 14
+  it('a blocked/failing plan does not crash the orchestrator', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: failing() });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildImportIntelligenceProfile: true, buildRepairPatternAnalysis: true, buildAdaptiveReconciliationPolicy: true, buildSelfHealingPlan: true, executeSelfHealingMode: 'execute_safe' }), now: NOW,
+    });
+    expect(result.version).toBeTruthy();
+    expect(result.selfHealingRetryAudit).not.toBeNull();
+  });
+
+  // 15
+  it('never marks browser/import/AI-only actions as completed', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: failing() });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildImportIntelligenceProfile: true, buildRepairPatternAnalysis: true, buildAdaptiveReconciliationPolicy: true, buildSelfHealingPlan: true, executeSelfHealingMode: 'execute_confirmed', selfHealingOperatorConfirmed: true }), now: NOW,
+    });
+    const neverAuto = new Set([
+      'run_ai_reconciliation', 'rerun_import', 'rerun_visual_qa', 'rerun_repair', 'rerun_export_parity_manual',
+    ]);
+    for (const action of result.selfHealingRetryAudit?.actions ?? []) {
+      if (neverAuto.has(action.actionId)) {
+        expect(action.status).not.toBe('completed');
+      }
+    }
+  });
+
+  // 16
+  it('self-healing plan never triggers AI automatically', async () => {
+    vi.mocked(loadGoldenCorpusImportQualitySnapshot).mockResolvedValue({ kind: 'ok', snapshot: failing() });
+    const result = await orchestrateGoldenCorpusRun({
+      request: req({ corpusId: 'golden-ocr-001', buildAdaptiveReconciliationPolicy: true, buildSelfHealingPlan: true, executeSelfHealingMode: 'execute_safe' }), now: NOW,
+    });
+    const ai = (result.selfHealingRetryAudit?.actions ?? []).find((a) => a.actionId === 'run_ai_reconciliation');
+    // If an AI action is planned at all, it must be surfaced as manual/blocked — never executed.
+    if (ai) {
+      expect(['manual_required', 'blocked', 'skipped', 'pending', 'not_supported']).toContain(ai.status);
+    }
   });
 });
