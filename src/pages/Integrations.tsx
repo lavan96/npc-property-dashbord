@@ -622,13 +622,15 @@ export default function Integrations() {
     return (
       <Card
         key={integration.id}
-        className={`group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
+        style={tone.cardStyle}
+        className={`group relative min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_rgba(var(--brand-rgb),0.18)] dark:border-white/10 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
       >
+        <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-[3px] ${tone.accentBar}`} />
         <CardHeader className={`border-b border-border/50 pb-4 ${tone.header}`}>
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_hsl(var(--primary)/0.14)] transition-all duration-300 ${tone.icon}`}>
-                {integration.icon}
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border backdrop-blur-sm transition-all duration-300 ${tone.icon}`}>
+                <BrandMark integrationId={integration.id} fallback={integration.icon} size={26} />
               </div>
               <div className="min-w-0 space-y-1">
                 <CardTitle className="break-words text-lg font-semibold leading-tight tracking-tight text-foreground">
@@ -645,6 +647,7 @@ export default function Integrations() {
             </div>
           </div>
         </CardHeader>
+
         <CardContent className="space-y-4 p-4 sm:p-6">
           <div className={getFieldGridClass(integration)}>
             {integration.fields.map(field => {
