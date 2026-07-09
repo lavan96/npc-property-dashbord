@@ -26,6 +26,7 @@ import { OpenRouterModelCard } from '@/components/model-hub/OpenRouterModelCard'
 import { OpenRouterModelTable } from '@/components/model-hub/OpenRouterModelTable';
 import { OpenRouterPager } from '@/components/model-hub/OpenRouterPager';
 import { familyFromId, familyTint, SORT_LABELS, extractExtras, type SortKey } from '@/lib/openrouter/format';
+import { BrandMark } from '@/components/integrations/BrandMark';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
@@ -157,9 +158,14 @@ function ModelCard({ model }: { model: CatalogModel }) {
     <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
       <CardHeader className="border-b border-border/50 bg-muted/20 pb-3 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className={`truncate text-sm font-semibold ${brand.color}`} title={model.display_name}>{model.display_name}</CardTitle>
-            <CardDescription className="truncate font-mono text-[10px]" title={model.model_id}>{model.model_id}</CardDescription>
+          <div className="flex min-w-0 flex-1 items-start gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/60">
+              <BrandMark integrationId={model.provider} size={20} fallback={<Sparkles className="h-4 w-4 text-muted-foreground" />} />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <CardTitle className={`truncate text-sm font-semibold ${brand.color}`} title={model.display_name}>{model.display_name}</CardTitle>
+              <CardDescription className="truncate font-mono text-[10px]" title={model.model_id}>{model.model_id}</CardDescription>
+            </div>
           </div>
           <Badge variant="outline" className={`${statusBadge(model.status)} shrink-0 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em]`}>{model.status}</Badge>
         </div>
@@ -198,7 +204,11 @@ function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, erro
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-background/50">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-          {route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
+          <BrandMark
+            integrationId={providerId}
+            size={22}
+            fallback={route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
+          />
         </div>
         <div className="min-w-0">
           <h3 className={`truncate text-lg font-semibold ${brand.color}`} title={brand.name}>{brand.name}</h3>
@@ -607,7 +617,7 @@ function OpenRouterCatalog({ models, lastProbedAt }: { models: CatalogModel[]; l
                 )}
               >
                 <div className="flex items-center gap-1.5 text-[10px] font-medium text-foreground">
-                  <span className={cn('h-1.5 w-1.5 rounded-full', tint.dot)} />
+                  <BrandMark integrationId={f} size={12} fallback={<span className={cn('h-1.5 w-1.5 rounded-full', tint.dot)} />} />
                   {f}
                 </div>
                 <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
