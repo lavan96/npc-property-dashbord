@@ -73,6 +73,9 @@ const ADMIN_CAPS: PdfImportCapability[] = [
   'pdf_import.view_diagnostics',
   'pdf_import.view_monitoring',
   'pdf_import.manage_monitoring_alerts',
+  'pdf_import.view_retention',
+  'pdf_import.run_retention_scan',
+  'pdf_import.manage_retention_candidates',
 ];
 
 const DEVELOPER_CAPS: PdfImportCapability[] = [
@@ -196,6 +199,14 @@ export function assertPdfImportPermissionMatrixIntegrity(): {
   if (!roleHasPdfImportCapability('developer_admin', 'pdf_import.manage_monitoring_alerts')) errors.push('developer_admin_missing_manage_monitoring_alerts');
   if (roleHasPdfImportCapability('pdf_qa_operator', 'pdf_import.view_monitoring')) errors.push('pdf_qa_operator_has_view_monitoring');
   if (roleHasPdfImportCapability('pdf_operator', 'pdf_import.manage_monitoring_alerts')) errors.push('pdf_operator_has_manage_monitoring_alerts');
+
+  // Phase 11E — retention capabilities are admin/developer only.
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.view_retention')) errors.push('pdf_admin_missing_view_retention');
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.run_retention_scan')) errors.push('pdf_admin_missing_run_retention_scan');
+  if (!roleHasPdfImportCapability('pdf_admin', 'pdf_import.manage_retention_candidates')) errors.push('pdf_admin_missing_manage_retention_candidates');
+  if (!roleHasPdfImportCapability('developer_admin', 'pdf_import.manage_retention_candidates')) errors.push('developer_admin_missing_manage_retention_candidates');
+  if (roleHasPdfImportCapability('pdf_qa_operator', 'pdf_import.view_retention')) errors.push('pdf_qa_operator_has_view_retention');
+  if (roleHasPdfImportCapability('pdf_operator', 'pdf_import.run_retention_scan')) errors.push('pdf_operator_has_run_retention_scan');
 
   return { ok: errors.length === 0, errors, warnings };
 }

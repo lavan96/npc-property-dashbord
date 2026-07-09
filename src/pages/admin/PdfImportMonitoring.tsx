@@ -7,7 +7,7 @@
  * secure `pdf-import-monitoring` edge function. This page is NON-remediating —
  * it never repairs, retries, reruns, reconciles, mutates templates, or calls AI.
  */
-import { Activity, ShieldCheck } from 'lucide-react';
+import { Activity, ShieldCheck, Archive } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Button } from '@/components/ui/button';
@@ -32,12 +32,20 @@ export default function PdfImportMonitoring() {
             requires the monitoring-management capability.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/admin/pdf-import-diagnostics">
-            <ShieldCheck className="mr-1 h-4 w-4" />
-            Diagnostics
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/pdf-import-retention">
+              <Archive className="mr-1 h-4 w-4" />
+              Retention
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/pdf-import-diagnostics">
+              <ShieldCheck className="mr-1 h-4 w-4" />
+              Diagnostics
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <OperatorPermissionStatusPanel resolvedRole={resolvedRole} />
