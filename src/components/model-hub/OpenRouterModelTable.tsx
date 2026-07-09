@@ -1,8 +1,9 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, Copy, ExternalLink } from 'lucide-react';
+import { ArrowUpDown, Copy, ExternalLink, Boxes } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { BrandMark } from '@/components/integrations/BrandMark';
 import {
   extractExtras,
   familyFromId,
