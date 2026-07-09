@@ -26,6 +26,7 @@ import { OpenRouterModelCard } from '@/components/model-hub/OpenRouterModelCard'
 import { OpenRouterModelTable } from '@/components/model-hub/OpenRouterModelTable';
 import { OpenRouterPager } from '@/components/model-hub/OpenRouterPager';
 import { familyFromId, familyTint, SORT_LABELS, extractExtras, type SortKey } from '@/lib/openrouter/format';
+import { BrandMark } from '@/components/integrations/BrandMark';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
