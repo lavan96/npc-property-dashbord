@@ -1451,7 +1451,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
           {/* Investment Report Tab */}
           <TabsContent value="investment" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full px-6">
+            <ScrollArea className="h-full pl-6 pr-8">
               <div className="space-y-6 py-4">
                 {/* Property Details Section */}
                 <div className="space-y-4">
@@ -1783,7 +1783,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
           {/* Cash Flow Analysis Tab */}
           <TabsContent value="cashflow" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full px-6">
+            <ScrollArea className="h-full pl-6 pr-8">
               <div className="space-y-6 py-4">
                 {/* Loan & Mortgage Settings */}
                 <div className="space-y-4">
