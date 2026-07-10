@@ -88,7 +88,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
             </DialogHeader>
 
             <div className="relative mt-4 min-h-0 w-full min-w-0 px-0 sm:mt-5 sm:px-14">
-              <div className="relative flex h-[clamp(220px,42dvh,520px)] min-h-0 w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-brand-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-5 lg:p-7">
+              <div className="relative flex h-[clamp(200px,34dvh,420px)] min-h-0 w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-brand-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-5 lg:p-7">
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/65 to-transparent" />
                 <div className="pointer-events-none absolute -left-24 top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
                 <div className="pointer-events-none absolute -right-20 bottom-8 h-48 w-48 rounded-full bg-brand-400/12 blur-3xl" />

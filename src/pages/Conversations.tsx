@@ -1657,13 +1657,13 @@ export default function Conversations() {
                               const getOutboundBubbleClass = () => {
                                 switch (msgChannel) {
                                   case "sms":
-                                    return "rounded-br-md border-info/22 bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(15,23,42,0.92))] text-info-foreground shadow-[0_12px_34px_rgba(37,99,235,0.16)]";
+                                    return "rounded-br-md border-info/40 bg-[linear-gradient(135deg,rgba(59,130,246,0.55),rgba(30,64,175,0.85))] text-white shadow-[0_12px_34px_rgba(37,99,235,0.22)]";
                                   case "whatsapp":
-                                    return "rounded-br-md border-success/22 bg-[linear-gradient(135deg,rgba(16,185,129,0.26),rgba(6,78,59,0.34)_38%,rgba(15,23,42,0.94))] text-success-foreground shadow-[0_12px_34px_rgba(16,185,129,0.14)]";
+                                    return "rounded-br-md border-success/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.55),rgba(6,95,70,0.85))] text-white shadow-[0_12px_34px_rgba(16,185,129,0.22)]";
                                   case "email":
-                                    return "rounded-br-md border-brand-200/26 bg-[linear-gradient(135deg,rgba(245,158,11,0.30),rgba(120,53,15,0.30)_42%,rgba(15,23,42,0.94))] text-brand-50 shadow-[0_12px_34px_rgba(245,158,11,0.14)]";
+                                    return "rounded-br-md border-brand-200/40 bg-[linear-gradient(135deg,rgba(245,158,11,0.55),rgba(120,53,15,0.85))] text-white shadow-[0_12px_34px_rgba(245,158,11,0.22)]";
                                   default:
-                                    return "rounded-br-md border-info/22 bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(15,23,42,0.92))] text-info-foreground shadow-[0_12px_34px_rgba(37,99,235,0.16)]";
+                                    return "rounded-br-md border-info/40 bg-[linear-gradient(135deg,rgba(59,130,246,0.55),rgba(30,64,175,0.85))] text-white shadow-[0_12px_34px_rgba(37,99,235,0.22)]";
                                 }
                               };
 
@@ -1671,13 +1671,13 @@ export default function Conversations() {
                                 if (!isOutbound) return "text-muted-foreground";
                                 switch (msgChannel) {
                                   case "sms":
-                                    return "text-info-foreground/70";
+                                    return "text-white/75";
                                   case "whatsapp":
-                                    return "text-success-foreground/70";
+                                    return "text-white/75";
                                   case "email":
-                                    return "text-brand-100/70";
+                                    return "text-white/75";
                                   default:
-                                    return "text-info-foreground/70";
+                                    return "text-white/75";
                                 }
                               };
 

@@ -1115,7 +1115,7 @@ export function BorrowingCapacityModal({
   );
 
   const tabsContent = (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="px-4 sm:px-6 border-b">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="calculator" className="flex items-center gap-1.5 text-xs sm:text-sm">
@@ -1136,9 +1136,9 @@ export function BorrowingCapacityModal({
       {scenarioBanner}
       {unsavedBanner}
 
-      <TabsContent value="calculator" className="flex-1 overflow-hidden m-0">
+      <TabsContent value="calculator" className="flex-1 min-h-0 overflow-hidden m-0">
         {isMobile ? (
-          <ScrollArea className="h-[calc(95vh-160px)]">
+          <ScrollArea className="h-full">
             <div className="p-4 space-y-4">
               {inputSections}
               <ResultsPanel 
@@ -1162,16 +1162,16 @@ export function BorrowingCapacityModal({
             </div>
           </ScrollArea>
         ) : (
-          <div className="flex flex-row flex-1 h-full overflow-hidden">
-            <div className="w-1/2 border-r">
-              <ScrollArea className="h-[calc(90vh-140px)]">
+          <div className="flex flex-row flex-1 h-full min-h-0 overflow-hidden">
+            <div className="w-1/2 min-h-0 border-r">
+              <ScrollArea className="h-full">
                 <div className="p-6 space-y-4">
                   {inputSections}
                 </div>
               </ScrollArea>
             </div>
-            <div className="w-1/2">
-              <ScrollArea className="h-[calc(90vh-140px)]">
+            <div className="w-1/2 min-h-0">
+              <ScrollArea className="h-full">
                 <div className="p-6">
                   <ResultsPanel 
                     result={result} 
@@ -1198,8 +1198,8 @@ export function BorrowingCapacityModal({
         )}
       </TabsContent>
 
-      <TabsContent value="scenarios" className="flex-1 overflow-hidden m-0">
-        <ScrollArea className={isMobile ? "h-[calc(100vh-180px)]" : "h-[calc(90vh-140px)]"}>
+      <TabsContent value="scenarios" className="flex-1 min-h-0 overflow-hidden m-0">
+        <ScrollArea className="h-full">
           <div className="p-4 sm:p-6">
             {result ? (
               <StrategyScenarioModeling
@@ -1329,8 +1329,8 @@ export function BorrowingCapacityModal({
         </ScrollArea>
       </TabsContent>
 
-      <TabsContent value="history" className="flex-1 overflow-hidden m-0">
-        <ScrollArea className={isMobile ? "h-[calc(100vh-180px)]" : "h-[calc(90vh-140px)]"}>
+      <TabsContent value="history" className="flex-1 min-h-0 overflow-hidden m-0">
+        <ScrollArea className="h-full">
           <div className="p-4 sm:p-6">
             <CapacityHistoryChart 
               history={assessmentHistory || []} 
