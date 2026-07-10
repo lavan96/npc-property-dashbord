@@ -3433,7 +3433,7 @@ export default function EmailCopilot() {
           setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
         }
       }}>
-        <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
+        <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] p-4 shadow-[0_24px_80px_hsl(var(--background)/0.35)] sm:h-[min(90dvh,900px)] sm:max-h-[min(90dvh,900px)] sm:overflow-hidden sm:p-6">
           <DialogHeader className="border-b border-primary/10 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
