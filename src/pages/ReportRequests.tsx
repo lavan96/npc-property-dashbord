@@ -51,7 +51,7 @@ const statusCardConfig: Record<string, { glow: string; iconWrap: string; edge: s
     glow: 'hover:shadow-[0_18px_48px_rgba(59,130,246,0.22)]',
     iconWrap: 'border-info/25 bg-info/10 text-info group-hover:bg-info/20',
     edge: 'from-info/0 via-info/80 to-brand-200/30',
-    count: 'text-info-foreground',
+    count: 'text-info',
     active: 'border-info/55 ring-2 ring-info/20 shadow-[0_18px_48px_rgba(59,130,246,0.2)]',
   },
   completed: {

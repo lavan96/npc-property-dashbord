@@ -1,4 +1,4 @@
-import { Sparkles, TrendingUp, AlertTriangle, DollarSign, MapPin, BarChart3 } from 'lucide-react';
+import { TrendingUp, AlertTriangle, DollarSign, MapPin, BarChart3 } from 'lucide-react';
 
 interface SmartSuggestionsProps {
   hasReports: boolean;
@@ -71,12 +71,6 @@ export function SmartSuggestions({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
-          <Sparkles className="h-3.5 w-3.5" />
-        </span>
-        <span>Smart suggestions</span>
-      </div>
       <div className="flex flex-wrap gap-2.5">
         {suggestions.map((s, idx) => {
           const Icon = iconMap[s.icon] || TrendingUp;
