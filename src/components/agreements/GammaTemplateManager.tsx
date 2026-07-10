@@ -388,7 +388,7 @@ export default function GammaTemplateManager() {
                             className="min-h-11 w-full rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-brand-400 focus-visible:ring-2 focus-visible:ring-brand-300/45 dark:border-white/10 dark:bg-background/65 [overflow-wrap:anywhere]"
                           />
                         </div>
-                        <span className="hidden pb-3 text-brand-500 sm:block"><ArrowRight className="h-5 w-5" /></span>
+                        <span className="hidden pb-3 text-brand-500 lg:block"><ArrowRight className="h-5 w-5" /></span>
                         <div className="min-w-0 space-y-1.5">
                           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agreement field</Label>
                           <select
