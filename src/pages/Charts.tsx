@@ -230,6 +230,17 @@ export default function Charts() {
     });
 
     const result = Array.from(groups.values());
+    // Disambiguate groups whose reports share the same title by appending
+    // a short report-id suffix so users can tell them apart.
+    const titleCounts = result.reduce<Record<string, number>>((acc, g) => {
+      acc[g.reportTitle] = (acc[g.reportTitle] ?? 0) + 1;
+      return acc;
+    }, {});
+    result.forEach(g => {
+      if (titleCounts[g.reportTitle] > 1 && g.reportId && g.reportId !== 'none') {
+        g.reportTitle = `${g.reportTitle} · ${g.reportId.slice(-6)}`;
+      }
+    });
     if (ungrouped.length > 0) {
       result.push({ reportTitle: 'Unlinked Charts', reportId: 'none', charts: ungrouped });
     }
