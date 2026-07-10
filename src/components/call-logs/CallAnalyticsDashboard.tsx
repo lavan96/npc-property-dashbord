@@ -92,14 +92,22 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
       const outcome = call.call_outcome || 'unknown';
       counts[outcome] = (counts[outcome] || 0) + 1;
     });
+    let fallbackIndex = 0;
     return Object.entries(counts)
       .filter(([_, count]) => count > 0)
-      .map(([name, value]) => ({
-        name: name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        value,
-        color: OUTCOME_COLORS[name as keyof typeof OUTCOME_COLORS] || '#6b7280',
-      }));
+      .map(([name, value]) => {
+        const mapped = OUTCOME_COLORS[name];
+        const color =
+          mapped ??
+          OUTCOME_FALLBACK_PALETTE[fallbackIndex++ % OUTCOME_FALLBACK_PALETTE.length];
+        return {
+          name: name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          value,
+          color,
+        };
+      });
   }, [calls]);
+
 
   // Calculate agent performance
   const agentPerformance = useMemo(() => {
