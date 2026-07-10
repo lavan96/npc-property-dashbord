@@ -1377,7 +1377,7 @@ export function BorrowingCapacityModal({
   // Desktop: standard dialog
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl h-[90vh] p-0 gap-0">
+      <DialogContent className="w-[95vw] max-w-[1600px] sm:max-w-[1600px] h-[92vh] p-0 gap-0 flex flex-col overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle className="sr-only">Borrowing Capacity Calculator</DialogTitle>
           {headerContent}
