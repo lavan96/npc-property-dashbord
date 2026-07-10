@@ -813,7 +813,7 @@ export default function Listings() {
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[170px]")}>Source</TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[130px]")}>Confidence</TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[180px] text-right")}>Received</TableHead>
-                <TableHead className={cn(LISTING_TABLE_HEAD, "w-16 pr-5 text-right")}></TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "sticky right-0 z-20 w-16 pr-5 text-right bg-muted/95 backdrop-blur dark:bg-background/95 shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)]")}><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
