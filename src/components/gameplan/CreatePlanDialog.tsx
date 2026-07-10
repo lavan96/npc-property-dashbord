@@ -146,7 +146,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
             </div>
           </div>
         </div>
-        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-background/85 sm:flex-row">
+        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-background/85 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl focus-visible:ring-primary/35">Cancel</Button>
           <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
             {loading ? 'Creating...' : 'Create Plan'}
