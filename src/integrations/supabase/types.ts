@@ -14241,6 +14241,130 @@ export type Database = {
           },
         ]
       }
+      pdf_import_client_reports: {
+        Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          audience: string
+          created_at: string
+          export_format: string | null
+          export_note: string | null
+          exported_at: string | null
+          exported_by: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          import_id: string | null
+          redactions: Json
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_note: string | null
+          report_payload: Json
+          report_type: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          safety_level: string
+          source_summary: Json
+          status: string
+          summary: string
+          superseded_at: string | null
+          superseded_by: string | null
+          template_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          audience: string
+          created_at?: string
+          export_format?: string | null
+          export_note?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          import_id?: string | null
+          redactions?: Json
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
+          report_payload?: Json
+          report_type: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_level: string
+          source_summary?: Json
+          status?: string
+          summary: string
+          superseded_at?: string | null
+          superseded_by?: string | null
+          template_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          audience?: string
+          created_at?: string
+          export_format?: string | null
+          export_note?: string | null
+          exported_at?: string | null
+          exported_by?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          import_id?: string | null
+          redactions?: Json
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
+          report_payload?: Json
+          report_type?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_level?: string
+          source_summary?: Json
+          status?: string
+          summary?: string
+          superseded_at?: string | null
+          superseded_by?: string | null
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_import_client_reports_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "template_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_client_reports_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "pdf_import_client_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_client_reports_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdf_import_golden_runs: {
         Row: {
           ai_reconciliation_recommendation: string | null
@@ -14603,6 +14727,182 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pdf_import_retention_events: {
+        Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          block_note: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          cleanup_action: string
+          completed_at: string | null
+          completed_by: string | null
+          completion_note: string | null
+          created_at: string
+          decision: string
+          dedupe_key: string
+          domain: string
+          estimated_bytes: number | null
+          evidence: Json
+          first_seen_at: string
+          golden_run_id: string | null
+          id: string
+          import_id: string | null
+          last_seen_at: string
+          message: string
+          monitoring_event_id: string | null
+          object_created_at: string | null
+          object_updated_at: string | null
+          occurrence_count: number
+          recommended_action: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_note: string | null
+          retention_rule_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          run_id: string | null
+          safety_level: string
+          scope_id: string
+          scope_label: string | null
+          scope_type: string
+          source: string
+          status: string
+          storage_bucket: string | null
+          storage_object_path: string | null
+          template_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          block_note?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          cleanup_action: string
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_note?: string | null
+          created_at?: string
+          decision: string
+          dedupe_key: string
+          domain: string
+          estimated_bytes?: number | null
+          evidence?: Json
+          first_seen_at?: string
+          golden_run_id?: string | null
+          id?: string
+          import_id?: string | null
+          last_seen_at?: string
+          message: string
+          monitoring_event_id?: string | null
+          object_created_at?: string | null
+          object_updated_at?: string | null
+          occurrence_count?: number
+          recommended_action: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
+          retention_rule_id: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          run_id?: string | null
+          safety_level: string
+          scope_id: string
+          scope_label?: string | null
+          scope_type: string
+          source?: string
+          status?: string
+          storage_bucket?: string | null
+          storage_object_path?: string | null
+          template_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          block_note?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          cleanup_action?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_note?: string | null
+          created_at?: string
+          decision?: string
+          dedupe_key?: string
+          domain?: string
+          estimated_bytes?: number | null
+          evidence?: Json
+          first_seen_at?: string
+          golden_run_id?: string | null
+          id?: string
+          import_id?: string | null
+          last_seen_at?: string
+          message?: string
+          monitoring_event_id?: string | null
+          object_created_at?: string | null
+          object_updated_at?: string | null
+          occurrence_count?: number
+          recommended_action?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_note?: string | null
+          retention_rule_id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          run_id?: string | null
+          safety_level?: string
+          scope_id?: string
+          scope_label?: string | null
+          scope_type?: string
+          source?: string
+          status?: string
+          storage_bucket?: string | null
+          storage_object_path?: string | null
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_import_retention_events_golden_run_id_fkey"
+            columns: ["golden_run_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_import_golden_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_retention_events_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "template_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_retention_events_monitoring_event_id_fkey"
+            columns: ["monitoring_event_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_import_monitoring_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_import_retention_events_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permission_invite_tokens: {
         Row: {
