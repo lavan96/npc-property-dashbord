@@ -294,16 +294,18 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
 
       {/* Call Detail Dialog */}
       <Dialog open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-auto">
+        <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-2xl flex-col overflow-hidden sm:w-auto sm:max-h-[90vh] sm:overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-destructive-foreground0" />
               Critical Moment Analysis
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedCall && (
-            <div className="space-y-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
+              <div className="space-y-6 pb-2">
+
               {/* Call Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-muted">
