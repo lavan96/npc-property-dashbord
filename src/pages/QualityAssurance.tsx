@@ -52,17 +52,26 @@ export default function QualityAssurance() {
       if (showLoading) setLoading(true);
       setErrorMessage(null);
 
-      // Fetch reports with validation data via edge function
+      // Fetch reports with validation data via edge function.
+      // Hard 20s timeout guarantees the loading state always resolves so the
+      // page never sticks on a blank spinner (previous "won't load" symptom).
       let data: any = null;
       let reportsError: any = null;
       try {
-        const res = await invokeSecureFunction('get-investment-reports', {
+        const invokePromise = invokeSecureFunction('get-investment-reports', {
           listMode: true,
           listOptions: {
             select: 'id, property_address, created_at, calculation_version, validation_flags, data_sources, status',
-            limit: 100,
+            limit: 50,
           },
         });
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+          setTimeout(
+            () => resolve({ data: null, error: new Error('Request timed out after 20s. Please retry.') }),
+            20_000,
+          ),
+        );
+        const res: any = await Promise.race([invokePromise, timeoutPromise]);
         data = res?.data ?? null;
         reportsError = res?.error ?? null;
       } catch (invokeErr: any) {
