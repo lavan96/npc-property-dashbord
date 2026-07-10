@@ -26,7 +26,7 @@ const SENTIMENT_COLORS = {
   mixed: '#f59e0b',
 };
 
-const OUTCOME_COLORS = {
+const OUTCOME_COLORS: Record<string, string> = {
   completed: '#10b981',
   voicemail: '#f59e0b',
   'no-answer': '#f97316',
@@ -34,6 +34,21 @@ const OUTCOME_COLORS = {
   failed: '#ef4444',
   cancelled: '#6b7280',
 };
+
+// Distinct fallback palette so unmapped outcomes never collide on the pie chart.
+const OUTCOME_FALLBACK_PALETTE = [
+  '#8b5cf6', // violet
+  '#06b6d4', // cyan
+  '#ec4899', // pink
+  '#14b8a6', // teal
+  '#a855f7', // purple
+  '#3b82f6', // blue
+  '#22c55e', // green
+  '#f472b6', // rose
+  '#f97316', // orange
+  '#84cc16', // lime
+];
+
 
 
 const analyticsPanel =
