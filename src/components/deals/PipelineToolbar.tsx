@@ -26,6 +26,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { DealWithClient } from "@/hooks/useAllDeals";
+import { useUserNames } from "@/hooks/useUserNames";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 
 export type DealTypeFilter =
   | "all"
