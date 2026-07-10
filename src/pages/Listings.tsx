@@ -943,7 +943,7 @@ export default function Listings() {
                               : undefined,
                           }}
                           permissions={{ canGenerate: canEditListings }}
-                          triggerClassName="h-9 w-9 rounded-full border border-border/70 bg-background/85 text-muted-foreground opacity-80 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:opacity-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 group-hover:opacity-100 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary data-[state=open]:opacity-100"
+                          triggerClassName="h-9 w-9 rounded-full border border-border bg-background text-foreground opacity-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_24px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 data-[state=open]:border-primary/60 data-[state=open]:bg-primary/12 data-[state=open]:text-primary"
                           generatePicker={
                             canEditListings
                               ? {
