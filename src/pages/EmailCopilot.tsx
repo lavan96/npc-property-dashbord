@@ -3597,16 +3597,19 @@ export default function EmailCopilot() {
               </div>
               
               {/* Email Body */}
-              <div>
-                <Label className="mb-2 block text-sm font-semibold">Message Body *</Label>
+              <div className="rounded-2xl border border-primary/15 bg-background/60 p-3 shadow-sm">
+                <Label className="mb-2 block text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Message Body *
+                </Label>
                 <ComposerTextarea
                   value={composeEmail.body}
                   onChange={(v) => setComposeEmail({ ...composeEmail, body: v })}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[300px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
+                  className="min-h-[320px] w-full resize-y rounded-xl border-2 border-border bg-background text-sm leading-6 text-foreground shadow-inner focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   placeholder="Type your email message here..."
                 />
+
                 <div className="mt-2">
                   <RecipientSanityWarning
                     to={composeEmail.to}
