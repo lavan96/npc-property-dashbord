@@ -912,7 +912,7 @@ export function DepreciationCompsAdmin() {
               </div>
             </div>
             
-            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-background/75 sm:px-6">
+            <DialogFooter className="shrink-0 border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-background/75 sm:px-6">
               <Button
                 variant="outline"
                 onClick={() => setShowAddModal(false)}
