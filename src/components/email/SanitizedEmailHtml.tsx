@@ -139,13 +139,19 @@ export default function SanitizedEmailHtml({
   }, [rendered, chunks.length]);
 
   return (
-    <div className={`email-html-body overflow-x-auto [&_img]:max-w-full [&_img]:h-auto [&_table]:max-w-full [&_a]:text-primary [&_a]:underline ${className}`}>
+    // Email HTML from Outlook/Gmail ships with its own inline colors (typically dark
+    // text on light backgrounds). In our dark theme those colors become invisible.
+    // Render every rich email on a fixed light surface so branded emails always read
+    // correctly — matches Gmail/Outlook web behaviour.
+    <div
+      className={`email-html-body overflow-x-auto rounded-lg border border-border/50 bg-white p-3 text-neutral-900 shadow-sm [&_*]:!leading-relaxed [&_a]:text-brand-700 [&_a]:underline [&_img]:h-auto [&_img]:max-w-full [&_table]:max-w-full ${className}`}
+    >
       {chunks.slice(0, rendered).map((chunk, i) => (
         // eslint-disable-next-line react/no-danger
         <div key={i} dangerouslySetInnerHTML={{ __html: chunk }} />
       ))}
       {rendered < chunks.length && (
-        <div className="mt-2 text-xs text-muted-foreground" aria-live="polite">
+        <div className="mt-2 text-xs text-neutral-500" aria-live="polite">
           Rendering email… ({rendered}/{chunks.length})
         </div>
       )}

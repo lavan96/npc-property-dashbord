@@ -657,7 +657,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       {/* Call Detail Dialog */}
       <Dialog open={!!selectedCall} onOpenChange={(open) => !open && setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] border-border dark:border-white/10 bg-background/95 dark:bg-background/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl sm:w-auto">
+        <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-2xl flex-col overflow-hidden border-border bg-background/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl sm:w-auto sm:max-h-[90vh] sm:overflow-hidden dark:border-white/10 dark:bg-background/95">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground dark:text-foreground">
               <AlertTriangle className="w-5 h-5 text-brand-300" />
@@ -666,7 +666,8 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
           </DialogHeader>
           
           {selectedCall && (
-            <div className="space-y-6">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:hsl(var(--brand-300)/0.4)_transparent] [scrollbar-width:thin]">
+              <div className="space-y-6 pb-2">
               {/* Call Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
@@ -789,8 +790,10 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                   className="rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-brand-300"
                 />
               </div>
+              </div>
             </div>
           )}
+
 
           <DialogFooter>
             <Button variant="outline" className={issueControl} onClick={() => setSelectedCall(null)}>

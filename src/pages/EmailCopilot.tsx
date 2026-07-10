@@ -3433,7 +3433,7 @@ export default function EmailCopilot() {
           setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
         }
       }}>
-        <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
+        <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] p-4 shadow-[0_24px_80px_hsl(var(--background)/0.35)] sm:h-[min(90dvh,900px)] sm:max-h-[min(90dvh,900px)] sm:overflow-hidden sm:p-6">
           <DialogHeader className="border-b border-primary/10 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -3597,16 +3597,19 @@ export default function EmailCopilot() {
               </div>
               
               {/* Email Body */}
-              <div>
-                <Label className="mb-2 block text-sm font-semibold">Message Body *</Label>
+              <div className="rounded-2xl border border-primary/15 bg-background/60 p-3 shadow-sm">
+                <Label className="mb-2 block text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Message Body *
+                </Label>
                 <ComposerTextarea
                   value={composeEmail.body}
                   onChange={(v) => setComposeEmail({ ...composeEmail, body: v })}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[300px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
+                  className="min-h-[320px] w-full resize-y rounded-xl border-2 border-border bg-background text-sm leading-6 text-foreground shadow-inner focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   placeholder="Type your email message here..."
                 />
+
                 <div className="mt-2">
                   <RecipientSanityWarning
                     to={composeEmail.to}
