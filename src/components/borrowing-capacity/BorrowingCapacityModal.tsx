@@ -1329,8 +1329,8 @@ export function BorrowingCapacityModal({
         </ScrollArea>
       </TabsContent>
 
-      <TabsContent value="history" className="flex-1 overflow-hidden m-0">
-        <ScrollArea className={isMobile ? "h-[calc(100vh-180px)]" : "h-[calc(90vh-140px)]"}>
+      <TabsContent value="history" className="flex-1 min-h-0 overflow-hidden m-0">
+        <ScrollArea className="h-full">
           <div className="p-4 sm:p-6">
             <CapacityHistoryChart 
               history={assessmentHistory || []} 
