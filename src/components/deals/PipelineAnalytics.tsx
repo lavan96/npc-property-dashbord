@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useUserNames } from '@/hooks/useUserNames';
+
 import { format, differenceInDays, startOfMonth, endOfMonth, eachMonthOfInterval, addMonths, subMonths, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
@@ -584,6 +586,7 @@ function MonthlyDealFlow({ deals }: { deals: DealWithClient[] }) {
 
 // ─── SECTION: Top Responsible Persons ───
 function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const leaders = useMemo(() => {
     const map: Record<string, { count: number; value: number; urgent: number }> = {};
     for (const d of deals) {
@@ -598,6 +601,13 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
   }, [deals]);
+
+  const uuidIds = useMemo(
+    () => leaders.map((l) => l.name).filter((n) => UUID_RE.test(n)),
+    [leaders],
+  );
+  const { labelFor } = useUserNames(uuidIds);
+  const display = (n: string) => (UUID_RE.test(n) ? labelFor(n) : n);
 
   const maxValue = leaders[0]?.value || 1;
 
@@ -615,7 +625,8 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
             <span className="text-[10px] font-bold text-muted-foreground w-4 text-right">{i + 1}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
-                <span className="min-w-0 break-all pr-2 text-xs font-semibold leading-snug" title={person.name}>{person.name}</span>
+                <span className="min-w-0 break-all pr-2 text-xs font-semibold leading-snug" title={display(person.name)}>{display(person.name)}</span>
+
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] text-muted-foreground">{person.count} deals</span>
                   {person.urgent > 0 && (

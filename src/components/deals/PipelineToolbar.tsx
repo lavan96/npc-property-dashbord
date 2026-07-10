@@ -26,6 +26,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { DealWithClient } from "@/hooks/useAllDeals";
+import { useUserNames } from "@/hooks/useUserNames";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 
 export type DealTypeFilter =
   | "all"
@@ -168,6 +172,15 @@ export function PipelineToolbar({
       total: deals.length,
     };
   }, [deals]);
+
+  // Resolve any UUID-looking responsible person IDs into human names.
+  const responsibleUserIds = useMemo(
+    () => counts.responsiblePersons.filter((p) => UUID_RE.test(p)),
+    [counts.responsiblePersons],
+  );
+  const { labelFor } = useUserNames(responsibleUserIds);
+  const displayName = (p: string) => (UUID_RE.test(p) ? labelFor(p) : p);
+
 
   const hasActiveFilters =
     filters.search !== "" ||
@@ -381,9 +394,10 @@ export function PipelineToolbar({
                     <SelectItem value="all">All People</SelectItem>
                     {counts.responsiblePersons.map((person) => (
                       <SelectItem key={person} value={person}>
-                        {person}
+                        {displayName(person)}
                       </SelectItem>
                     ))}
+
                   </SelectContent>
                 </Select>
               </div>
@@ -485,7 +499,7 @@ export function PipelineToolbar({
                     variant="secondary"
                     className="gap-1 rounded-full border border-brand-300/25 bg-brand-300/10 pr-1 text-[10px] text-brand-100"
                   >
-                    👤 {filters.responsiblePerson}
+                    👤 {displayName(filters.responsiblePerson)}
                     <button
                       onClick={() => update({ responsiblePerson: "all" })}
                       aria-label="Remove responsible person filter"
