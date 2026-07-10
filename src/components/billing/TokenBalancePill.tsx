@@ -11,8 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import {
-  MISSION_CONTROL_TOPUP_URL,
-  MISSION_CONTROL_SEATS_URL,
+  AURIXA_PRICING_URL,
   openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 
@@ -173,7 +172,7 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             size="sm"
             className="justify-start"
             onClick={() =>
-              void openMissionControlWithAttribution("topup", MISSION_CONTROL_TOPUP_URL)
+              void openMissionControlWithAttribution("topup", AURIXA_PRICING_URL)
             }
           >
             <Coins className="mr-2 h-4 w-4" />
@@ -184,7 +183,7 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             size="sm"
             className="justify-start"
             onClick={() =>
-              void openMissionControlWithAttribution("seat_plan", MISSION_CONTROL_SEATS_URL)
+              void openMissionControlWithAttribution("seat_plan", AURIXA_PRICING_URL)
             }
           >
             <ExternalLink className="mr-2 h-4 w-4" />

@@ -30,7 +30,7 @@ import {
   type MissionControlCatalog,
 } from "@/lib/missionControlCatalog";
 import {
-  MISSION_CONTROL_CATALOG_URL,
+  AURIXA_PRICING_URL,
   openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 import {
@@ -140,7 +140,7 @@ export function PricingCatalogCard() {
             variant="outline"
             size="sm"
             onClick={() =>
-              void openMissionControlWithAttribution("pricing", MISSION_CONTROL_CATALOG_URL)
+              void openMissionControlWithAttribution("pricing", AURIXA_PRICING_URL)
             }
             className={settingsCx(
               settingsPillButtonClass,

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import {
-  MISSION_CONTROL_TOPUP_URL,
+  AURIXA_PRICING_URL,
   openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 
@@ -95,7 +95,7 @@ export function TokenBalanceBanner() {
         aria-label="Top up token balance"
         size="sm"
         variant={isCritical ? "secondary" : "default"}
-        onClick={() => void openMissionControlWithAttribution("topup", MISSION_CONTROL_TOPUP_URL)}
+        onClick={() => void openMissionControlWithAttribution("topup", AURIXA_PRICING_URL)}
         className={cn(
           "w-full shrink-0 rounded-full px-5 font-semibold sm:w-auto",
           isCritical &&

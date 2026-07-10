@@ -122,10 +122,22 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
   return balance;
 }
 
-/** Mission Control billing URLs — attribution FALLBACKS only. Purchase CTAs
- * should go through openMissionControlWithAttribution so the signed-in user
- * is carried into the checkout (user-attributed pricing workflow); these
- * static URLs are what we open when the handoff mint is unavailable. */
+/**
+ * THE customer pricing page — the Aurixa Systems website's storefront
+ * (user-attributed pricing workflow, Revision 2). All user-centric
+ * monetisation (tokens, plans, seats) flows through this page; Mission
+ * Control's own billing pages are operator consoles.
+ *
+ * Handoff-minted deep links already point here (Mission Control mints them
+ * against its PUBLIC_PRICING_SITE_URL); this constant is the LAST-RESORT
+ * fallback when the handoff mint is unavailable. Override per deployment to
+ * the production storefront domain.
+ */
+export const AURIXA_PRICING_URL = "https://aurixa-systems.lovable.app/pricing";
+
+/** Mission Control billing URLs — OPERATOR consoles (login-gated). Not for
+ * customer purchase CTAs; those go through openMissionControlWithAttribution
+ * with AURIXA_PRICING_URL as the fallback. */
 export const MISSION_CONTROL_BILLING_URL =
   "https://aurixa-mission-control.lovable.app/billing";
 export const MISSION_CONTROL_TOPUP_URL =

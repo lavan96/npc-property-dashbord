@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   fetchPurchaseHistory,
-  MISSION_CONTROL_BILLING_URL,
+  AURIXA_PRICING_URL,
   openMissionControlWithAttribution,
   type PurchaseRecord,
 } from "@/lib/missionControl";
@@ -133,7 +133,7 @@ export function PurchaseHistoryCard() {
             variant="outline"
             size="sm"
             onClick={() =>
-              void openMissionControlWithAttribution("pricing", MISSION_CONTROL_BILLING_URL)
+              void openMissionControlWithAttribution("pricing", AURIXA_PRICING_URL)
             }
           >
             Buy more

@@ -1,5 +1,39 @@
 # User-Attributed Pricing & Purchase Workflow — Implementation Plan (Command Center / Origin Side)
 
+---
+
+## ⚠ REVISION 2 (2026-07-10) — Storefront topology. Supersedes any conflicting statement below.
+
+**Where purchases land changed; how this repo hands identity over did not.**
+
+The corrected topology: all user-centric monetisation — tokens, plans, seats, from this prime
+repo and every clone — flows through **the Aurixa Systems website's `/pricing` page** (the
+customer storefront). Mission Control never fronts customers: it is the headless billing engine
+(Stripe, webhook, catalog, handoffs, the purchases oversight ledger) **plus** the operators'
+discretionary "secondary manner" — ad-hoc token grants, comp top-ups, and plan/seat changes at
+Aurixa's discretion, every one recorded in the same ledger for 100% granular oversight.
+
+### What this means for this repo (implemented)
+
+1. **No handoff logic changed.** CTAs still call the `mission-control-handoff` edge function;
+   Mission Control now mints those deep links against the storefront
+   (`PUBLIC_PRICING_SITE_URL`), so attributed purchase traffic automatically lands on
+   `aurixa-systems…/pricing?h=…`. Same for the pre-fetched packs `topup_url`.
+2. **Fallbacks re-pointed.** The static fallback for every purchase CTA (used only when the
+   handoff mint is unavailable) is now `AURIXA_PRICING_URL` in `src/lib/missionControl.ts` —
+   the customer storefront — instead of Mission Control's operator-gated billing pages.
+   ⚠ Set this constant to the production storefront domain per deployment.
+3. The `MISSION_CONTROL_*_URL` constants remain, documented as **operator consoles** only.
+4. Discretionary provisioning granted from Mission Control (grants/comp top-ups/plan changes)
+   arrives here exactly like purchased provisioning — via the same balances/entitlements the
+   `mission-control-balance` / `mission-control-seats` proxies already read, and it shows in
+   the Settings Purchase History card as `admin_*` entries alongside Stripe purchases.
+
+The sections below predate Revision 2; read "Mission Control's pricing page" as
+"the Aurixa Systems storefront (backed by Mission Control's storefront API)".
+
+---
+
 > **Repo role in this plan:** `npc-property-dashbord` is the **origin** of purchases — the prime
 > command center and the template every clone runs. Its job is to (1) capture *which signed-in
 > user* clicked a purchase CTA, (2) hand that identity to Mission Control **server-to-server**
