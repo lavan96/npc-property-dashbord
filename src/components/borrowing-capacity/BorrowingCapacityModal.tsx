@@ -1115,7 +1115,7 @@ export function BorrowingCapacityModal({
   );
 
   const tabsContent = (
-    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="px-4 sm:px-6 border-b">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="calculator" className="flex items-center gap-1.5 text-xs sm:text-sm">
