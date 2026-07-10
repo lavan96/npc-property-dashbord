@@ -657,7 +657,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       {/* Call Detail Dialog */}
       <Dialog open={!!selectedCall} onOpenChange={(open) => !open && setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] border-border dark:border-white/10 bg-background/95 dark:bg-background/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl sm:w-auto">
+        <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-2xl flex-col overflow-hidden border-border bg-background/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl sm:w-auto sm:max-h-[90vh] sm:overflow-hidden dark:border-white/10 dark:bg-background/95">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground dark:text-foreground">
               <AlertTriangle className="w-5 h-5 text-brand-300" />
