@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-do
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Button } from '@/components/ui/button';
 import {
-  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, BarChart3, Settings as SettingsIcon, Inbox, Layers, Trophy,
+  Building2, LayoutDashboard, Users, LogOut, Menu, MessageSquare, Wallet, X, Shield, Briefcase, BookOpen, BarChart3, Settings as SettingsIcon, Inbox, Layers, Trophy, ArrowLeft,
 } from 'lucide-react';
 
 import {
@@ -179,6 +179,20 @@ export function FinancePortalLayout({ children }: { children?: ReactNode }) {
                 <Building2 className="h-5 w-5 text-primary" />
                 <span className="font-bold text-sm">Finance Portal</span>
               </Link>
+
+              {/* Back-to-dashboard on every deep route (all viewports) */}
+              {location.pathname !== '/finance' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 gap-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                  onClick={() => navigate('/finance')}
+                  aria-label="Back to Finance Portal dashboard"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline text-xs font-medium">Back to dashboard</span>
+                </Button>
+              )}
 
               <div className="ml-auto flex items-center gap-2">
                 <Button
