@@ -415,7 +415,7 @@ export default function GammaTemplateManager() {
                         <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl border border-transparent text-muted-foreground transition-all hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/35 focus-visible:ring-2 focus-visible:ring-destructive/25" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
                           <X className="h-4 w-4" />
                         </Button>
-                        <div className="min-w-0 rounded-xl border border-border/65 bg-background/85 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] sm:col-span-5">
+                        <div className="min-w-0 rounded-xl border border-border/65 bg-background/85 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] lg:col-span-5">
                           <span className="font-semibold text-foreground">Preview:</span>{' '}
                           <code className="font-mono text-foreground/80 [overflow-wrap:anywhere]">{m.placeholder || '[Placeholder]'}</code>
                           <span className="mx-2 text-brand-500">→</span>
