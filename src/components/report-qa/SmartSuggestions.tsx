@@ -1,4 +1,4 @@
-import { Sparkles, TrendingUp, AlertTriangle, DollarSign, MapPin, BarChart3 } from 'lucide-react';
+import { TrendingUp, AlertTriangle, DollarSign, MapPin, BarChart3 } from 'lucide-react';
 
 interface SmartSuggestionsProps {
   hasReports: boolean;
