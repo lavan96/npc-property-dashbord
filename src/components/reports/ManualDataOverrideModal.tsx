@@ -1413,7 +1413,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-6xl h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="w-[96vw] max-w-[1600px] h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
         <div className="px-6 pt-6 pb-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
