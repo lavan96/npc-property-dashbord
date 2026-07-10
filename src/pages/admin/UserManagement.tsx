@@ -434,15 +434,15 @@ export default function UserManagement() {
                 Create Sub-Admin
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-primary/10">
-              <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
+            <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[calc(100vw-1rem)] max-w-2xl flex-col gap-0 overflow-hidden border-primary/15 bg-card/95 p-0 shadow-2xl shadow-primary/10 sm:h-auto sm:max-h-[88vh]">
+              <DialogHeader className="shrink-0 border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
                 <DialogTitle className="flex items-center gap-2 text-xl">
                   <Plus className="h-5 w-5 text-primary" />
                   Create Sub-Admin
                 </DialogTitle>
                 <DialogDescription>Create a new sub-admin account with specific permissions.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-5 p-6">
+              <div className="flex-1 min-h-0 space-y-5 overflow-y-auto p-6">
                 <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Account details</h3>
@@ -481,11 +481,14 @@ export default function UserManagement() {
                     onApplyPreset={setCreatePermissions}
                   />
                 </div>
+              </div>
+              <div className="shrink-0 border-t border-border/60 bg-background/90 px-6 py-4 backdrop-blur">
                 <Button onClick={handleCreateSubAdmin} disabled={creating} className="w-full shadow-lg shadow-primary/15">
                   {creating ? 'Creating...' : 'Create Sub-Admin'}
                 </Button>
               </div>
             </DialogContent>
+
           </Dialog>
 
           {/* Invite User Button */}

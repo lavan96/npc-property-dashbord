@@ -52,8 +52,8 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-sm dark:shadow-black/20 sm:max-w-xl dark:border-white/10 dark:bg-background dark:shadow-black/40">
-        <DialogHeader className="border-b border-border/60 px-5 py-4 dark:border-white/10">
+      <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl sm:h-auto sm:max-h-[90dvh] sm:max-w-xl dark:border-white/10 dark:bg-background dark:shadow-black/40">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-5 py-4 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-2xl shadow-inner shadow-primary/10">
               {icon}
@@ -64,7 +64,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
             </div>
           </div>
         </DialogHeader>
-        <div className="space-y-5 px-5 py-5">
+        <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5">
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
             <Label htmlFor="game-plan-name">Name</Label>
             <Input id="game-plan-name" value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1.5 h-11 rounded-xl bg-card/80 focus-visible:ring-primary/35" />
@@ -146,7 +146,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
             </div>
           </div>
         </div>
-        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-background/85 sm:flex-row">
+        <DialogFooter className="shrink-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-background/85 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl focus-visible:ring-primary/35">Cancel</Button>
           <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
             {loading ? 'Creating...' : 'Create Plan'}

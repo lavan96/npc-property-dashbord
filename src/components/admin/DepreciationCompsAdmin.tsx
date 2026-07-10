@@ -750,8 +750,8 @@ export function DepreciationCompsAdmin() {
         
         {/* Add Comp Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="max-h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-background/95 dark:shadow-black/45">
-            <DialogHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.9))] px-5 py-5 dark:border-white/10 sm:px-6">
+          <DialogContent className="flex h-[90dvh] max-h-[90dvh] w-[calc(100vw-2rem)] max-w-3xl flex-col gap-0 overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] sm:h-auto sm:max-h-[min(88vh,760px)] dark:border-white/10 dark:bg-background/95 dark:shadow-black/45">
+            <DialogHeader className="shrink-0 border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.9))] px-5 py-5 dark:border-white/10 sm:px-6">
               <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
                   <Plus className="h-5 w-5" />
@@ -763,7 +763,8 @@ export function DepreciationCompsAdmin() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="max-h-[calc(min(88vh,760px)-10.5rem)] overflow-y-auto px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
+
               <div className="grid gap-5">
                 <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
                   <div className="mb-4 min-w-0">
@@ -911,7 +912,7 @@ export function DepreciationCompsAdmin() {
               </div>
             </div>
             
-            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-background/75 sm:px-6">
+            <DialogFooter className="shrink-0 border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-background/75 sm:px-6">
               <Button
                 variant="outline"
                 onClick={() => setShowAddModal(false)}

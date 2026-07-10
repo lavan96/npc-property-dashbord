@@ -1,4 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+
 import { useFinancePortalAuth } from '@/hooks/useFinancePortalAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,12 +179,17 @@ export default function FinancePortalSettings() {
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6 max-w-5xl">
+      <Button asChild variant="ghost" size="sm" className="-ml-2 h-8 px-2 text-muted-foreground hover:text-foreground">
+        <Link to="/finance"><ArrowLeft className="h-4 w-4 mr-1" /> Back to dashboard</Link>
+      </Button>
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6 text-primary" /> Settings
         </h1>
         <p className="text-sm text-muted-foreground">Personalise notification routing and your white-label branding.</p>
       </div>
+
+
 
       <Tabs defaultValue="notifications" className="space-y-4">
         <TabsList>

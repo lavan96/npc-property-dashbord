@@ -53,44 +53,66 @@ export default function QualityAssurance() {
       setErrorMessage(null);
 
       // Fetch reports with validation data via edge function
-      const { data, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
-        listMode: true,
-        listOptions: {
-          select: 'id, property_address, created_at, calculation_version, validation_flags, data_sources, status',
-          limit: 100
-        }
-      });
+      let data: any = null;
+      let reportsError: any = null;
+      try {
+        const res = await invokeSecureFunction('get-investment-reports', {
+          listMode: true,
+          listOptions: {
+            select: 'id, property_address, created_at, calculation_version, validation_flags, data_sources, status',
+            limit: 100,
+          },
+        });
+        data = res?.data ?? null;
+        reportsError = res?.error ?? null;
+      } catch (invokeErr: any) {
+        reportsError = invokeErr;
+      }
 
-      if (reportsError || !data?.success) throw new Error(data?.error || reportsError?.message);
-      
-      const reportsData = data.reports || [];
+      if (reportsError || !data?.success) {
+        const msg = data?.error || reportsError?.message || 'Unable to load reports right now.';
+        setErrorMessage(msg);
+        setReports([]);
+        setMetrics({
+          totalReports: 0,
+          reportsWithIssues: 0,
+          avgQualityScore: 0,
+          criticalIssues: 0,
+          highPriorityIssues: 0,
+          reportsLast24h: 0,
+          qualityTrend: 'stable',
+        });
+        return;
+      }
+
+      const reportsData: QAReport[] = data.reports || [];
 
       setReports(reportsData);
 
       // Calculate metrics
-      const totalReports = (reportsData || []).length;
-      const reportsWithIssues = (reportsData || []).filter(r => 
+      const totalReports = reportsData.length;
+      const reportsWithIssues = reportsData.filter(r =>
         Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0
       ).length;
 
-      const criticalIssues = (reportsData || []).reduce((sum, r) => {
+      const criticalIssues = reportsData.reduce((sum, r) => {
         if (!Array.isArray(r.validation_flags)) return sum;
         return sum + (r.validation_flags as unknown as ValidationFlag[]).filter(f => f.severity === 'critical').length;
       }, 0);
 
-      const highPriorityIssues = (reportsData || []).reduce((sum, r) => {
+      const highPriorityIssues = reportsData.reduce((sum, r) => {
         if (!Array.isArray(r.validation_flags)) return sum;
         return sum + (r.validation_flags as unknown as ValidationFlag[]).filter(f => f.severity === 'high').length;
       }, 0);
 
       const last24h = new Date();
       last24h.setHours(last24h.getHours() - 24);
-      const reportsLast24h = (reportsData || []).filter(r => 
+      const reportsLast24h = reportsData.filter(r =>
         new Date(r.created_at) > last24h
       ).length;
 
       // Calculate average quality score
-      const qualityScores = (reportsData || []).map(r => {
+      const qualityScores = reportsData.map(r => {
         if (!Array.isArray(r.validation_flags)) return 100;
         let score = 100;
         (r.validation_flags as unknown as ValidationFlag[]).forEach(flag => {
@@ -111,7 +133,7 @@ export default function QualityAssurance() {
       const previous10 = qualityScores.slice(10, 20);
       const recentAvg = recent10.length > 0 ? recent10.reduce((a, b) => a + b, 0) / recent10.length : 0;
       const previousAvg = previous10.length > 0 ? previous10.reduce((a, b) => a + b, 0) / previous10.length : 0;
-      
+
       let qualityTrend: 'up' | 'down' | 'stable' = 'stable';
       if (recentAvg > previousAvg + 5) qualityTrend = 'up';
       else if (recentAvg < previousAvg - 5) qualityTrend = 'down';
@@ -123,18 +145,19 @@ export default function QualityAssurance() {
         criticalIssues,
         highPriorityIssues,
         reportsLast24h,
-        qualityTrend
+        qualityTrend,
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading QA data:', error);
-      setErrorMessage('Failed to load quality assurance data');
+      setErrorMessage(error?.message || 'Failed to load quality assurance data');
       toast.error('Failed to load quality assurance data');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
 
   const handleRefresh = () => {
     setRefreshing(true);
