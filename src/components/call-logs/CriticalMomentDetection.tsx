@@ -407,7 +407,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
         </DialogContent>
       </Dialog>
 
-      </Dialog>
+
     </div>
   );
 };
