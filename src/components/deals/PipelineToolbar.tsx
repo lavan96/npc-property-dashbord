@@ -499,7 +499,7 @@ export function PipelineToolbar({
                     variant="secondary"
                     className="gap-1 rounded-full border border-brand-300/25 bg-brand-300/10 pr-1 text-[10px] text-brand-100"
                   >
-                    👤 {filters.responsiblePerson}
+                    👤 {displayName(filters.responsiblePerson)}
                     <button
                       onClick={() => update({ responsiblePerson: "all" })}
                       aria-label="Remove responsible person filter"
