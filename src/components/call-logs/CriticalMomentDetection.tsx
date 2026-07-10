@@ -401,9 +401,12 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
                   </a>
                 </Button>
               )}
+              </div>
             </div>
           )}
         </DialogContent>
+      </Dialog>
+
       </Dialog>
     </div>
   );
