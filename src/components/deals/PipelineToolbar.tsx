@@ -394,9 +394,10 @@ export function PipelineToolbar({
                     <SelectItem value="all">All People</SelectItem>
                     {counts.responsiblePersons.map((person) => (
                       <SelectItem key={person} value={person}>
-                        {person}
+                        {displayName(person)}
                       </SelectItem>
                     ))}
+
                   </SelectContent>
                 </Select>
               </div>
