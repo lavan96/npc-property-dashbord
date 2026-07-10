@@ -1413,7 +1413,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-6xl h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="w-[96vw] max-w-[1600px] h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
         <div className="px-6 pt-6 pb-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1451,7 +1451,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
           {/* Investment Report Tab */}
           <TabsContent value="investment" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full pl-6 pr-8">
+            <ScrollArea className="h-full w-full [&>[data-radix-scroll-area-viewport]]:pl-6 [&>[data-radix-scroll-area-viewport]]:pr-8">
               <div className="space-y-6 py-4">
                 {/* Property Details Section */}
                 <div className="space-y-4">
@@ -1783,7 +1783,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
           {/* Cash Flow Analysis Tab */}
           <TabsContent value="cashflow" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full pl-6 pr-8">
+            <ScrollArea className="h-full w-full [&>[data-radix-scroll-area-viewport]]:pl-6 [&>[data-radix-scroll-area-viewport]]:pr-8">
               <div className="space-y-6 py-4">
                 {/* Loan & Mortgage Settings */}
                 <div className="space-y-4">

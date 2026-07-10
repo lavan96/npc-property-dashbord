@@ -813,7 +813,7 @@ export default function Listings() {
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[170px]")}>Source</TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[130px]")}>Confidence</TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[180px] text-right")}>Received</TableHead>
-                <TableHead className={cn(LISTING_TABLE_HEAD, "w-16 pr-5 text-right")}></TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, "sticky right-0 z-20 w-16 pr-5 text-right bg-muted/95 backdrop-blur dark:bg-background/95 shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)]")}><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -926,7 +926,7 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 pr-5 text-right align-middle last:rounded-r-xl">
+                  <TableCell className="sticky right-0 z-10 py-4 pr-5 text-right align-middle last:rounded-r-xl bg-card/95 backdrop-blur group-hover:bg-transparent shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)] dark:bg-background/92">
                     {(() => {
                       const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
