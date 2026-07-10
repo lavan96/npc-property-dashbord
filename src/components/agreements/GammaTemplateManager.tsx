@@ -378,7 +378,7 @@ export default function GammaTemplateManager() {
                   </div>
                   <div className="space-y-3">
                     {mappings.map((m, idx) => (
-                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-brand-300/40 hover:bg-brand-500/[0.06] dark:border-white/10 dark:bg-background/35 dark:hover:border-brand-200/20 dark:hover:bg-brand-200/[0.07] sm:grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1.2fr)_minmax(0,1fr)_auto] sm:items-end">
+                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-brand-300/40 hover:bg-brand-500/[0.06] dark:border-white/10 dark:bg-background/35 dark:hover:border-brand-200/20 dark:hover:bg-brand-200/[0.07] lg:grid-cols-[minmax(0,1.3fr)_auto_minmax(0,1.3fr)_minmax(0,1.8fr)_auto] lg:items-end">
                         <div className="min-w-0 space-y-1.5">
                           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gamma placeholder</Label>
                           <Input
