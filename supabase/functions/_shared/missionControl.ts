@@ -277,10 +277,23 @@ export async function getBalance(): Promise<BalanceResult> {
   };
 }
 
-export async function listTopupPacks(opts: { limit?: number; offset?: number } = {}): Promise<TopupPacksResult> {
+export async function listTopupPacks(
+  opts: {
+    limit?: number;
+    offset?: number;
+    /** When set, Mission Control mints the topup_url as an attributed handoff
+     * deep link carrying this user (user-attributed pricing workflow). */
+    originUserId?: string;
+    originUsername?: string | null;
+  } = {},
+): Promise<TopupPacksResult> {
   const q = new URLSearchParams({ tenant_ref: AGENCY_TENANT_REF });
   if (opts.limit) q.set("limit", String(Math.min(opts.limit, 100)));
   if (opts.offset) q.set("offset", String(opts.offset));
+  if (opts.originUserId) {
+    q.set("origin_user_id", opts.originUserId.slice(0, 200));
+    if (opts.originUsername) q.set("origin_username", opts.originUsername.slice(0, 200));
+  }
   const res = await mcFetch(`/api/public/tokens/packs?${q.toString()}`, { method: "GET" });
   const body = await parseOrThrow(res);
   const pagination = body?.pagination ?? {};
@@ -299,6 +312,126 @@ export async function listTopupPacks(opts: { limit?: number; offset?: number } =
     topupUrl: body?.topup_url ?? null,
     pagination: {
       limit: Number(pagination.limit ?? 50),
+      offset: Number(pagination.offset ?? 0),
+      total: Number(pagination.total ?? 0),
+      hasMore: Boolean(pagination.has_more),
+      nextOffset: pagination.next_offset ?? null,
+    },
+  };
+}
+
+// ── Billing handoff (user-attributed pricing workflow) ─────────────────────
+// Mints a single-use, expiring deep link into Mission Control's pricing page
+// that carries the initiating command-center user server-to-server. The
+// browser only ever sees the opaque `?h=<uuid>` token.
+
+export interface HandoffArgs {
+  originUserId: string;
+  originUsername?: string | null;
+  /** '<mode>' or '<mode>:<item_id>' — restricts what the handoff can buy. */
+  intent?: string;
+  /** Absolute https URL back into this app for the post-checkout return CTA. */
+  returnUrl?: string;
+}
+
+export interface HandoffResult {
+  url: string;
+  handoffId: string;
+  expiresAt: string | null;
+}
+
+export async function createBillingHandoff(args: HandoffArgs): Promise<HandoffResult> {
+  const payload: Record<string, unknown> = {
+    tenant_ref: AGENCY_TENANT_REF,
+    display_name: AGENCY_DISPLAY_NAME,
+    origin_user_id: args.originUserId,
+    origin_username: args.originUsername ?? undefined,
+    intent: args.intent,
+    return_url: args.returnUrl,
+  };
+
+  let res = await mcFetch("/api/public/billing/handoff", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  // A misconfigured clone deploy_url must not kill attribution: retry once
+  // without the return link if Mission Control rejects it.
+  if (res.status === 400 && args.returnUrl) {
+    const text = await res.clone().text().catch(() => "");
+    if (text.includes("return_url")) {
+      delete payload.return_url;
+      res = await mcFetch("/api/public/billing/handoff", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    }
+  }
+
+  const body = await parseOrThrow(res);
+  return {
+    url: body.url,
+    handoffId: body.handoff_id,
+    expiresAt: body.expires_at ?? null,
+  };
+}
+
+// ── Purchase history read-back (user-attributed pricing workflow) ──────────
+
+export interface PurchaseRecord {
+  id: string;
+  createdAt: string;
+  completedAt: string | null;
+  status: string;
+  mode: string;
+  itemSlug: string | null;
+  quantity: number;
+  amountCents: number | null;
+  currency: string | null;
+  originUserId: string | null;
+  originUsername: string | null;
+  originSource: string;
+}
+
+export interface PurchaseHistoryResult {
+  purchases: PurchaseRecord[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
+}
+
+export async function listPurchases(
+  opts: { limit?: number; offset?: number; status?: string } = {},
+): Promise<PurchaseHistoryResult> {
+  const q = new URLSearchParams({ tenant_ref: AGENCY_TENANT_REF });
+  if (opts.limit) q.set("limit", String(Math.min(opts.limit, 100)));
+  if (opts.offset) q.set("offset", String(opts.offset));
+  if (opts.status) q.set("status", opts.status);
+  const res = await mcFetch(`/api/public/purchases?${q.toString()}`, { method: "GET" });
+  const body = await parseOrThrow(res);
+  const pagination = body?.pagination ?? {};
+  return {
+    purchases: Array.isArray(body?.purchases)
+      ? body.purchases.map((p: any) => ({
+          id: p.id,
+          createdAt: p.created_at,
+          completedAt: p.completed_at ?? null,
+          status: String(p.status ?? "completed"),
+          mode: String(p.mode ?? ""),
+          itemSlug: p.item_slug ?? null,
+          quantity: Number(p.quantity ?? 1),
+          amountCents: p.amount_cents ?? null,
+          currency: p.currency ?? null,
+          originUserId: p.origin_user_id ?? null,
+          originUsername: p.origin_username ?? null,
+          originSource: String(p.origin_source ?? ""),
+        }))
+      : [],
+    pagination: {
+      limit: Number(pagination.limit ?? 25),
       offset: Number(pagination.offset ?? 0),
       total: Number(pagination.total ?? 0),
       hasMore: Boolean(pagination.has_more),

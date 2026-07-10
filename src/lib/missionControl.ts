@@ -122,7 +122,22 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
   return balance;
 }
 
-/** Mission Control billing URLs — override per deployment if needed. */
+/**
+ * THE customer pricing page — the Aurixa Systems website's storefront
+ * (user-attributed pricing workflow, Revision 2). All user-centric
+ * monetisation (tokens, plans, seats) flows through this page; Mission
+ * Control's own billing pages are operator consoles.
+ *
+ * Handoff-minted deep links already point here (Mission Control mints them
+ * against its PUBLIC_PRICING_SITE_URL); this constant is the LAST-RESORT
+ * fallback when the handoff mint is unavailable. Override per deployment to
+ * the production storefront domain.
+ */
+export const AURIXA_PRICING_URL = "https://aurixa-systems.lovable.app/pricing";
+
+/** Mission Control billing URLs — OPERATOR consoles (login-gated). Not for
+ * customer purchase CTAs; those go through openMissionControlWithAttribution
+ * with AURIXA_PRICING_URL as the fallback. */
 export const MISSION_CONTROL_BILLING_URL =
   "https://aurixa-mission-control.lovable.app/billing";
 export const MISSION_CONTROL_TOPUP_URL =
@@ -134,4 +149,114 @@ export const MISSION_CONTROL_CATALOG_URL =
 
 export function openMissionControl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+// ── Attributed handoff (user-attributed pricing workflow) ───────────────────
+
+export type HandoffIntent = "topup" | "seat_plan" | "setup_package" | "pricing" | "catalog";
+
+/**
+ * Asks the `mission-control-handoff` edge function for a single-use attributed
+ * deep link (the user's identity travels server-to-server; the browser only
+ * carries an opaque token). Returns null on ANY failure — callers fall back to
+ * the static Mission Control URL so a purchase is never blocked.
+ */
+export async function fetchBillingHandoffUrl(
+  intent: HandoffIntent,
+  itemId?: string,
+): Promise<string | null> {
+  try {
+    const { invokeSecureFunction } = await import("@/lib/secureInvoke");
+    const { data, error } = await invokeSecureFunction<{ url: string | null }>(
+      "mission-control-handoff",
+      { intent, itemId, returnPath: window.location.pathname },
+    );
+    if (error || !data?.url) return null;
+    return data.url;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Preferred entry point for all purchase CTAs.
+ *
+ * Popup-blocker note: the window is opened synchronously inside the click
+ * handler (blockers only allow that), showing a brief interstitial, and is
+ * steered to the attributed URL once the handoff resolves. If the popup was
+ * blocked anyway, we fall back to a plain open of the resolved URL.
+ */
+export async function openMissionControlWithAttribution(
+  intent: HandoffIntent,
+  fallbackUrl: string,
+  itemId?: string,
+): Promise<void> {
+  const win = window.open("", "_blank");
+  if (win) {
+    try {
+      win.opener = null;
+      win.document.write(
+        '<title>Opening secure checkout…</title>' +
+          '<body style="margin:0;display:grid;place-items:center;height:100vh;' +
+          'font-family:system-ui,sans-serif;background:#0b0f14;color:#94a3b8">' +
+          "<p>Opening secure checkout…</p></body>",
+      );
+    } catch {
+      /* cross-origin quirks — the redirect below still works */
+    }
+  }
+
+  const url = (await fetchBillingHandoffUrl(intent, itemId)) ?? fallbackUrl;
+
+  if (win && !win.closed) {
+    win.location.href = url;
+  } else {
+    // Popup was blocked; a direct open is the best remaining option.
+    openMissionControl(url);
+  }
+}
+
+// ── Purchase history read-back (user-attributed pricing workflow) ───────────
+
+export interface PurchaseRecord {
+  id: string;
+  createdAt: string;
+  completedAt: string | null;
+  status: string;
+  mode: string;
+  itemSlug: string | null;
+  quantity: number;
+  amountCents: number | null;
+  currency: string | null;
+  originUserId: string | null;
+  originUsername: string | null;
+  originSource: string;
+}
+
+export interface PurchaseHistoryResult {
+  purchases: PurchaseRecord[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    hasMore: boolean;
+    nextOffset: number | null;
+  };
+}
+
+export async function fetchPurchaseHistory(
+  opts: { limit?: number; offset?: number; status?: string } = {},
+): Promise<PurchaseHistoryResult> {
+  const { invokeSecureFunction } = await import("@/lib/secureInvoke");
+  const { data, error } = await invokeSecureFunction<PurchaseHistoryResult>(
+    "mission-control-purchases",
+    opts,
+  );
+  if (error) throw new Error(error.message ?? "Failed to fetch purchase history");
+  return (
+    data ?? {
+      purchases: [],
+      pagination: { limit: 25, offset: 0, total: 0, hasMore: false, nextOffset: null },
+    }
+  );
 }

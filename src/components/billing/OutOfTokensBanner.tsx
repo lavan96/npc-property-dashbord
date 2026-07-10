@@ -4,9 +4,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   fetchTopupPacks,
-  MISSION_CONTROL_TOPUP_URL,
-  MISSION_CONTROL_SEATS_URL,
-  openMissionControl,
+  AURIXA_PRICING_URL,
+  openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 
 interface OutOfTokensBannerProps {
@@ -34,7 +33,10 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
     return () => { cancelled = true; };
   }, []);
 
-  const openTopup = () => openMissionControl(topupUrl || MISSION_CONTROL_TOPUP_URL);
+  // On-click handoff wins (fresh attribution, no TTL races); the pre-fetched
+  // topupUrl — itself already an attributed link — is the fallback.
+  const openTopup = () =>
+    void openMissionControlWithAttribution("topup", topupUrl || AURIXA_PRICING_URL);
 
   return (
     <Alert variant="destructive">
@@ -58,7 +60,9 @@ export function OutOfTokensBanner({ available, requested, onDismiss }: OutOfToke
           <Button
             variant="outline"
             size="sm"
-            onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}
+            onClick={() =>
+              void openMissionControlWithAttribution("seat_plan", AURIXA_PRICING_URL)
+            }
           >
             Upgrade plan
           </Button>

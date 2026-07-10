@@ -30,8 +30,8 @@ import {
   type MissionControlCatalog,
 } from "@/lib/missionControlCatalog";
 import {
-  MISSION_CONTROL_CATALOG_URL,
-  openMissionControl,
+  AURIXA_PRICING_URL,
+  openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 import {
   settingsBadgePillClass,
@@ -139,7 +139,9 @@ export function PricingCatalogCard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => openMissionControl(MISSION_CONTROL_CATALOG_URL)}
+            onClick={() =>
+              void openMissionControlWithAttribution("pricing", AURIXA_PRICING_URL)
+            }
             className={settingsCx(
               settingsPillButtonClass,
               "w-full shrink-0 border-primary/35 hover:border-primary/60 sm:w-auto",

@@ -9,9 +9,8 @@ import {
   fetchTopupPacks,
   type TokenKind,
   estimateTokens,
-  MISSION_CONTROL_TOPUP_URL,
-  MISSION_CONTROL_SEATS_URL,
-  openMissionControl,
+  AURIXA_PRICING_URL,
+  openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 
 interface ReportGenerationStatusProps {
@@ -67,8 +66,10 @@ export function ReportGenerationStatus({
   if (!balance) return null;
   if (!insufficient && !lowBalance && !criticalBalance) return null;
 
-  const openTopup = () => openMissionControl(topupUrl || MISSION_CONTROL_TOPUP_URL);
-  const openBilling = () => openMissionControl(MISSION_CONTROL_SEATS_URL);
+  const openTopup = () =>
+    void openMissionControlWithAttribution("topup", topupUrl || AURIXA_PRICING_URL);
+  const openBilling = () =>
+    void openMissionControlWithAttribution("seat_plan", AURIXA_PRICING_URL);
 
   // Hard block: estimated cost exceeds available
   if (insufficient) {

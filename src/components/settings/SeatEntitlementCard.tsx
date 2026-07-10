@@ -3,7 +3,7 @@
  * list. Superadmin-only; hides itself for everyone else.
  */
 import { useEffect, useState, useCallback } from 'react';
-import { MISSION_CONTROL_SEATS_URL, openMissionControl } from '@/lib/missionControl';
+import { AURIXA_PRICING_URL, openMissionControlWithAttribution } from '@/lib/missionControl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -126,7 +126,7 @@ export function SeatEntitlementCard() {
                   </Badge>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}>
+              <Button variant="outline" size="sm" onClick={() => void openMissionControlWithAttribution('seat_plan', AURIXA_PRICING_URL)}>
                 Manage plan
                 <ExternalLink className="h-3 w-3 ml-2" />
               </Button>
