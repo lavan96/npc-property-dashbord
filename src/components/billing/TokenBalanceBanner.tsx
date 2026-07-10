@@ -2,7 +2,10 @@ import { AlertTriangle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
-import { MISSION_CONTROL_TOPUP_URL, openMissionControl } from "@/lib/missionControl";
+import {
+  MISSION_CONTROL_TOPUP_URL,
+  openMissionControlWithAttribution,
+} from "@/lib/missionControl";
 
 /**
  * Global low/critical token balance banner. Rendered once in DashboardLayout,
@@ -92,7 +95,7 @@ export function TokenBalanceBanner() {
         aria-label="Top up token balance"
         size="sm"
         variant={isCritical ? "secondary" : "default"}
-        onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+        onClick={() => void openMissionControlWithAttribution("topup", MISSION_CONTROL_TOPUP_URL)}
         className={cn(
           "w-full shrink-0 rounded-full px-5 font-semibold sm:w-auto",
           isCritical &&

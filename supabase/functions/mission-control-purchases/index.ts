@@ -1,8 +1,10 @@
-// Mission Control top-up packs proxy.
-// Returns the public catalogue + deep-link `topup_url` for the OutOfTokensBanner CTA.
+// Mission Control purchase-history proxy (user-attributed pricing workflow).
+// Returns this install's attributed purchase ledger (who bought what, when,
+// for how much) from Mission Control's read-back API. Rows are hard-scoped
+// server-side to this clone's API key — no cross-tenant reads are possible.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth } from "../_shared/auth.ts";
-import { listTopupPacks, MissionControlError } from "../_shared/missionControl.ts";
+import { listPurchases, MissionControlError } from "../_shared/missionControl.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,17 +34,14 @@ Deno.serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const limit = Number(url.searchParams.get("limit") ?? body?.limit ?? 50);
+    const limit = Number(url.searchParams.get("limit") ?? body?.limit ?? 25);
     const offset = Number(url.searchParams.get("offset") ?? body?.offset ?? 0);
+    const status = String(url.searchParams.get("status") ?? body?.status ?? "");
 
-    // Pass the signed-in user through so Mission Control mints the topup deep
-    // link as an attributed handoff (user-attributed pricing workflow) — the
-    // pre-fetched CTA then carries the initiating user with no extra hops.
-    const result = await listTopupPacks({
+    const result = await listPurchases({
       limit,
       offset,
-      originUserId: auth.userId,
-      originUsername: auth.username ?? null,
+      status: status || undefined,
     });
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -54,7 +53,7 @@ Deno.serve(async (req) => {
     const payload = isMc
       ? { error: e.code, message: e.message }
       : { error: "internal_error", message: e instanceof Error ? e.message : String(e) };
-    console.error("[mission-control-packs] error", payload);
+    console.error("[mission-control-purchases] error", payload);
     return new Response(JSON.stringify(payload), {
       status,
       headers: { ...corsHeaders, "content-type": "application/json" },

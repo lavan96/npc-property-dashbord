@@ -35,6 +35,7 @@ import { PushNotificationToggle } from "@/components/settings/PushNotificationTo
 import { MissionControlKeyCard } from "@/components/settings/MissionControlKeyCard";
 import { SeatEntitlementCard } from "@/components/settings/SeatEntitlementCard";
 import { PricingCatalogCard } from "@/components/settings/PricingCatalogCard";
+import { PurchaseHistoryCard } from "@/components/settings/PurchaseHistoryCard";
 import { DeviceManagementCard } from "@/components/settings/DeviceManagementCard";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
@@ -422,6 +423,9 @@ export default function Settings() {
 
       {/* Pricing & Catalog */}
       <PricingCatalogCard />
+
+      {/* Purchase History (attributed, from Mission Control) */}
+      <PurchaseHistoryCard />
 
       {/* Active Devices */}
       <DeviceManagementCard />

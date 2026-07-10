@@ -13,7 +13,7 @@ import { useTokenBalance } from "@/hooks/useTokenBalance";
 import {
   MISSION_CONTROL_TOPUP_URL,
   MISSION_CONTROL_SEATS_URL,
-  openMissionControl,
+  openMissionControlWithAttribution,
 } from "@/lib/missionControl";
 
 interface TokenBalancePillProps {
@@ -172,7 +172,9 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            onClick={() =>
+              void openMissionControlWithAttribution("topup", MISSION_CONTROL_TOPUP_URL)
+            }
           >
             <Coins className="mr-2 h-4 w-4" />
             Top up credits
@@ -181,7 +183,9 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
             variant="ghost"
             size="sm"
             className="justify-start"
-            onClick={() => openMissionControl(MISSION_CONTROL_SEATS_URL)}
+            onClick={() =>
+              void openMissionControlWithAttribution("seat_plan", MISSION_CONTROL_SEATS_URL)
+            }
           >
             <ExternalLink className="mr-2 h-4 w-4" />
             Manage billing plan
