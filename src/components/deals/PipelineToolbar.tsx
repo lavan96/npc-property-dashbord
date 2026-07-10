@@ -173,6 +173,15 @@ export function PipelineToolbar({
     };
   }, [deals]);
 
+  // Resolve any UUID-looking responsible person IDs into human names.
+  const responsibleUserIds = useMemo(
+    () => counts.responsiblePersons.filter((p) => UUID_RE.test(p)),
+    [counts.responsiblePersons],
+  );
+  const { labelFor } = useUserNames(responsibleUserIds);
+  const displayName = (p: string) => (UUID_RE.test(p) ? labelFor(p) : p);
+
+
   const hasActiveFilters =
     filters.search !== "" ||
     filters.dealType !== "all" ||
