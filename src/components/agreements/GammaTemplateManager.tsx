@@ -378,7 +378,7 @@ export default function GammaTemplateManager() {
                   </div>
                   <div className="space-y-3">
                     {mappings.map((m, idx) => (
-                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-brand-300/40 hover:bg-brand-500/[0.06] dark:border-white/10 dark:bg-background/35 dark:hover:border-brand-200/20 dark:hover:bg-brand-200/[0.07] sm:grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1.2fr)_minmax(0,1fr)_auto] sm:items-end">
+                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-brand-300/40 hover:bg-brand-500/[0.06] dark:border-white/10 dark:bg-background/35 dark:hover:border-brand-200/20 dark:hover:bg-brand-200/[0.07] lg:grid-cols-[minmax(0,1.3fr)_auto_minmax(0,1.3fr)_minmax(0,1.8fr)_auto] lg:items-end">
                         <div className="min-w-0 space-y-1.5">
                           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gamma placeholder</Label>
                           <Input
@@ -388,7 +388,7 @@ export default function GammaTemplateManager() {
                             className="min-h-11 w-full rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-brand-400 focus-visible:ring-2 focus-visible:ring-brand-300/45 dark:border-white/10 dark:bg-background/65 [overflow-wrap:anywhere]"
                           />
                         </div>
-                        <span className="hidden pb-3 text-brand-500 sm:block"><ArrowRight className="h-5 w-5" /></span>
+                        <span className="hidden pb-3 text-brand-500 lg:block"><ArrowRight className="h-5 w-5" /></span>
                         <div className="min-w-0 space-y-1.5">
                           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agreement field</Label>
                           <select
@@ -415,7 +415,7 @@ export default function GammaTemplateManager() {
                         <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl border border-transparent text-muted-foreground transition-all hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/35 focus-visible:ring-2 focus-visible:ring-destructive/25" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
                           <X className="h-4 w-4" />
                         </Button>
-                        <div className="min-w-0 rounded-xl border border-border/65 bg-background/85 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] sm:col-span-5">
+                        <div className="min-w-0 rounded-xl border border-border/65 bg-background/85 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] lg:col-span-5">
                           <span className="font-semibold text-foreground">Preview:</span>{' '}
                           <code className="font-mono text-foreground/80 [overflow-wrap:anywhere]">{m.placeholder || '[Placeholder]'}</code>
                           <span className="mx-2 text-brand-500">→</span>

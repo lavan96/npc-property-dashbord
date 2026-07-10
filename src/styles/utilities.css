@@ -265,7 +265,7 @@ html {
   .report-qa-fullscreen {
     position: fixed !important;
     inset: 0 !important;
-    z-index: 50 !important;
+    z-index: 100 !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
     padding: 1rem !important;
