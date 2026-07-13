@@ -86,22 +86,51 @@ export function useAgentModels() {
     refetchOnWindowFocus: false,
   });
 
+  // Track previous assignments so we can diff realtime payloads once and
+  // toast only when a model_id actually changes.
+  const prevByKey = useRef<Map<string, string>>(new Map());
   useEffect(() => {
-    const channel = supabase
-      .channel('agent-model-assignments-live')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'agent_model_assignments' },
-        () => {
-          // Invalidate rather than patch — the edge function normalizes
-          // fallback_chain and other JSON shapes we don't want to re-derive here.
-          queryClient.invalidateQueries({ queryKey: QUERY_KEY });
-        },
-      )
-      .subscribe();
+    const next = new Map<string, string>();
+    (query.data ?? []).forEach((row) => next.set(row.agent_key, row.model_id));
+    prevByKey.current = next;
+  }, [query.data]);
 
+  useEffect(() => {
+    if (subscribers === 0) {
+      sharedChannel = supabase
+        .channel('agent-model-assignments-live')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'agent_model_assignments' },
+          (payload: any) => {
+            const newRow = payload?.new as AgentAssignment | undefined;
+            const oldRow = payload?.old as AgentAssignment | undefined;
+            if (newRow?.agent_key && oldRow?.model_id && newRow.model_id !== oldRow.model_id) {
+              pulse(newRow.agent_key);
+              const surface = findSurfaceByKey(newRow.agent_key);
+              const label = surface
+                ? `${surface.surface.label} · ${surface.slot.slotLabel}`
+                : newRow.agent_label || newRow.agent_key;
+              const nice = formatModelDisplay(newRow.model_id).shortLabel;
+              toast.success(`Model updated: ${label}`, {
+                description: `Now routing through ${nice}.`,
+                duration: 4000,
+              });
+            } else if (newRow?.agent_key) {
+              pulse(newRow.agent_key);
+            }
+            queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+          },
+        )
+        .subscribe();
+    }
+    subscribers += 1;
     return () => {
-      supabase.removeChannel(channel);
+      subscribers -= 1;
+      if (subscribers === 0 && sharedChannel) {
+        supabase.removeChannel(sharedChannel);
+        sharedChannel = null;
+      }
     };
   }, [queryClient]);
 
@@ -118,6 +147,7 @@ export function useAgentModels() {
     /** Force a refetch — called by the Model Hub after a successful update. */
     invalidate: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   };
+
 }
 
 /** Resolve a single agent_key into a display-ready slot record. */
