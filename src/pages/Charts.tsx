@@ -467,9 +467,14 @@ export default function Charts() {
             </Button>
           </div>
           <div className="flex-1" />
-          <Button size="sm" className="h-11 w-full gap-1.5 rounded-full bg-gradient-to-r sm:w-auto from-primary via-brand-500 to-brand-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-brand-300/55" onClick={handleBulkExport} aria-label={`Export ${selectedIds.size} selected charts`}>
-            <Download className="h-3.5 w-3.5" /> Export selected
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button size="sm" className="h-11 flex-1 gap-1.5 rounded-full bg-gradient-to-r sm:flex-none from-primary via-brand-500 to-brand-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-brand-300/55" onClick={() => handleBulkExport({ format: 'png', includeAnalysis: true })} aria-label={`Export ${selectedIds.size} selected charts as PNG`}>
+              <Download className="h-3.5 w-3.5" /> PNG
+            </Button>
+            <Button size="sm" variant="outline" className="h-11 flex-1 gap-1.5 rounded-full border-emerald-400/50 bg-emerald-500/8 px-4 text-xs font-bold text-emerald-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-400/55 dark:text-emerald-300 dark:hover:text-emerald-200 sm:flex-none" onClick={() => handleBulkExport({ format: 'svg' })} aria-label={`Export ${selectedIds.size} selected charts as SVG`}>
+              <Download className="h-3.5 w-3.5" /> SVG
+            </Button>
+          </div>
         </div>
       )}
 
