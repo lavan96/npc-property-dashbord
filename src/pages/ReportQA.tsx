@@ -2510,7 +2510,7 @@ export default function ReportQA() {
           </CardHeader>
           <CardContent id="chat-main" className="report-qa-chat-content flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 sm:px-3 sm:pb-3">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && !restoringConversationId && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite" aria-busy={!!restoringConversationId}>
+            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 basis-0 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && !restoringConversationId && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite" aria-busy={!!restoringConversationId}>
               {conversationRestoreError && (
                 <div className="mb-3 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -2605,7 +2605,7 @@ export default function ReportQA() {
                   </div>
                 </div>
               ) : (
-              <div className="report-qa-message-stack w-full space-y-3 sm:space-y-5">
+              <div className="report-qa-message-stack w-full space-y-3 pb-3 sm:space-y-5 sm:pb-4">
                   {(() => {
                     const currentConv = savedConversations.find((c) => c.id === conversationId);
                     const parentConv = currentConv?.branched_from_conversation_id

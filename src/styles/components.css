@@ -1695,6 +1695,10 @@
     pointer-events: none;
   }
 
+  .report-qa-workspace-grid {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
   .report-qa-chat-header {
     border-bottom: 1px solid hsl(var(--brand) / 0.22);
     background:
@@ -1703,6 +1707,7 @@
   }
 
   .report-qa-chat-panel {
+    min-height: 0;
     border-color: hsl(var(--brand) / 0.34) !important;
     background:
       radial-gradient(circle at 78% -12%, hsl(var(--brand) / 0.13), transparent 22rem),
@@ -1748,12 +1753,14 @@
   }
 
   .report-qa-chat-content {
+    min-height: 0;
     padding-top: 0.9rem;
     background: linear-gradient(180deg, hsl(0 0% 0% / 0.06), transparent 7rem);
   }
 
   .report-qa-message-area {
     position: relative;
+    min-height: 0;
     overflow: hidden;
     border: 1px solid hsl(var(--brand) / 0.18);
     border-radius: 1.35rem;
@@ -2017,7 +2024,7 @@
   }
 
   .report-qa-empty-state {
-    min-height: clamp(22rem, 48vh, 36rem);
+    min-height: 100%;
   }
 
   .report-qa-empty-card {
@@ -2422,6 +2429,13 @@
     border: 0;
     padding: 0;
     background: transparent;
+  }
+
+  .report-qa-assistant-content :where(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .report-qa-user-content {
