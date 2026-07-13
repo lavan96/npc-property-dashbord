@@ -94,6 +94,7 @@ import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/Mobi
 import { ReportLibraryPicker, type PickedReport } from '@/components/report-qa/ReportLibraryPicker';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
 import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
+import { LiveModelChipGroup, ModelUpgradeButton } from '@/components/agentModels';
 import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
 import { ModelBadge } from '@/components/report-qa/ModelBadge';
 import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
