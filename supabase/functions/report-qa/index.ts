@@ -3044,6 +3044,7 @@ ${transcript}`;
       });
     }
 
+    if (action === "get-team-members") {
       const { data: members, error: membersError } = await supabase
         .from("custom_users")
         .select("id, username, email, role")
