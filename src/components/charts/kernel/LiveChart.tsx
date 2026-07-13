@@ -164,7 +164,7 @@ function renderBar(ctx: InnerCtx, opts: { stacked?: boolean; horizontal?: boolea
       )}
       <Tooltip contentStyle={tooltipStyle} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
-      {model.series.map((s, i) => (
+      {model.series.map((s) => (
         <Bar
           key={s.key}
           dataKey={s.key}
