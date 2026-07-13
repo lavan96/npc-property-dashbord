@@ -1508,33 +1508,51 @@ export function useReportGenerator() {
             }
           }
           
-          // Create a map of chart names to their types
+          // Create a map of chart names to their types + raw data payloads so
+          // we can persist a live-renderable chart_config alongside the static
+          // image (Phase 2 of the Live Rendering Migration).
           const chartTypeMapping = originalCharts.reduce((acc, chart) => {
             const chartKey = chart.title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             acc[chartKey] = chart.type;
             return acc;
           }, {} as Record<string, string>);
-          
+          const chartDataMapping = originalCharts.reduce((acc, chart) => {
+            const chartKey = chart.title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            acc[chartKey] = chart;
+            return acc;
+          }, {} as Record<string, ChartData>);
+
           console.log('Chart type mapping:', chartTypeMapping);
-          
+
           const chartRecords = Object.entries(chartImages).map(([chartType, imageData]) => {
             console.log(`Processing chart: ${chartType}`);
-            
-            // Use the correct chart type from mapping, fallback to configuration, then crude string matching
-            const correctChartType = chartTypeMapping[chartType] || 
-                                   chartTypeMap[chartType] || 
+
+            const correctChartType = chartTypeMapping[chartType] ||
+                                   chartTypeMap[chartType] ||
                                    (chartType.includes('pie') ? 'pie' : chartType.includes('line') ? 'line' : 'bar');
-            
+
+            const sourceChart = chartDataMapping[chartType];
+            const liveData = Array.isArray(sourceChart?.data) ? sourceChart.data : [];
+
             return {
               report_id: reportData.id,
               chart_type: correctChartType,
-              title: chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              title: sourceChart?.title || chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
               image_data: imageData as string,
               chart_config: {
                 type: chartType,
-                chart_type: correctChartType, // Store the correct chart type here too
-                generated_at: new Date().toISOString()
-              }
+                chart_type: correctChartType,
+                title: sourceChart?.title || chartType,
+                // Normalised payload consumed by <LiveChart /> — see
+                // src/components/charts/kernel/normaliseChartConfig.ts
+                data: liveData.map((point: any) => ({
+                  label: point.label,
+                  value: point.value,
+                  color: point.color,
+                })),
+                schema_version: 2,
+                generated_at: new Date().toISOString(),
+              },
             };
           });
 
