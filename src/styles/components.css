@@ -3965,7 +3965,7 @@
   }
 
   .report-qa-toolbar {
-    max-width: min(100%, 56rem);
+    max-width: 100%;
     gap: 0.3rem;
     padding: 0.28rem;
     border-radius: 1rem;
