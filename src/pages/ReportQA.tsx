@@ -199,6 +199,10 @@ export default function ReportQA() {
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [conversationLoadError, setConversationLoadError] = useState<string | null>(null);
+  const [restoringConversationId, setRestoringConversationId] = useState<string | null>(null);
+  const [conversationRestoreError, setConversationRestoreError] = useState<string | null>(null);
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [titleSaveError, setTitleSaveError] = useState<string | null>(null);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
   
@@ -423,25 +427,34 @@ export default function ReportQA() {
   };
 
   const handleSaveTitle = async (targetConversationId: string, newTitle: string) => {
-    if (!newTitle.trim()) {
-      setEditingConversationId(null);
-      setIsEditingMainTitle(false);
+    const trimmedTitle = newTitle.trim();
+    if (!trimmedTitle) {
+      setTitleSaveError('Conversation title cannot be blank.');
+      toast({
+        title: 'Title not saved',
+        description: 'Conversation title cannot be blank.',
+        variant: 'destructive',
+      });
       return;
     }
-    
+
+    const previousTitle = savedConversations.find(c => c.id === targetConversationId)?.title || getCurrentTitle();
+    setIsSavingTitle(true);
+    setTitleSaveError(null);
+
     try {
       // Use secure edge function for update (service_role required due to RLS)
       const { data, error } = await invokeSecureFunction('report-qa', {
         action: 'update-conversation',
         conversationId: targetConversationId,
-        title: newTitle.trim(),
+        title: trimmedTitle,
       });
       
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to update');
       
       setSavedConversations(prev => 
-        prev.map(c => c.id === targetConversationId ? { ...c, title: newTitle.trim() } : c)
+        prev.map(c => c.id === targetConversationId ? { ...c, title: trimmedTitle, updated_at: new Date().toISOString() } : c)
       );
       setEditingConversationId(null);
       setIsEditingMainTitle(false);
@@ -452,11 +465,16 @@ export default function ReportQA() {
       });
     } catch (error) {
       console.error('Failed to update title:', error);
+      setSavedConversations(prev => prev.map(c => c.id === targetConversationId ? { ...c, title: previousTitle } : c));
+      setMainTitleEdit(previousTitle);
+      setTitleSaveError('Failed to save conversation title. Please try again.');
       toast({
         title: 'Failed to update title',
         description: 'Please try again',
         variant: 'destructive',
       });
+    } finally {
+      setIsSavingTitle(false);
     }
   };
 
@@ -724,65 +742,84 @@ export default function ReportQA() {
     }
   };
 
+  const mapStoredMessage = (m: any): ChatMessage => ({
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    timestamp: new Date(m.created_at),
+    audioUrl: m.audio_url || undefined,
+    attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
+    sent_by: m.sent_by || null,
+    sent_by_username: m.sent_by_username || null,
+    modelProvider: m.model_provider || null,
+    citations: Array.isArray(m.url_citations) ? m.url_citations : undefined,
+    documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
+    comparisonMode: !!m.comparison_mode,
+    toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
+    aiFollowups: Array.isArray(m.ai_followups) ? m.ai_followups : undefined,
+    pinned: !!m.pinned,
+  });
+
   const loadConversation = async (conv: SavedConversation) => {
+    if (restoringConversationId) return;
+
+    setRestoringConversationId(conv.id);
+    setConversationRestoreError(null);
+    setLiveAnnouncement(`Loading conversation ${conv.title}`);
+
     try {
-      // Load only the most recent messages initially
       const { data, error } = await invokeSecureFunction('report-qa', {
-        action: 'load-conversation', 
+        action: 'load-conversation',
         conversationId: conv.id,
         limit: MESSAGES_PER_PAGE,
         offset: 0,
       });
 
       if (error) throw error;
+      if (!data?.conversation) throw new Error('Conversation metadata was not returned.');
 
-      const totalMsgCount = data.totalMessages || data.messages.length;
-      const loadedCount = data.messages.length;
-      
-      // If we loaded fewer than total, we need to load from the END (most recent)
-      // Re-fetch with correct offset if there are older messages
-      let messagesToSet = data.messages;
-      if (totalMsgCount > MESSAGES_PER_PAGE) {
-        const offsetForRecent = totalMsgCount - MESSAGES_PER_PAGE;
-        const { data: recentData, error: recentError } = await invokeSecureFunction('report-qa', {
+      const conversation = data.conversation;
+      const totalMsgCount = data.totalMessages || data.messages?.length || 0;
+      let messagesToSet = Array.isArray(data.messages) ? data.messages : [];
+
+      if (totalMsgCount > messagesToSet.length) {
+        const { data: allData, error: allError } = await invokeSecureFunction('report-qa', {
           action: 'load-conversation',
           conversationId: conv.id,
-          limit: MESSAGES_PER_PAGE,
-          offset: offsetForRecent,
+          limit: totalMsgCount,
+          offset: 0,
         });
-        if (!recentError) {
-          messagesToSet = recentData.messages;
-        }
+        if (allError) throw allError;
+        messagesToSet = Array.isArray(allData?.messages) ? allData.messages : messagesToSet;
       }
+
+      const reportNames = Array.isArray(conversation.report_names) ? conversation.report_names : conv.report_names || [];
+      const reportContents = Array.isArray(conversation.report_contents) ? conversation.report_contents : [];
+      const restoredMessages = messagesToSet
+        .map(mapStoredMessage)
+        .sort((a: ChatMessage, b: ChatMessage) => a.timestamp.getTime() - b.timestamp.getTime());
 
       setConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
-      setHasOlderMessages(totalMsgCount > MESSAGES_PER_PAGE);
-      setUploadedReports(
-        conv.report_names.map((name, idx) => ({
-          name,
-          content: data.conversation.report_contents[idx],
-          uploadedAt: new Date(data.conversation.created_at),
-        }))
-      );
-      setMessages(
-        messagesToSet.map((m: any) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          timestamp: new Date(m.created_at),
-          sent_by: m.sent_by || null,
-          sent_by_username: m.sent_by_username || null,
-          modelProvider: m.model_provider || null,
-          documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
-          comparisonMode: !!m.comparison_mode,
-          toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
-          pinned: !!m.pinned,
-        }))
-      );
+      setHasOlderMessages(false);
+      setActiveReportIndex(null);
+      setUploadedReports(reportNames.map((name: string, idx: number) => ({
+        name,
+        content: reportContents[idx] || '',
+        uploadedAt: new Date(conversation.created_at || conv.created_at),
+      })));
+      setMessages(restoredMessages);
+      setSavedConversations(prev => prev.map(c => c.id === conv.id ? {
+        ...c,
+        title: conversation.title || conv.title,
+        report_names: reportNames,
+        client_id: conversation.client_id ?? c.client_id ?? null,
+        updated_at: conversation.updated_at || c.updated_at,
+      } : c));
       setShowHistory(false);
+      setLiveAnnouncement(`Conversation ${conversation.title || conv.title} loaded`);
+      requestAnimationFrame(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
 
-      // Phase 5.1 — load this user's feedback for the conversation
       try {
         const { data: fbData } = await invokeSecureFunction('report-qa', {
           action: 'get-feedback',
@@ -797,17 +834,15 @@ export default function ReportQA() {
         console.warn('[ReportQA] feedback load failed:', e);
       }
 
-      toast({
-        title: 'Conversation loaded',
-        description: conv.title,
-      });
+      toast({ title: 'Conversation loaded', description: conversation.title || conv.title });
     } catch (error) {
       console.error('Failed to load conversation:', error);
-      toast({
-        title: 'Failed to load',
-        description: 'Could not load the conversation',
-        variant: 'destructive',
-      });
+      const message = error instanceof Error ? error.message : 'Could not load the selected conversation';
+      setConversationRestoreError(message);
+      setLiveAnnouncement('Conversation failed to load');
+      toast({ title: 'Failed to load', description: message, variant: 'destructive' });
+    } finally {
+      setRestoringConversationId(null);
     }
   };
 
@@ -2210,9 +2245,9 @@ export default function ReportQA() {
               </DropdownMenu>
             </div>
 
-            {/* Desktop: full toolbar layout (unchanged) */}
-            <div className="hidden sm:flex sm:flex-row sm:flex-wrap sm:items-start gap-3 sm:justify-between">
-              <div className="flex min-w-0 flex-1 items-center gap-2 pt-1">
+            {/* Desktop/tablet: conversation information row above toolbar controls */}
+            <div className="hidden sm:flex sm:flex-col gap-2">
+              <div className="flex min-w-0 items-center gap-2 pt-1">
                 {!showReportsPanel && (
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleReportsPanel} title="Show reports panel (⌘B)">
                     <FileText className="h-4 w-4" />
@@ -2222,29 +2257,45 @@ export default function ReportQA() {
                   <MessageSquare className="h-5 w-5" />
                 </span>
                 {isEditingMainTitle && conversationId ? (
-                  <div className="flex items-center gap-2">
-                    <Input value={mainTitleEdit} onChange={(e) => setMainTitleEdit(e.target.value)} className="h-7 w-48 text-sm" autoFocus
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Input
+                      value={mainTitleEdit}
+                      onChange={(e) => setMainTitleEdit(e.target.value)}
+                      className="h-8 min-w-0 flex-1 text-sm"
+                      autoFocus
+                      aria-label="Edit conversation title"
+                      disabled={isSavingTitle}
+                      onBlur={() => { if (conversationId && mainTitleEdit.trim() && mainTitleEdit.trim() !== getCurrentTitle()) handleSaveTitle(conversationId, mainTitleEdit); }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSaveTitle(conversationId, mainTitleEdit);
-                        if (e.key === 'Escape') setIsEditingMainTitle(false);
+                        if (e.key === 'Escape') { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(false); setTitleSaveError(null); }
                       }}
                     />
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSaveTitle(conversationId, mainTitleEdit)}><Check className="h-3 w-3" /></Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditingMainTitle(false)}><X className="h-3 w-3" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isSavingTitle} aria-label="Save conversation title" onMouseDown={(e) => e.preventDefault()} onClick={() => handleSaveTitle(conversationId, mainTitleEdit)}>{isSavingTitle ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}</Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isSavingTitle} aria-label="Cancel title edit" onMouseDown={(e) => e.preventDefault()} onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(false); setTitleSaveError(null); }}><X className="h-3 w-3" /></Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <CardTitle className="report-qa-chat-title text-lg tracking-tight">{getCurrentTitle()}</CardTitle>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="shrink-0 text-sm font-semibold text-muted-foreground">Q&A:</span>
+                    <CardTitle
+                      className="report-qa-chat-title min-w-0 flex-1 truncate text-lg tracking-tight"
+                      title={getCurrentTitle()}
+                      onClick={() => { if (conversationId) { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); } }}
+                    >
+                      {getCurrentTitle()}
+                    </CardTitle>
                     {conversationId && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Edit conversation title" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
                         <Pencil className="h-3 w-3" />
                       </Button>
                     )}
+                    {isSavingTitle && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="Saving title" />}
                   </div>
                 )}
               </div>
               
-              <div className="report-qa-toolbar flex min-w-0 flex-1 flex-wrap items-center justify-start gap-1 sm:justify-end xl:flex-initial">
+              {titleSaveError && <p className="pl-11 text-xs text-destructive" role="alert">{titleSaveError}</p>}
+              <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-start gap-1 rounded-xl border border-border/50 bg-background/40 px-2 py-1 sm:justify-start">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
                 <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 {conversationId && (
@@ -2324,7 +2375,19 @@ export default function ReportQA() {
           </CardHeader>
           <CardContent id="chat-main" className="report-qa-chat-content flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 sm:px-3 sm:pb-3">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite" aria-busy={!!restoringConversationId}>
+              {restoringConversationId && (
+                <div className="mb-3 flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-sm text-muted-foreground" role="status">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading selected conversation…
+                </div>
+              )}
+              {conversationRestoreError && (
+                <div className="mb-3 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{conversationRestoreError}</span>
+                </div>
+              )}
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
@@ -3042,11 +3105,12 @@ export default function ReportQA() {
                               tabIndex={0}
                               className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                               aria-label={`Load conversation ${conv.title}`}
-                              onClick={() => loadConversation(conv)}
+                              aria-disabled={!!restoringConversationId}
+                              onClick={() => { if (!restoringConversationId) loadConversation(conv); }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   e.preventDefault();
-                                  loadConversation(conv);
+                                  if (!restoringConversationId) loadConversation(conv);
                                 }
                               }}
                             >
@@ -3057,6 +3121,7 @@ export default function ReportQA() {
                                       <Pin className="h-3 w-3 text-primary fill-current flex-shrink-0" />
                                     )}
                                     <p className="truncate text-sm font-semibold leading-5 text-foreground sm:text-base" title={conv.title}>{conv.title}</p>
+                                    {restoringConversationId === conv.id && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-label="Loading conversation" />}
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px] font-semibold">
