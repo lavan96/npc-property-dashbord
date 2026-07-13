@@ -93,12 +93,10 @@ import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySetti
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 import { ReportLibraryPicker, type PickedReport } from '@/components/report-qa/ReportLibraryPicker';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
-import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
-import { LiveModelChipGroup, ModelUpgradeButton } from '@/components/agentModels';
+import { LiveModelBadge, LiveModelChipGroup, ModelUpgradeButton } from '@/components/agentModels';
+import { useAgentSurface, type AgentAssignment } from '@/hooks/useAgentModels';
+import { formatModelDisplay } from '@/lib/agentModels/modelDisplay';
 import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
-import { ModelBadge } from '@/components/report-qa/ModelBadge';
-import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
-import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
 import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
 import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
@@ -129,7 +127,8 @@ interface ChatMessage {
   timestamp: Date;
   audioUrl?: string; // For voice messages
   attachments?: PDFAttachment[]; // For PDF attachments
-  modelProvider?: ModelProvider | null; // Which AI model generated this message
+  modelProvider?: string | null; // Model Hub agent key / legacy provider for assistant messages
+  modelVersion?: string | null; // Exact model id returned by the backend for historical accuracy
   citations?: string[]; // Perplexity URL citations (legacy)
   documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
   comparisonMode?: boolean; // True when answer compares ≥2 reports
@@ -138,6 +137,106 @@ interface ChatMessage {
   sent_by?: string | null;
   sent_by_username?: string | null;
   pinned?: boolean; // Phase 5.5 — pinned answers
+}
+
+const REPORT_QA_SLOT_KEYS = ['report_qa', 'report_qa_fast', 'report_qa_deep', 'report_qa_search'] as const;
+const REPORT_QA_SLOT_KEY_SET = new Set<string>(REPORT_QA_SLOT_KEYS);
+
+function supportsAgentToolsForAssignment(assignment: AgentAssignment | null): boolean {
+  if (!assignment) return true;
+  const model = (assignment.model_id || '').toLowerCase();
+  if (model.includes('sonar') || model.includes('perplexity')) return false;
+  if (assignment.route === 'gateway' || assignment.route === 'openrouter') return true;
+  return assignment.route === 'native' && (
+    model.startsWith('gpt-') ||
+    model.startsWith('o') ||
+    model.startsWith('chatgpt')
+  );
+}
+
+function ReportQAModelSlotSelector({
+  selectedAgentKey,
+  onAgentKeyChange,
+  disabled,
+}: {
+  selectedAgentKey: string;
+  onAgentKeyChange: (agentKey: string) => void;
+  disabled?: boolean;
+}) {
+  const { slots, isLoading } = useAgentSurface('reportQa');
+  const selected = slots.find((slot) => slot.agentKey === selectedAgentKey) ?? slots[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="report-qa-toolbar-control h-11 min-w-11 max-w-full gap-2.5 px-3 text-xs font-semibold shadow-sm sm:h-9 sm:px-3.5"
+          disabled={disabled || isLoading || slots.length === 0}
+          title={`Active Report Q&A slot: ${selected?.slotLabel ?? 'Loading'}`}
+          aria-label={`Select active Report Q&A model slot. Current slot: ${selected?.slotLabel ?? 'Loading'}`}
+        >
+          <span
+            aria-hidden
+            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: selected?.display.accent ?? 'currentColor' }}
+          />
+          <span className="hidden max-w-[12rem] truncate sm:inline">
+            {selected ? `${selected.slotLabel} · ${selected.display.shortLabel}` : 'Loading…'}
+          </span>
+          <span className="sm:hidden">{selected?.slotLabel ?? 'Model'}</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[min(22rem,calc(100vw-2rem))] border-primary/20 bg-popover/95 p-1.5 shadow-xl backdrop-blur">
+        {slots.map((slot) => (
+          <DropdownMenuItem
+            key={slot.agentKey}
+            onClick={() => onAgentKeyChange(slot.agentKey)}
+            className={cn(
+              'flex items-center gap-3 rounded-xl px-2.5 py-3',
+              selectedAgentKey === slot.agentKey && 'bg-primary/10 text-primary',
+            )}
+          >
+            <span
+              aria-hidden
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10"
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slot.display.accent }} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">{slot.slotLabel}</div>
+              <div className="truncate text-xs text-muted-foreground">{slot.display.longLabel}</div>
+            </div>
+            {selectedAgentKey === slot.agentKey && <Check className="h-4 w-4 flex-shrink-0 text-primary" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function MessageModelBadge({ agentKey, modelId }: { agentKey?: string | null; modelId?: string | null }) {
+  if (modelId) {
+    const display = formatModelDisplay(modelId);
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground/90 backdrop-blur-sm"
+        style={{ borderColor: `${display.accent}55` }}
+        title={display.longLabel}
+      >
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: display.accent }} />
+        <span className="max-w-[160px] truncate">{display.shortLabel}</span>
+      </span>
+    );
+  }
+
+  if (agentKey && REPORT_QA_SLOT_KEY_SET.has(agentKey)) {
+    return <LiveModelBadge agentKey={agentKey} size="sm" showSlot />;
+  }
+
+  return null;
 }
 
 interface UploadedReport {
@@ -220,7 +319,7 @@ export default function ReportQA() {
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<ModelProvider>('openai');
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string>('report_qa');
   const [showInPlaceEmailCompose, setShowInPlaceEmailCompose] = useState(false);
   const [emailContext, setEmailContext] = useState<{
     title: string;
@@ -266,10 +365,15 @@ export default function ReportQA() {
   }, [showCitations]);
   // Agent mode: per-conversation toggle that enables tool-calling (calculators,
   // live data, scenario modeling). Persisted on the conversation row so it
-  // survives reload. Disabled silently when the selected model is Perplexity
-  // because Perplexity doesn't reliably support function calling.
+  // survives reload. Disabled when the active Model Hub route does not expose
+  // OpenAI-compatible tool calls.
   const [agentMode, setAgentMode] = useState<boolean>(false);
-  const agentModeSupported = selectedModel !== 'perplexity';
+  const { slots: reportQaModelSlots } = useAgentSurface('reportQa');
+  const selectedReportQaSlot = useMemo(
+    () => reportQaModelSlots.find((slot) => slot.agentKey === selectedAgentKey) ?? reportQaModelSlots[0] ?? null,
+    [reportQaModelSlots, selectedAgentKey],
+  );
+  const agentModeSupported = supportsAgentToolsForAssignment(selectedReportQaSlot?.assignment ?? null);
   const effectiveAgentMode = agentMode && agentModeSupported;
   const [snippetViewer, setSnippetViewer] = useState<{
     open: boolean;
@@ -794,6 +898,7 @@ export default function ReportQA() {
           sent_by: m.sent_by || null,
           sent_by_username: m.sent_by_username || null,
           modelProvider: m.model_provider || null,
+          modelVersion: m.model_version || null,
           citations: Array.isArray(m.url_citations) ? m.url_citations : undefined,
           documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
           comparisonMode: !!m.comparison_mode,
@@ -1042,7 +1147,8 @@ export default function ReportQA() {
           conversationId: activeConversationId,
           stream: true,
           session_token: sessionToken, // Add session token to body as fallback
-          modelProvider: selectedModel,
+          agentKey: selectedAgentKey,
+          modelProvider: selectedAgentKey,
           needsConversationSummary: needsSummary,
           totalMessageCount: totalMessages,
           agentMode: effectiveAgentMode,
@@ -1074,7 +1180,7 @@ export default function ReportQA() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let buffer = '';
-      let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string } = {};
+      let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string; modelProvider?: string; modelAgentKey?: string; modelVersion?: string; followups?: string[] } = {};
       // Tool invocations accumulate from `_tool` SSE events emitted by the
       // agent loop. Keyed by invocation id so a `started` chip can be
       // updated in place when its `completed` event arrives.
@@ -1110,6 +1216,9 @@ export default function ReportQA() {
                 citations: parsed._meta.citations,
                 comparisonMode: parsed._meta.comparisonMode,
                 stream_id: parsed._meta.stream_id,
+                modelProvider: parsed._meta.modelProvider,
+                modelAgentKey: parsed._meta.modelAgentKey,
+                modelVersion: parsed._meta.modelVersion,
               };
               continue;
             }
@@ -1126,7 +1235,7 @@ export default function ReportQA() {
               continue;
             }
             if (parsed?._followups && Array.isArray(parsed._followups)) {
-              (streamMeta as any).followups = parsed._followups.filter((s: any) => typeof s === 'string');
+              streamMeta.followups = parsed._followups.filter((s: any) => typeof s === 'string');
               continue;
             }
             if (parsed?._error) {
@@ -1154,38 +1263,17 @@ export default function ReportQA() {
         role: 'assistant',
         content: fullContent || 'I couldn\'t generate a response. Please try again.',
         timestamp: new Date(),
-        modelProvider: selectedModel,
+        modelProvider: streamMeta.modelAgentKey || streamMeta.modelProvider || selectedAgentKey,
+        modelVersion: streamMeta.modelVersion || null,
         documentCitations: streamMeta.citations,
         comparisonMode: streamMeta.comparisonMode,
         toolInvocations: finalToolInvocations.length > 0 ? finalToolInvocations : undefined,
-        aiFollowups: (streamMeta as any).followups,
+        aiFollowups: streamMeta.followups,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
       setStreamingToolInvocations([]);
-
-      // Save to database in background via secure function
-      if (activeConversationId && fullContent) {
-        invokeSecureFunction('manage-client-data', {
-          operation: 'create',
-          table: 'report_qa_messages',
-          data: [
-            { conversation_id: activeConversationId, role: 'user', content: messageContent, sent_by: user?.id || null, sent_by_username: user?.username || null },
-            {
-              conversation_id: activeConversationId,
-              role: 'assistant',
-              content: fullContent,
-              model_provider: selectedModel,
-              citations: streamMeta.citations && streamMeta.citations.length > 0 ? streamMeta.citations : null,
-              comparison_mode: !!streamMeta.comparisonMode,
-              tool_invocations: finalToolInvocations.length > 0 ? finalToolInvocations : [],
-            },
-          ]
-        }).then(() => {
-          console.log('[ReportQA] Messages saved to database');
-        });
-      }
 
       // Log question asked
       logActivityDirect({
@@ -2233,9 +2321,9 @@ export default function ReportQA() {
               </div>
               </div>
               <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/40 px-2 py-1">
-                <ModelSelector
-                  selectedModel={selectedModel}
-                  onModelChange={setSelectedModel}
+                <ReportQAModelSlotSelector
+                  selectedAgentKey={selectedAgentKey}
+                  onAgentKeyChange={setSelectedAgentKey}
                   disabled={isProcessing}
                 />
                 <LiveModelChipGroup surfaceId="reportQa" size="sm" showSlot className="sm:hidden" />
@@ -2337,7 +2425,7 @@ export default function ReportQA() {
               
               {titleSaveError && <p className="pl-11 text-xs text-destructive" role="alert">{titleSaveError}</p>}
               <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-start gap-1 rounded-xl border border-border/50 bg-background/40 px-2 py-1 sm:justify-start">
-                <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
+                <ReportQAModelSlotSelector selectedAgentKey={selectedAgentKey} onAgentKeyChange={setSelectedAgentKey} disabled={isProcessing} />
                 <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 <div className="hidden min-w-0 items-center gap-2 md:flex" aria-label="Live model assignments for Report Q&A">
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Live</span>
@@ -2388,7 +2476,7 @@ export default function ReportQA() {
                   onClick={() => setAgentMode((v) => !v)}
                   title={
                     !agentModeSupported
-                      ? 'Agent tools are unavailable for Perplexity — switch model to enable'
+                      ? 'Agent tools are unavailable for this active model route — switch slot or model to enable'
                       : agentMode
                         ? 'Disable agent tools (calculators, live data)'
                         : 'Enable agent tools (calculators, live data, scenarios)'
@@ -2578,8 +2666,8 @@ export default function ReportQA() {
                               <span className="text-xs opacity-40 hidden sm:inline">
                                 {message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                               </span>
-                              {message.role === 'assistant' && message.modelProvider && (
-                                <ModelBadge provider={message.modelProvider} />
+                              {message.role === 'assistant' && (message.modelVersion || message.modelProvider) && (
+                                <MessageModelBadge agentKey={message.modelProvider} modelId={message.modelVersion} />
                               )}
                             </div>
                             {message.role === 'assistant' ? (

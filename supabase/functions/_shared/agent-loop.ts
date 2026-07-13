@@ -36,6 +36,7 @@ export interface RunAgentLoopOptions {
   provider: AgentLoopProvider;
   apiKey: string;
   endpoint: string;
+  extraHeaders?: Record<string, string>;
   model: string;
   messages: any[];
   maxCompletionTokensField: 'max_tokens' | 'max_completion_tokens';
@@ -204,6 +205,7 @@ export function runAgentLoop(opts: RunAgentLoopOptions): ReadableStream<Uint8Arr
             headers: {
               Authorization: `Bearer ${opts.apiKey}`,
               'Content-Type': 'application/json',
+              ...(opts.extraHeaders ?? {}),
             },
             body: JSON.stringify(body),
           });

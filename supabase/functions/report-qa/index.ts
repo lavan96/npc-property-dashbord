@@ -18,6 +18,191 @@ import '../_shared/agent-tools-registry.ts';
 // system prompt or routing logic changes meaningfully so we can A/B traceback.
 const PROMPT_VERSION = '2026-05-18.v2-finance-strategist';
 
+type ReportQAModelRoute = 'gateway' | 'native' | 'openrouter';
+type ReportQAModelAssignment = {
+  agent_key: string;
+  route: ReportQAModelRoute;
+  model_id: string;
+  fallback_chain: Array<{ route: ReportQAModelRoute; model_id: string }>;
+  temperature: number | null;
+  max_tokens: number | null;
+  reasoning_effort: string | null;
+};
+
+const REPORT_QA_AGENT_KEYS = new Set(['report_qa', 'report_qa_fast', 'report_qa_deep', 'report_qa_search']);
+const LEGACY_REPORT_QA_PROVIDER_TO_AGENT_KEY: Record<string, string> = {
+  openai: 'report_qa',
+  'openai-direct': 'report_qa',
+  gemini: 'report_qa_deep',
+  perplexity: 'report_qa_search',
+};
+const REPORT_QA_RETRYABLE_STATUSES = new Set([404, 410, 500, 502, 503, 504]);
+
+function normaliseReportQAAgentKey(candidate: unknown): string {
+  const key = typeof candidate === 'string' ? candidate.trim() : '';
+  if (REPORT_QA_AGENT_KEYS.has(key)) return key;
+  return LEGACY_REPORT_QA_PROVIDER_TO_AGENT_KEY[key] ?? 'report_qa';
+}
+
+async function loadReportQAModelAssignment(supabase: any, requested: unknown): Promise<ReportQAModelAssignment> {
+  const agentKey = normaliseReportQAAgentKey(requested);
+  const selectCols = 'agent_key, route, model_id, fallback_chain, temperature, max_tokens, reasoning_effort';
+  let { data, error } = await supabase
+    .from('agent_model_assignments')
+    .select(selectCols)
+    .eq('agent_key', agentKey)
+    .maybeSingle();
+
+  if (error) console.warn('[report-qa] Failed to load model assignment:', error.message);
+
+  if (!data && agentKey !== 'report_qa') {
+    const fallback = await supabase
+      .from('agent_model_assignments')
+      .select(selectCols)
+      .eq('agent_key', 'report_qa')
+      .maybeSingle();
+    data = fallback.data;
+    if (fallback.error) console.warn('[report-qa] Failed to load primary model fallback:', fallback.error.message);
+  }
+
+  if (!data) {
+    return {
+      agent_key: agentKey,
+      route: 'gateway',
+      model_id: 'google/gemini-3-flash-preview',
+      fallback_chain: [{ route: 'gateway', model_id: 'google/gemini-2.5-flash' }],
+      temperature: null,
+      max_tokens: null,
+      reasoning_effort: null,
+    };
+  }
+
+  return {
+    ...data,
+    route: data.route as ReportQAModelRoute,
+    fallback_chain: Array.isArray(data.fallback_chain) ? data.fallback_chain : [],
+  } as ReportQAModelAssignment;
+}
+
+function modelFamilyServiceName(modelId: string, route: ReportQAModelRoute): string {
+  const model = (modelId || '').toLowerCase();
+  if (route === 'openrouter') return 'openrouter';
+  if (model.includes('sonar') || model.includes('perplexity')) return 'perplexity';
+  if (model.includes('gemini') || model.startsWith('google/')) return 'gemini';
+  if (model.includes('claude') || model.startsWith('anthropic/')) return 'anthropic';
+  if (model.includes('gpt') || model.startsWith('openai/') || model.startsWith('o')) return 'openai';
+  return route;
+}
+
+function supportsReportQATools(assignment: ReportQAModelAssignment): boolean {
+  const model = (assignment.model_id || '').toLowerCase();
+  if (model.includes('sonar') || model.includes('perplexity')) return false;
+  if (assignment.route === 'gateway' || assignment.route === 'openrouter') return true;
+  return model.startsWith('gpt-') || model.startsWith('o') || model.startsWith('chatgpt');
+}
+
+function reportQAModelChain(assignment: ReportQAModelAssignment): ReportQAModelAssignment[] {
+  const raw = [
+    { route: assignment.route, model_id: assignment.model_id },
+    ...(assignment.fallback_chain ?? []),
+  ];
+  const seen = new Set<string>();
+  return raw
+    .filter((step) => {
+      const key = `${step.route}:${step.model_id}`;
+      if (!step.route || !step.model_id || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((step) => ({ ...assignment, route: step.route, model_id: step.model_id }));
+}
+
+function buildOpenAICompatibleChatConfig(
+  assignment: ReportQAModelAssignment,
+  keys: { lovable?: string | null; openai?: string | null; perplexity?: string | null; openrouter?: string | null },
+): {
+  endpoint: string;
+  apiKey: string;
+  extraHeaders?: Record<string, string>;
+  maxField: 'max_tokens' | 'max_completion_tokens';
+  maxTokens: number;
+  serviceName: string;
+  provider: AgentLoopProvider;
+} {
+  const model = (assignment.model_id || '').toLowerCase();
+  const maxTokens = assignment.max_tokens ?? (model.includes('gemini') ? 65536 : model.includes('sonar') ? 8192 : 16384);
+  const serviceName = modelFamilyServiceName(assignment.model_id, assignment.route);
+
+  if (assignment.route === 'gateway') {
+    if (!keys.lovable) throw new Error('LOVABLE_API_KEY is not configured');
+    return {
+      endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      apiKey: keys.lovable,
+      maxField: model.startsWith('openai/') || model.includes('gpt') ? 'max_completion_tokens' : 'max_tokens',
+      maxTokens,
+      serviceName,
+      provider: model.includes('gemini') ? 'gemini' : 'openai-gateway',
+    };
+  }
+
+  if (assignment.route === 'openrouter') {
+    if (!keys.openrouter) throw new Error('OPENROUTER_API_KEY is not configured');
+    return {
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      apiKey: keys.openrouter,
+      extraHeaders: {
+        'HTTP-Referer': Deno.env.get('APP_URL') ?? 'https://lovable.dev',
+        'X-Title': 'NPC Property Dashboard',
+      },
+      maxField: 'max_tokens',
+      maxTokens,
+      serviceName,
+      provider: 'openai-gateway',
+    };
+  }
+
+  if (model.startsWith('gpt-') || model.startsWith('o') || model.startsWith('chatgpt')) {
+    if (!keys.openai) throw new Error('OPENAI_API_KEY is not configured');
+    return {
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      apiKey: keys.openai,
+      maxField: 'max_completion_tokens',
+      maxTokens,
+      serviceName,
+      provider: 'openai-direct',
+    };
+  }
+
+  if (model.startsWith('sonar')) {
+    if (!keys.perplexity) throw new Error('PERPLEXITY_API_KEY is not configured');
+    return {
+      endpoint: 'https://api.perplexity.ai/chat/completions',
+      apiKey: keys.perplexity,
+      maxField: 'max_tokens',
+      maxTokens,
+      serviceName,
+      provider: 'openai-gateway',
+    };
+  }
+
+  throw new Error(`Model route ${assignment.route}/${assignment.model_id} is not stream-compatible for Report Q&A. Use gateway/openrouter or an OpenAI/Perplexity native chat model.`);
+}
+
+function buildChatCompletionBody(assignment: ReportQAModelAssignment, messages: any[], stream: boolean, config: { maxField: 'max_tokens' | 'max_completion_tokens'; maxTokens: number }) {
+  const body: any = {
+    model: assignment.model_id,
+    messages,
+    [config.maxField]: config.maxTokens,
+  };
+  if (stream) {
+    body.stream = true;
+    body.stream_options = { include_usage: true };
+  }
+  if (assignment.temperature !== null && assignment.temperature !== undefined) body.temperature = Number(assignment.temperature);
+  if (assignment.reasoning_effort) body.reasoning = { effort: assignment.reasoning_effort };
+  return body;
+}
+
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
 // Uses streaming chunk processing to avoid CPU timeouts
@@ -902,6 +1087,7 @@ Deno.serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -1073,9 +1259,13 @@ Deno.serve(async (req) => {
 
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai', needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
+      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider: requestedModelProvider = 'report_qa', agentKey: requestedAgentKey, needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
+      const modelAssignment = await loadReportQAModelAssignment(supabase, requestedAgentKey ?? requestedModelProvider);
+      const modelProvider = modelAssignment.agent_key;
+      const modelVersion = modelAssignment.model_id;
+      const modelRoute = modelAssignment.route;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
-      console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, Provider: ${modelProvider}`);
+      console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, AgentKey: ${modelProvider}, Route: ${modelRoute}, Model: ${modelVersion}`);
 
       // === RAG-FIRST CONTEXT ASSEMBLY ===
       // Instead of sending full report content every message, we:
@@ -1147,7 +1337,6 @@ Deno.serve(async (req) => {
             console.error('[report-qa] Failed to load client memory:', memErr);
           }
         }
-      }
 
         // Retrieve relevant chunks via semantic search
         if (useRAG) {
@@ -1557,11 +1746,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
 
       // Token-aware budgeter: pick per-model budget, drop oldest history first,
       // then truncate system context tail. Keeps the most important slots intact.
-      const budgetModelHint =
-        modelProvider === 'gemini' ? 'google/gemini-3.1-pro-preview' :
-        modelProvider === 'openai-direct' ? 'openai/gpt-4.1' :
-        modelProvider === 'perplexity' ? 'sonar' :
-        'openai/gpt-5.2';
+      const budgetModelHint = modelVersion;
       const budget = fitMessagesToBudget(
         rawMessages,
         inputBudgetForModel(budgetModelHint),
@@ -1592,41 +1777,16 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         // `_error` events for transparency.
         const canRunAgent =
           agentMode &&
-          modelProvider !== 'perplexity' &&
+          supportsReportQATools(modelAssignment) &&
           agentLoopHasTools(enabledTools);
 
         if (canRunAgent) {
-          let agentEndpoint = '';
-          let agentApiKey = '';
-          let agentModel = '';
-          let maxField: 'max_tokens' | 'max_completion_tokens' = 'max_completion_tokens';
-          let maxTokens = 16384;
-          let agentProvider: AgentLoopProvider = 'openai-gateway';
-
-          if (modelProvider === 'openai-direct') {
-            if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
-            agentEndpoint = 'https://api.openai.com/v1/chat/completions';
-            agentApiKey = OPENAI_API_KEY;
-            agentModel = 'gpt-4.1';
-            maxField = 'max_completion_tokens';
-            maxTokens = 32768;
-            agentProvider = 'openai-direct';
-          } else if (modelProvider === 'gemini') {
-            agentEndpoint = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-            agentApiKey = LOVABLE_API_KEY!;
-            agentModel = 'google/gemini-3.1-pro-preview';
-            maxField = 'max_tokens';
-            maxTokens = 65536;
-            agentProvider = 'gemini';
-          } else {
-            // 'openai' via Lovable AI Gateway (GPT-5.2)
-            agentEndpoint = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-            agentApiKey = LOVABLE_API_KEY!;
-            agentModel = 'openai/gpt-5.2';
-            maxField = 'max_completion_tokens';
-            maxTokens = 16384;
-            agentProvider = 'openai-gateway';
-          }
+          const agentConfig = buildOpenAICompatibleChatConfig(modelAssignment, {
+            lovable: LOVABLE_API_KEY,
+            openai: OPENAI_API_KEY,
+            perplexity: PERPLEXITY_API_KEY,
+            openrouter: OPENROUTER_API_KEY,
+          });
 
           const structuredCitationsAgent = buildStructuredCitations(retrievedChunksForCitations);
           const agentStreamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -1647,13 +1807,14 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           }
 
           const agentStream = runAgentLoop({
-            provider: agentProvider,
-            apiKey: agentApiKey,
-            endpoint: agentEndpoint,
-            model: agentModel,
+            provider: agentConfig.provider,
+            apiKey: agentConfig.apiKey,
+            endpoint: agentConfig.endpoint,
+            extraHeaders: agentConfig.extraHeaders,
+            model: modelVersion,
             messages,
-            maxCompletionTokensField: maxField,
-            maxCompletionTokens: maxTokens,
+            maxCompletionTokensField: agentConfig.maxField,
+            maxCompletionTokens: agentConfig.maxTokens,
             enabledTools,
             toolContext: {
               supabase,
@@ -1668,6 +1829,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 comparisonMode,
                 citations: structuredCitationsAgent,
                 modelProvider,
+                modelAgentKey: modelProvider,
+                modelVersion,
+                modelRoute,
                 agentMode: true,
                 tools_available: listTools().map((t) => t.name),
               },
@@ -1690,7 +1854,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                       citations: structuredCitationsAgent.length > 0 ? structuredCitationsAgent : null,
                       comparison_mode: comparisonMode,
                       prompt_version: PROMPT_VERSION,
-                      model_version: agentModel,
+                      model_version: modelVersion,
                       tool_invocations: toolInvocations.length > 0 ? toolInvocations : null,
                     },
                   ]);
@@ -1723,119 +1887,75 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         }
 
         // -----------------------------------------------------------------
-        // Existing non-agent streaming path (unchanged)
+        // Non-agent streaming path — route through live Model Hub assignment
+        // with assignment fallback_chain support instead of hardcoded models.
         // -----------------------------------------------------------------
-        let response: Response;
-        let citations: string[] = [];
-        
-        if (modelProvider === 'perplexity') {
-          // Use Perplexity API directly
-          if (!PERPLEXITY_API_KEY) {
-            throw new Error("PERPLEXITY_API_KEY is not configured");
-          }
-          
-          response = await fetchUpstreamWithRetry("https://api.perplexity.ai/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "sonar-pro",
-              messages,
-              max_tokens: 8192,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'perplexity-stream' });
-        } else if (modelProvider === 'openai-direct') {
-          // Use OpenAI API directly (bypasses Lovable AI Gateway)
-          if (!OPENAI_API_KEY) {
-            throw new Error("OPENAI_API_KEY is not configured");
-          }
-          
-          console.log(`[report-qa] Using direct OpenAI API`);
-          response = await fetchUpstreamWithRetry("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${OPENAI_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "gpt-4.1",
-              messages,
-              max_completion_tokens: 32768,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'openai-direct-stream' });
-        } else if (modelProvider === 'gemini') {
-          // Use Lovable AI Gateway with Gemini Pro (large context window)
-          console.log(`[report-qa] Using Gemini Pro via Lovable AI Gateway`);
-          response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-3.1-pro-preview",
-              messages,
-              max_tokens: 65536,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'gemini-stream' });
-        } else {
-          // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
-          response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "openai/gpt-5.2",
-              messages,
-              max_completion_tokens: 16384,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'gpt5-stream' });
-        }
+        let response: Response | null = null;
+        let streamModelName = modelVersion;
+        let streamRoute = modelRoute;
+        let streamServiceName = modelFamilyServiceName(modelVersion, modelRoute);
+        let lastFailureStatus = 500;
+        let lastFailureText = '';
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[report-qa] Chat error (${modelProvider}): ${response.status} - ${errorText}`);
-          
-          if (response.status === 429) {
+        for (const attempt of reportQAModelChain(modelAssignment)) {
+          const config = buildOpenAICompatibleChatConfig(attempt, {
+            lovable: LOVABLE_API_KEY,
+            openai: OPENAI_API_KEY,
+            perplexity: PERPLEXITY_API_KEY,
+            openrouter: OPENROUTER_API_KEY,
+          });
+          console.log(`[report-qa] Streaming via ${attempt.agent_key}: ${attempt.route}/${attempt.model_id}`);
+
+          const candidate = await fetchUpstreamWithRetry(config.endpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${config.apiKey}`,
+              "Content-Type": "application/json",
+              ...(config.extraHeaders ?? {}),
+            },
+            body: JSON.stringify(buildChatCompletionBody(attempt, messages, true, config)),
+          }, { label: `${attempt.route}:${attempt.model_id}-stream` });
+
+          if (candidate.ok) {
+            response = candidate;
+            streamModelName = attempt.model_id;
+            streamRoute = attempt.route;
+            streamServiceName = config.serviceName;
+            break;
+          }
+
+          lastFailureStatus = candidate.status;
+          lastFailureText = await candidate.text();
+          console.error(`[report-qa] Chat error (${attempt.route}/${attempt.model_id}): ${candidate.status} - ${lastFailureText}`);
+
+          if (candidate.status === 429) {
             return new Response(
               JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
               { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          if (response.status === 402) {
+          if (candidate.status === 402) {
             return new Response(
               JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
               { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          
-          throw new Error(`AI API error: ${response.status}`);
+          if (!REPORT_QA_RETRYABLE_STATUSES.has(candidate.status)) break;
+        }
+
+        if (!response) {
+          throw new Error(`AI API error: ${lastFailureStatus}${lastFailureText ? ` - ${lastFailureText.slice(0, 500)}` : ''}`);
         }
 
         // Intercept the stream to capture token usage from the final SSE chunk
-        const streamModelName = modelProvider === 'perplexity' ? 'sonar-pro'
-          : modelProvider === 'openai-direct' ? 'gpt-4.1'
-          : modelProvider === 'gemini' ? 'gemini-2.5-pro' : 'gpt-5.2';
         const sbLogStream = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
         
         const trackedStream = createUsageTrackingStream(response.body!, {
           supabase: sbLogStream,
-          serviceName: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
+          serviceName: streamServiceName,
           modelUsed: streamModelName,
           userId: userId || undefined,
-          metadata: { function: 'report-qa', action: 'chat', modelProvider },
+          metadata: { function: 'report-qa', action: 'chat', modelProvider, modelVersion: streamModelName, modelRoute: streamRoute },
         });
 
         // Prepend a metadata SSE event so the client can render paragraph-level
@@ -1848,6 +1968,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             comparisonMode,
             citations: structuredCitations,
             modelProvider,
+            modelAgentKey: modelProvider,
+            modelVersion: streamModelName,
+            modelRoute: streamRoute,
           },
         };
         const metaLine = `data: ${JSON.stringify(metaPayload)}\n\n`;
@@ -2011,103 +2134,70 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         });
       }
       
-      // Non-streaming mode (original behavior)
-      let response: Response;
+      // Non-streaming mode — route through live Model Hub assignment.
+      let response: Response | null = null;
       let citations: string[] = [];
-      
-      if (modelProvider === 'perplexity') {
-        // Use Perplexity API directly
-        if (!PERPLEXITY_API_KEY) {
-          throw new Error("PERPLEXITY_API_KEY is not configured");
-        }
-        
-        response = await fetchUpstreamWithRetry("https://api.perplexity.ai/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "sonar-pro",
-            messages,
-            max_tokens: 8192,
-          }),
-        }, { label: 'perplexity-nonstream' });
-      } else if (modelProvider === 'openai-direct') {
-        // Use OpenAI API directly (bypasses Lovable AI Gateway)
-        if (!OPENAI_API_KEY) {
-          throw new Error("OPENAI_API_KEY is not configured");
-        }
-        
-        console.log(`[report-qa] Using direct OpenAI API (non-streaming)`);
-        response = await fetchUpstreamWithRetry("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4.1",
-            messages,
-            max_completion_tokens: 32768,
-          }),
-        }, { label: 'openai-direct-nonstream' });
-      } else if (modelProvider === 'gemini') {
-        // Use Lovable AI Gateway with Gemini Pro (large context window)
-        console.log(`[report-qa] Using Gemini Pro via Lovable AI Gateway (non-streaming)`);
-        response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-3.1-pro-preview",
-            messages,
-            max_tokens: 65536,
-          }),
-        }, { label: 'gemini-nonstream' });
-      } else {
-        // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
-        response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "openai/gpt-5.2",
-            messages,
-            max_completion_tokens: 16384,
-          }),
-        }, { label: 'gpt5-nonstream' });
-      }
+      let chatModelName = modelVersion;
+      let chatRoute = modelRoute;
+      let chatServiceName = modelFamilyServiceName(modelVersion, modelRoute);
+      let lastFailureStatus = 500;
+      let lastFailureText = '';
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[report-qa] Chat error (${modelProvider}): ${response.status} - ${errorText}`);
-        
-        if (response.status === 429) {
+      for (const attempt of reportQAModelChain(modelAssignment)) {
+        const config = buildOpenAICompatibleChatConfig(attempt, {
+          lovable: LOVABLE_API_KEY,
+          openai: OPENAI_API_KEY,
+          perplexity: PERPLEXITY_API_KEY,
+          openrouter: OPENROUTER_API_KEY,
+        });
+        console.log(`[report-qa] Non-stream via ${attempt.agent_key}: ${attempt.route}/${attempt.model_id}`);
+
+        const candidate = await fetchUpstreamWithRetry(config.endpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+            "Content-Type": "application/json",
+            ...(config.extraHeaders ?? {}),
+          },
+          body: JSON.stringify(buildChatCompletionBody(attempt, messages, false, config)),
+        }, { label: `${attempt.route}:${attempt.model_id}-nonstream` });
+
+        if (candidate.ok) {
+          response = candidate;
+          chatModelName = attempt.model_id;
+          chatRoute = attempt.route;
+          chatServiceName = config.serviceName;
+          break;
+        }
+
+        lastFailureStatus = candidate.status;
+        lastFailureText = await candidate.text();
+        console.error(`[report-qa] Chat error (${attempt.route}/${attempt.model_id}): ${candidate.status} - ${lastFailureText}`);
+
+        if (candidate.status === 429) {
           return new Response(
             JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
             { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        if (response.status === 402) {
+        if (candidate.status === 402) {
           return new Response(
             JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
             { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        
-        throw new Error(`AI API error: ${response.status}`);
+        if (!REPORT_QA_RETRYABLE_STATUSES.has(candidate.status)) break;
+      }
+
+      if (!response) {
+        throw new Error(`AI API error: ${lastFailureStatus}${lastFailureText ? ` - ${lastFailureText.slice(0, 500)}` : ''}`);
       }
 
       const aiResponse = await response.json();
-      console.log(`[report-qa] AI Response structure (${modelProvider}):`, JSON.stringify(aiResponse, null, 2));
+      console.log(`[report-qa] AI Response structure (${modelProvider}/${chatModelName}):`, JSON.stringify(aiResponse, null, 2));
       
       // Extract citations from Perplexity response
-      if (modelProvider === 'perplexity' && aiResponse.citations) {
+      if (chatServiceName === 'perplexity' && aiResponse.citations) {
         citations = aiResponse.citations;
         console.log(`[report-qa] Perplexity citations: ${citations.length}`);
       }
@@ -2127,19 +2217,16 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
 
       // Log chat API usage (non-streaming)
       const chatUsage = extractOpenAIUsage(aiResponse);
-      const modelName = modelProvider === 'perplexity' ? 'sonar-pro' 
-        : modelProvider === 'openai-direct' ? 'gpt-4.1'
-        : modelProvider === 'gemini' ? 'gemini-2.5-pro' : 'gpt-5.2';
       const sbLogChat = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
       await logApiUsage(sbLogChat, {
-        service_name: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
+        service_name: chatServiceName,
         endpoint: '/v1/chat/completions',
-        model_used: modelName,
+        model_used: chatModelName,
         prompt_tokens: chatUsage.prompt_tokens,
         completion_tokens: chatUsage.completion_tokens,
         tokens_used: chatUsage.total_tokens,
         status: 'success',
-        metadata: { function: 'report-qa', action: 'chat', streaming: false, modelProvider },
+        metadata: { function: 'report-qa', action: 'chat', streaming: false, modelProvider, modelVersion: chatModelName, modelRoute: chatRoute },
       });
 
       // Build structured paragraph-level citations (non-streaming path)
@@ -2157,7 +2244,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             citations: structuredCitationsNS.length > 0 ? structuredCitationsNS : null,
             comparison_mode: comparisonMode,
             prompt_version: PROMPT_VERSION,
-            model_version: modelName,
+            model_version: chatModelName,
           },
         ]);
 
@@ -2221,6 +2308,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           response: responseText,
           ragUsed: ragContext.length > 0,
           modelProvider,
+          modelAgentKey: modelProvider,
+          modelVersion: chatModelName,
+          modelRoute: chatRoute,
           comparisonMode,
           citations: citations.length > 0 ? citations : undefined,
           structuredCitations: structuredCitationsNS.length > 0 ? structuredCitationsNS : undefined,
@@ -2953,6 +3043,7 @@ ${transcript}`;
       });
     }
 
+    if (action === "get-team-members") {
       const { data: members, error: membersError } = await supabase
         .from("custom_users")
         .select("id, username, email, role")
