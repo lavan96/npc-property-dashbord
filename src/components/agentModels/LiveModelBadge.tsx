@@ -7,15 +7,17 @@
  * want it to be interactive (e.g. open ModelUpgradeButton).
  */
 
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAgentModel } from '@/hooks/useAgentModels';
+import { useAgentModel, subscribeAgentPulse, getAgentPulse } from '@/hooks/useAgentModels';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
 
 export type LiveModelBadgeProps = {
   agentKey: string;
