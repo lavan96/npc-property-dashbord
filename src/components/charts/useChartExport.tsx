@@ -1,4 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import html2canvas from 'html2canvas';
+import { renderChartImage } from './ChartCard';
+import { getChartTypeConfig } from './ChartCard';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { ChartData } from './ChartCard';
 
@@ -100,92 +105,75 @@ async function chartToDataUrl(chart: ChartData): Promise<string> {
   });
 }
 
+
+async function renderFullExportComposition(chart: ChartData): Promise<string> {
+  const cfg = getChartTypeConfig(chart.chart_type);
+  const host = document.createElement('div');
+  host.style.position = 'fixed';
+  host.style.left = '-10000px';
+  host.style.top = '0';
+  host.style.width = '1800px';
+  host.style.background = '#ffffff';
+  host.style.zIndex = '-1';
+  document.body.appendChild(host);
+
+  const root = createRoot(host);
+  root.render(
+    <div style={{ width: 1800, background: '#ffffff', color: '#0f172a', fontFamily: 'Arial, Helvetica, sans-serif', padding: 72, boxSizing: 'border-box' }}>
+      <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: 28, marginBottom: 36 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', borderRadius: 999, padding: '8px 16px', fontSize: 18, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 }}>
+          <span>{cfg.emoji}</span><span>{cfg.label}</span>
+        </div>
+        <h1 style={{ margin: 0, fontSize: 46, lineHeight: 1.12, fontWeight: 900, letterSpacing: -1.2 }}>{chart.title}</h1>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 18, color: '#475569', fontSize: 20, fontWeight: 600 }}>
+          {chart.generated_reports?.title && <span>Report: {chart.generated_reports.title}</span>}
+          <span>Generated: {format(new Date(chart.created_at), 'PPp')}</span>
+        </div>
+      </div>
+      <div style={{ height: 900, border: '1px solid #e2e8f0', borderRadius: 28, padding: 34, boxSizing: 'border-box', background: '#ffffff', boxShadow: '0 18px 44px rgba(15,23,42,0.10)' }}>
+        {renderChartImage(chart, 'export')}
+      </div>
+      {chart.analysis_text && (
+        <section style={{ marginTop: 40, border: '1px solid #f3d08a', borderRadius: 28, background: 'linear-gradient(135deg,#fffbeb,#ffffff)', padding: 34 }}>
+          <h2 style={{ margin: '0 0 18px', fontSize: 28, lineHeight: 1.2, fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase', color: '#92400e' }}>Analysis</h2>
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 23, lineHeight: 1.62, color: '#334155' }}>{chart.analysis_text}</p>
+        </section>
+      )}
+    </div>
+  );
+
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const target = host.firstElementChild as HTMLElement;
+    if (!target || target.offsetHeight <= 0) throw new Error('Export layout did not render');
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#ffffff',
+      scale: target.offsetHeight > 12000 ? 1 : 1.5,
+      useCORS: true,
+      logging: false,
+      windowWidth: 1800,
+      windowHeight: target.offsetHeight,
+    });
+    return canvas.toDataURL('image/png');
+  } finally {
+    root.unmount();
+    host.remove();
+  }
+}
+
 function sanitizeFilename(title: string): string {
   return title.replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '_').substring(0, 50);
 }
 
-/** Enhancement #6: Render analysis text as caption on the exported PNG */
-async function chartToDataUrlWithAnalysis(chart: ChartData): Promise<string> {
-  const baseDataUrl = await chartToDataUrl(chart);
-
-  if (!chart.analysis_text) return baseDataUrl;
-
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const padding = 20;
-      const maxTextWidth = img.width - padding * 2;
-      const fontSize = 13;
-      const lineHeight = 18;
-
-      // Measure text lines
-      const measureCanvas = document.createElement('canvas');
-      const mCtx = measureCanvas.getContext('2d');
-      if (!mCtx) { resolve(baseDataUrl); return; }
-      mCtx.font = `${fontSize}px Arial, sans-serif`;
-
-      const words = chart.analysis_text!.split(' ');
-      const lines: string[] = [];
-      let currentLine = '';
-      for (const word of words) {
-        const test = currentLine ? `${currentLine} ${word}` : word;
-        if (mCtx.measureText(test).width > maxTextWidth) {
-          if (currentLine) lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = test;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-
-      // Limit to 4 lines
-      const displayLines = lines.slice(0, 4);
-      if (lines.length > 4) displayLines[3] = displayLines[3].slice(0, -3) + '...';
-
-      const captionHeight = displayLines.length * lineHeight + padding * 2 + 10;
-
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height + captionHeight;
-      const ctx = canvas.getContext('2d')!;
-
-      // White background
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw chart image
-      ctx.drawImage(img, 0, 0);
-
-      // Draw caption area
-      ctx.fillStyle = '#fffbeb';
-      ctx.fillRect(0, img.height, canvas.width, captionHeight);
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(0, img.height, canvas.width, 2);
-
-      // Draw caption header
-      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-      ctx.fillStyle = '#b45309';
-      ctx.fillText('✨ Analysis', padding, img.height + padding + fontSize);
-
-      // Draw caption text
-      ctx.font = `${fontSize}px Arial, sans-serif`;
-      ctx.fillStyle = '#78350f';
-      displayLines.forEach((line, i) => {
-        ctx.fillText(line, padding, img.height + padding + fontSize + lineHeight + i * lineHeight);
-      });
-
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = baseDataUrl;
-  });
-}
-
 export function useChartExport() {
+  const [exporting, setExporting] = useState(false);
   const exportSingle = useCallback(async (chart: ChartData, includeAnalysis = true) => {
+    if (exporting) return;
+    setExporting(true);
     try {
-      const dataUrl = includeAnalysis && chart.analysis_text
-        ? await chartToDataUrlWithAnalysis(chart)
+      const dataUrl = includeAnalysis
+        ? await renderFullExportComposition(chart)
         : await chartToDataUrl(chart);
       const filename = `${sanitizeFilename(chart.title)}_${chart.chart_type}.png`;
       downloadDataUrl(dataUrl, filename);
@@ -193,8 +181,10 @@ export function useChartExport() {
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export chart. Refresh the chart gallery, then try exporting again.');
+    } finally {
+      setExporting(false);
     }
-  }, []);
+  }, [exporting]);
 
   const exportBulk = useCallback(async (charts: ChartData[], includeAnalysis = true) => {
     if (charts.length === 0) {
@@ -214,8 +204,8 @@ export function useChartExport() {
 
       for (let i = 0; i < charts.length; i++) {
         try {
-          const dataUrl = includeAnalysis && charts[i].analysis_text
-            ? await chartToDataUrlWithAnalysis(charts[i])
+          const dataUrl = includeAnalysis
+            ? await renderFullExportComposition(charts[i])
             : await chartToDataUrl(charts[i]);
           const base64Data = dataUrl.split(',')[1];
           const filename = `${String(i + 1).padStart(2, '0')}_${sanitizeFilename(charts[i].title)}.png`;
@@ -239,5 +229,5 @@ export function useChartExport() {
     }
   }, [exportSingle]);
 
-  return { exportSingle, exportBulk };
+  return { exportSingle, exportBulk, exporting };
 }
