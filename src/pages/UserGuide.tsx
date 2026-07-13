@@ -1,4 +1,6 @@
 import { useRef, useCallback, useMemo, useState } from 'react';
+import { LiveModelBadge, ModelUpgradeButton } from '@/components/agentModels';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
