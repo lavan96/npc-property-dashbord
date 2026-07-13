@@ -188,9 +188,11 @@ export function useAgentSurface(surfaceId: AgentSurfaceId): {
           agentKey: slot.key,
           slotLabel: slot.slotLabel,
           slotDescription: slot.slotDescription,
+          surfaceLabel: surface.label,
           assignment,
           display: formatModelDisplay(assignment?.model_id),
         };
+
       }),
     [byKey, surface],
   );
