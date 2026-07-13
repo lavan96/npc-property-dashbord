@@ -2338,6 +2338,12 @@ export default function ReportQA() {
               <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-start gap-1 rounded-xl border border-border/50 bg-background/40 px-2 py-1 sm:justify-start">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
                 <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
+                <div className="hidden min-w-0 items-center gap-2 md:flex" aria-label="Live model assignments for Report Q&A">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Live</span>
+                  <LiveModelChipGroup surfaceId="reportQa" size="sm" />
+                  <ModelUpgradeButton surfaceId="reportQa" />
+                </div>
+                <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 {conversationId && (
                   <>
                     <ConversationClientLinker
