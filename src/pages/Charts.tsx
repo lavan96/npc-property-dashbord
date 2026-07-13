@@ -280,9 +280,9 @@ export default function Charts() {
     if (expandedIndex < filteredCharts.length - 1) setExpandedChart(filteredCharts[expandedIndex + 1]);
   }, [expandedIndex, filteredCharts]);
 
-  const handleBulkExport = useCallback(() => {
+  const handleBulkExport = useCallback((options?: { format?: 'png' | 'svg'; includeAnalysis?: boolean }) => {
     const selectedCharts = charts.filter(c => selectedIds.has(c.id));
-    exportBulk(selectedCharts);
+    exportBulk(selectedCharts, options);
   }, [charts, selectedIds, exportBulk]);
 
   // Delete handler (Enhancement #4)
