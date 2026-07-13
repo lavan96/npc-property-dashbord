@@ -1959,16 +1959,16 @@ export default function ReportQA() {
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3 md:flex-row md:items-center md:px-5 md:py-3.5">
-        <div className="min-w-0 space-y-1.5">
-          <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
-            <Sparkles className="h-3 w-3" />
-            AI Report Intelligence
+      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:flex-row md:items-center md:gap-3 md:px-5 md:py-2.5">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <span className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em]">
+              <Sparkles className="h-3 w-3" />
+              AI Report Intelligence
+            </span>
+            <h1 className="text-lg sm:text-xl md:text-[1.5rem] font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
           </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-[1.7rem] font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
-          </div>
-          <p className="report-qa-subtitle max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+          <p className="report-qa-subtitle max-w-2xl text-[11px] leading-[1.35] text-muted-foreground sm:text-xs">
             Upload investment reports and ask questions to generate summaries, comparisons and citation-backed insights.
           </p>
         </div>
