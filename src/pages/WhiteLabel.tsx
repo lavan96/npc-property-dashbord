@@ -677,24 +677,61 @@ export default function WhiteLabel() {
   const isApplyingHistoryRef = useRef(false);
   const impactPreview = useMemo(() => getBrandImpactPreview(draftSettings), [draftSettings]);
 
+  // Track the last "known clean" settings so we only overwrite the local draft
+  // when the source-of-truth actually changes AND the user has no in-flight
+  // edits. Previously this effect ran on every `settings` reference change and
+  // unconditionally called `setDraftSettings(settings)`, which could wipe the
+  // user's in-progress changes after saving a draft or after any provider
+  // re-render — making the editor feel "locked up".
+  const lastSyncedSettingsRef = useRef<WhiteLabelSettings | null>(null);
+  const bootstrappedRef = useRef(false);
+
   useEffect(() => {
-    const persistedDraft = loadPersistedDraft();
-    setSavedPresets(loadStoredBrandPresets());
+    // First mount: bootstrap draft from live settings + load persisted draft.
+    if (!bootstrappedRef.current) {
+      bootstrappedRef.current = true;
+      setSavedPresets(loadStoredBrandPresets());
 
-    if (persistedDraft) {
-      const matchesLiveSettings = JSON.stringify(persistedDraft.settings) === JSON.stringify(settings);
-
-      if (matchesLiveSettings) {
-        clearPersistedDraft();
-        setAvailablePersistedDraft(null);
-      } else {
-        setAvailablePersistedDraft(persistedDraft);
+      const persistedDraft = loadPersistedDraft();
+      if (persistedDraft) {
+        const matchesLiveSettings =
+          JSON.stringify(persistedDraft.settings) === JSON.stringify(settings);
+        if (matchesLiveSettings) {
+          clearPersistedDraft();
+          setAvailablePersistedDraft(null);
+        } else {
+          setAvailablePersistedDraft(persistedDraft);
+        }
       }
+
+      setDraftSettings(settings);
+      setLastDraftSavedAt(null);
+      draftHistoryRef.current = [];
+      lastSyncedSettingsRef.current = settings;
+      return;
     }
 
-    setDraftSettings(settings);
-    setLastDraftSavedAt(null);
-    draftHistoryRef.current = [];
+    // Subsequent settings changes (e.g. after Save brand changes): only pull
+    // the fresh values in when the local draft has no unsaved deviations from
+    // the previously-synced settings. This prevents color/font/name edits made
+    // right after a Save from being overwritten by a stale sync.
+    const previousSynced = lastSyncedSettingsRef.current;
+    const previousSyncedJson = previousSynced ? JSON.stringify(previousSynced) : null;
+    const draftJson = JSON.stringify(draftSettings);
+    const settingsJson = JSON.stringify(settings);
+
+    if (settingsJson === previousSyncedJson) return; // nothing new
+    lastSyncedSettingsRef.current = settings;
+
+    // If the draft is still in sync with the previously-loaded settings, pull
+    // in the new server truth. Otherwise the user has pending edits — keep
+    // them and just remember the new baseline for future comparisons.
+    if (draftJson === previousSyncedJson) {
+      setDraftSettings(settings);
+      setLastDraftSavedAt(null);
+      draftHistoryRef.current = [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
 
   const updateDraftSettings = useCallback((newSettings: Partial<typeof settings>) => {
@@ -728,7 +765,9 @@ export default function WhiteLabel() {
       };
       setShowLeavePrompt(true);
     }
-  }, [blocker]);
+    // Depend only on blocker.state — the hook returns a fresh object literal
+    // each render, so `[blocker]` would fire this effect on every render.
+  }, [blocker.state, blocker.proceed, blocker.reset]);
 
   useEffect(() => {
     if (!hasChanges) return;
@@ -811,11 +850,23 @@ export default function WhiteLabel() {
   const canSaveBranding = hasChanges && canEditWhiteLabel && !hasCriticalChecks && !hasInvalidAssets && !isValidatingAssets;
   const canUndoLastChange = draftHistoryRef.current.length > 0;
   const handleSaveDraft = useCallback(() => {
-    const savedDraft = savePersistedDraft(draftSettings);
-    setLastDraftSavedAt(savedDraft.savedAt);
-    setAvailablePersistedDraft(savedDraft);
-    toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
+    try {
+      const savedDraft = savePersistedDraft(draftSettings);
+      setLastDraftSavedAt(savedDraft.savedAt);
+      setAvailablePersistedDraft(savedDraft);
+      toast.success('Draft saved', {
+        description: 'Your draft was saved locally without changing live branding.',
+      });
+    } catch (error) {
+      console.error('Failed to save local brand draft:', error);
+      const description =
+        error instanceof DOMException && error.name === 'QuotaExceededError'
+          ? 'Browser storage is full. Remove old presets or use Save brand changes to publish this draft.'
+          : 'We could not persist the draft locally. Your in-progress edits are still active — try Save brand changes instead.';
+      toast.error('Draft not saved', { description });
+    }
   }, [draftSettings]);
+
 
   const handleRestoreSavedDraft = useCallback(() => {
     if (!availablePersistedDraft) return;
