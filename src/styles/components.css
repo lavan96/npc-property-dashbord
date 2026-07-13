@@ -1707,6 +1707,8 @@
   }
 
   .report-qa-chat-panel {
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     border-color: hsl(var(--brand) / 0.34) !important;
     background:
@@ -1753,18 +1755,22 @@
   }
 
   .report-qa-chat-content {
+    flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
     padding-top: 0.9rem;
     background: linear-gradient(180deg, hsl(0 0% 0% / 0.06), transparent 7rem);
   }
 
   .report-qa-message-area {
     position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
     border: 1px solid hsl(var(--brand) / 0.18);
     border-radius: 1.35rem;
-    padding: 0.85rem 0.25rem 0.85rem 0.85rem;
+    padding: clamp(0.75rem, 1.4vw, 1rem) clamp(0.35rem, 0.8vw, 0.65rem) clamp(0.75rem, 1.4vw, 1rem) clamp(0.75rem, 1.4vw, 1rem);
     background:
       radial-gradient(circle at 16% 0%, hsl(var(--brand) / 0.08), transparent 18rem),
       linear-gradient(180deg, hsl(0 0% 100% / 0.04), hsl(0 0% 100% / 0.018));
@@ -2133,11 +2139,39 @@
   }
 
   .report-qa-chat-panel .qa-chat-bubble-assistant {
+    width: min(96%, 70rem);
+    max-width: min(96%, 70rem) !important;
     border-color: hsl(var(--brand) / 0.25);
     background: linear-gradient(180deg, hsl(0 0% 100% / 0.075), hsl(0 0% 100% / 0.035));
   }
 
+  .report-qa-chat-panel .report-qa-message-frame:has(.qa-chat-bubble-assistant) {
+    justify-content: flex-start;
+  }
+
+  .report-qa-chat-panel .report-qa-assistant-content {
+    width: 100%;
+    max-width: 68rem;
+    margin-inline: auto;
+    line-height: 1.6;
+  }
+
+  .report-qa-chat-panel .report-qa-assistant-content :where(p, li, blockquote, td, th) {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .report-qa-chat-panel .report-qa-assistant-content :where(table, pre, img) {
+    max-width: 100%;
+  }
+
+  .report-qa-chat-panel .report-qa-assistant-content table {
+    display: block;
+    overflow-x: auto;
+  }
+
   .report-qa-chat-panel .qa-chat-bubble-user {
+    max-width: 80%;
     background: linear-gradient(135deg, hsl(var(--brand)), hsl(var(--brand-700)));
     box-shadow: 0 12px 30px hsl(var(--brand) / 0.26);
   }
@@ -2252,6 +2286,11 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    .report-qa-chat-panel .qa-chat-bubble-assistant {
+      width: min(97%, 100%);
+      max-width: 97% !important;
+    }
+
     .report-qa-toolbar {
       width: 100%;
       justify-content: flex-start;
@@ -2279,6 +2318,12 @@
     }
 
     .report-qa-message-bubble {
+      max-width: 96% !important;
+    }
+
+    .report-qa-chat-panel .qa-chat-bubble-user,
+    .report-qa-chat-panel .qa-chat-bubble-assistant {
+      width: auto;
       max-width: 96% !important;
     }
 
