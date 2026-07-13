@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { AURORA_GOLD_PALETTE, colorAt } from '@/components/charts/kernel/palettes';
 
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
@@ -1539,20 +1540,29 @@ export function useReportGenerator() {
               chart_type: correctChartType,
               title: sourceChart?.title || chartType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
               image_data: imageData as string,
-              chart_config: {
-                type: chartType,
-                chart_type: correctChartType,
-                title: sourceChart?.title || chartType,
-                // Normalised payload consumed by <LiveChart /> — see
-                // src/components/charts/kernel/normaliseChartConfig.ts
-                data: liveData.map((point: any) => ({
+              chart_config: (() => {
+                // Apply kernel palette when producers didn't specify colors,
+                // and persist axis-label hints for the LiveChart renderer.
+                const points = liveData.map((point: any, idx: number) => ({
                   label: point.label,
                   value: point.value,
-                  color: point.color,
-                })),
-                schema_version: 2,
-                generated_at: new Date().toISOString(),
-              },
+                  color: point.color || colorAt(AURORA_GOLD_PALETTE, idx),
+                }));
+                const isCategorical = correctChartType === 'pie' || correctChartType === 'donut';
+                return {
+                  type: chartType,
+                  chart_type: correctChartType,
+                  title: sourceChart?.title || chartType,
+                  palette: 'aurora',
+                  x_axis_label: isCategorical ? undefined : 'Category',
+                  y_axis_label: isCategorical ? undefined : 'Count',
+                  // Normalised payload consumed by <LiveChart /> — see
+                  // src/components/charts/kernel/normaliseChartConfig.ts
+                  data: points,
+                  schema_version: 2,
+                  generated_at: new Date().toISOString(),
+                };
+              })(),
             };
           });
 
