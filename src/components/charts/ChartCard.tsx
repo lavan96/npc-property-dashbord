@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { AlertTriangle, Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { LiveChartRenderer, canRenderLiveChart } from './ChartRenderer';
+import { LiveChart, canNormaliseChartConfig } from './kernel';
 
 export interface ChartData {
   id: string;
