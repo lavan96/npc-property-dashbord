@@ -3,15 +3,17 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X, FileImage, FileCode2, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getChartTypeConfig, renderChartImage, type ChartData } from './ChartCard';
+import { canNormaliseChartConfig } from './kernel';
 
 interface ChartLightboxProps {
   chart: ChartData | null;
   onClose: () => void;
-  onExport: (chart: ChartData) => void;
+  onExport: (chart: ChartData, options?: { format?: 'png' | 'svg'; includeAnalysis?: boolean } | boolean) => void;
   exporting?: boolean;
   onPrev?: () => void;
   onNext?: () => void;
