@@ -145,6 +145,7 @@ const REPORT_QA_SLOT_KEY_SET = new Set<string>(REPORT_QA_SLOT_KEYS);
 function supportsAgentToolsForAssignment(assignment: AgentAssignment | null): boolean {
   if (!assignment) return true;
   const model = (assignment.model_id || '').toLowerCase();
+  if (model.includes('sonar') || model.includes('perplexity')) return false;
   if (assignment.route === 'gateway' || assignment.route === 'openrouter') return true;
   return assignment.route === 'native' && (
     model.startsWith('gpt-') ||
