@@ -19842,6 +19842,7 @@ export type Database = {
         Args: { p_immediate?: boolean; p_job_id: string }
         Returns: undefined
       }
+      chart_config_is_live: { Args: { cfg: Json }; Returns: boolean }
       claim_migration_jobs: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {
