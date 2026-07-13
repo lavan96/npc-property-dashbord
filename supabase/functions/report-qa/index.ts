@@ -1672,10 +1672,32 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 tools_available: listTools().map((t) => t.name),
               },
             },
-            onComplete: async ({ toolInvocations, turns }) => {
+            onComplete: async ({ toolInvocations, turns, finalText }) => {
               console.log(
                 `[report-qa] Agent loop complete: ${turns} turn(s), ${toolInvocations.length} tool invocation(s)`,
               );
+              // Persist user + assistant messages so historical conversation
+              // reload has content to render (streaming path used to skip this).
+              if (conversationId && finalText) {
+                try {
+                  await supabase.from('report_qa_messages').insert([
+                    { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
+                    {
+                      conversation_id: conversationId,
+                      role: 'assistant',
+                      content: sanitizeForPostgres(finalText),
+                      model_provider: modelProvider,
+                      citations: structuredCitationsAgent.length > 0 ? structuredCitationsAgent : null,
+                      comparison_mode: comparisonMode,
+                      prompt_version: PROMPT_VERSION,
+                      model_version: agentModel,
+                      tool_invocations: toolInvocations.length > 0 ? toolInvocations : null,
+                    },
+                  ]);
+                } catch (persistErr) {
+                  console.error('[report-qa] Failed to persist agent messages:', persistErr);
+                }
+              }
               try {
                 await supabase
                   .from('report_qa_stream_checkpoints')
@@ -1947,6 +1969,27 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                   answer: assistantText,
                   lovableApiKey: LOVABLE_API_KEY,
                 }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
+              }
+              // Persist user + assistant messages so historical conversation
+              // reload has content to render (previously skipped in stream path).
+              if (conversationId && assistantText) {
+                try {
+                  await supabase.from('report_qa_messages').insert([
+                    { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
+                    {
+                      conversation_id: conversationId,
+                      role: 'assistant',
+                      content: sanitizeForPostgres(assistantText),
+                      model_provider: modelProvider,
+                      citations: structuredCitations.length > 0 ? structuredCitations : null,
+                      comparison_mode: comparisonMode,
+                      prompt_version: PROMPT_VERSION,
+                      model_version: streamModelName,
+                    },
+                  ]);
+                } catch (persistErr) {
+                  console.error('[report-qa] Failed to persist stream messages:', persistErr);
+                }
               }
               controller.close();
               // Best-effort: mark checkpoint complete
