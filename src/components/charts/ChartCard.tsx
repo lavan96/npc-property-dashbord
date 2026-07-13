@@ -307,9 +307,29 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               </Button>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="h-10 gap-1 rounded-full border border-brand-300/25 bg-brand-500/8 px-3 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-brand-300/60 hover:bg-brand-500/14 hover:text-primary hover:shadow-[0_10px_24px_hsl(43_74%_49%/0.16)] focus-visible:ring-2 focus-visible:ring-brand-300/45" onClick={() => onExport(chart)}>
-            <Download className="h-3 w-3" /> Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-10 gap-1 rounded-full border border-brand-300/25 bg-brand-500/8 px-3 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-brand-300/60 hover:bg-brand-500/14 hover:text-primary hover:shadow-[0_10px_24px_hsl(43_74%_49%/0.16)] focus-visible:ring-2 focus-visible:ring-brand-300/45">
+                <Download className="h-3 w-3" /> Export <ChevronDown className="h-3 w-3 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Export format</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => onExport(chart, { format: 'png', includeAnalysis: true })}>
+                <FileImage className="mr-2 h-3.5 w-3.5 text-primary/80" />
+                <div className="flex flex-col"><span className="text-xs font-semibold">PNG · Full report</span><span className="text-[10px] text-muted-foreground">With title, meta &amp; analysis</span></div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onExport(chart, { format: 'png', includeAnalysis: false })}>
+                <FileImage className="mr-2 h-3.5 w-3.5 text-primary/60" />
+                <div className="flex flex-col"><span className="text-xs font-semibold">PNG · Chart only</span><span className="text-[10px] text-muted-foreground">Raw chart bitmap</span></div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onExport(chart, { format: 'svg' })} disabled={!isLive && !chart.image_data?.startsWith('data:image/svg+xml')}>
+                <FileCode2 className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+                <div className="flex flex-col"><span className="text-xs font-semibold">SVG · Vector</span><span className="text-[10px] text-muted-foreground">{isLive ? 'Re-rendered live from data' : 'Available for legacy SVG charts only'}</span></div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
