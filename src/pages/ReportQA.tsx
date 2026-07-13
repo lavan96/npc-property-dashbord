@@ -93,12 +93,10 @@ import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySetti
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 import { ReportLibraryPicker, type PickedReport } from '@/components/report-qa/ReportLibraryPicker';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
-import { ModelSelector, type ModelProvider } from '@/components/report-qa/ModelSelector';
-import { LiveModelChipGroup, ModelUpgradeButton } from '@/components/agentModels';
+import { LiveModelBadge, LiveModelChipGroup, ModelUpgradeButton } from '@/components/agentModels';
+import { useAgentSurface, type AgentAssignment } from '@/hooks/useAgentModels';
+import { formatModelDisplay } from '@/lib/agentModels/modelDisplay';
 import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
-import { ModelBadge } from '@/components/report-qa/ModelBadge';
-import { ModelSwitchDivider } from '@/components/report-qa/ModelSwitchDivider';
-import { PerplexityCitations } from '@/components/report-qa/PerplexityCitations';
 import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
 import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
@@ -129,7 +127,8 @@ interface ChatMessage {
   timestamp: Date;
   audioUrl?: string; // For voice messages
   attachments?: PDFAttachment[]; // For PDF attachments
-  modelProvider?: ModelProvider | null; // Which AI model generated this message
+  modelProvider?: string | null; // Model Hub agent key / legacy provider for assistant messages
+  modelVersion?: string | null; // Exact model id returned by the backend for historical accuracy
   citations?: string[]; // Perplexity URL citations (legacy)
   documentCitations?: DocumentCitation[]; // Paragraph-level deep-links into uploaded reports
   comparisonMode?: boolean; // True when answer compares ≥2 reports
@@ -138,6 +137,105 @@ interface ChatMessage {
   sent_by?: string | null;
   sent_by_username?: string | null;
   pinned?: boolean; // Phase 5.5 — pinned answers
+}
+
+const REPORT_QA_SLOT_KEYS = ['report_qa', 'report_qa_fast', 'report_qa_deep', 'report_qa_search'] as const;
+const REPORT_QA_SLOT_KEY_SET = new Set<string>(REPORT_QA_SLOT_KEYS);
+
+function supportsAgentToolsForAssignment(assignment: AgentAssignment | null): boolean {
+  if (!assignment) return true;
+  const model = (assignment.model_id || '').toLowerCase();
+  if (assignment.route === 'gateway' || assignment.route === 'openrouter') return true;
+  return assignment.route === 'native' && (
+    model.startsWith('gpt-') ||
+    model.startsWith('o') ||
+    model.startsWith('chatgpt')
+  );
+}
+
+function ReportQAModelSlotSelector({
+  selectedAgentKey,
+  onAgentKeyChange,
+  disabled,
+}: {
+  selectedAgentKey: string;
+  onAgentKeyChange: (agentKey: string) => void;
+  disabled?: boolean;
+}) {
+  const { slots, isLoading } = useAgentSurface('reportQa');
+  const selected = slots.find((slot) => slot.agentKey === selectedAgentKey) ?? slots[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="report-qa-toolbar-control h-11 min-w-11 max-w-full gap-2.5 px-3 text-xs font-semibold shadow-sm sm:h-9 sm:px-3.5"
+          disabled={disabled || isLoading || slots.length === 0}
+          title={`Active Report Q&A slot: ${selected?.slotLabel ?? 'Loading'}`}
+          aria-label={`Select active Report Q&A model slot. Current slot: ${selected?.slotLabel ?? 'Loading'}`}
+        >
+          <span
+            aria-hidden
+            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: selected?.display.accent ?? 'currentColor' }}
+          />
+          <span className="hidden max-w-[12rem] truncate sm:inline">
+            {selected ? `${selected.slotLabel} · ${selected.display.shortLabel}` : 'Loading…'}
+          </span>
+          <span className="sm:hidden">{selected?.slotLabel ?? 'Model'}</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-[min(22rem,calc(100vw-2rem))] border-primary/20 bg-popover/95 p-1.5 shadow-xl backdrop-blur">
+        {slots.map((slot) => (
+          <DropdownMenuItem
+            key={slot.agentKey}
+            onClick={() => onAgentKeyChange(slot.agentKey)}
+            className={cn(
+              'flex items-center gap-3 rounded-xl px-2.5 py-3',
+              selectedAgentKey === slot.agentKey && 'bg-primary/10 text-primary',
+            )}
+          >
+            <span
+              aria-hidden
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10"
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: slot.display.accent }} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium">{slot.slotLabel}</div>
+              <div className="truncate text-xs text-muted-foreground">{slot.display.longLabel}</div>
+            </div>
+            {selectedAgentKey === slot.agentKey && <Check className="h-4 w-4 flex-shrink-0 text-primary" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function MessageModelBadge({ agentKey, modelId }: { agentKey?: string | null; modelId?: string | null }) {
+  if (modelId) {
+    const display = formatModelDisplay(modelId);
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground/90 backdrop-blur-sm"
+        style={{ borderColor: `${display.accent}55` }}
+        title={display.longLabel}
+      >
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: display.accent }} />
+        <span className="max-w-[160px] truncate">{display.shortLabel}</span>
+      </span>
+    );
+  }
+
+  if (agentKey && REPORT_QA_SLOT_KEY_SET.has(agentKey)) {
+    return <LiveModelBadge agentKey={agentKey} size="sm" showSlot />;
+  }
+
+  return null;
 }
 
 interface UploadedReport {
