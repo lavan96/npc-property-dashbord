@@ -33,6 +33,7 @@ interface ChartData {
   chart_type: string;
   title: string;
   image_data: string;
+  chart_config?: any;
   created_at: string;
 }
 
