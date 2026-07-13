@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -629,20 +628,20 @@ export function MessageReportEditor({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="flex h-[min(92dvh,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] w-[min(92vw,1500px)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(92vw,1500px)] sm:p-0 sm:max-h-[calc(100dvh-3rem)] sm:h-[min(92dvh,calc(100dvh-3rem))]">
+        <DialogHeader className="flex-shrink-0 px-5 pb-3 pt-5 pr-14 sm:px-6 sm:pb-4 sm:pt-6 sm:pr-16">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Export Message as PDF
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             Review and edit the message content before exporting as a professional PDF report.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-0">
-            <TabsList className="grid w-full grid-cols-2 mb-4 flex-shrink-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-5 sm:px-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <TabsList className="grid w-full flex-shrink-0 grid-cols-2">
               <TabsTrigger value="edit" className="flex items-center gap-2">
                 <Type className="h-4 w-4" />
                 Edit Content
@@ -653,20 +652,19 @@ export function MessageReportEditor({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="edit" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
-              <ScrollArea className="flex-1 border rounded-md">
-                <Textarea
-                  value={reportContent}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Message content will appear here..."
-                  className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
-                />
-              </ScrollArea>
+            <TabsContent value="edit" className="mt-4 min-h-0 min-w-0 flex-1 overflow-hidden data-[state=active]:flex data-[state=active]:flex-col">
+              <Textarea
+                aria-label="PDF report content editor"
+                value={reportContent}
+                onChange={(e) => handleContentChange(e.target.value)}
+                placeholder="Message content will appear here..."
+                className="h-full min-h-0 w-full min-w-0 resize-none overflow-y-auto whitespace-pre-wrap break-words rounded-md p-4 font-mono text-sm leading-relaxed focus-visible:ring-1 sm:p-5 sm:text-[15px]"
+              />
             </TabsContent>
 
-            <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
-              <div className="flex-1 border rounded-md overflow-y-auto">
-                <div className="p-6">
+            <TabsContent value="preview" className="mt-4 min-h-0 min-w-0 flex-1 overflow-hidden data-[state=active]:flex data-[state=active]:flex-col">
+              <div aria-label="PDF report preview" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-md border bg-muted/20 p-4 sm:p-6">
+                <div className="mx-auto w-full max-w-5xl min-w-0 rounded-md bg-background p-5 shadow-sm sm:p-8 [&_*]:max-w-full [&_a]:break-words [&_td]:break-words [&_th]:break-words">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {reportContent}
                   </ReactMarkdown>
@@ -676,8 +674,8 @@ export function MessageReportEditor({
           </Tabs>
         </div>
 
-        <DialogFooter className="flex-shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <DialogFooter className="flex flex-shrink-0 flex-col gap-3 border-t px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:space-x-0 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
             {hasEdited && (
               <Badge variant="outline" className="text-warning border-warning/30 text-xs">
                 Unsaved edits
@@ -688,7 +686,7 @@ export function MessageReportEditor({
             </span>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button 
               variant="outline" 
               size="sm"
