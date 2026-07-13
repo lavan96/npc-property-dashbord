@@ -179,10 +179,9 @@ function renderBar(ctx: InnerCtx, opts: { stacked?: boolean; horizontal?: boolea
           {model.series.length === 1 && model.pieSlices
             ? model.pieSlices.map((slice, idx) => <Cell key={idx} fill={slice.fill} />)
             : null}
-          {!isCard && model.series.length === 1 && !stacked && !ctx.model.horizontal ? (
+          {!isCard && model.series.length === 1 && !stacked && !horizontal ? (
             <LabelList dataKey={s.key} position="top" style={{ fontSize: labelSize, fill: '#111827', fontWeight: 700 }} />
           ) : null}
-          {i}
         </Bar>
       ))}
     </BarChart>
