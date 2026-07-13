@@ -155,6 +155,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const cfg = getChartTypeConfig(chart.chart_type);
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const isLive = canNormaliseChartConfig(chart);
 
   return (
     <Card className={`${PREMIUM_CHART_CARD_CLASS} flex flex-col h-full min-h-[410px] sm:min-h-[430px] ${selectionMode ? 'border-brand-300/45 ring-1 ring-brand-300/25 hover:ring-brand-300/45' : ''} ${selectionMode && isSelected ? 'border-brand-300/90 bg-gradient-to-b from-brand-500/12 via-card/95 to-card/85 ring-2 ring-brand-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
