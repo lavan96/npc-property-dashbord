@@ -471,7 +471,6 @@ function extractTextFromPdfBytes(pdfBytes: Uint8Array, simplified: boolean): str
           console.log(`[PDF-Extract] TJ array early exit (timeout protection)`);
           break;
         }
-      }
     }
     
     console.log(`[PDF-Extract] Extracted ${matchCount} text segments in ${Date.now() - startTime}ms`);
