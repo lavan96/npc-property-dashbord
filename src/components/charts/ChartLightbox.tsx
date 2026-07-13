@@ -3,15 +3,17 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X, FileImage, FileCode2, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getChartTypeConfig, renderChartImage, type ChartData } from './ChartCard';
+import { canNormaliseChartConfig } from './kernel';
 
 interface ChartLightboxProps {
   chart: ChartData | null;
   onClose: () => void;
-  onExport: (chart: ChartData) => void;
+  onExport: (chart: ChartData, options?: { format?: 'png' | 'svg'; includeAnalysis?: boolean } | boolean) => void;
   exporting?: boolean;
   onPrev?: () => void;
   onNext?: () => void;
@@ -157,10 +159,31 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
               <p className="text-xs font-medium text-foreground/70">
                 Use <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Esc</kbd> to close and <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">←</kbd> <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">→</kbd> to navigate.
               </p>
-              <Button variant="outline" size="sm" className="group inline-flex h-11 w-full items-center justify-center gap-2.5 rounded-full border-brand-300/45 bg-gradient-to-r from-background/95 via-brand-50/80 to-background/95 px-4 font-semibold text-foreground shadow-[0_10px_28px_rgba(217,119,6,0.13)] ring-1 ring-brand-200/25 transition-all hover:-translate-y-0.5 hover:border-brand-400/70 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_16px_34px_rgba(217,119,6,0.20)] focus-visible:ring-2 focus-visible:ring-brand-300/80 focus-visible:ring-offset-2 dark:from-background/85 dark:via-brand-400/10 dark:to-background/85 dark:hover:bg-brand-400/15 dark:hover:text-brand-200 sm:w-auto" onClick={() => onExport(chart)} disabled={exporting} aria-label={`Export ${chart.title} as PNG`}>
-                <Download className="h-4 w-4 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-                <span>{exporting ? 'Exporting…' : 'Export as PNG'}</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="group inline-flex h-11 w-full items-center justify-center gap-2.5 rounded-full border-brand-300/45 bg-gradient-to-r from-background/95 via-brand-50/80 to-background/95 px-4 font-semibold text-foreground shadow-[0_10px_28px_rgba(217,119,6,0.13)] ring-1 ring-brand-200/25 transition-all hover:-translate-y-0.5 hover:border-brand-400/70 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_16px_34px_rgba(217,119,6,0.20)] focus-visible:ring-2 focus-visible:ring-brand-300/80 focus-visible:ring-offset-2 dark:from-background/85 dark:via-brand-400/10 dark:to-background/85 dark:hover:bg-brand-400/15 dark:hover:text-brand-200 sm:w-auto" disabled={exporting} aria-label={`Export ${chart.title}`}>
+                    <Download className="h-4 w-4 shrink-0 transition-transform group-hover:-translate-y-0.5" />
+                    <span>{exporting ? 'Exporting…' : 'Export'}</span>
+                    <ChevronDown className="h-3 w-3 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Export format</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => onExport(chart, { format: 'png', includeAnalysis: true })}>
+                    <FileImage className="mr-2 h-3.5 w-3.5 text-primary/80" />
+                    <div className="flex flex-col"><span className="text-xs font-semibold">PNG · Full report</span><span className="text-[10px] text-muted-foreground">With title, meta &amp; analysis</span></div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onExport(chart, { format: 'png', includeAnalysis: false })}>
+                    <FileImage className="mr-2 h-3.5 w-3.5 text-primary/60" />
+                    <div className="flex flex-col"><span className="text-xs font-semibold">PNG · Chart only</span><span className="text-[10px] text-muted-foreground">Raw chart bitmap</span></div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onExport(chart, { format: 'svg' })} disabled={!canNormaliseChartConfig(chart) && !chart.image_data?.startsWith('data:image/svg+xml')}>
+                    <FileCode2 className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+                    <div className="flex flex-col"><span className="text-xs font-semibold">SVG · Vector</span><span className="text-[10px] text-muted-foreground">{canNormaliseChartConfig(chart) ? 'Re-rendered live from data' : 'Legacy SVG charts only'}</span></div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </DialogPrimitive.Content>
