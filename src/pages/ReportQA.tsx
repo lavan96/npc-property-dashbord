@@ -172,7 +172,7 @@ function ReportQAModelSlotSelector({
         <Button
           variant="outline"
           size="sm"
-          className="report-qa-toolbar-control h-11 min-w-11 max-w-full gap-2.5 px-3 text-xs font-semibold shadow-sm sm:h-9 sm:px-3.5"
+          className="report-qa-toolbar-control h-9 min-w-9 max-w-full gap-2 px-3 text-xs font-semibold shadow-sm sm:px-3.5"
           disabled={disabled || isLoading || slots.length === 0}
           title={`Active Report Q&A slot: ${selected?.slotLabel ?? 'Loading'}`}
           aria-label={`Select active Report Q&A model slot. Current slot: ${selected?.slotLabel ?? 'Loading'}`}
@@ -1955,20 +1955,20 @@ export default function ReportQA() {
       <DashboardThemeFrame
         as="main"
         variant="page"
-        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-3 sm:p-3 sm:pb-16 md:h-[calc(100dvh-8.25rem)] md:max-h-[calc(100dvh-8.25rem)] md:gap-3.5 md:overflow-hidden md:p-4 md:pb-0 xl:h-[calc(100dvh-8.75rem)] xl:max-h-[calc(100dvh-8.75rem)]"
+        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-2.5 sm:p-3 sm:pb-16 md:h-[calc(100dvh-6.5rem)] md:max-h-[calc(100dvh-6.5rem)] md:gap-3 md:overflow-hidden md:p-3.5 md:pb-0 xl:h-[calc(100dvh-7rem)] xl:max-h-[calc(100dvh-7rem)]"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3 md:flex-row md:items-center md:px-5 md:py-3.5">
-        <div className="min-w-0 space-y-1.5">
-          <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
-            <Sparkles className="h-3 w-3" />
-            AI Report Intelligence
+      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:flex-row md:items-center md:gap-3 md:px-5 md:py-2.5">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <span className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em]">
+              <Sparkles className="h-3 w-3" />
+              AI Report Intelligence
+            </span>
+            <h1 className="text-lg sm:text-xl md:text-[1.5rem] font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
           </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-[1.7rem] font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
-          </div>
-          <p className="report-qa-subtitle max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+          <p className="report-qa-subtitle max-w-2xl text-[11px] leading-[1.35] text-muted-foreground sm:text-xs">
             Upload investment reports and ask questions to generate summaries, comparisons and citation-backed insights.
           </p>
         </div>
@@ -2015,30 +2015,30 @@ export default function ReportQA() {
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
         <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[16rem] p-0 md:max-h-[44dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
-          <CardHeader className="report-qa-reports-header px-3 py-3 pb-3 sm:px-4 sm:py-3.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 space-y-1">
-                <CardTitle className="flex items-center gap-2 text-base tracking-tight">
-                  <span className="report-qa-reports-icon flex h-7 w-7 items-center justify-center rounded-xl">
+          <CardHeader className="report-qa-reports-header px-3 py-2.5 pb-2.5 sm:px-4 sm:py-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="flex min-w-0 items-center gap-2 text-base tracking-tight">
+                  <span className="report-qa-reports-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-xl">
                     <FileText className="h-4 w-4" />
                   </span>
-                  <span>Reports</span>
+                  <span className="truncate">Reports</span>
                   {uploadedReports.length > 0 && (
-                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                       {uploadedReports.length}
                     </span>
                   )}
                 </CardTitle>
-                <p className="text-[11px] leading-4 text-muted-foreground">
-                  Add PDFs or saved reports to ground the assistant in source material.
-                </p>
+                <ReportLibraryPicker
+                  onAdd={handleLibraryAdd}
+                  existingNames={uploadedReports.map((r) => r.name)}
+                  disabled={isUploading}
+                  className="report-qa-library-button h-8 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
+                />
               </div>
-              <ReportLibraryPicker
-                onAdd={handleLibraryAdd}
-                existingNames={uploadedReports.map((r) => r.name)}
-                disabled={isUploading}
-                className="report-qa-library-button h-8 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
-              />
+              <p className="text-[11px] leading-4 text-muted-foreground">
+                Add PDFs or saved reports to ground the assistant in source material.
+              </p>
             </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col space-y-3 min-h-0 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
