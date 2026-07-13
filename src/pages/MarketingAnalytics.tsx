@@ -32,6 +32,8 @@ import { CreativeGalleryPanel } from '@/components/marketing/CreativeGalleryPane
 import { SpendPacingPanel } from '@/components/marketing/SpendPacingPanel';
 import { FullFunnelPanel } from '@/components/marketing/FullFunnelPanel';
 import { TrueROIPanel } from '@/components/marketing/TrueROIPanel';
+import { LiveModelBadge, ModelUpgradeButton } from '@/components/agentModels';
+
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
@@ -451,7 +453,16 @@ export default function MarketingAnalytics() {
               </div>
               <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Marketing Analytics</h1>
               <p className="mt-1 text-sm text-muted-foreground">AI-powered marketing performance insights</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <LiveModelBadge agentKey="meta_ads_analysis" size="sm" showSlot />
+                <LiveModelBadge agentKey="meta_ads_digest" size="sm" showSlot />
+                <LiveModelBadge agentKey="meta_ads_forecast" size="sm" showSlot />
+                <LiveModelBadge agentKey="meta_ads_lead_quality" size="sm" showSlot />
+                <ModelUpgradeButton agentKey="meta_ads_analysis" />
+              </div>
+
             </div>
+
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
             <div className="rounded-2xl border border-border/60 bg-background/55 px-3 py-2 text-xs shadow-sm backdrop-blur dark:border-white/10">

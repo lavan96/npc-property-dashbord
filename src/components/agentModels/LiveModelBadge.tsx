@@ -35,7 +35,9 @@ export function LiveModelBadge({
   size = 'md',
   className,
 }: LiveModelBadgeProps) {
-  const { assignment, display, slotLabel } = useAgentModel(agentKey);
+  const { assignment, display, slotLabel, surfaceLabel } = useAgentModel(agentKey);
+  const slotDisplay = slotLabel === 'Primary' && surfaceLabel ? surfaceLabel : slotLabel;
+
   const loading = !assignment && display.raw === '';
 
   // Pulse: brief glow when the Model Hub repoints this agent_key at runtime.
@@ -87,9 +89,10 @@ export function LiveModelBadge({
       )}
       {showSlot && (
         <span className="text-muted-foreground uppercase tracking-wide text-[10px]">
-          {slotLabel}
+          {slotDisplay}
         </span>
       )}
+
       <span className="truncate max-w-[180px]">
         {loading ? 'Loading…' : display.shortLabel}
       </span>

@@ -37,9 +37,11 @@ export type ResolvedSlot = {
   agentKey: string;
   slotLabel: string;
   slotDescription?: string;
+  surfaceLabel?: string;
   assignment: AgentAssignment | null;
   display: ModelDisplay;
 };
+
 
 const QUERY_KEY = ['agent-model-assignments'] as const;
 
@@ -163,10 +165,12 @@ export function useAgentModel(agentKey: string): ResolvedSlot {
     agentKey,
     slotLabel: meta?.slot.slotLabel ?? 'Primary',
     slotDescription: meta?.slot.slotDescription,
+    surfaceLabel: meta?.surface.label,
     assignment,
     display: formatModelDisplay(assignment?.model_id),
   };
 }
+
 
 /** Resolve every slot on a surface (e.g. Report Q&A → 4 slots). */
 export function useAgentSurface(surfaceId: AgentSurfaceId): {
@@ -184,9 +188,11 @@ export function useAgentSurface(surfaceId: AgentSurfaceId): {
           agentKey: slot.key,
           slotLabel: slot.slotLabel,
           slotDescription: slot.slotDescription,
+          surfaceLabel: surface.label,
           assignment,
           display: formatModelDisplay(assignment?.model_id),
         };
+
       }),
     [byKey, surface],
   );

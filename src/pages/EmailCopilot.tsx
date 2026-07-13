@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { LiveModelBadge, ModelUpgradeButton } from '@/components/agentModels';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -1815,7 +1817,12 @@ export default function EmailCopilot() {
               )}
             </h1>
             <p className="text-xs md:text-sm text-muted-foreground/90 hidden sm:block">AI-powered email summaries & draft replies</p>
+            <div className="mt-1.5 hidden flex-wrap items-center gap-1.5 sm:flex">
+              <LiveModelBadge agentKey="email_copilot" size="sm" showSlot />
+              <ModelUpgradeButton agentKey="email_copilot" />
+            </div>
           </div>
+
         </div>
         <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end rounded-2xl border border-primary/10 bg-background/35 p-1.5 shadow-inner shadow-sm dark:shadow-black/10 md:gap-2.5">
           {/* Notification toggles */}

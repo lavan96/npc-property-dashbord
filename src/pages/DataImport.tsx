@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { LiveModelBadge, ModelUpgradeButton } from "@/components/agentModels";
+
 import { useModulePermissions } from "@/hooks/useModulePermissions";
 import {
   Card,
@@ -440,7 +442,13 @@ export default function DataImport() {
               <p className="max-w-3xl pt-1 text-sm leading-6 text-muted-foreground sm:text-base">
                 Upload CSV files to populate cache tables and directories
               </p>
+              <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                <LiveModelBadge agentKey="pdf_property_extraction" size="sm" showSlot />
+                <LiveModelBadge agentKey="pdf_vownet_extraction" size="sm" showSlot />
+                <ModelUpgradeButton agentKey="pdf_property_extraction" />
+              </div>
             </div>
+
           </div>
           <div className="grid min-w-0 gap-2 rounded-2xl border border-border/60 bg-background/55 p-3 text-xs text-muted-foreground shadow-sm backdrop-blur sm:grid-cols-3 lg:min-w-[28rem]">
             <div className="min-w-0 rounded-xl bg-card/70 p-3">
