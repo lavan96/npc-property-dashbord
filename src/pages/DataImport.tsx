@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { LiveModelBadge, ModelUpgradeButton } from "@/components/agentModels";
+
 import { useModulePermissions } from "@/hooks/useModulePermissions";
 import {
   Card,
