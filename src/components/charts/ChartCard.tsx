@@ -31,7 +31,7 @@ interface ChartCardProps {
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onExpand: (chart: ChartData) => void;
-  onExport: (chart: ChartData) => void;
+  onExport: (chart: ChartData, options?: { format?: 'png' | 'svg'; includeAnalysis?: boolean } | boolean) => void;
   onDelete?: (chart: ChartData) => void;
   selectionMode: boolean;
 }
