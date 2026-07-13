@@ -1955,7 +1955,7 @@ export default function ReportQA() {
       <DashboardThemeFrame
         as="main"
         variant="page"
-        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-3 sm:p-3 sm:pb-16 md:h-[calc(100dvh-8.25rem)] md:max-h-[calc(100dvh-8.25rem)] md:gap-3.5 md:overflow-hidden md:p-4 md:pb-0 xl:h-[calc(100dvh-8.75rem)] xl:max-h-[calc(100dvh-8.75rem)]"
+        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-2.5 sm:p-3 sm:pb-16 md:h-[calc(100dvh-6.5rem)] md:max-h-[calc(100dvh-6.5rem)] md:gap-3 md:overflow-hidden md:p-3.5 md:pb-0 xl:h-[calc(100dvh-7rem)] xl:max-h-[calc(100dvh-7rem)]"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
