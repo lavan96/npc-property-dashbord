@@ -1646,7 +1646,12 @@ export default function UserGuide() {
                 <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
                   Complete guide to navigating and using your dashboard
                 </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <LiveModelBadge agentKey="user_guide_assistant" size="sm" showSlot />
+                  <ModelUpgradeButton agentKey="user_guide_assistant" />
+                </div>
               </div>
+
             </div>
           </div>
         </div>
