@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { AURORA_GOLD_PALETTE, colorAt } from '@/components/charts/kernel/palettes';
 
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
