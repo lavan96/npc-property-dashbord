@@ -61,7 +61,11 @@ export function getAgentPulse(agentKey: string): number | undefined {
   return pulseMap.get(agentKey);
 }
 
+let sharedChannel: ReturnType<typeof supabase.channel> | null = null;
+let subscribers = 0;
+
 async function fetchAssignments(): Promise<AgentAssignment[]> {
+
   const { data, error } = await supabase.functions.invoke('agent-models-read', {
     body: { action: 'list' },
   });
