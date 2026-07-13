@@ -35,7 +35,9 @@ export function LiveModelBadge({
   size = 'md',
   className,
 }: LiveModelBadgeProps) {
-  const { assignment, display, slotLabel } = useAgentModel(agentKey);
+  const { assignment, display, slotLabel, surfaceLabel } = useAgentModel(agentKey);
+  const slotDisplay = slotLabel === 'Primary' && surfaceLabel ? surfaceLabel : slotLabel;
+
   const loading = !assignment && display.raw === '';
 
   // Pulse: brief glow when the Model Hub repoints this agent_key at runtime.
