@@ -38,6 +38,25 @@ export function LiveModelBadge({
   const { assignment, display, slotLabel } = useAgentModel(agentKey);
   const loading = !assignment && display.raw === '';
 
+  // Pulse: brief glow when the Model Hub repoints this agent_key at runtime.
+  const [pulsed, setPulsed] = useState(false);
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const unsub = subscribeAgentPulse(() => {
+      const ts = getAgentPulse(agentKey);
+      if (!ts) return;
+      if (Date.now() - ts > 2000) return;
+      setPulsed(true);
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => setPulsed(false), 2000);
+    });
+    return () => {
+      unsub();
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [agentKey]);
+
+
   const dot = (
     <span
       aria-hidden
