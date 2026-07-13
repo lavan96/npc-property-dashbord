@@ -765,7 +765,9 @@ export default function WhiteLabel() {
       };
       setShowLeavePrompt(true);
     }
-  }, [blocker]);
+    // Depend only on blocker.state — the hook returns a fresh object literal
+    // each render, so `[blocker]` would fire this effect on every render.
+  }, [blocker.state, blocker.proceed, blocker.reset]);
 
   useEffect(() => {
     if (!hasChanges) return;
