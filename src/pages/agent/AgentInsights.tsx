@@ -18,6 +18,7 @@ import ReactMarkdown from 'react-markdown';
 import { AurixaMark } from '@/components/agent/AurixaMark';
 import { AurixaSectionHeader } from '@/components/agent/AurixaSectionHeader';
 import { StatusPill, type StatusPillTone } from '@/components/agent/StatusPill';
+import { LiveModelBadge } from '@/components/agentModels';
 
 type Severity = 'info' | 'success' | 'warning' | 'critical';
 

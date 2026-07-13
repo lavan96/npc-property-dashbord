@@ -252,7 +252,8 @@ export default function MarketUpdates() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="bg-primary/15 text-primary hover:bg-primary/20">AI Market Intelligence</Badge>
                 <Badge variant="outline">Australia · RBA · APRA · Treasury</Badge>
-                <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" />Gemini 3 Flash</Badge>
+                <LiveModelBadge agentKey="market_qa" size="sm" showSlot={false} />
+                <LiveModelBadge agentKey="market_digest" size="sm" showSlot={false} />
               </div>
               <h1 className="text-3xl font-bold tracking-tight md:text-5xl">Market Updates</h1>
               <p className="max-w-3xl text-sm text-muted-foreground md:text-base">

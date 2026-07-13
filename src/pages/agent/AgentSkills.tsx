@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import AurixaMark from '@/components/agent/AurixaMark';
 import AurixaSectionHeader from '@/components/agent/AurixaSectionHeader';
 import StatusPill from '@/components/agent/StatusPill';
+import { LiveModelBadge } from '@/components/agentModels';
 
 interface Skill {
   id: string;

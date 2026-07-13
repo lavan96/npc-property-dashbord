@@ -719,7 +719,7 @@ export function AgentChatWidget() {
           <AurixaMark size="sm" state={loading ? 'thinking' : 'idle'} />
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="font-heading text-[15px] font-semibold tracking-tight text-foreground">Aurixa</span>
-            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Gemini · Live</span>
+            <LiveModelBadge agentKey="dashboard_agent" size="sm" showSlot={false} />
           </div>
         </div>
         <div className="flex items-center gap-0.5">
