@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { LiveModelBadge, ModelUpgradeButton } from '@/components/agentModels';
+
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
