@@ -130,10 +130,9 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
  *
  * Handoff-minted deep links already point here (Mission Control mints them
  * against its PUBLIC_PRICING_SITE_URL); this constant is the LAST-RESORT
- * fallback when the handoff mint is unavailable. Override per deployment to
- * the production storefront domain.
+ * fallback when the handoff mint is unavailable.
  */
-export const AURIXA_PRICING_URL = "https://aurixa-systems.lovable.app/pricing";
+export const AURIXA_PRICING_URL = "https://aurixa-systems.com.au/pricing";
 
 export function openMissionControl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
