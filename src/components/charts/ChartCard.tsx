@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { AlertTriangle, Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { LiveChartRenderer, canRenderLiveChart } from './ChartRenderer';
 
 export interface ChartData {
   id: string;
@@ -106,7 +107,10 @@ function ChartBitmapImage({ chart }: { chart: ChartData }) {
   );
 }
 
-function renderChartImage(chart: ChartData) {
+export function renderChartImage(chart: ChartData, variant: 'card' | 'expanded' | 'export' = 'card') {
+  if (variant !== 'card' && canRenderLiveChart(chart)) {
+    return <LiveChartRenderer chart={chart} variant={variant} />;
+  }
   if (!chart.image_data) {
     return (
       <ChartImageErrorState
@@ -229,7 +233,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
           }}
         >
           <div className="relative flex aspect-[16/10] w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-3 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.006] sm:p-4 dark:border-white/10 dark:bg-white dark:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08),inset_0_12px_28px_rgba(15,23,42,0.035)] [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
-            {renderChartImage(chart)}
+            {renderChartImage(chart, 'card')}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-border/5 transition-all duration-300 group-hover/img:ring-brand-400/25 dark:ring-white/10" />
           {selectionMode && (
@@ -296,4 +300,3 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   );
 }
 
-export { renderChartImage, CHART_TYPE_CONFIG };

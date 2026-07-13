@@ -44,7 +44,7 @@ export default function Charts() {
   // Delete confirmation
   const [chartToDelete, setChartToDelete] = useState<ChartData | null>(null);
 
-  const { exportSingle, exportBulk } = useChartExport();
+  const { exportSingle, exportBulk, exporting } = useChartExport();
 
   const fetchCharts = useCallback(async () => {
     try {
@@ -54,7 +54,7 @@ export default function Charts() {
         operation: 'list',
         table: 'charts',
         listOptions: {
-          select: 'id, chart_type, title, image_data, created_at, report_id',
+          select: 'id, chart_type, title, image_data, created_at, report_id, chart_config',
           orderBy: 'created_at',
           orderAsc: false,
           limit: 100,
@@ -564,6 +564,7 @@ export default function Charts() {
         {/* Lightbox (includes keyboard navigation — Enhancement #3) */}
       <ChartLightbox
         chart={expandedChart}
+        exporting={exporting}
         onClose={() => setExpandedChart(null)}
         onExport={exportSingle}
         onPrev={handleLightboxPrev}
