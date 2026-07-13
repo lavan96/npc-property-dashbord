@@ -742,23 +742,70 @@ export default function ReportQA() {
     }
   };
 
-  const mapStoredMessage = (m: any): ChatMessage => ({
-    id: m.id,
-    role: m.role,
-    content: m.content,
-    timestamp: new Date(m.created_at),
-    audioUrl: m.audio_url || undefined,
-    attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
-    sent_by: m.sent_by || null,
-    sent_by_username: m.sent_by_username || null,
-    modelProvider: m.model_provider || null,
-    citations: Array.isArray(m.url_citations) ? m.url_citations : undefined,
-    documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
-    comparisonMode: !!m.comparison_mode,
-    toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
-    aiFollowups: Array.isArray(m.ai_followups) ? m.ai_followups : undefined,
-    pinned: !!m.pinned,
-  });
+  const parseStoredMessageContent = (content: unknown): string => {
+    if (typeof content === 'string') {
+      const trimmed = content.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (typeof parsed === 'string') return parsed;
+          if (parsed && typeof parsed === 'object') {
+            const candidate = (parsed as { content?: unknown; text?: unknown; message?: unknown }).content
+              ?? (parsed as { text?: unknown }).text
+              ?? (parsed as { message?: unknown }).message;
+            if (typeof candidate === 'string') return candidate;
+          }
+        } catch {
+          // Stored markdown can legitimately look JSON-ish; keep the original string.
+        }
+      }
+      return content;
+    }
+
+    if (content && typeof content === 'object') {
+      const candidate = (content as { content?: unknown; text?: unknown; message?: unknown }).content
+        ?? (content as { text?: unknown }).text
+        ?? (content as { message?: unknown }).message;
+      if (typeof candidate === 'string') return candidate;
+    }
+
+    return '';
+  };
+
+  const normaliseStoredMessages = (storedMessages: any[]): ChatMessage[] => {
+    const seen = new Set<string>();
+
+    return storedMessages
+      .map((m): ChatMessage | null => {
+        if (!m || (m.role !== 'user' && m.role !== 'assistant')) return null;
+
+        const id = String(m.id || `${m.conversation_id || 'message'}-${m.created_at || Date.now()}-${seen.size}`);
+        if (seen.has(id)) return null;
+        seen.add(id);
+
+        const timestamp = new Date(m.created_at || m.inserted_at || Date.now());
+
+        return {
+          id,
+          role: m.role,
+          content: parseStoredMessageContent(m.content),
+          timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
+          audioUrl: m.audio_url || undefined,
+          attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
+          sent_by: m.sent_by || null,
+          sent_by_username: m.sent_by_username || null,
+          modelProvider: m.model_provider || null,
+          citations: Array.isArray(m.url_citations) ? m.url_citations : undefined,
+          documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
+          comparisonMode: !!m.comparison_mode,
+          toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
+          aiFollowups: Array.isArray(m.ai_followups) ? m.ai_followups : undefined,
+          pinned: !!m.pinned,
+        };
+      })
+      .filter((message): message is ChatMessage => !!message)
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  };
 
   const loadConversation = async (conv: SavedConversation) => {
     if (restoringConversationId) return;
@@ -795,9 +842,7 @@ export default function ReportQA() {
 
       const reportNames = Array.isArray(conversation.report_names) ? conversation.report_names : conv.report_names || [];
       const reportContents = Array.isArray(conversation.report_contents) ? conversation.report_contents : [];
-      const restoredMessages = messagesToSet
-        .map(mapStoredMessage)
-        .sort((a: ChatMessage, b: ChatMessage) => a.timestamp.getTime() - b.timestamp.getTime());
+      const restoredMessages = normaliseStoredMessages(messagesToSet);
 
       setConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
@@ -809,6 +854,13 @@ export default function ReportQA() {
         uploadedAt: new Date(conversation.created_at || conv.created_at),
       })));
       setMessages(restoredMessages);
+      if (import.meta.env.DEV && restoredMessages.length !== messagesToSet.length) {
+        console.warn('[ReportQA] Some stored messages were skipped during restoration because they were invalid or unsupported.', {
+          conversationId: conv.id,
+          returned: messagesToSet.length,
+          restored: restoredMessages.length,
+        });
+      }
       setSavedConversations(prev => prev.map(c => c.id === conv.id ? {
         ...c,
         title: conversation.title || conv.title,
@@ -865,19 +917,7 @@ export default function ReportQA() {
 
       if (error) throw error;
 
-      const olderMessages = data.messages.map((m: any) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        timestamp: new Date(m.created_at),
-        sent_by: m.sent_by || null,
-        sent_by_username: m.sent_by_username || null,
-        modelProvider: m.model_provider || null,
-        documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
-        comparisonMode: !!m.comparison_mode,
-        toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
-        pinned: !!m.pinned,
-      }));
+      const olderMessages = normaliseStoredMessages(Array.isArray(data.messages) ? data.messages : []);
 
       // Prepend older messages, deduplicating by id
       setMessages(prev => {
@@ -2153,9 +2193,10 @@ export default function ReportQA() {
         {/* Chat Section */}
         <DashboardThemeFrame as="section" variant="section" className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 p-0", showReportsPanel ? "" : "lg:col-span-2")}>
           <CardHeader className="report-qa-chat-header shrink-0 px-3 py-2.5 pb-2.5 sm:px-4 sm:py-3 sm:pb-2.5">
-            {/* Mobile: single compact row — title + model + overflow menu */}
-            <div className="flex items-center gap-2 sm:hidden">
-              {!showReportsPanel && (
+            {/* Mobile: stacked title row above toolbar controls */}
+            <div className="flex flex-col gap-2 sm:hidden">
+              <div className="flex min-w-0 items-center gap-2">
+                {!showReportsPanel && (
                 <Button variant="ghost" size="icon" className="h-11 w-11 flex-shrink-0" onClick={handleToggleReportsPanel}>
                   <FileText className="h-3.5 w-3.5" />
                 </Button>
@@ -2165,11 +2206,11 @@ export default function ReportQA() {
                   <MessageSquare className="h-4 w-4" />
                 </span>
                 {isEditingMainTitle && conversationId ? (
-                  <div className="flex items-center gap-1 flex-1">
+                  <div className="flex min-w-0 items-center gap-1 flex-1">
                     <Input
                       value={mainTitleEdit}
                       onChange={(e) => setMainTitleEdit(e.target.value)}
-                      className="h-7 text-xs flex-1"
+                      className="h-7 min-w-0 flex-1 text-xs"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSaveTitle(conversationId, mainTitleEdit);
@@ -2182,7 +2223,8 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <span 
-                    className="text-sm font-semibold tracking-tight truncate cursor-pointer"
+                    className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight cursor-pointer"
+                    title={getCurrentTitle()}
                     onClick={() => {
                       if (conversationId) {
                         setMainTitleEdit(getCurrentTitle());
@@ -2194,11 +2236,13 @@ export default function ReportQA() {
                   </span>
                 )}
               </div>
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-                disabled={isProcessing}
-              />
+              </div>
+              <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/40 px-2 py-1">
+                <ModelSelector
+                  selectedModel={selectedModel}
+                  onModelChange={setSelectedModel}
+                  disabled={isProcessing}
+                />
               {/* Mobile overflow menu for all toolbar actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -2243,6 +2287,7 @@ export default function ReportQA() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
             </div>
 
             {/* Desktop/tablet: conversation information row above toolbar controls */}
@@ -2375,13 +2420,7 @@ export default function ReportQA() {
           </CardHeader>
           <CardContent id="chat-main" className="report-qa-chat-content flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-2 sm:px-3 sm:pb-3">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite" aria-busy={!!restoringConversationId}>
-              {restoringConversationId && (
-                <div className="mb-3 flex items-center gap-2 rounded-xl border bg-muted/30 px-3 py-2 text-sm text-muted-foreground" role="status">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading selected conversation…
-                </div>
-              )}
+            <ScrollArea ref={scrollAreaRef} className={cn("report-qa-message-area mb-2 min-h-0 flex-1 pr-1 sm:mb-2 sm:pr-2", messages.length === 0 && !restoringConversationId && "report-qa-message-area-empty")} aria-label="Chat messages" role="log" aria-live="polite" aria-busy={!!restoringConversationId}>
               {conversationRestoreError && (
                 <div className="mb-3 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -2406,7 +2445,17 @@ export default function ReportQA() {
                   </Button>
                 </div>
               )}
-              {messages.length === 0 ? (
+              {restoringConversationId ? (
+                <div className="report-qa-empty-state flex min-h-[12rem] items-center justify-center p-3 text-center sm:min-h-[15rem] sm:p-4" role="status">
+                  <div className="report-qa-empty-card space-y-3">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                    <div className="space-y-1">
+                      <p className="report-qa-empty-title">Loading conversation…</p>
+                      <p className="report-qa-empty-helper">Restoring the saved questions, answers, and report context.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="report-qa-empty-state flex min-h-[12rem] items-center justify-center p-3 text-center sm:min-h-[15rem] sm:p-4">
                   <div className="report-qa-empty-card space-y-3">
                     <div className="report-qa-empty-icon-wrap" aria-hidden="true">
