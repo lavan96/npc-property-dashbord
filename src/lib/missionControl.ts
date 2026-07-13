@@ -132,7 +132,7 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
  * against its PUBLIC_PRICING_SITE_URL); this constant is the LAST-RESORT
  * fallback when the handoff mint is unavailable.
  */
-export const AURIXA_PRICING_URL = "https://aurixa-systems.com.au/pricing";
+export const AURIXA_PRICING_URL = "https://www.aurixasystems.com.au/pricing";
 
 export function openMissionControl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
