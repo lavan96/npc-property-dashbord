@@ -1889,119 +1889,75 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         }
 
         // -----------------------------------------------------------------
-        // Existing non-agent streaming path (unchanged)
+        // Non-agent streaming path — route through live Model Hub assignment
+        // with assignment fallback_chain support instead of hardcoded models.
         // -----------------------------------------------------------------
-        let response: Response;
-        let citations: string[] = [];
-        
-        if (modelProvider === 'perplexity') {
-          // Use Perplexity API directly
-          if (!PERPLEXITY_API_KEY) {
-            throw new Error("PERPLEXITY_API_KEY is not configured");
-          }
-          
-          response = await fetchUpstreamWithRetry("https://api.perplexity.ai/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "sonar-pro",
-              messages,
-              max_tokens: 8192,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'perplexity-stream' });
-        } else if (modelProvider === 'openai-direct') {
-          // Use OpenAI API directly (bypasses Lovable AI Gateway)
-          if (!OPENAI_API_KEY) {
-            throw new Error("OPENAI_API_KEY is not configured");
-          }
-          
-          console.log(`[report-qa] Using direct OpenAI API`);
-          response = await fetchUpstreamWithRetry("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${OPENAI_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "gpt-4.1",
-              messages,
-              max_completion_tokens: 32768,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'openai-direct-stream' });
-        } else if (modelProvider === 'gemini') {
-          // Use Lovable AI Gateway with Gemini Pro (large context window)
-          console.log(`[report-qa] Using Gemini Pro via Lovable AI Gateway`);
-          response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-3.1-pro-preview",
-              messages,
-              max_tokens: 65536,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'gemini-stream' });
-        } else {
-          // Use Lovable AI Gateway with GPT-5.2 (OpenAI)
-          response = await fetchUpstreamWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "openai/gpt-5.2",
-              messages,
-              max_completion_tokens: 16384,
-              stream: true,
-              stream_options: { include_usage: true },
-            }),
-          }, { label: 'gpt5-stream' });
-        }
+        let response: Response | null = null;
+        let streamModelName = modelVersion;
+        let streamRoute = modelRoute;
+        let streamServiceName = modelFamilyServiceName(modelVersion, modelRoute);
+        let lastFailureStatus = 500;
+        let lastFailureText = '';
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[report-qa] Chat error (${modelProvider}): ${response.status} - ${errorText}`);
-          
-          if (response.status === 429) {
+        for (const attempt of reportQAModelChain(modelAssignment)) {
+          const config = buildOpenAICompatibleChatConfig(attempt, {
+            lovable: LOVABLE_API_KEY,
+            openai: OPENAI_API_KEY,
+            perplexity: PERPLEXITY_API_KEY,
+            openrouter: OPENROUTER_API_KEY,
+          });
+          console.log(`[report-qa] Streaming via ${attempt.agent_key}: ${attempt.route}/${attempt.model_id}`);
+
+          const candidate = await fetchUpstreamWithRetry(config.endpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${config.apiKey}`,
+              "Content-Type": "application/json",
+              ...(config.extraHeaders ?? {}),
+            },
+            body: JSON.stringify(buildChatCompletionBody(attempt, messages, true, config)),
+          }, { label: `${attempt.route}:${attempt.model_id}-stream` });
+
+          if (candidate.ok) {
+            response = candidate;
+            streamModelName = attempt.model_id;
+            streamRoute = attempt.route;
+            streamServiceName = config.serviceName;
+            break;
+          }
+
+          lastFailureStatus = candidate.status;
+          lastFailureText = await candidate.text();
+          console.error(`[report-qa] Chat error (${attempt.route}/${attempt.model_id}): ${candidate.status} - ${lastFailureText}`);
+
+          if (candidate.status === 429) {
             return new Response(
               JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
               { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          if (response.status === 402) {
+          if (candidate.status === 402) {
             return new Response(
               JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }),
               { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          
-          throw new Error(`AI API error: ${response.status}`);
+          if (!REPORT_QA_RETRYABLE_STATUSES.has(candidate.status)) break;
+        }
+
+        if (!response) {
+          throw new Error(`AI API error: ${lastFailureStatus}${lastFailureText ? ` - ${lastFailureText.slice(0, 500)}` : ''}`);
         }
 
         // Intercept the stream to capture token usage from the final SSE chunk
-        const streamModelName = modelProvider === 'perplexity' ? 'sonar-pro'
-          : modelProvider === 'openai-direct' ? 'gpt-4.1'
-          : modelProvider === 'gemini' ? 'gemini-2.5-pro' : 'gpt-5.2';
         const sbLogStream = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
         
         const trackedStream = createUsageTrackingStream(response.body!, {
           supabase: sbLogStream,
-          serviceName: modelProvider === 'perplexity' ? 'perplexity' : modelProvider === 'gemini' ? 'gemini' : 'openai',
+          serviceName: streamServiceName,
           modelUsed: streamModelName,
           userId: userId || undefined,
-          metadata: { function: 'report-qa', action: 'chat', modelProvider },
+          metadata: { function: 'report-qa', action: 'chat', modelProvider, modelVersion: streamModelName, modelRoute: streamRoute },
         });
 
         // Prepend a metadata SSE event so the client can render paragraph-level
@@ -2014,6 +1970,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             comparisonMode,
             citations: structuredCitations,
             modelProvider,
+            modelAgentKey: modelProvider,
+            modelVersion: streamModelName,
+            modelRoute: streamRoute,
           },
         };
         const metaLine = `data: ${JSON.stringify(metaPayload)}\n\n`;
