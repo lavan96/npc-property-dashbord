@@ -1087,6 +1087,7 @@ Deno.serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -1258,9 +1259,13 @@ Deno.serve(async (req) => {
 
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider = 'openai', needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
+      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider: requestedModelProvider = 'report_qa', agentKey: requestedAgentKey, needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
+      const modelAssignment = await loadReportQAModelAssignment(supabase, requestedAgentKey ?? requestedModelProvider);
+      const modelProvider = modelAssignment.agent_key;
+      const modelVersion = modelAssignment.model_id;
+      const modelRoute = modelAssignment.route;
       console.log(`[report-qa] Processing chat question: ${question?.substring(0, 50)}...`);
-      console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, Provider: ${modelProvider}`);
+      console.log(`[report-qa] ConversationId: ${conversationId}, RAG: ${useRAG}, AgentKey: ${modelProvider}, Route: ${modelRoute}, Model: ${modelVersion}`);
 
       // === RAG-FIRST CONTEXT ASSEMBLY ===
       // Instead of sending full report content every message, we:
@@ -1742,11 +1747,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
 
       // Token-aware budgeter: pick per-model budget, drop oldest history first,
       // then truncate system context tail. Keeps the most important slots intact.
-      const budgetModelHint =
-        modelProvider === 'gemini' ? 'google/gemini-3.1-pro-preview' :
-        modelProvider === 'openai-direct' ? 'openai/gpt-4.1' :
-        modelProvider === 'perplexity' ? 'sonar' :
-        'openai/gpt-5.2';
+      const budgetModelHint = modelVersion;
       const budget = fitMessagesToBudget(
         rawMessages,
         inputBudgetForModel(budgetModelHint),
@@ -1777,41 +1778,16 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         // `_error` events for transparency.
         const canRunAgent =
           agentMode &&
-          modelProvider !== 'perplexity' &&
+          supportsReportQATools(modelAssignment) &&
           agentLoopHasTools(enabledTools);
 
         if (canRunAgent) {
-          let agentEndpoint = '';
-          let agentApiKey = '';
-          let agentModel = '';
-          let maxField: 'max_tokens' | 'max_completion_tokens' = 'max_completion_tokens';
-          let maxTokens = 16384;
-          let agentProvider: AgentLoopProvider = 'openai-gateway';
-
-          if (modelProvider === 'openai-direct') {
-            if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
-            agentEndpoint = 'https://api.openai.com/v1/chat/completions';
-            agentApiKey = OPENAI_API_KEY;
-            agentModel = 'gpt-4.1';
-            maxField = 'max_completion_tokens';
-            maxTokens = 32768;
-            agentProvider = 'openai-direct';
-          } else if (modelProvider === 'gemini') {
-            agentEndpoint = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-            agentApiKey = LOVABLE_API_KEY!;
-            agentModel = 'google/gemini-3.1-pro-preview';
-            maxField = 'max_tokens';
-            maxTokens = 65536;
-            agentProvider = 'gemini';
-          } else {
-            // 'openai' via Lovable AI Gateway (GPT-5.2)
-            agentEndpoint = 'https://ai.gateway.lovable.dev/v1/chat/completions';
-            agentApiKey = LOVABLE_API_KEY!;
-            agentModel = 'openai/gpt-5.2';
-            maxField = 'max_completion_tokens';
-            maxTokens = 16384;
-            agentProvider = 'openai-gateway';
-          }
+          const agentConfig = buildOpenAICompatibleChatConfig(modelAssignment, {
+            lovable: LOVABLE_API_KEY,
+            openai: OPENAI_API_KEY,
+            perplexity: PERPLEXITY_API_KEY,
+            openrouter: OPENROUTER_API_KEY,
+          });
 
           const structuredCitationsAgent = buildStructuredCitations(retrievedChunksForCitations);
           const agentStreamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -1823,6 +1799,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               conversation_id: conversationId || null,
               user_id: userId || null,
               model_provider: modelProvider,
+              model_version: modelVersion,
               comparison_mode: comparisonMode,
               citations: structuredCitationsAgent,
               status: 'streaming',
@@ -1832,13 +1809,14 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           }
 
           const agentStream = runAgentLoop({
-            provider: agentProvider,
-            apiKey: agentApiKey,
-            endpoint: agentEndpoint,
-            model: agentModel,
+            provider: agentConfig.provider,
+            apiKey: agentConfig.apiKey,
+            endpoint: agentConfig.endpoint,
+            extraHeaders: agentConfig.extraHeaders,
+            model: modelVersion,
             messages,
-            maxCompletionTokensField: maxField,
-            maxCompletionTokens: maxTokens,
+            maxCompletionTokensField: agentConfig.maxField,
+            maxCompletionTokens: agentConfig.maxTokens,
             enabledTools,
             toolContext: {
               supabase,
@@ -1853,6 +1831,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 comparisonMode,
                 citations: structuredCitationsAgent,
                 modelProvider,
+                modelAgentKey: modelProvider,
+                modelVersion,
+                modelRoute,
                 agentMode: true,
                 tools_available: listTools().map((t) => t.name),
               },
@@ -1875,7 +1856,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                       citations: structuredCitationsAgent.length > 0 ? structuredCitationsAgent : null,
                       comparison_mode: comparisonMode,
                       prompt_version: PROMPT_VERSION,
-                      model_version: agentModel,
+                      model_version: modelVersion,
                       tool_invocations: toolInvocations.length > 0 ? toolInvocations : null,
                     },
                   ]);
