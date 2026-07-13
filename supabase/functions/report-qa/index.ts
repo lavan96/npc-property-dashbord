@@ -138,7 +138,7 @@ function buildOpenAICompatibleChatConfig(
     return {
       endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
       apiKey: keys.lovable,
-      maxField: 'max_tokens',
+      maxField: model.startsWith('openai/') || model.includes('gpt') ? 'max_completion_tokens' : 'max_tokens',
       maxTokens,
       serviceName,
       provider: model.includes('gemini') ? 'gemini' : 'openai-gateway',
