@@ -135,18 +135,6 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
  */
 export const AURIXA_PRICING_URL = "https://aurixa-systems.lovable.app/pricing";
 
-/** Mission Control billing URLs — OPERATOR consoles (login-gated). Not for
- * customer purchase CTAs; those go through openMissionControlWithAttribution
- * with AURIXA_PRICING_URL as the fallback. */
-export const MISSION_CONTROL_BILLING_URL =
-  "https://aurixa-mission-control.lovable.app/billing";
-export const MISSION_CONTROL_TOPUP_URL =
-  "https://aurixa-mission-control.lovable.app/billing/topup";
-export const MISSION_CONTROL_SEATS_URL =
-  "https://aurixa-mission-control.lovable.app/billing/seats";
-export const MISSION_CONTROL_CATALOG_URL =
-  "https://aurixa-mission-control.lovable.app/billing/catalog";
-
 export function openMissionControl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }

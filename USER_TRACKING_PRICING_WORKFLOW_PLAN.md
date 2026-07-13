@@ -2,6 +2,20 @@
 
 ---
 
+## ⚠ REVISION 3 (2026-07-13) — Mission Control `/pricing` removed; MC billing URL constants dropped.
+
+Mission Control no longer serves any customer `/pricing` route — the Aurixa Systems
+storefront (`AURIXA_PRICING_URL`) is the only pricing page. In this repo:
+
+- The unused `MISSION_CONTROL_BILLING_URL` / `MISSION_CONTROL_TOPUP_URL` /
+  `MISSION_CONTROL_SEATS_URL` / `MISSION_CONTROL_CATALOG_URL` constants were removed from
+  `src/lib/missionControl.ts` so no billing CTA can point at Mission Control again.
+- Every billing CTA goes through `openMissionControlWithAttribution(intent, AURIXA_PRICING_URL)`
+  (or a Mission-Control-minted storefront `topup_url`), so all purchase traffic lands on the
+  Aurixa Systems `/pricing` page.
+
+---
+
 ## ⚠ REVISION 2 (2026-07-10) — Storefront topology. Supersedes any conflicting statement below.
 
 **Where purchases land changed; how this repo hands identity over did not.**

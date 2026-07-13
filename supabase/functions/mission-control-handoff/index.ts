@@ -1,13 +1,13 @@
 // Mission Control billing handoff proxy (user-attributed pricing workflow).
 // Verifies the signed-in command-center user, then asks Mission Control to
-// mint a single-use attributed deep link into its pricing page — the user's
-// identity travels server-to-server under the clone API key; the browser only
-// ever receives the opaque handoff URL.
+// mint a single-use attributed deep link into the Aurixa Systems storefront
+// pricing page — the user's identity travels server-to-server under the clone
+// API key; the browser only ever receives the opaque handoff URL.
 //
 // Contract with the frontend: ALWAYS returns 200 with `{ url: string | null }`
 // (plus handoffId/expiresAt on success). A null url tells the caller to fall
-// back to the static Mission Control URL — a purchase CTA must never hard-fail
-// because attribution was unavailable.
+// back to the static storefront pricing URL (AURIXA_PRICING_URL) — a purchase
+// CTA must never hard-fail because attribution was unavailable.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth } from "../_shared/auth.ts";
 import { createBillingHandoff } from "../_shared/missionControl.ts";
