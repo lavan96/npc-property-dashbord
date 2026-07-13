@@ -453,14 +453,14 @@ export default function MarketingAnalytics() {
               </div>
               <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Marketing Analytics</h1>
               <p className="mt-1 text-sm text-muted-foreground">AI-powered marketing performance insights</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <LiveModelChipGroup
-                  agentKeys={['meta_ads_analysis', 'meta_ads_digest', 'meta_ads_forecast', 'meta_ads_lead_quality']}
-                  size="sm"
-                  showSlot
-                />
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <LiveModelBadge agentKey="meta_ads_analysis" size="sm" showSlot />
+                <LiveModelBadge agentKey="meta_ads_digest" size="sm" showSlot />
+                <LiveModelBadge agentKey="meta_ads_forecast" size="sm" showSlot />
+                <LiveModelBadge agentKey="meta_ads_lead_quality" size="sm" showSlot />
                 <ModelUpgradeButton agentKey="meta_ads_analysis" />
               </div>
+
             </div>
 
           </div>
