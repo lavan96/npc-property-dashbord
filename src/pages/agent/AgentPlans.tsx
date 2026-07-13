@@ -138,14 +138,17 @@ export default function AgentPlans() {
           }
           description="Draft multi-step plans, gate execution with approvals, and let Aurixa run them on a schedule."
           actions={
-            <Dialog open={draftOpen} onOpenChange={setDraftOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 shadow-[0_10px_30px_-10px_hsl(var(--aurixa-glow)/0.6)]">
-                  <Sparkles className="h-4 w-4" />Draft plan
-                </Button>
-              </DialogTrigger>
-              <DraftPlanDialog onCreated={(id) => { setDraftOpen(false); setSelected(id); refreshPlans(); }} />
-            </Dialog>
+            <>
+              <LiveModelBadge agentKey="dashboard_agent" size="sm" showSlot={false} />
+              <Dialog open={draftOpen} onOpenChange={setDraftOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2 shadow-[0_10px_30px_-10px_hsl(var(--aurixa-glow)/0.6)]">
+                    <Sparkles className="h-4 w-4" />Draft plan
+                  </Button>
+                </DialogTrigger>
+                <DraftPlanDialog onCreated={(id) => { setDraftOpen(false); setSelected(id); refreshPlans(); }} />
+              </Dialog>
+            </>
           }
         />
 

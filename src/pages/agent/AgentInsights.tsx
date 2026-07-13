@@ -188,6 +188,8 @@ export default function AgentInsights() {
             }
             description="Proactive briefings, alerts, and reminders — surfaced the moment they matter."
             actions={
+              <>
+                <LiveModelBadge agentKey="dashboard_agent" size="sm" showSlot={false} />
               <Button
                 variant="outline"
                 onClick={runNow}
@@ -216,6 +218,7 @@ export default function AgentInsights() {
                   />
                 )}
               </Button>
+              </>
             }
           />
         </div>

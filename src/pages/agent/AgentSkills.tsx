@@ -144,16 +144,19 @@ export default function AgentSkills() {
           }
           description="Curated agent personas and toolsets. Install to expand what your Aurixa Agent can reason about, plan, and execute on your behalf."
           actions={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={refresh}
-              disabled={loading}
-              className="gap-2 border-border/60 bg-background/40 backdrop-blur"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-              Refresh
-            </Button>
+            <>
+              <LiveModelBadge agentKey="dashboard_agent" size="sm" showSlot={false} />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={refresh}
+                disabled={loading}
+                className="gap-2 border-border/60 bg-background/40 backdrop-blur"
+              >
+                <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+                Refresh
+              </Button>
+            </>
           }
         />
 
