@@ -88,7 +88,6 @@ import { ReportSwitcher, ReportSearch } from '@/components/report-qa/ReportConte
 import { FollowUpSuggestions } from '@/components/report-qa/FollowUpSuggestions';
 import { TextToSpeech } from '@/components/report-qa/TextToSpeech';
 import { CopyWithFeedback } from '@/components/report-qa/CopyWithFeedback';
-import { FullScreenToggle, useFullScreen } from '@/components/report-qa/FullScreenToggle';
 import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report-qa/AccessibilityWrapper';
 import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySettings';
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
@@ -331,7 +330,6 @@ export default function ReportQA() {
   // Custom hooks
   const { addReply, getReplies } = useMessageThreads();
   const { getPinnedIds, togglePin, isPinned } = usePinnedConversations();
-  const { isFullScreen, toggleFullScreen } = useFullScreen();
   const reducedMotion = useReducedMotion();
   
   // Accessibility - live region announcements
@@ -1868,10 +1866,7 @@ export default function ReportQA() {
       <DashboardThemeFrame
         as="main"
         variant="page"
-        className={cn(
-          "report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-3 sm:p-3 sm:pb-16 md:h-[calc(100dvh-8.25rem)] md:max-h-[calc(100dvh-8.25rem)] md:gap-3.5 md:overflow-hidden md:p-4 md:pb-0 xl:h-[calc(100dvh-8.75rem)] xl:max-h-[calc(100dvh-8.75rem)]",
-          isFullScreen && "report-qa-fullscreen"
-        )}
+        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-3 sm:p-3 sm:pb-16 md:h-[calc(100dvh-8.25rem)] md:max-h-[calc(100dvh-8.25rem)] md:gap-3.5 md:overflow-hidden md:p-4 md:pb-0 xl:h-[calc(100dvh-8.75rem)] xl:max-h-[calc(100dvh-8.75rem)]"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
@@ -1889,7 +1884,6 @@ export default function ReportQA() {
           </p>
         </div>
         <div className="report-qa-header-actions flex flex-wrap items-center gap-2 sm:gap-2.5 md:justify-end">
-          <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} className="report-qa-icon-button h-9 w-9 rounded-full sm:h-10 sm:w-10" />
           <Button onClick={handleNewChat} className="report-qa-new-chat gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">New Chat</span>

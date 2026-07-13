@@ -1120,26 +1120,3 @@
     @apply font-semibold text-primary;
   }
 }
-
-
-/* ------------------------------------------------------------------
-   Report Q&A fullscreen mode
-   Activated by <FullScreenToggle /> — lifts the shell above the
-   dashboard top bar/breadcrumbs so nothing overlaps and the composer
-   + suggestions bar sits above safe-area insets on desktop and mobile.
-   ------------------------------------------------------------------ */
-.report-qa-fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 60 !important;
-  width: 100vw !important;
-  max-width: 100vw !important;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
-  margin: 0 !important;
-  padding-top: max(0.75rem, env(safe-area-inset-top)) !important;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important;
-  background: hsl(var(--background));
-  overflow: hidden !important;
-  border-radius: 0 !important;
-}

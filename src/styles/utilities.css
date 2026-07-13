@@ -261,22 +261,6 @@ html {
     }
   }
 
-  /* Full screen mode for Report QA */
-  .report-qa-fullscreen {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 100 !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    padding: 1rem !important;
-    background: hsl(var(--background)) !important;
-    overflow: hidden;
-  }
-
-  .report-qa-fullscreen .lg\\:col-span-2,
-  .report-qa-fullscreen .lg\\:col-span-3 {
-    grid-column: span 1 / span 1 !important;
-  }
 
   /* Focus visible styles for accessibility */
   .focus-visible-ring:focus-visible {
