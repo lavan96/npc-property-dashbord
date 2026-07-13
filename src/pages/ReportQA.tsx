@@ -2015,30 +2015,30 @@ export default function ReportQA() {
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
         <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[16rem] p-0 md:max-h-[44dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
-          <CardHeader className="report-qa-reports-header px-3 py-3 pb-3 sm:px-4 sm:py-3.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 space-y-1">
-                <CardTitle className="flex items-center gap-2 text-base tracking-tight">
-                  <span className="report-qa-reports-icon flex h-7 w-7 items-center justify-center rounded-xl">
+          <CardHeader className="report-qa-reports-header px-3 py-2.5 pb-2.5 sm:px-4 sm:py-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="flex min-w-0 items-center gap-2 text-base tracking-tight">
+                  <span className="report-qa-reports-icon flex h-7 w-7 shrink-0 items-center justify-center rounded-xl">
                     <FileText className="h-4 w-4" />
                   </span>
-                  <span>Reports</span>
+                  <span className="truncate">Reports</span>
                   {uploadedReports.length > 0 && (
-                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                    <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
                       {uploadedReports.length}
                     </span>
                   )}
                 </CardTitle>
-                <p className="text-[11px] leading-4 text-muted-foreground">
-                  Add PDFs or saved reports to ground the assistant in source material.
-                </p>
+                <ReportLibraryPicker
+                  onAdd={handleLibraryAdd}
+                  existingNames={uploadedReports.map((r) => r.name)}
+                  disabled={isUploading}
+                  className="report-qa-library-button h-8 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
+                />
               </div>
-              <ReportLibraryPicker
-                onAdd={handleLibraryAdd}
-                existingNames={uploadedReports.map((r) => r.name)}
-                disabled={isUploading}
-                className="report-qa-library-button h-8 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
-              />
+              <p className="text-[11px] leading-4 text-muted-foreground">
+                Add PDFs or saved reports to ground the assistant in source material.
+              </p>
             </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col space-y-3 min-h-0 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
