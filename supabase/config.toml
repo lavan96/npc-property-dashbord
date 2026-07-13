@@ -888,3 +888,6 @@ verify_jwt = false
 
 [functions.market-qa-quality-snapshot]
 verify_jwt = false
+
+[functions.agent-models-read]
+verify_jwt = false
