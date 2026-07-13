@@ -18,6 +18,191 @@ import '../_shared/agent-tools-registry.ts';
 // system prompt or routing logic changes meaningfully so we can A/B traceback.
 const PROMPT_VERSION = '2026-05-18.v2-finance-strategist';
 
+type ReportQAModelRoute = 'gateway' | 'native' | 'openrouter';
+type ReportQAModelAssignment = {
+  agent_key: string;
+  route: ReportQAModelRoute;
+  model_id: string;
+  fallback_chain: Array<{ route: ReportQAModelRoute; model_id: string }>;
+  temperature: number | null;
+  max_tokens: number | null;
+  reasoning_effort: string | null;
+};
+
+const REPORT_QA_AGENT_KEYS = new Set(['report_qa', 'report_qa_fast', 'report_qa_deep', 'report_qa_search']);
+const LEGACY_REPORT_QA_PROVIDER_TO_AGENT_KEY: Record<string, string> = {
+  openai: 'report_qa',
+  'openai-direct': 'report_qa',
+  gemini: 'report_qa_deep',
+  perplexity: 'report_qa_search',
+};
+const REPORT_QA_RETRYABLE_STATUSES = new Set([404, 410, 500, 502, 503, 504]);
+
+function normaliseReportQAAgentKey(candidate: unknown): string {
+  const key = typeof candidate === 'string' ? candidate.trim() : '';
+  if (REPORT_QA_AGENT_KEYS.has(key)) return key;
+  return LEGACY_REPORT_QA_PROVIDER_TO_AGENT_KEY[key] ?? 'report_qa';
+}
+
+async function loadReportQAModelAssignment(supabase: any, requested: unknown): Promise<ReportQAModelAssignment> {
+  const agentKey = normaliseReportQAAgentKey(requested);
+  const selectCols = 'agent_key, route, model_id, fallback_chain, temperature, max_tokens, reasoning_effort';
+  let { data, error } = await supabase
+    .from('agent_model_assignments')
+    .select(selectCols)
+    .eq('agent_key', agentKey)
+    .maybeSingle();
+
+  if (error) console.warn('[report-qa] Failed to load model assignment:', error.message);
+
+  if (!data && agentKey !== 'report_qa') {
+    const fallback = await supabase
+      .from('agent_model_assignments')
+      .select(selectCols)
+      .eq('agent_key', 'report_qa')
+      .maybeSingle();
+    data = fallback.data;
+    if (fallback.error) console.warn('[report-qa] Failed to load primary model fallback:', fallback.error.message);
+  }
+
+  if (!data) {
+    return {
+      agent_key: agentKey,
+      route: 'gateway',
+      model_id: 'google/gemini-3-flash-preview',
+      fallback_chain: [{ route: 'gateway', model_id: 'google/gemini-2.5-flash' }],
+      temperature: null,
+      max_tokens: null,
+      reasoning_effort: null,
+    };
+  }
+
+  return {
+    ...data,
+    route: data.route as ReportQAModelRoute,
+    fallback_chain: Array.isArray(data.fallback_chain) ? data.fallback_chain : [],
+  } as ReportQAModelAssignment;
+}
+
+function modelFamilyServiceName(modelId: string, route: ReportQAModelRoute): string {
+  const model = (modelId || '').toLowerCase();
+  if (route === 'openrouter') return 'openrouter';
+  if (model.includes('sonar') || model.includes('perplexity')) return 'perplexity';
+  if (model.includes('gemini') || model.startsWith('google/')) return 'gemini';
+  if (model.includes('claude') || model.startsWith('anthropic/')) return 'anthropic';
+  if (model.includes('gpt') || model.startsWith('openai/') || model.startsWith('o')) return 'openai';
+  return route;
+}
+
+function supportsReportQATools(assignment: ReportQAModelAssignment): boolean {
+  const model = (assignment.model_id || '').toLowerCase();
+  if (model.includes('sonar') || model.includes('perplexity')) return false;
+  if (assignment.route === 'gateway' || assignment.route === 'openrouter') return true;
+  return model.startsWith('gpt-') || model.startsWith('o') || model.startsWith('chatgpt');
+}
+
+function reportQAModelChain(assignment: ReportQAModelAssignment): ReportQAModelAssignment[] {
+  const raw = [
+    { route: assignment.route, model_id: assignment.model_id },
+    ...(assignment.fallback_chain ?? []),
+  ];
+  const seen = new Set<string>();
+  return raw
+    .filter((step) => {
+      const key = `${step.route}:${step.model_id}`;
+      if (!step.route || !step.model_id || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((step) => ({ ...assignment, route: step.route, model_id: step.model_id }));
+}
+
+function buildOpenAICompatibleChatConfig(
+  assignment: ReportQAModelAssignment,
+  keys: { lovable?: string | null; openai?: string | null; perplexity?: string | null; openrouter?: string | null },
+): {
+  endpoint: string;
+  apiKey: string;
+  extraHeaders?: Record<string, string>;
+  maxField: 'max_tokens' | 'max_completion_tokens';
+  maxTokens: number;
+  serviceName: string;
+  provider: AgentLoopProvider;
+} {
+  const model = (assignment.model_id || '').toLowerCase();
+  const maxTokens = assignment.max_tokens ?? (model.includes('gemini') ? 65536 : model.includes('sonar') ? 8192 : 16384);
+  const serviceName = modelFamilyServiceName(assignment.model_id, assignment.route);
+
+  if (assignment.route === 'gateway') {
+    if (!keys.lovable) throw new Error('LOVABLE_API_KEY is not configured');
+    return {
+      endpoint: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      apiKey: keys.lovable,
+      maxField: 'max_tokens',
+      maxTokens,
+      serviceName,
+      provider: model.includes('gemini') ? 'gemini' : 'openai-gateway',
+    };
+  }
+
+  if (assignment.route === 'openrouter') {
+    if (!keys.openrouter) throw new Error('OPENROUTER_API_KEY is not configured');
+    return {
+      endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+      apiKey: keys.openrouter,
+      extraHeaders: {
+        'HTTP-Referer': Deno.env.get('APP_URL') ?? 'https://lovable.dev',
+        'X-Title': 'NPC Property Dashboard',
+      },
+      maxField: 'max_tokens',
+      maxTokens,
+      serviceName,
+      provider: 'openai-gateway',
+    };
+  }
+
+  if (model.startsWith('gpt-') || model.startsWith('o') || model.startsWith('chatgpt')) {
+    if (!keys.openai) throw new Error('OPENAI_API_KEY is not configured');
+    return {
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      apiKey: keys.openai,
+      maxField: 'max_completion_tokens',
+      maxTokens,
+      serviceName,
+      provider: 'openai-direct',
+    };
+  }
+
+  if (model.startsWith('sonar')) {
+    if (!keys.perplexity) throw new Error('PERPLEXITY_API_KEY is not configured');
+    return {
+      endpoint: 'https://api.perplexity.ai/chat/completions',
+      apiKey: keys.perplexity,
+      maxField: 'max_tokens',
+      maxTokens,
+      serviceName,
+      provider: 'openai-gateway',
+    };
+  }
+
+  throw new Error(`Model route ${assignment.route}/${assignment.model_id} is not stream-compatible for Report Q&A. Use gateway/openrouter or an OpenAI/Perplexity native chat model.`);
+}
+
+function buildChatCompletionBody(assignment: ReportQAModelAssignment, messages: any[], stream: boolean, config: { maxField: 'max_tokens' | 'max_completion_tokens'; maxTokens: number }) {
+  const body: any = {
+    model: assignment.model_id,
+    messages,
+    [config.maxField]: config.maxTokens,
+  };
+  if (stream) {
+    body.stream = true;
+    body.stream_options = { include_usage: true };
+  }
+  if (assignment.temperature !== null && assignment.temperature !== undefined) body.temperature = Number(assignment.temperature);
+  if (assignment.reasoning_effort) body.reasoning = { effort: assignment.reasoning_effort };
+  return body;
+}
+
 // ============= PDF TEXT EXTRACTION HELPER =============
 // Optimized lightweight approach for Deno Edge Functions
 // Uses streaming chunk processing to avoid CPU timeouts
