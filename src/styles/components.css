@@ -1780,7 +1780,7 @@
   }
 
   .report-qa-toolbar {
-    max-width: min(100%, 62rem);
+    max-width: 100%;
     border: 1px solid hsl(var(--brand) / 0.28);
     border-radius: 1.25rem;
     padding: 0.35rem;
