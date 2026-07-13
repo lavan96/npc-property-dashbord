@@ -37,9 +37,11 @@ export type ResolvedSlot = {
   agentKey: string;
   slotLabel: string;
   slotDescription?: string;
+  surfaceLabel?: string;
   assignment: AgentAssignment | null;
   display: ModelDisplay;
 };
+
 
 const QUERY_KEY = ['agent-model-assignments'] as const;
 
