@@ -1337,7 +1337,6 @@ Deno.serve(async (req) => {
             console.error('[report-qa] Failed to load client memory:', memErr);
           }
         }
-      }
 
         // Retrieve relevant chunks via semantic search
         if (useRAG) {
