@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Mail } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
+import { LiveModelBadge } from '@/components/agentModels';
 
 interface Digest {
   id: string;
@@ -41,9 +42,12 @@ export default function MarketQADigests() {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2"><Mail className="h-6 w-6 text-primary" /> Market Q&amp;A Digests</h1>
-        <p className="text-sm text-muted-foreground">Synthesised daily/weekly briefings across your grouped subscriptions.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2"><Mail className="h-6 w-6 text-primary" /> Market Q&amp;A Digests</h1>
+          <p className="text-sm text-muted-foreground">Synthesised daily/weekly briefings across your grouped subscriptions.</p>
+        </div>
+        <LiveModelBadge agentKey="market_digest" size="sm" showSlot={false} />
       </div>
 
       <div className="grid grid-cols-12 gap-4">

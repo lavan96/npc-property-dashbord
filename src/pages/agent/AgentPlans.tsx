@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { AurixaMark } from '@/components/agent/AurixaMark';
 import { AurixaSectionHeader } from '@/components/agent/AurixaSectionHeader';
 import { StatusPill, type StatusPillTone } from '@/components/agent/StatusPill';
+import { LiveModelBadge } from '@/components/agentModels';
 
 interface Plan { id: string; title: string; goal: string; status: string; skill_slug?: string | null; requires_approval: boolean; total_steps: number; completed_steps: number; created_at: string; planner_model?: string | null; schedule_cron?: string | null; next_run_at?: string | null; last_run_at?: string | null; auto_execute?: boolean; }
 interface Step { id: string; plan_id: string; seq: number; title: string; description?: string | null; expected_output?: string | null; tool_hint?: string | null; status: string; result?: any; error?: string | null; }
@@ -137,14 +138,17 @@ export default function AgentPlans() {
           }
           description="Draft multi-step plans, gate execution with approvals, and let Aurixa run them on a schedule."
           actions={
-            <Dialog open={draftOpen} onOpenChange={setDraftOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 shadow-[0_10px_30px_-10px_hsl(var(--aurixa-glow)/0.6)]">
-                  <Sparkles className="h-4 w-4" />Draft plan
-                </Button>
-              </DialogTrigger>
-              <DraftPlanDialog onCreated={(id) => { setDraftOpen(false); setSelected(id); refreshPlans(); }} />
-            </Dialog>
+            <>
+              <LiveModelBadge agentKey="dashboard_agent" size="sm" showSlot={false} />
+              <Dialog open={draftOpen} onOpenChange={setDraftOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2 shadow-[0_10px_30px_-10px_hsl(var(--aurixa-glow)/0.6)]">
+                    <Sparkles className="h-4 w-4" />Draft plan
+                  </Button>
+                </DialogTrigger>
+                <DraftPlanDialog onCreated={(id) => { setDraftOpen(false); setSelected(id); refreshPlans(); }} />
+              </Dialog>
+            </>
           }
         />
 

@@ -18,6 +18,7 @@ import remarkGfm from 'remark-gfm';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
 import { MemoryCitations, type RecalledMemory } from '@/components/agent/MemoryCitations';
 import { AurixaMark } from '@/components/agent/AurixaMark';
+import { LiveModelBadge } from '@/components/agentModels';
 import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type ExtractedFile } from '@/lib/agentFileExtractor';
 
 const ROTATING_PLACEHOLDERS = [
@@ -719,7 +720,7 @@ export function AgentChatWidget() {
           <AurixaMark size="sm" state={loading ? 'thinking' : 'idle'} />
           <div className="flex items-baseline gap-2 min-w-0">
             <span className="font-heading text-[15px] font-semibold tracking-tight text-foreground">Aurixa</span>
-            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Gemini · Live</span>
+            <LiveModelBadge agentKey="dashboard_agent" size="sm" showSlot={false} />
           </div>
         </div>
         <div className="flex items-center gap-0.5">
