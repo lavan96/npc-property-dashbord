@@ -781,6 +781,11 @@ export default function WhiteLabel() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasChanges]);
 
+  const assetValidationKey = useMemo(
+    () => BRAND_SLOT_ORDER.map((slot) => `${slot}:${getBrandAssetSrc(draftSettings, slot) ?? ''}`).join('|'),
+    [draftSettings]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -837,7 +842,12 @@ export default function WhiteLabel() {
     return () => {
       cancelled = true;
     };
-  }, [draftSettings]);
+    // Only re-validate when the actual asset sources change — not on every
+    // color/font/name edit, which would keep the Save button disabled while
+    // assets re-validate on each keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetValidationKey]);
+
 
   const hasInvalidAssets = useMemo(
     () => BRAND_SLOT_ORDER.some((slot) => assetValidation[slot].status !== 'valid'),
