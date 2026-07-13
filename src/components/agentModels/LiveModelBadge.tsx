@@ -7,15 +7,17 @@
  * want it to be interactive (e.g. open ModelUpgradeButton).
  */
 
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAgentModel } from '@/hooks/useAgentModels';
+import { useAgentModel, subscribeAgentPulse, getAgentPulse } from '@/hooks/useAgentModels';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
 
 export type LiveModelBadgeProps = {
   agentKey: string;
@@ -36,6 +38,25 @@ export function LiveModelBadge({
   const { assignment, display, slotLabel } = useAgentModel(agentKey);
   const loading = !assignment && display.raw === '';
 
+  // Pulse: brief glow when the Model Hub repoints this agent_key at runtime.
+  const [pulsed, setPulsed] = useState(false);
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const unsub = subscribeAgentPulse(() => {
+      const ts = getAgentPulse(agentKey);
+      if (!ts) return;
+      if (Date.now() - ts > 2000) return;
+      setPulsed(true);
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => setPulsed(false), 2000);
+    });
+    return () => {
+      unsub();
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [agentKey]);
+
+
   const dot = (
     <span
       aria-hidden
@@ -47,12 +68,18 @@ export function LiveModelBadge({
   const content = (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 backdrop-blur-sm font-medium text-foreground/90 transition-colors',
+        'inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 backdrop-blur-sm font-medium text-foreground/90 transition-all duration-500',
         size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        pulsed && 'ring-2 ring-offset-1 ring-offset-background scale-[1.03]',
         className,
       )}
-      style={{ borderColor: `${display.accent}55` }}
+      style={{
+        borderColor: `${display.accent}55`,
+        boxShadow: pulsed ? `0 0 0 3px ${display.accent}33` : undefined,
+        ['--tw-ring-color' as any]: pulsed ? display.accent : undefined,
+      }}
     >
+
       {loading ? (
         <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
       ) : (
