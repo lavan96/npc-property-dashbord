@@ -165,10 +165,12 @@ export function useAgentModel(agentKey: string): ResolvedSlot {
     agentKey,
     slotLabel: meta?.slot.slotLabel ?? 'Primary',
     slotDescription: meta?.slot.slotDescription,
+    surfaceLabel: meta?.surface.label,
     assignment,
     display: formatModelDisplay(assignment?.model_id),
   };
 }
+
 
 /** Resolve every slot on a surface (e.g. Report Q&A → 4 slots). */
 export function useAgentSurface(surfaceId: AgentSurfaceId): {
