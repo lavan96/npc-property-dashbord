@@ -318,7 +318,7 @@ export default function ReportQA() {
   const [isValidatingPDF, setIsValidatingPDF] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [pdfValidationError, setPdfValidationError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<ModelProvider>('openai');
+  const [selectedAgentKey, setSelectedAgentKey] = useState<string>('report_qa');
   const [showInPlaceEmailCompose, setShowInPlaceEmailCompose] = useState(false);
   const [emailContext, setEmailContext] = useState<{
     title: string;
@@ -364,10 +364,15 @@ export default function ReportQA() {
   }, [showCitations]);
   // Agent mode: per-conversation toggle that enables tool-calling (calculators,
   // live data, scenario modeling). Persisted on the conversation row so it
-  // survives reload. Disabled silently when the selected model is Perplexity
-  // because Perplexity doesn't reliably support function calling.
+  // survives reload. Disabled when the active Model Hub route does not expose
+  // OpenAI-compatible tool calls.
   const [agentMode, setAgentMode] = useState<boolean>(false);
-  const agentModeSupported = selectedModel !== 'perplexity';
+  const { slots: reportQaModelSlots } = useAgentSurface('reportQa');
+  const selectedReportQaSlot = useMemo(
+    () => reportQaModelSlots.find((slot) => slot.agentKey === selectedAgentKey) ?? reportQaModelSlots[0] ?? null,
+    [reportQaModelSlots, selectedAgentKey],
+  );
+  const agentModeSupported = supportsAgentToolsForAssignment(selectedReportQaSlot?.assignment ?? null);
   const effectiveAgentMode = agentMode && agentModeSupported;
   const [snippetViewer, setSnippetViewer] = useState<{
     open: boolean;
@@ -892,6 +897,7 @@ export default function ReportQA() {
           sent_by: m.sent_by || null,
           sent_by_username: m.sent_by_username || null,
           modelProvider: m.model_provider || null,
+          modelVersion: m.model_version || null,
           citations: Array.isArray(m.url_citations) ? m.url_citations : undefined,
           documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
           comparisonMode: !!m.comparison_mode,
@@ -1140,7 +1146,8 @@ export default function ReportQA() {
           conversationId: activeConversationId,
           stream: true,
           session_token: sessionToken, // Add session token to body as fallback
-          modelProvider: selectedModel,
+          agentKey: selectedAgentKey,
+          modelProvider: selectedAgentKey,
           needsConversationSummary: needsSummary,
           totalMessageCount: totalMessages,
           agentMode: effectiveAgentMode,
@@ -1172,7 +1179,7 @@ export default function ReportQA() {
       const decoder = new TextDecoder();
       let fullContent = '';
       let buffer = '';
-      let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string } = {};
+      let streamMeta: { citations?: DocumentCitation[]; comparisonMode?: boolean; stream_id?: string; modelProvider?: string; modelAgentKey?: string; modelVersion?: string; followups?: string[] } = {};
       // Tool invocations accumulate from `_tool` SSE events emitted by the
       // agent loop. Keyed by invocation id so a `started` chip can be
       // updated in place when its `completed` event arrives.
@@ -1208,6 +1215,9 @@ export default function ReportQA() {
                 citations: parsed._meta.citations,
                 comparisonMode: parsed._meta.comparisonMode,
                 stream_id: parsed._meta.stream_id,
+                modelProvider: parsed._meta.modelProvider,
+                modelAgentKey: parsed._meta.modelAgentKey,
+                modelVersion: parsed._meta.modelVersion,
               };
               continue;
             }
@@ -1224,7 +1234,7 @@ export default function ReportQA() {
               continue;
             }
             if (parsed?._followups && Array.isArray(parsed._followups)) {
-              (streamMeta as any).followups = parsed._followups.filter((s: any) => typeof s === 'string');
+              streamMeta.followups = parsed._followups.filter((s: any) => typeof s === 'string');
               continue;
             }
             if (parsed?._error) {
@@ -1252,38 +1262,17 @@ export default function ReportQA() {
         role: 'assistant',
         content: fullContent || 'I couldn\'t generate a response. Please try again.',
         timestamp: new Date(),
-        modelProvider: selectedModel,
+        modelProvider: streamMeta.modelAgentKey || streamMeta.modelProvider || selectedAgentKey,
+        modelVersion: streamMeta.modelVersion || null,
         documentCitations: streamMeta.citations,
         comparisonMode: streamMeta.comparisonMode,
         toolInvocations: finalToolInvocations.length > 0 ? finalToolInvocations : undefined,
-        aiFollowups: (streamMeta as any).followups,
+        aiFollowups: streamMeta.followups,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
       setStreamingToolInvocations([]);
-
-      // Save to database in background via secure function
-      if (activeConversationId && fullContent) {
-        invokeSecureFunction('manage-client-data', {
-          operation: 'create',
-          table: 'report_qa_messages',
-          data: [
-            { conversation_id: activeConversationId, role: 'user', content: messageContent, sent_by: user?.id || null, sent_by_username: user?.username || null },
-            {
-              conversation_id: activeConversationId,
-              role: 'assistant',
-              content: fullContent,
-              model_provider: selectedModel,
-              citations: streamMeta.citations && streamMeta.citations.length > 0 ? streamMeta.citations : null,
-              comparison_mode: !!streamMeta.comparisonMode,
-              tool_invocations: finalToolInvocations.length > 0 ? finalToolInvocations : [],
-            },
-          ]
-        }).then(() => {
-          console.log('[ReportQA] Messages saved to database');
-        });
-      }
 
       // Log question asked
       logActivityDirect({
@@ -2331,9 +2320,9 @@ export default function ReportQA() {
               </div>
               </div>
               <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/40 px-2 py-1">
-                <ModelSelector
-                  selectedModel={selectedModel}
-                  onModelChange={setSelectedModel}
+                <ReportQAModelSlotSelector
+                  selectedAgentKey={selectedAgentKey}
+                  onAgentKeyChange={setSelectedAgentKey}
                   disabled={isProcessing}
                 />
                 <LiveModelChipGroup surfaceId="reportQa" size="sm" showSlot className="sm:hidden" />
@@ -2435,7 +2424,7 @@ export default function ReportQA() {
               
               {titleSaveError && <p className="pl-11 text-xs text-destructive" role="alert">{titleSaveError}</p>}
               <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-start gap-1 rounded-xl border border-border/50 bg-background/40 px-2 py-1 sm:justify-start">
-                <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
+                <ReportQAModelSlotSelector selectedAgentKey={selectedAgentKey} onAgentKeyChange={setSelectedAgentKey} disabled={isProcessing} />
                 <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 <div className="hidden min-w-0 items-center gap-2 md:flex" aria-label="Live model assignments for Report Q&A">
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Live</span>
@@ -2486,7 +2475,7 @@ export default function ReportQA() {
                   onClick={() => setAgentMode((v) => !v)}
                   title={
                     !agentModeSupported
-                      ? 'Agent tools are unavailable for Perplexity — switch model to enable'
+                      ? 'Agent tools are unavailable for this active model route — switch slot or model to enable'
                       : agentMode
                         ? 'Disable agent tools (calculators, live data)'
                         : 'Enable agent tools (calculators, live data, scenarios)'
@@ -2676,8 +2665,8 @@ export default function ReportQA() {
                               <span className="text-xs opacity-40 hidden sm:inline">
                                 {message.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
                               </span>
-                              {message.role === 'assistant' && message.modelProvider && (
-                                <ModelBadge provider={message.modelProvider} />
+                              {message.role === 'assistant' && (message.modelVersion || message.modelProvider) && (
+                                <MessageModelBadge agentKey={message.modelProvider} modelId={message.modelVersion} />
                               )}
                             </div>
                             {message.role === 'assistant' ? (
