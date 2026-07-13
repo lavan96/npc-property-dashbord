@@ -68,7 +68,6 @@ import { ChevronDown, Sparkles } from 'lucide-react';
 import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcuts';
 import { TypingIndicator } from '@/components/report-qa/TypingIndicator';
 import { StreamingTypingIndicator } from '@/components/report-qa/StreamingTypingIndicator';
-import { MessageReactions } from '@/components/report-qa/MessageReactions';
 import { ConversationClientLinker } from '@/components/report-qa/ConversationClientLinker';
 import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
 import { ConversationTags } from '@/components/report-qa/ConversationTags';
@@ -99,8 +98,6 @@ import { formatModelDisplay } from '@/lib/agentModels/modelDisplay';
 import { ToolInvocations, type ToolInvocation } from '@/components/report-qa/ToolInvocations';
 import { Citations, type DocumentCitation } from '@/components/report-qa/Citations';
 import { ReportSnippetViewer } from '@/components/report-qa/ReportSnippetViewer';
-import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
-import { MessageActions } from '@/components/report-qa/MessageActions';
 import { BranchedFromIndicator } from '@/components/report-qa/BranchedFromIndicator';
 import { PinnedAnswersStrip } from '@/components/report-qa/PinnedAnswersStrip';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -309,7 +306,6 @@ export default function ReportQA() {
   const [chatTheme, setChatTheme] = useState<Theme | null>(null);
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
-  const [messageFeedback, setMessageFeedback] = useState<Record<string, { rating: 1 | -1 | null; reason: string | null }>>({});
   const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [messageEditorOpen, setMessageEditorOpen] = useState(false);
@@ -976,19 +972,6 @@ export default function ReportQA() {
       setLiveAnnouncement(`Conversation ${conversation.title || conv.title} loaded`);
       requestAnimationFrame(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }));
 
-      try {
-        const { data: fbData } = await invokeSecureFunction('report-qa', {
-          action: 'get-feedback',
-          conversationId: conv.id,
-        });
-        const map: Record<string, { rating: 1 | -1 | null; reason: string | null }> = {};
-        (fbData?.feedback || []).forEach((f: any) => {
-          map[f.message_id] = { rating: f.rating, reason: f.reason || null };
-        });
-        setMessageFeedback(map);
-      } catch (e) {
-        console.warn('[ReportQA] feedback load failed:', e);
-      }
 
       toast({ title: 'Conversation loaded', description: conversation.title || conv.title });
     } catch (error) {
@@ -2760,51 +2743,6 @@ export default function ReportQA() {
                                     <Download className="h-3 w-3" />
                                     <span className="hidden sm:inline">PDF</span>
                                   </Button>
-                                  <MessageReactions messageId={message.id} />
-                                  {conversationId && (
-                                    <>
-                                      <MessageFeedback
-                                        messageId={message.id}
-                                        conversationId={conversationId}
-                                        initialRating={messageFeedback[message.id]?.rating ?? null}
-                                        initialReason={messageFeedback[message.id]?.reason ?? null}
-                                      />
-                                      <MessageActions
-                                        messageId={message.id}
-                                        conversationId={conversationId}
-                                        pinned={!!message.pinned}
-                                        onPinChange={(p) =>
-                                          setMessages((prev) =>
-                                            prev.map((m) => (m.id === message.id ? { ...m, pinned: p } : m))
-                                          )
-                                        }
-                                        onBranched={async (newId) => {
-                                          // Reload list, then auto-switch to the new branched conversation
-                                          // so the user lands directly in their fork.
-                                          try {
-                                            const { data } = await invokeSecureFunction('report-qa', {
-                                              action: 'get-conversations',
-                                            });
-                                            const own = (data?.conversations || []).map((c: any) => ({ ...c, shared: false }));
-                                            const shared = (data?.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
-                                            const all = [...own, ...shared];
-                                            setSavedConversations(all);
-                                            const newConv = all.find((c: SavedConversation) => c.id === newId);
-                                            if (newConv) {
-                                              await loadConversation(newConv);
-                                            }
-                                            toast({
-                                              title: 'Branch created',
-                                              description: 'Opened the new conversation from this point.',
-                                            });
-                                          } catch (e) {
-                                            loadSavedConversations();
-                                            toast({ title: 'Branch created', description: 'Open it from History.' });
-                                          }
-                                        }}
-                                      />
-                                    </>
-                                  )}
                                 </div>
                                 <MessageThreading
                                   messageId={message.id}
