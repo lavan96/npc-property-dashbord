@@ -8,11 +8,13 @@
  * updates an assignment, every consumer re-renders within a heartbeat.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { AGENT_SURFACES, type AgentSurfaceId, findSurfaceByKey } from '@/lib/agentModels/agentKeys';
 import { formatModelDisplay, type ModelDisplay } from '@/lib/agentModels/modelDisplay';
+
 
 export type AgentAssignment = {
   agent_key: string;
