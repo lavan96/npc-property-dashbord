@@ -531,7 +531,13 @@ const CallLogs = () => {
             Call Logs
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-foreground/85">Track and analyze voice agent call outcomes</p>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <LiveModelBadge agentKey="vapi_call_summary" size="sm" showSlot />
+            <LiveModelBadge agentKey="transcript_cleaning" size="sm" showSlot />
+            <ModelUpgradeButton agentKey="vapi_call_summary" />
+          </div>
         </div>
+
         <DashboardThemeFrame variant="toolbar" className="w-full border-primary/10 bg-background/45 shadow-inner shadow-sm dark:shadow-black/10 lg:w-auto lg:justify-end">
           <div className="flex flex-1 flex-wrap items-center gap-2 lg:flex-none lg:justify-end">
           {!isMobile && <WeeklyReportConfig triggerClassName={premiumReportAction} />}
