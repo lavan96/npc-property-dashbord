@@ -17,6 +17,7 @@ import { MarketSourcesAdminDialog } from '@/components/market-updates/MarketSour
 import { MarketQAVoiceButton } from '@/components/market-updates/MarketQAVoiceButton';
 import { MarketQAAnswerActions } from '@/components/market-updates/MarketQAAnswerActions';
 import type { MarketQARetrievedItem } from '@/types/marketUpdates';
+import { LiveModelBadge } from '@/components/agentModels';
 
 const PERIODS: Array<{ id: MarketDigestPeriod; label: string; hint: string }> = [
   { id: '24h', label: '24 Hours', hint: 'Last day' },
