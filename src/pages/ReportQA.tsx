@@ -172,7 +172,7 @@ function ReportQAModelSlotSelector({
         <Button
           variant="outline"
           size="sm"
-          className="report-qa-toolbar-control h-11 min-w-11 max-w-full gap-2.5 px-3 text-xs font-semibold shadow-sm sm:h-9 sm:px-3.5"
+          className="report-qa-toolbar-control h-9 min-w-9 max-w-full gap-2 px-3 text-xs font-semibold shadow-sm sm:px-3.5"
           disabled={disabled || isLoading || slots.length === 0}
           title={`Active Report Q&A slot: ${selected?.slotLabel ?? 'Loading'}`}
           aria-label={`Select active Report Q&A model slot. Current slot: ${selected?.slotLabel ?? 'Loading'}`}
