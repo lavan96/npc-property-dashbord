@@ -2238,6 +2238,7 @@ export default function ReportQA() {
                   onModelChange={setSelectedModel}
                   disabled={isProcessing}
                 />
+                <LiveModelChipGroup surfaceId="reportQa" size="sm" showSlot className="sm:hidden" />
               {/* Mobile overflow menu for all toolbar actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
