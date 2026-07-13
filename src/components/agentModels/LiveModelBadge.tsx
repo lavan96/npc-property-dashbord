@@ -89,9 +89,10 @@ export function LiveModelBadge({
       )}
       {showSlot && (
         <span className="text-muted-foreground uppercase tracking-wide text-[10px]">
-          {slotLabel}
+          {slotDisplay}
         </span>
       )}
+
       <span className="truncate max-w-[180px]">
         {loading ? 'Loading…' : display.shortLabel}
       </span>
