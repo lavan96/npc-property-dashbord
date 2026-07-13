@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { AlertTriangle, Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { LiveChartRenderer, canRenderLiveChart } from './ChartRenderer';
+import { LiveChart, canNormaliseChartConfig } from './kernel';
 
 export interface ChartData {
   id: string;
@@ -108,8 +108,9 @@ function ChartBitmapImage({ chart }: { chart: ChartData }) {
 }
 
 export function renderChartImage(chart: ChartData, variant: 'card' | 'expanded' | 'export' = 'card') {
-  if (variant !== 'card' && canRenderLiveChart(chart)) {
-    return <LiveChartRenderer chart={chart} variant={variant} />;
+  // Phase 3: prefer live rendering for every variant when the config is normalisable.
+  if (canNormaliseChartConfig(chart)) {
+    return <LiveChart chart={chart} variant={variant} />;
   }
   if (!chart.image_data) {
     return (
@@ -154,6 +155,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const cfg = getChartTypeConfig(chart.chart_type);
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const isLive = canNormaliseChartConfig(chart);
 
   return (
     <Card className={`${PREMIUM_CHART_CARD_CLASS} flex flex-col h-full min-h-[410px] sm:min-h-[430px] ${selectionMode ? 'border-brand-300/45 ring-1 ring-brand-300/25 hover:ring-brand-300/45' : ''} ${selectionMode && isSelected ? 'border-brand-300/90 bg-gradient-to-b from-brand-500/12 via-card/95 to-card/85 ring-2 ring-brand-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
@@ -190,6 +192,19 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
               <span>{cfg.label}</span>
             </Badge>
+            {isLive && (
+              <Badge
+                variant="outline"
+                className="inline-flex h-6 items-center gap-1 rounded-full border-emerald-400/40 bg-emerald-500/10 px-2 py-0 text-[10px] font-bold leading-none tracking-wide text-emerald-600 shadow-sm backdrop-blur-sm dark:text-emerald-300"
+                title="Rendered live from stored chart data"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                Live
+              </Badge>
+            )}
           </div>
         </div>
 
