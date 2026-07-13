@@ -1970,6 +1970,27 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                   lovableApiKey: LOVABLE_API_KEY,
                 }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
               }
+              // Persist user + assistant messages so historical conversation
+              // reload has content to render (previously skipped in stream path).
+              if (conversationId && assistantText) {
+                try {
+                  await supabase.from('report_qa_messages').insert([
+                    { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
+                    {
+                      conversation_id: conversationId,
+                      role: 'assistant',
+                      content: sanitizeForPostgres(assistantText),
+                      model_provider: modelProvider,
+                      citations: structuredCitations.length > 0 ? structuredCitations : null,
+                      comparison_mode: comparisonMode,
+                      prompt_version: PROMPT_VERSION,
+                      model_version: streamModelName,
+                    },
+                  ]);
+                } catch (persistErr) {
+                  console.error('[report-qa] Failed to persist stream messages:', persistErr);
+                }
+              }
               controller.close();
               // Best-effort: mark checkpoint complete
               supabase.from('report_qa_stream_checkpoints')
