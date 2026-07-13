@@ -104,7 +104,26 @@ function slugKey(label: string, i: number): string {
  */
 export function normaliseChartConfig(raw: RawChart): NormalisedChartModel | null {
   const cfg = raw?.chart_config || {};
-  const source = cfg.data || cfg;
+
+  // Producer shape used throughout the app:
+  //   { type, title, data: [{ label, value, color? }, ...] }
+  // Convert it into the Chart.js-ish {labels, datasets} shape the rest of the
+  // pipeline understands, so downstream consumers stay uniform.
+  const inlinePoints: any[] | null = Array.isArray(cfg.data) && cfg.data.length > 0 && typeof cfg.data[0] === 'object' && !Array.isArray(cfg.data[0]) && ('label' in cfg.data[0] || 'name' in cfg.data[0])
+    ? cfg.data
+    : Array.isArray(cfg.points) ? cfg.points
+    : null;
+
+  const source = inlinePoints
+    ? {
+        labels: inlinePoints.map((p) => p.label ?? p.name),
+        datasets: [{
+          label: cfg.datasetLabel || raw?.title || 'Value',
+          data: inlinePoints.map((p) => p.value ?? p.y ?? 0),
+          backgroundColor: inlinePoints.some((p) => p.color) ? inlinePoints.map((p) => p.color || null) : undefined,
+        }],
+      }
+    : (cfg.data || cfg);
 
   const labels: any[] = Array.isArray(source.labels)
     ? source.labels
