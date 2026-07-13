@@ -13,6 +13,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { LiveChart, canNormaliseChartConfig } from '@/components/charts/kernel';
 
 interface GeneratedReport {
   id: string;
