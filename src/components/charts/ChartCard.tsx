@@ -108,8 +108,9 @@ function ChartBitmapImage({ chart }: { chart: ChartData }) {
 }
 
 export function renderChartImage(chart: ChartData, variant: 'card' | 'expanded' | 'export' = 'card') {
-  if (variant !== 'card' && canRenderLiveChart(chart)) {
-    return <LiveChartRenderer chart={chart} variant={variant} />;
+  // Phase 3: prefer live rendering for every variant when the config is normalisable.
+  if (canNormaliseChartConfig(chart)) {
+    return <LiveChart chart={chart} variant={variant} />;
   }
   if (!chart.image_data) {
     return (
