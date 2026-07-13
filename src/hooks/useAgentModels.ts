@@ -43,6 +43,24 @@ export type ResolvedSlot = {
 
 const QUERY_KEY = ['agent-model-assignments'] as const;
 
+// ---- Pulse registry (Phase 5 write-path sync) ---------------------------
+// Records the last time each agent_key received a realtime model_id change,
+// so consumer components (LiveModelBadge) can briefly flash to signal that
+// the Model Hub just repointed them.
+const pulseMap = new Map<string, number>();
+const pulseListeners = new Set<() => void>();
+function pulse(agentKey: string) {
+  pulseMap.set(agentKey, Date.now());
+  pulseListeners.forEach((fn) => fn());
+}
+export function subscribeAgentPulse(listener: () => void) {
+  pulseListeners.add(listener);
+  return () => pulseListeners.delete(listener);
+}
+export function getAgentPulse(agentKey: string): number | undefined {
+  return pulseMap.get(agentKey);
+}
+
 async function fetchAssignments(): Promise<AgentAssignment[]> {
   const { data, error } = await supabase.functions.invoke('agent-models-read', {
     body: { action: 'list' },
@@ -51,6 +69,7 @@ async function fetchAssignments(): Promise<AgentAssignment[]> {
   if (!data?.success) throw new Error(data?.error ?? 'Failed to load model assignments');
   return (data.assignments ?? []) as AgentAssignment[];
 }
+
 
 /**
  * Root hook — fetches every assignment once, keeps them in sync via
