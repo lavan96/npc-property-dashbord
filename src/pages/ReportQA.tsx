@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -197,6 +197,10 @@ export default function ReportQA() {
   const [isEditingMainTitle, setIsEditingMainTitle] = useState(false);
   const [mainTitleEdit, setMainTitleEdit] = useState('');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [conversationLoadError, setConversationLoadError] = useState<string | null>(null);
+  const historyButtonRef = useRef<HTMLButtonElement | null>(null);
+  const historyListRef = useRef<HTMLDivElement | null>(null);
   
   // New feature states
   const [chatTheme, setChatTheme] = useState<Theme | null>(null);
@@ -392,6 +396,8 @@ export default function ReportQA() {
   }, [inputMessage]);
 
   const loadSavedConversations = async () => {
+    setIsLoadingConversations(true);
+    setConversationLoadError(null);
     try {
       console.log('[ReportQA] Loading saved conversations...');
       const { data, error } = await invokeSecureFunction('report-qa', {
@@ -410,6 +416,9 @@ export default function ReportQA() {
       setSavedConversations(allConversations);
     } catch (error) {
       console.error('[ReportQA] Failed to load conversations:', error);
+      setConversationLoadError('Unable to retrieve conversation history. Please try again.');
+    } finally {
+      setIsLoadingConversations(false);
     }
   };
 
@@ -1700,23 +1709,28 @@ export default function ReportQA() {
   };
 
   // Filter conversations based on search query
-  const filteredConversations = savedConversations.filter(conv => {
+  const filteredConversations = useMemo(() => savedConversations.filter(conv => {
     if (!historySearchQuery.trim()) return true;
     const query = historySearchQuery.toLowerCase();
     return (
       conv.title.toLowerCase().includes(query) ||
       conv.report_names.some(name => name.toLowerCase().includes(query))
     );
-  });
+  }), [savedConversations, historySearchQuery]);
+
+  useEffect(() => {
+    const viewport = historyListRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    viewport?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [historySearchQuery]);
 
   // Sort conversations with pinned first
-  const sortedConversations = [...filteredConversations].sort((a, b) => {
+  const sortedConversations = useMemo(() => [...filteredConversations].sort((a, b) => {
     const aPinned = pinnedIds.includes(a.id);
     const bPinned = pinnedIds.includes(b.id);
     if (aPinned && !bPinned) return -1;
     if (!aPinned && bPinned) return 1;
     return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
+  }), [filteredConversations, pinnedIds]);
 
   // Group conversations by date
   const groupConversationsByDate = (conversations: SavedConversation[]) => {
@@ -1805,7 +1819,7 @@ export default function ReportQA() {
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">New Chat</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full border-primary/20 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-md sm:h-10 sm:px-4 sm:text-sm" size="sm">
+          <Button ref={historyButtonRef} variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full border-primary/20 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-md sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <History className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">History</span>
             {savedConversations.length > 0 && (
@@ -2886,10 +2900,13 @@ export default function ReportQA() {
       {/* History Dialog - Enhanced */}
       <Dialog open={showHistory} onOpenChange={(open) => {
         setShowHistory(open);
-        if (!open) setHistorySearchQuery('');
+        if (!open) {
+          setHistorySearchQuery('');
+          historyButtonRef.current?.focus();
+        }
       }}>
-        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col overflow-hidden p-0 sm:rounded-2xl">
-          <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-background to-background px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+        <DialogContent className="grid h-[92dvh] max-h-[92dvh] grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-[88dvh] sm:w-[min(92vw,48rem)] sm:max-w-3xl sm:rounded-2xl">
+          <DialogHeader className="shrink-0 border-b bg-gradient-to-br from-primary/10 via-background to-background px-5 pb-4 pr-14 pt-5 sm:px-6 sm:pr-14 sm:pt-6">
             <DialogTitle className="flex items-center gap-3 text-xl">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
                 <History className="h-5 w-5" />
@@ -2907,7 +2924,7 @@ export default function ReportQA() {
           </DialogHeader>
           
           {/* Search Input */}
-          <div className="relative border-b bg-muted/20 px-5 py-4 sm:px-6">
+          <div className="relative shrink-0 border-b bg-muted/20 px-5 py-4 sm:px-6">
             <Search className="absolute left-8 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground sm:left-9" />
             <Input
               placeholder="Search conversations by title or report name..."
@@ -2921,7 +2938,8 @@ export default function ReportQA() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-6 top-1/2 h-6 w-6 -translate-y-1/2 sm:right-7"
+                className="absolute right-6 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full sm:right-7"
+                aria-label="Clear conversation history search"
                 onClick={() => setHistorySearchQuery('')}
               >
                 <X className="h-3 w-3" />
@@ -2929,8 +2947,23 @@ export default function ReportQA() {
             )}
           </div>
           
-          <ScrollArea className="min-h-0 flex-1 px-3 py-3 sm:px-4">
-            {savedConversations.length === 0 ? (
+          <ScrollArea ref={historyListRef} className="min-h-0 overflow-hidden px-3 py-3 [--scrollbar-size:10px] sm:px-4">
+            {isLoadingConversations ? (
+              <div className="mx-auto my-10 flex max-w-sm flex-col items-center rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
+                <Loader2 className="mb-3 h-12 w-12 animate-spin text-primary/70" />
+                <p className="font-medium text-foreground">Loading conversations</p>
+                <p className="mt-1 text-sm text-muted-foreground">Retrieving your saved Q&A sessions...</p>
+              </div>
+            ) : conversationLoadError ? (
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+                <AlertCircle className="mx-auto mb-3 h-12 w-12 text-destructive/70" />
+                <p className="font-medium text-foreground">Could not load conversations</p>
+                <p className="mt-1 text-sm text-muted-foreground">{conversationLoadError}</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={loadSavedConversations}>
+                  Retry
+                </Button>
+              </div>
+            ) : savedConversations.length === 0 ? (
               <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
                 <Archive className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
                 <p className="font-medium text-foreground">No conversations yet</p>
@@ -2951,7 +2984,7 @@ export default function ReportQA() {
                 {Object.entries(groupConversationsByDate(sortedConversations)).map(([group, convs]) => 
                   convs.length > 0 && (
                     <div key={group} className="space-y-2">
-                      <div className="flex items-center gap-2 px-1 pt-1">
+                      <div className="sticky top-0 z-10 flex items-center gap-2 bg-background/95 px-1 py-1 backdrop-blur supports-[backdrop-filter]:bg-background/75">
                         {group === 'Pinned' ? (
                           <Pin className="h-3 w-3 text-primary" />
                         ) : (
@@ -2969,7 +3002,7 @@ export default function ReportQA() {
                         <div
                           key={conv.id}
                           className={cn(
-                            "report-qa-history-row group cursor-pointer rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md",
+                            "report-qa-history-row group cursor-pointer rounded-xl border bg-card p-3 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 sm:p-4",
                             conversationId === conv.id && "border-primary bg-primary/10 shadow-md ring-1 ring-primary/15",
                             pinnedIds.includes(conv.id) && "border-primary/40"
                           )}
@@ -3023,7 +3056,7 @@ export default function ReportQA() {
                                     {pinnedIds.includes(conv.id) && (
                                       <Pin className="h-3 w-3 text-primary fill-current flex-shrink-0" />
                                     )}
-                                    <p className="truncate text-sm font-semibold leading-5 text-foreground sm:text-base">{conv.title}</p>
+                                    <p className="truncate text-sm font-semibold leading-5 text-foreground sm:text-base" title={conv.title}>{conv.title}</p>
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px] font-semibold">
@@ -3095,7 +3128,7 @@ export default function ReportQA() {
                               {/* Report names preview */}
                               <div className="mt-3 flex flex-wrap gap-1.5">
                                 {conv.report_names.slice(0, 2).map((name, idx) => (
-                                  <span key={idx} className="max-w-[190px] truncate rounded-full border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                                  <span key={idx} title={name.replace('.pdf', '')} className="max-w-full truncate rounded-full border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground sm:max-w-[190px]">
                                     {name.replace('.pdf', '')}
                                   </span>
                                 ))}
@@ -3117,8 +3150,7 @@ export default function ReportQA() {
           </ScrollArea>
           
           {/* Footer with count */}
-          {savedConversations.length > 0 && (
-            <div className="flex items-center justify-between border-t bg-muted/20 px-5 py-3 text-xs text-muted-foreground sm:px-6">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3 text-xs text-muted-foreground sm:px-6">
               <span>
                 {filteredConversations.length} of {savedConversations.length} conversation{savedConversations.length !== 1 ? 's' : ''}
                 {pinnedIds.length > 0 && ` • ${pinnedIds.length} pinned`}
@@ -3126,14 +3158,14 @@ export default function ReportQA() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-9 shrink-0 text-xs"
+                aria-label="Start a new Report Q&A chat"
                 onClick={handleNewChat}
               >
                 <Plus className="h-3 w-3 mr-1" />
                 New Chat
               </Button>
             </div>
-          )}
         </DialogContent>
       </Dialog>
 
