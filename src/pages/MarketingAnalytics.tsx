@@ -32,6 +32,8 @@ import { CreativeGalleryPanel } from '@/components/marketing/CreativeGalleryPane
 import { SpendPacingPanel } from '@/components/marketing/SpendPacingPanel';
 import { FullFunnelPanel } from '@/components/marketing/FullFunnelPanel';
 import { TrueROIPanel } from '@/components/marketing/TrueROIPanel';
+import { LiveModelChipGroup, ModelUpgradeButton } from '@/components/agentModels';
+
 
 const DATE_PRESETS = [
   { value: 'today', label: 'Today' },
