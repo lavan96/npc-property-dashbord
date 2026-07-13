@@ -192,6 +192,19 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
               <span>{cfg.label}</span>
             </Badge>
+            {isLive && (
+              <Badge
+                variant="outline"
+                className="inline-flex h-6 items-center gap-1 rounded-full border-emerald-400/40 bg-emerald-500/10 px-2 py-0 text-[10px] font-bold leading-none tracking-wide text-emerald-600 shadow-sm backdrop-blur-sm dark:text-emerald-300"
+                title="Rendered live from stored chart data"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                Live
+              </Badge>
+            )}
           </div>
         </div>
 
