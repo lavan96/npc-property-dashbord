@@ -848,11 +848,23 @@ export default function WhiteLabel() {
   const canSaveBranding = hasChanges && canEditWhiteLabel && !hasCriticalChecks && !hasInvalidAssets && !isValidatingAssets;
   const canUndoLastChange = draftHistoryRef.current.length > 0;
   const handleSaveDraft = useCallback(() => {
-    const savedDraft = savePersistedDraft(draftSettings);
-    setLastDraftSavedAt(savedDraft.savedAt);
-    setAvailablePersistedDraft(savedDraft);
-    toast.success('Draft saved', { description: 'Your draft was saved locally without changing live branding.' });
+    try {
+      const savedDraft = savePersistedDraft(draftSettings);
+      setLastDraftSavedAt(savedDraft.savedAt);
+      setAvailablePersistedDraft(savedDraft);
+      toast.success('Draft saved', {
+        description: 'Your draft was saved locally without changing live branding.',
+      });
+    } catch (error) {
+      console.error('Failed to save local brand draft:', error);
+      const description =
+        error instanceof DOMException && error.name === 'QuotaExceededError'
+          ? 'Browser storage is full. Remove old presets or use Save brand changes to publish this draft.'
+          : 'We could not persist the draft locally. Your in-progress edits are still active — try Save brand changes instead.';
+      toast.error('Draft not saved', { description });
+    }
   }, [draftSettings]);
+
 
   const handleRestoreSavedDraft = useCallback(() => {
     if (!availablePersistedDraft) return;
