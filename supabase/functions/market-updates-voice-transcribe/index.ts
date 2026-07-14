@@ -66,8 +66,9 @@ Deno.serve(async (req) => {
     }
 
     const ext = MIME_TO_EXT[mimeType.split(';')[0]] ?? 'webm';
-    // Fallback chain — try modern transcribe model first, then whisper-1.
-    const MODELS = ['openai/gpt-4o-mini-transcribe', 'openai/whisper-1'];
+    // Fallback chain — cost-efficient first, then higher-accuracy.
+    // Both are the supported Lovable AI Gateway transcription model IDs.
+    const MODELS = ['openai/gpt-4o-mini-transcribe', 'openai/gpt-4o-transcribe'];
     let transcript = '';
     let lastStatus = 0;
     let lastDetails = '';
