@@ -89,8 +89,17 @@ Deno.serve(async (req) => {
 
   const client = adminClient();
 
-  // De-dupe on (event, idempotency-key OR payload id).
-  const dedupeId = idemKey || data?.id || data?.tenant?.id || crypto.randomUUID();
+  // De-dupe on (event, idempotency-key), falling back to a digest of the raw
+  // body. NEVER key on tenant id alone: that made the FIRST balance event for
+  // a tenant permanently block every later one, freezing token_balance_cache.
+  // Retries of the same delivery share a body (same occurred_at) so the
+  // digest still de-dupes them; distinct events hash differently.
+  let dedupeId = idemKey;
+  if (!dedupeId && raw) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${event}:${raw}`));
+    dedupeId = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  if (!dedupeId) dedupeId = crypto.randomUUID();
   if (client) {
     try {
       const { error } = await client.from("token_webhook_events").insert({
