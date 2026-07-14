@@ -66,28 +66,46 @@ Deno.serve(async (req) => {
     }
 
     const ext = MIME_TO_EXT[mimeType.split(';')[0]] ?? 'webm';
-    const form = new FormData();
-    form.append('model', 'openai/gpt-4o-mini-transcribe');
-    form.append('file', new Blob([bytes], { type: mimeType }), `recording.${ext}`);
+    // Fallback chain — try modern transcribe model first, then whisper-1.
+    const MODELS = ['openai/gpt-4o-mini-transcribe', 'openai/whisper-1'];
+    let transcript = '';
+    let lastStatus = 0;
+    let lastDetails = '';
+    let lastModel = '';
+    for (const model of MODELS) {
+      const form = new FormData();
+      form.append('model', model);
+      form.append('file', new Blob([bytes], { type: mimeType }), `recording.${ext}`);
+      const upstream = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${lovableKey}` },
+        body: form,
+      });
+      lastStatus = upstream.status;
+      lastModel = model;
+      if (upstream.ok) {
+        const data = await upstream.json().catch(() => ({}));
+        transcript = String(data?.text ?? '').trim();
+        break;
+      }
+      lastDetails = await upstream.text().catch(() => '');
+      // Only fall back on 400/404/422 (bad model/audio); stop on auth/rate/credit issues.
+      if (![400, 404, 422].includes(upstream.status)) break;
+    }
 
-    const upstream = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${lovableKey}` },
-      body: form,
-    });
-
-    if (!upstream.ok) {
-      const text = await upstream.text().catch(() => '');
-      return new Response(JSON.stringify({ error: 'transcription_failed', status: upstream.status, details: text }), {
-        status: upstream.status,
+    if (!transcript && lastStatus && lastStatus >= 400) {
+      return new Response(JSON.stringify({
+        error: 'transcription_failed',
+        status: lastStatus,
+        model: lastModel,
+        details: lastDetails,
+      }), {
+        status: lastStatus,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const json = await upstream.json();
-    const transcript: string = (json?.text ?? '').trim();
-
-    return new Response(JSON.stringify({ transcript }), {
+    return new Response(JSON.stringify({ transcript, model: lastModel }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
