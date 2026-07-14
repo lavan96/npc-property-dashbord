@@ -1,17 +1,23 @@
 // Token estimation heuristics. Reserve generously — commit reconciles.
+//
+// UNIT: these are billing credits (the same unit as the token balance, plan
+// allowances and top-up packs), NOT raw LLM tokens. One report costs a handful
+// of credits. Keep them in this scale so usage stays consistent with the
+// plans/packs sold on the Aurixa Systems pricing page — do not paste raw LLM
+// token counts (~thousands per report) in here.
 import type { TokenKind } from "./missionControl.ts";
 
 const BASE: Record<TokenKind, number> = {
-  "report.investment.compass": 12000,
-  "report.investment.executive": 8000,
-  "report.investment.snapshot": 4000,
-  "report.suburb.compass": 10000,
-  "report.postcode.compass": 10000,
-  "report.market-intelligence": 6000,
-  "report.portfolio-review": 8000,
-  "report.bulk-item": 8000, // averaged; caller should override per-item
-  "report.chart-analysis": 2000,
-  "report.qualitative-regen": 3000,
+  "report.investment.compass": 12,
+  "report.investment.executive": 8,
+  "report.investment.snapshot": 4,
+  "report.suburb.compass": 10,
+  "report.postcode.compass": 10,
+  "report.market-intelligence": 6,
+  "report.portfolio-review": 8,
+  "report.bulk-item": 8, // averaged; caller should override per-item
+  "report.chart-analysis": 2,
+  "report.qualitative-regen": 3,
 };
 
 export interface EstimateOptions {
@@ -21,7 +27,7 @@ export interface EstimateOptions {
 }
 
 export function estimateTokens(kind: TokenKind, opts: EstimateOptions = {}): number {
-  let n = BASE[kind] ?? 5000;
+  let n = BASE[kind] ?? 5;
   if (opts.extraSections && opts.extraSections > 0) {
     n = n * (1 + 0.2 * opts.extraSections);
   }

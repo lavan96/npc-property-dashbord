@@ -59,25 +59,31 @@ export class InsufficientTokensError extends Error {
   }
 }
 
-/** Mirror of server-side estimator. Keep in sync with supabase/functions/_shared/tokenEstimator.ts. */
+/**
+ * Mirror of server-side estimator. Keep in sync with
+ * supabase/functions/_shared/tokenEstimator.ts.
+ *
+ * UNIT: billing credits (same unit as the balance/allowance/packs), NOT raw
+ * LLM tokens. A report costs a handful of credits — keep this scale.
+ */
 const BASE: Record<TokenKind, number> = {
-  "report.investment.compass": 12000,
-  "report.investment.executive": 8000,
-  "report.investment.snapshot": 4000,
-  "report.suburb.compass": 10000,
-  "report.postcode.compass": 10000,
-  "report.market-intelligence": 6000,
-  "report.portfolio-review": 8000,
-  "report.bulk-item": 8000,
-  "report.chart-analysis": 2000,
-  "report.qualitative-regen": 3000,
+  "report.investment.compass": 12,
+  "report.investment.executive": 8,
+  "report.investment.snapshot": 4,
+  "report.suburb.compass": 10,
+  "report.postcode.compass": 10,
+  "report.market-intelligence": 6,
+  "report.portfolio-review": 8,
+  "report.bulk-item": 8,
+  "report.chart-analysis": 2,
+  "report.qualitative-regen": 3,
 };
 
 export function estimateTokens(
   kind: TokenKind,
   opts: { extraSections?: number; aiNarrative?: boolean; multiplier?: number } = {},
 ): number {
-  let n = BASE[kind] ?? 5000;
+  let n = BASE[kind] ?? 5;
   if (opts.extraSections && opts.extraSections > 0) n *= 1 + 0.2 * opts.extraSections;
   if (opts.aiNarrative) n *= 1.5;
   if (opts.multiplier && opts.multiplier > 0) n *= opts.multiplier;
