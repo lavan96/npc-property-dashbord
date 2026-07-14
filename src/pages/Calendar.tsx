@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Zap, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu, Mail } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu, Mail } from 'lucide-react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
@@ -30,7 +30,6 @@ import { TimelineView } from '@/components/calendar/TimelineView';
 import { DraggableEvent } from '@/components/calendar/DraggableEvent';
 import { DropZone } from '@/components/calendar/DropZone';
 import { AvailabilitySlots } from '@/components/calendar/AvailabilitySlots';
-import { EventTemplates } from '@/components/calendar/EventTemplates';
 import { CalendarHeatmap } from '@/components/calendar/CalendarHeatmap';
 import { TimeAllocationDashboard } from '@/components/calendar/TimeAllocationDashboard';
 import { WeeklySummaryCards } from '@/components/calendar/WeeklySummaryCards';
@@ -54,7 +53,7 @@ import { formatInSydney } from '@/lib/timezoneUtils';
 import { getBookingTimezone } from '@/lib/bookingTimezone';
 
 // Sidebar tab type
-type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
+type SidebarTab = 'events' | 'availability' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
 
 // Module-level helper functions for date parsing/formatting
 const safeParseISO = (value: string | undefined | null): Date | null => {
@@ -91,7 +90,6 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shortcut: string }[] = [
   { id: 'events', icon: <CalendarIcon className="h-4 w-4" />, label: 'Events', shortcut: '1' },
   { id: 'availability', icon: <Clock className="h-4 w-4" />, label: 'Availability', shortcut: '2' },
-  { id: 'templates', icon: <Zap className="h-4 w-4" />, label: 'Templates', shortcut: '3' },
   { id: 'heatmap', icon: <Flame className="h-4 w-4" />, label: 'Heatmap', shortcut: '4' },
   { id: 'analytics', icon: <BarChart3 className="h-4 w-4" />, label: 'Analytics', shortcut: '5' },
   { id: 'summary', icon: <TrendingUp className="h-4 w-4" />, label: 'Summary', shortcut: '6' },
@@ -915,9 +913,6 @@ export default function Calendar() {
                           setMobileSidebarOpen(false);
                         }} />
                       )}
-                      {sidebarTab === 'templates' && (
-                        <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
-                      )}
                       {sidebarTab === 'heatmap' && (
                         <CalendarHeatmap events={filteredEvents} currentMonth={currentMonth} selectedDate={selectedDate} onDateSelect={(date) => { setSelectedDate(date); setSidebarTab('events'); }} />
                       )}
@@ -1599,9 +1594,6 @@ export default function Calendar() {
                   setQuickAddDefaultHour(startTime.getHours());
                   setQuickAddModalOpen(true);
                 }} />
-              )}
-              {sidebarTab === 'templates' && (
-                <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
               )}
               {sidebarTab === 'heatmap' && (
                 <div>

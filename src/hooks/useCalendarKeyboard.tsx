@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { addDays, subDays, addWeeks, subWeeks, addMonths, subMonths } from 'date-fns';
 
-type SidebarTab = 'events' | 'availability' | 'templates' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
+type SidebarTab = 'events' | 'availability' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
 
 interface UseCalendarKeyboardProps {
   view: 'month' | 'week' | 'timeline';
@@ -20,7 +20,6 @@ interface UseCalendarKeyboardProps {
 const TAB_SHORTCUTS: Record<string, SidebarTab> = {
   '1': 'events',
   '2': 'availability',
-  '3': 'templates',
   '4': 'heatmap',
   '5': 'analytics',
   '6': 'summary',
