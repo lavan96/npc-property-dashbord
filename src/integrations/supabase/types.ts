@@ -19075,6 +19075,7 @@ export type Database = {
         Row: {
           agency_ref: string
           available_tokens: number
+          billing_user_id: string | null
           created_at: string
           error_message: string | null
           event: string
@@ -19094,6 +19095,7 @@ export type Database = {
         Insert: {
           agency_ref: string
           available_tokens?: number
+          billing_user_id?: string | null
           created_at?: string
           error_message?: string | null
           event: string
@@ -19113,6 +19115,7 @@ export type Database = {
         Update: {
           agency_ref?: string
           available_tokens?: number
+          billing_user_id?: string | null
           created_at?: string
           error_message?: string | null
           event?: string
@@ -19171,6 +19174,7 @@ export type Database = {
         Row: {
           actual_tokens: number
           agency_ref: string
+          billing_user_id: string | null
           created_at: string
           duration_ms: number
           error_message: string | null
@@ -19188,6 +19192,7 @@ export type Database = {
         Insert: {
           actual_tokens?: number
           agency_ref: string
+          billing_user_id?: string | null
           created_at?: string
           duration_ms?: number
           error_message?: string | null
@@ -19205,6 +19210,7 @@ export type Database = {
         Update: {
           actual_tokens?: number
           agency_ref?: string
+          billing_user_id?: string | null
           created_at?: string
           duration_ms?: number
           error_message?: string | null
