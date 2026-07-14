@@ -23,6 +23,7 @@ import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconcil
 import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
+import { runImportQualityGate } from './importQualityGate';
 import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
 import { fontLookupKey, resolveSourceFontFamily, lookupEmbeddedFamily } from './fontResolver';
 import { recommendFidelityMode } from './recommendFidelityMode';
@@ -707,22 +708,97 @@ export async function extractPdfViaDocling(
     // `textAccuracy` and `medianPositionDrift` are measured against the
     // source Docling document instead of empty arrays.
     const doclingExpectations = buildDoclingExpectations(doclingDoc);
-    const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
+    let cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
+
+    // Phase 7 — quality-gated finalization. Diff the reconstructed template
+    // against the source page rasters, run the deterministic repair loop on
+    // weak pages, and decide a recommended final mode BEFORE finalizing. The
+    // gate is fail-open: any failure returns the un-repaired template with a
+    // `ran: false` summary, so it can never block an import.
+    let stageTemplate = template;
+    let stageCdir = cdir;
+    let qualityGateSummary: Record<string, unknown> | null = null;
+    let qualityGateResultSummary: ImportResult['visualQuality'] | undefined;
+    if (options.runQualityGate !== false) {
+      onProgress({ phase: 'finalizing', message: 'Running visual quality gate…' });
+      const gate = await runImportQualityGate({
+        importId,
+        template,
+        cdir,
+        requestedMode: effectiveMode,
+        rastersByPage: rasters,
+        maxPages: options.qualityGateMaxPages,
+      });
+      qualityGateSummary = gate.summary as unknown as Record<string, unknown>;
+      qualityGateResultSummary = {
+        ran: gate.summary.ran,
+        skippedReason: gate.summary.skippedReason,
+        overallScore: gate.summary.overallScore,
+        finalScore: gate.summary.finalScore,
+        recommendedFinalMode: gate.recommendedFinalMode,
+        repairPassesApplied: gate.repairPassesApplied,
+        manualReviewRequired: gate.manualReviewRequired,
+        pagesNeedingReview: gate.summary.pagesNeedingReview,
+        pageCount: gate.summary.pageCount,
+      };
+
+      // Stage the repaired template only when repair strictly improved the
+      // score. Preserve the plan-applied page backgrounds (underlay flags,
+      // source rasters), page sizes, embedded font faces, and pdfImport meta —
+      // the CDIR→template round-trip does not carry those.
+      const improved = gate.summary.ran
+        && gate.summary.patchesApplied > 0
+        && (gate.summary.scoreDelta ?? 0) > 0
+        && gate.template !== template;
+      if (improved) {
+        const originalPagesById = new Map(template.pages.map((page) => [page.id, page]));
+        const embeddedFaces: any[] = (template.tokens as any)?.fontFaces ?? [];
+        const mergedTokens: any = { ...(gate.template.tokens ?? {}) };
+        if (embeddedFaces.length) {
+          const seen = new Set((mergedTokens.fontFaces ?? []).map((f: any) => f?.family));
+          mergedTokens.fontFaces = [
+            ...(mergedTokens.fontFaces ?? []),
+            ...embeddedFaces.filter((f: any) => !seen.has(f?.family)),
+          ];
+        }
+        const candidate = {
+          ...gate.template,
+          tokens: mergedTokens,
+          meta: { ...(gate.template.meta ?? {}), ...(template.meta ?? {}) },
+          pages: gate.template.pages.map((page) => {
+            const orig = originalPagesById.get(page.id);
+            return orig ? { ...page, background: orig.background, size: orig.size } : page;
+          }),
+        } as typeof template;
+        const candidateValidation = validateReconstructedSchema(candidate);
+        if (candidateValidation.ok) {
+          stageTemplate = candidate;
+          stageCdir = reportTemplateToCdir(candidate, {
+            kind: 'pdf',
+            checksum: sourceChecksum,
+            filename: file.name,
+          });
+          cdirFidelity = buildCdirFidelityReport(stageCdir, doclingExpectations);
+        }
+      }
+    }
+
     const rasterPageCount = job.result_payload?.page_raster_paths?.length ?? 0;
     const totalPages = Math.max(
       job.page_count ?? 0,
-      template.pages.length,
+      stageTemplate.pages.length,
       rasterPageCount,
     );
 
     await invokeImport({
       operation: 'stage_artifacts',
       import_id: importId,
-      schema: template,
+      schema: stageTemplate,
       page_count: totalPages,
       source_filename: file.name,
       source_checksum: sourceChecksum,
-      cdir,
+      ...(qualityGateSummary ? { meta: { visual_quality_gate: qualityGateSummary } } : {}),
+      cdir: stageCdir,
       cdir_fidelity: cdirFidelity,
       import_manifests: {
         pdf_import_job: {
@@ -785,8 +861,9 @@ export async function extractPdfViaDocling(
       },
       importId,
       pageCount: totalPages,
-      cdir,
+      cdir: stageCdir,
       cdirFidelity,
+      ...(qualityGateResultSummary ? { visualQuality: qualityGateResultSummary } : {}),
       fidelityReport: {
         semanticPages: effectiveMode === 'pixel-perfect' ? 0 : totalPages,
         rasterizedPages: effectiveMode === 'semantic' ? 0 : totalPages,

@@ -24,6 +24,7 @@ import {
   type PersistedImportRecord,
 } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
+import { applyFidelityModeToTemplate, type ForcedFidelityMode } from '@/lib/reportTemplate/pdfImport/applyFidelityMode';
 import type { FidelityMode } from '@/lib/reportTemplate/pdfImport/types';
 import type { ImportAsset, RawImportManifest } from '@/lib/reportTemplate/ingestion/reconciliation';
 
@@ -91,6 +92,7 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
   const [repairSummary, setRepairSummary] = useState<VisualRepairOrchestrationSummary | null>(null);
   const [persistedRepairAudit, setPersistedRepairAudit] = useState<PersistedVisualRepairAudit | null>(null);
   const [applyRepairBusy, setApplyRepairBusy] = useState(false);
+  const [forceModeBusy, setForceModeBusy] = useState(false);
   const [repairApplied, setRepairApplied] = useState(false);
   const [repairDraftReady, setRepairDraftReady] = useState(false);
   const [reviewDebug, setReviewDebug] = useState<ImportReviewDebugSnapshot | null>(null);
@@ -312,6 +314,52 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     }
   }, [navigate, options, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, repairSummary, reviewRecord?.created_template_id]);
 
+  const forceMode = useCallback(async (mode: ForcedFidelityMode) => {
+    const templateId = reviewRecord?.created_template_id ?? null;
+    const baseTemplate = persistedReview?.draft?.template;
+    if (!templateId) {
+      toast.error('No template record is linked to this import.');
+      return;
+    }
+    if (!baseTemplate) {
+      toast.error('No template is loaded to apply a fallback mode to.');
+      return;
+    }
+    setForceModeBusy(true);
+    try {
+      const { template: forced, pagesChanged, pagesWithoutRaster } = applyFidelityModeToTemplate(baseTemplate, mode);
+      if (mode === 'pixel-perfect' && pagesChanged > 0 && pagesWithoutRaster === pagesChanged) {
+        toast.error('No source raster is available on these pages to lock behind — re-import in Pixel-perfect mode instead.');
+        return;
+      }
+      const applied = await applyRepairedTemplateToRecord({
+        templateId,
+        repairedTemplate: forced,
+        repairSummary: repairSummary ?? undefined,
+        repairAuditPath: persistedRepairAudit?.artifactPaths?.summary ?? null,
+        note: `Operator forced ${mode === 'pixel-perfect' ? 'pixel-perfect' : 'hybrid'} fallback from import review.`,
+      });
+      setReviewDebug((prev) => ({
+        ...(prev ?? {}),
+        stage: 'force_mode_applied',
+        forcedMode: mode,
+        forcedPagesChanged: pagesChanged,
+        appliedTemplateId: applied.templateId,
+        appliedNextVersion: applied.nextVersion,
+      }));
+      toast.success(`Forced ${mode === 'pixel-perfect' ? 'pixel-perfect' : 'hybrid'} mode · template v${applied.nextVersion}.`);
+      setReviewOpen(false);
+      options.onRepairApplied?.(templateId);
+      navigate(`/admin/template-builder/${templateId}`);
+    } catch (err) {
+      const message = (err as Error).message;
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'force_mode_failed', forceModeError: message }));
+      toast.error(`Could not force ${mode} mode: ${message}`);
+    } finally {
+      setForceModeBusy(false);
+    }
+  }, [navigate, options, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, repairSummary, reviewRecord?.created_template_id]);
+
   const recordDecision = useCallback(async (decision: ImportReviewDecision, note?: string) => {
     if (!reviewImportId) return;
     try {
@@ -344,8 +392,11 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     onApplyRepair: applyRepair,
     applyRepairAvailable,
     applyRepairBusy,
+    onForceMode: reviewRecord?.created_template_id ? forceMode : undefined,
+    forceModeAvailable: Boolean(reviewRecord?.created_template_id && persistedReview?.draft?.template && !forceModeBusy),
+    forceModeBusy,
     onRecordDecision: reviewImportId ? recordDecision : undefined,
-  }), [applyRepair, applyRepairAvailable, applyRepairBusy, persistedRepairAudit?.artifactPaths?.summary, persistedVisualQuality?.artifactPaths, persistedVisualQuality?.signedUrls, recordDecision, recordedDecision, repairAvailable, repairBusy, repairSummary, resetReviewState, reviewDebug, reviewDraft, reviewImportId, reviewOpen, runRepair, runVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary]);
+  }), [applyRepair, applyRepairAvailable, applyRepairBusy, forceMode, forceModeBusy, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, persistedVisualQuality?.artifactPaths, persistedVisualQuality?.signedUrls, recordDecision, recordedDecision, repairAvailable, repairBusy, repairSummary, resetReviewState, reviewDebug, reviewDraft, reviewImportId, reviewOpen, reviewRecord?.created_template_id, runRepair, runVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary]);
 
   return {
     reviewOpen,
@@ -375,6 +426,8 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     runVisualQa,
     runRepair,
     applyRepair,
+    forceMode,
+    forceModeBusy,
     recordDecision,
     resetReviewState,
     getImportReviewDialogProps: () => dialogProps,
