@@ -115,6 +115,27 @@ function ReportGenerationProgressInner() {
   const prevReportsRef = useRef<ReportProgress[]>([]);
   /* IDs cancelled by the user — skip finalizeJob to avoid overwriting the 'cancelled' history entry */
   const cancelledIdsRef = useRef<Set<string>>(new Set());
+  /* IDs the user dismissed locally — hide from the active list even while the
+     server-side job continues. Persisted so a reload/re-poll doesn't resurrect them. */
+  const DISMISSED_KEY = 'report-dismissed-ids';
+  const dismissedIdsRef = useRef<Set<string>>(
+    (() => {
+      try {
+        const raw = localStorage.getItem(DISMISSED_KEY);
+        return new Set<string>(raw ? JSON.parse(raw) : []);
+      } catch {
+        return new Set<string>();
+      }
+    })(),
+  );
+  const persistDismissed = () => {
+    try {
+      localStorage.setItem(
+        DISMISSED_KEY,
+        JSON.stringify(Array.from(dismissedIdsRef.current)),
+      );
+    } catch {}
+  };
 
   /* Persist collapsed + corner */
   useEffect(() => {
