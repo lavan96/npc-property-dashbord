@@ -10,6 +10,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Sparkles,
   FileText,
@@ -20,6 +21,10 @@ import {
   ListChecks,
   Settings2,
   ExternalLink,
+  Info,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import type { PropertyListing } from '@/lib/airtable';
 import type { ReportScope, ReportTier } from '@/hooks/useReportPreferences';
@@ -45,6 +50,47 @@ const TIER_ICON = {
   snapshot: Zap,
   financial: BarChart3,
 } as const;
+
+const TIER_HINT: Record<ReportTier, string> = {
+  compass: 'Deep 17-section Location & Property Fit deep-dive (~38 pages). Best for full due diligence.',
+  strategic: 'Advisor-grade narrative with strategy, risks and NPC view — mid depth.',
+  briefing: 'Concise executive briefing suitable for a first client-ready summary.',
+  snapshot: 'Fast one-page snapshot — quickest to generate, minimal token cost.',
+  financial: 'Financial-only fork (FIN) — cash flow, servicing, tax and scenarios.',
+};
+
+const SCOPE_HINT: Record<ReportScope, string> = {
+  address: 'Runs against the specific property address on the listing.',
+  suburb: 'Aggregates data at the suburb level around the listing.',
+  zipcode: 'Aggregates data at the postcode level around the listing.',
+  state: 'State-wide market context — broadest scope, lowest specificity.',
+};
+
+const HELP_ICON_CLS =
+  'ml-2 h-3.5 w-3.5 shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors';
+
+function HelpDot({ label }: { label: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          role="button"
+          tabIndex={-1}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="ml-2 inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground"
+          aria-label="What does this do?"
+        >
+          <Info className={HELP_ICON_CLS} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right" align="start" className="max-w-xs text-xs leading-relaxed">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 
 export interface ReportCommandPaletteProps {
   open: boolean;
