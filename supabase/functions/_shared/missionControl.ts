@@ -265,13 +265,29 @@ export async function getBalance(): Promise<BalanceResult> {
   const allowance = Number(plan?.monthly_allowance ?? body?.allowance ?? 0);
   const lifetimeGranted = Number(balance?.lifetime_granted ?? 0);
   const lifetimeSpent = Number(balance?.lifetime_spent ?? balance?.used ?? 0);
+  const available = Number(balance?.available ?? 0);
+  const reserved = Number(balance?.reserved ?? 0);
+
+  // `used` should reflect CURRENT PERIOD consumption (matches the "of N allowance"
+  // progress bar in the UI), not lifetime spend. Prefer an MC-provided period figure
+  // when available; otherwise derive it from allowance − available − reserved and
+  // cap at the allowance so the pill can't show implausible multi-million totals
+  // caused by legacy lifetime_spent bleed-through.
+  const periodUsedRaw = Number(
+    balance?.period_used ?? balance?.current_period_spent ?? body?.period_used ?? NaN,
+  );
+  const derivedUsed = Math.max(0, allowance - available - reserved);
+  const used = Number.isFinite(periodUsedRaw) && periodUsedRaw >= 0
+    ? Math.min(periodUsedRaw, allowance > 0 ? allowance : periodUsedRaw)
+    : allowance > 0
+      ? Math.min(derivedUsed, allowance)
+      : 0;
 
   return {
-    available: Number(balance?.available ?? 0),
-    reserved: Number(balance?.reserved ?? 0),
+    available,
+    reserved,
     allowance,
-    // Best-effort `used` for the current period: prefer lifetime_spent (MC source of truth).
-    used: lifetimeSpent,
+    used,
     lifetimeGranted,
     lifetimeSpent,
     planName: plan?.name ?? null,
