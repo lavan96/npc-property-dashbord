@@ -1106,53 +1106,6 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Calendar Legend */}
-      {calendars.length > 0 && (
-        <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:border-primary/25")}>
-          <CardContent className="px-4 py-3">
-            <TooltipProvider delayDuration={150}>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="mr-0.5 shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Calendars:</span>
-                {calendars.map(calendar => (
-                  <Tooltip key={calendar.id}>
-                    <TooltipTrigger asChild>
-                      <button
-                        aria-pressed={selectedCalendarId === calendar.id}
-                        title={calendar.name}
-                        onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
-                        className={cn(
-                          'group flex max-w-[190px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]',
-                          selectedCalendarId === calendar.id
-                            ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_28px_hsl(var(--primary)/0.14)]'
-                            : selectedCalendarId === 'all'
-                              ? 'border-border bg-card/85 text-muted-foreground hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.10)]'
-                              : 'border-border/50 bg-muted/30 text-muted-foreground opacity-70 hover:opacity-100 hover:border-primary/25 hover:text-foreground'
-                        )}
-                      >
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-black/30"
-                          style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
-                        />
-                        <span className="min-w-0 truncate">{calendar.name}</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">{calendar.name}</TooltipContent>
-                  </Tooltip>
-                ))}
-                {selectedCalendarId !== 'all' && (
-                  <button
-                    onClick={() => setSelectedCalendarId('all')}
-                    className="ml-0.5 rounded-full border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
-                  >
-                    Show all
-                  </button>
-                )}
-              </div>
-            </TooltipProvider>
-          </CardContent>
-        </Card>
-      )}
-
       <div className={cn(
         "grid gap-4 md:gap-6 transition-all duration-300",
         isMobile ? "grid-cols-1" : sidebarCollapsed ? "grid-cols-[1fr_auto]" : "lg:grid-cols-3"
