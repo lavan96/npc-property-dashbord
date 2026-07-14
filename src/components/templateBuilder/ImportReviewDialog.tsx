@@ -7,7 +7,7 @@
  * the generated template for manual refinement.
  */
 import { useState } from 'react';
-import { Activity, AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw, Wand2, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileCode2, Image as ImageIcon, Layers3, Loader2, MousePointerClick, RotateCw, Wand2, Wrench } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -53,6 +53,10 @@ interface Props {
   onApplyRepair?: () => Promise<void> | void;
   applyRepairAvailable?: boolean;
   applyRepairBusy?: boolean;
+  // Phase 8 — operator "force fallback mode" controls.
+  onForceMode?: (mode: 'hybrid' | 'pixel-perfect') => Promise<void> | void;
+  forceModeAvailable?: boolean;
+  forceModeBusy?: boolean;
   // Phase 7E — AI reconciliation recommendation (user-confirmed).
   onRunAiReconciliation?: () => Promise<void> | void;
   reconciliationPolicy?: ReconciliationPolicyDecision | null;
@@ -83,7 +87,7 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy, onRunAiReconciliation, reconciliationPolicy, aiReconciliationBusy, aiReconciliationSummary }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy, onForceMode, forceModeAvailable, forceModeBusy, onRunAiReconciliation, reconciliationPolicy, aiReconciliationBusy, aiReconciliationSummary }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
@@ -477,6 +481,18 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
               {applyRepairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
               Apply repair
             </Button>
+          )}
+          {onForceMode && (
+            <>
+              <Button type="button" variant="secondary" onClick={() => onForceMode('hybrid')} disabled={!forceModeAvailable || !!forceModeBusy}>
+                {forceModeBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Layers3 className="h-4 w-4 mr-1" />}
+                Force hybrid
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => onForceMode('pixel-perfect')} disabled={!forceModeAvailable || !!forceModeBusy}>
+                {forceModeBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImageIcon className="h-4 w-4 mr-1" />}
+                Force pixel-perfect
+              </Button>
+            </>
           )}
           {onRunReconciliation && (
             <Button type="button" variant="secondary" onClick={onRunReconciliation} disabled={!reconciliationAvailable || !!reconciliationBusy}>

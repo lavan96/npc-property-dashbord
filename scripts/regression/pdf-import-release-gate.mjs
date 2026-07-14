@@ -156,12 +156,14 @@ for (const [id, hits] of Object.entries(artifactHits)) {
 
 // 3. Unsafe source pattern scan (changed source files only)
 const GENERAL_PATTERNS = [
-  { code: 'service_role_secret_frontend', id: 'no_service_role_secret_frontend_pattern', re: /SUPABASE_SERVICE_ROLE_KEY/ },
   { code: 'automatic_ai_execution', id: 'no_automatic_ai_execution_pattern', re: /\b(autoRunAiReconciliation|automaticallyReconcile|autoInvokeAiReconciliation|autoRunReconciliation)\b/ },
   { code: 'manual_only_auto_completion', id: 'no_manual_only_action_auto_completion_pattern', re: /\b(autoCompleteManualOnly|forceCompleteManualOnly|autoExecuteManualOnly)\b/ },
   { code: 'quality_gate_bypass', id: 'no_quality_gate_bypass_pattern', re: /\b(bypassQualityGate|skipQualityGate|forceQualityGatePass|disableQualityGate)\b/ },
 ];
 const SCOPED_PATTERNS = [
+  // Frontend-only: the service-role key is legitimate in server-side edge
+  // functions (supabase/functions/**), so this rule scopes to the src/ bundle.
+  { id: 'no_service_role_secret_frontend_pattern', pathScope: /^src\//, re: /SUPABASE_SERVICE_ROLE_KEY/ },
   { id: 'no_automatic_template_mutation_pattern', pathScope: /ingestion\/(selfHealing|operatorControls)\/.*(Executor|executor)/, re: /\b(applyTemplateImportPlan|applyRepairedTemplateToRecord)\s*\(/ },
   { id: 'no_automatic_template_mutation_pattern', pathScope: /ingestion\/(selfHealing|operatorControls)\//, re: /from\(['"]report_templates['"]\)\s*\.\s*(update|upsert|insert|delete)/ },
 ];

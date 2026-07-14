@@ -28,6 +28,27 @@ export interface ImportOptions {
   targetTemplateId?: string;
   ocrLang?: string;
   redactPii?: boolean;
+  /**
+   * Run the inline visual quality gate (source-vs-template diff + deterministic
+   * repair) before finalizing. Defaults to on; fail-open, so a QA failure never
+   * blocks the import. Skipped automatically for very large documents.
+   */
+  runQualityGate?: boolean;
+  /** Page-count ceiling above which the inline gate is skipped. */
+  qualityGateMaxPages?: number;
+}
+
+/** Compact, JSON-serialisable verdict from the inline quality gate. */
+export interface ImportVisualQualitySummary {
+  ran: boolean;
+  skippedReason?: string;
+  overallScore: number | null;
+  finalScore: number | null;
+  recommendedFinalMode: FidelityMode | 'pixel-perfect';
+  repairPassesApplied: number;
+  manualReviewRequired: boolean;
+  pagesNeedingReview: number;
+  pageCount: number;
 }
 
 export interface ImportResult {
@@ -53,6 +74,8 @@ export interface ImportResult {
    * the mode the user imported with. */
   recommendedMode?: FidelityMode;
   recommendedModeReason?: string;
+  /** Phase 7 — inline visual quality gate verdict (present when the gate ran). */
+  visualQuality?: ImportVisualQualitySummary;
 }
 
 export type PdfImportEngine = 'docling';

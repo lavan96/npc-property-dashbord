@@ -1344,6 +1344,11 @@ def _build_per_page_docling_artifacts(
         page_pictures = [rebase_item(pic) for pic in page_pictures]
         page_vectors = [rebase_item(v) for v in page_vectors]
 
+        page_ocr_texts = [
+            t for t in page_texts
+            if "ocr" in str(t.get("origin") or t.get("source") or "").lower()
+        ]
+
         raster_path = raster_by_global_page.get(global_page_no)
         summary = _summarise_page_artifact(global_page_no, page_texts, page_tables, page_pictures, raster_path, page_vectors)
         blocks = _page_blocks_for_docling_page(global_page_no, page_texts, page_tables, page_pictures, page_vectors)
@@ -1374,6 +1379,15 @@ def _build_per_page_docling_artifacts(
                 "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
                 "page_no": global_page_no,
                 "tables": page_tables,
+            },
+            # Per-page OCR text so the page-scoped repair loop can inspect OCR
+            # output for a single page without loading the whole document.
+            "ocr": {
+                "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+                "page_no": global_page_no,
+                "texts": page_ocr_texts,
+                "ocr_text_count": len(page_ocr_texts),
+                "has_ocr": len(page_ocr_texts) > 0,
             },
             "pictures": {
                 "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
@@ -1707,6 +1721,7 @@ async def _upload_per_page_docling_artifacts(
             docling_body = json.dumps(artifacts.get("docling") or {}).encode("utf-8")
             blocks_body = json.dumps(artifacts.get("blocks") or {}).encode("utf-8")
             tables_body = json.dumps(artifacts.get("tables") or {}).encode("utf-8")
+            ocr_body = json.dumps(artifacts.get("ocr") or {}).encode("utf-8")
             pictures_body = json.dumps(artifacts.get("pictures") or {}).encode("utf-8")
             vectors_body = json.dumps(artifacts.get("vectors") or {}).encode("utf-8")
             summary_body = json.dumps(artifacts.get("summary") or {}).encode("utf-8")
@@ -1714,6 +1729,7 @@ async def _upload_per_page_docling_artifacts(
             docling_path = await _storage_upload(client, f"{page_prefix}/docling.json", docling_body, "application/json")
             blocks_path = await _storage_upload(client, f"{page_prefix}/blocks.json", blocks_body, "application/json")
             tables_path = await _storage_upload(client, f"{page_prefix}/tables.json", tables_body, "application/json")
+            ocr_path = await _storage_upload(client, f"{page_prefix}/ocr.json", ocr_body, "application/json")
             pictures_path = await _storage_upload(client, f"{page_prefix}/pictures.json", pictures_body, "application/json")
             vectors_path = await _storage_upload(client, f"{page_prefix}/vectors.json", vectors_body, "application/json")
             summary_path = await _storage_upload(client, f"{page_prefix}/summary.json", summary_body, "application/json")
@@ -1722,6 +1738,7 @@ async def _upload_per_page_docling_artifacts(
                 len(docling_body)
                 + len(blocks_body)
                 + len(tables_body)
+                + len(ocr_body)
                 + len(pictures_body)
                 + len(vectors_body)
                 + len(summary_body)
@@ -1734,6 +1751,7 @@ async def _upload_per_page_docling_artifacts(
                 "docling_path": docling_path,
                 "blocks_path": blocks_path,
                 "tables_path": tables_path,
+                "ocr_path": ocr_path,
                 "pictures_path": pictures_path,
                 "vectors_path": vectors_path,
                 "summary_path": summary_path,

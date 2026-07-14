@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       let q = admin
         .from('pdf_import_jobs')
         .select(
-          'id,user_id,template_id,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,ssim_score,error_code,error_text,diagnostics_path,result_payload,created_at,updated_at',
+          'id,user_id,template_id,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,created_at,updated_at',
         )
         .order('created_at', { ascending: false })
         .limit(limit);

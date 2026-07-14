@@ -261,7 +261,102 @@ async function uploadText(admin: Admin, path: string, body: string, contentType:
 
 const MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
 const TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
+const CHUNK_REF_NAMESPACING_VERSION = 'chunk-ref-namespacing-v1';
 const PER_PAGE_DOCLING_ARTIFACT_VERSION = 'per-page-docling-v1';
+
+/**
+ * Docling emits chunk-local `self_ref`/`$ref` strings (e.g. `#/texts/0`). When
+ * chunk documents are concatenated into one merged document those indices
+ * collide across chunks, so a picture's caption `$ref` in chunk 2 would resolve
+ * to chunk 1's text 0 downstream. Namespace every ref with the chunk index so
+ * refs stay internally consistent after the merge. Applied in place, per chunk,
+ * before the chunk's items are pushed into the merged arrays.
+ */
+function namespaceChunkRefs(dd: any, chunkIndex: number): void {
+  if (!dd || typeof dd !== 'object') return;
+  const tag = `#/__c${chunkIndex}`;
+  const rewriteRefString = (ref: string): string =>
+    ref.startsWith('#/') ? `${tag}/${ref.slice(2)}` : ref;
+  const rewriteRefObject = (obj: any): void => {
+    if (!obj || typeof obj !== 'object') return;
+    if (typeof obj.$ref === 'string') obj.$ref = rewriteRefString(obj.$ref);
+    if (typeof obj.cref === 'string') obj.cref = rewriteRefString(obj.cref);
+  };
+  const rewriteItem = (item: any): void => {
+    if (!item || typeof item !== 'object') return;
+    if (typeof item.self_ref === 'string') item.self_ref = rewriteRefString(item.self_ref);
+    rewriteRefObject(item.parent);
+    for (const child of item.children ?? []) rewriteRefObject(child);
+    for (const cap of item.captions ?? []) {
+      if (typeof cap === 'string') continue; // string caption refs are rewritten below
+      rewriteRefObject(cap);
+    }
+    if (Array.isArray(item.captions)) {
+      item.captions = item.captions.map((cap: any) => (typeof cap === 'string' ? rewriteRefString(cap) : cap));
+    }
+    for (const ref of item.references ?? []) rewriteRefObject(ref);
+  };
+  for (const key of ['texts', 'tables', 'pictures', 'vectors', 'groups'] as const) {
+    for (const item of dd[key] ?? []) rewriteItem(item);
+  }
+}
+
+/**
+ * Recompute per-page and average text confidence from the merged Docling texts
+ * (whose `prov.page_no` values are already rebased to global). Mirrors the
+ * monolithic sidecar `_summarise_doc` so chunked imports report the same
+ * `page_confidence` / `avg_text_confidence` / `ocr_pages` signals the client's
+ * mode recommender and per-page warnings depend on.
+ */
+function computeMergedConfidence(texts: any[]): {
+  avg_text_confidence: number | null;
+  page_confidence: Array<{ page_no: number; avg_text_confidence: number | null; text_block_count: number }>;
+  ocr_pages: number[];
+} {
+  let confSum = 0;
+  let confN = 0;
+  const pageConf = new Map<number, { sum: number; count: number }>();
+  const ocrPages = new Set<number>();
+  const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
+
+  for (const t of texts ?? []) {
+    const provs = Array.isArray(t?.prov) ? t.prov : [];
+    const origin = String(t?.origin ?? t?.source ?? '').toLowerCase();
+    if (origin.includes('ocr')) {
+      for (const p of provs) {
+        if (typeof p?.page_no === 'number') ocrPages.add(p.page_no);
+      }
+    }
+    const conf = t?.confidence;
+    if (typeof conf === 'number' && conf >= 0 && conf <= 1) {
+      confSum += conf;
+      confN += 1;
+      for (const p of provs) {
+        const pn = p?.page_no;
+        if (typeof pn !== 'number') continue;
+        const bucket = pageConf.get(pn) ?? { sum: 0, count: 0 };
+        bucket.sum += conf;
+        bucket.count += 1;
+        pageConf.set(pn, bucket);
+      }
+    }
+  }
+
+  const page_confidence = [...pageConf.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([page_no, vals]) => ({
+      page_no,
+      avg_text_confidence: vals.count ? round4(vals.sum / vals.count) : null,
+      text_block_count: vals.count,
+    }));
+
+  return {
+    avg_text_confidence: confN ? round4(confSum / confN) : null,
+    page_confidence,
+    ocr_pages: [...ocrPages].sort((a, b) => a - b),
+  };
+}
+
 const PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION = 'chunk-parent-pages-manifest-v1';
 const PER_PAGE_DOCLING_PARENT_VALIDATION_VERSION = 'per-page-docling-parent-validation-v1';
 const PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION = 'parent-global-page-artifact-copy-v1';
@@ -684,6 +779,9 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     if (ap.docling_path) {
       const dd = await downloadJson(admin, ap.docling_path);
       if (dd && typeof dd === 'object') {
+        // Namespace chunk-local self_ref/$ref strings so they don't collide
+        // across chunks once the arrays are concatenated below.
+        namespaceChunkRefs(dd, Number(c.chunk_index ?? 0));
         const rebaseProv = (node: any) => {
           if (!node) return;
           const provs = node?.prov;
@@ -854,6 +952,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     totalTexts += Number(s.text_block_count ?? 0);
   }
 
+  const mergedConfidence = computeMergedConfidence(mergedDoc.texts as any[]);
   const summary = {
     text_chars: totalTextChars,
     ocr_chars: totalOcrChars,
@@ -865,6 +964,12 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     // (observability parity; the merged arrays are already populated above).
     vector_count: mergedDoc.vectors.length,
     font_count: mergedDoc.fonts.length,
+    // Recomputed from the merged, page-rebased texts so chunked imports report
+    // the same confidence signals as monolithic ones — the client's fidelity-
+    // mode recommender and per-page low-confidence warnings read these.
+    avg_text_confidence: mergedConfidence.avg_text_confidence,
+    page_confidence: mergedConfidence.page_confidence,
+    ocr_pages: mergedConfidence.ocr_pages,
     chunked: true,
     chunk_count: chunkRows.length,
   };
@@ -1003,6 +1108,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         artifact_contract_version: 'raster-manifest-v1',
         docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
         chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
+        chunk_ref_namespacing_version: CHUNK_REF_NAMESPACING_VERSION,
         merge_validation_path: mergeValidationPath,
         merge_validation: mergeValidation,
         terminal_state_version: TERMINAL_STATE_VERSION,
@@ -1109,6 +1215,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       artifact_contract_version: 'raster-manifest-v1',
       docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
       chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
+      chunk_ref_namespacing_version: CHUNK_REF_NAMESPACING_VERSION,
       merge_validation_path: mergeValidationPath,
       merge_validation: mergeValidation,
       terminal_state_version: TERMINAL_STATE_VERSION,

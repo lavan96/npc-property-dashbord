@@ -954,6 +954,34 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                   )}
                 </div>
               )}
+
+              {result.visualQuality?.ran && (
+                <div className="mt-4 rounded-md border bg-background/70 p-3">
+                  <div className="flex items-center justify-between gap-2 text-xs font-medium">
+                    <span>Visual fidelity (vs source)</span>
+                    {typeof result.visualQuality.finalScore === 'number' && (
+                      <Badge variant={result.visualQuality.manualReviewRequired ? 'secondary' : 'default'}>
+                        {Math.round(result.visualQuality.finalScore * 100)}%
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <Stat label="Pages needing review" value={result.visualQuality.pagesNeedingReview} />
+                    <Stat label="Repair passes applied" value={result.visualQuality.repairPassesApplied} />
+                    <Stat
+                      label="Final mode"
+                      value={result.visualQuality.recommendedFinalMode === 'pixel-perfect'
+                        ? 'Pixel-perfect'
+                        : MODE_LABELS[result.visualQuality.recommendedFinalMode as FidelityMode] ?? result.visualQuality.recommendedFinalMode}
+                    />
+                  </div>
+                  {result.visualQuality.manualReviewRequired && (
+                    <div className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">
+                      Some pages scored below the quality gate — open the import review to inspect source/generated/diff and repair or force a fallback mode.
+                    </div>
+                  )}
+                </div>
+              )}
             </Card>
           </div>
         )}
@@ -1022,7 +1050,7 @@ function PercentStat({ label, value }: { label: string; value: number }) {
   return <Stat label={label} value={Math.round(value * 100)} suffix="%" />;
 }
 
-function Stat({ label, value, suffix = '' }: { label: string; value: number; suffix?: string }) {
+function Stat({ label, value, suffix = '' }: { label: string; value: number | string; suffix?: string }) {
   return (
     <div className="flex justify-between border-b border-border/40 pb-1">
       <span className="text-muted-foreground">{label}</span>
