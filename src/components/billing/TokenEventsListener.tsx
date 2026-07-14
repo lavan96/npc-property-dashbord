@@ -36,18 +36,53 @@ export function TokenEventsListener() {
   const [topupUrl, setTopupUrl] = useState<string>("");
 
   useEffect(() => {
-    const offUsed = onTokensUsed(({ tokensUsed, tokensReserved, estimatedTokens, durationMs, functionName }) => {
+    // Chunked generators (e.g. investment reports) emit a tokens-used event per
+    // section. Coalesce them into a single toast per generator after a quiet
+    // period so users don't get spammed with 17 identical toasts.
+    const COALESCE_MS = 2500;
+    const buckets = new Map<string, {
+      tokensUsed: number;
+      tokensReserved: number;
+      estimatedTokens: number;
+      durationMs: number;
+      count: number;
+      timer: ReturnType<typeof setTimeout>;
+    }>();
+
+    const flush = (functionName: string) => {
+      const b = buckets.get(functionName);
+      if (!b) return;
+      buckets.delete(functionName);
       const label = FUNCTION_LABELS[functionName] ?? "Report";
-      const parts: string[] = [`Used ${tokensUsed.toLocaleString()} tokens`];
-      if (tokensReserved) parts.push(`reserved ${tokensReserved.toLocaleString()}`);
-      if (estimatedTokens && estimatedTokens !== tokensReserved) {
-        parts.push(`est. ${estimatedTokens.toLocaleString()}`);
+      const parts: string[] = [`Used ${b.tokensUsed.toLocaleString()} tokens`];
+      if (b.tokensReserved) parts.push(`reserved ${b.tokensReserved.toLocaleString()}`);
+      if (b.estimatedTokens && b.estimatedTokens !== b.tokensReserved) {
+        parts.push(`est. ${b.estimatedTokens.toLocaleString()}`);
       }
-      if (durationMs && durationMs > 0) {
-        const s = (durationMs / 1000).toFixed(durationMs < 10_000 ? 1 : 0);
+      if (b.durationMs > 0) {
+        const s = (b.durationMs / 1000).toFixed(b.durationMs < 10_000 ? 1 : 0);
         parts.push(`${s}s`);
       }
-      toast.success(`${label} complete`, { description: parts.join(" · ") });
+      if (b.count > 1) parts.push(`${b.count} sections`);
+      toast.success(`${label} complete`, {
+        id: `tokens-used:${functionName}`,
+        description: parts.join(" · "),
+      });
+    };
+
+    const offUsed = onTokensUsed(({ tokensUsed, tokensReserved, estimatedTokens, durationMs, functionName }) => {
+      const existing = buckets.get(functionName);
+      if (existing) clearTimeout(existing.timer);
+      const next = {
+        tokensUsed: (existing?.tokensUsed ?? 0) + (tokensUsed || 0),
+        // Reserved/estimated aren't additive across chunks — track the max seen.
+        tokensReserved: Math.max(existing?.tokensReserved ?? 0, tokensReserved ?? 0),
+        estimatedTokens: Math.max(existing?.estimatedTokens ?? 0, estimatedTokens ?? 0),
+        durationMs: (existing?.durationMs ?? 0) + (durationMs || 0),
+        count: (existing?.count ?? 0) + 1,
+        timer: setTimeout(() => flush(functionName), COALESCE_MS),
+      };
+      buckets.set(functionName, next);
     });
     const offOOT = onOutOfTokens((detail) => {
       setOutOfTokens(detail);
@@ -55,6 +90,8 @@ export function TokenEventsListener() {
     return () => {
       offUsed();
       offOOT();
+      buckets.forEach((b) => clearTimeout(b.timer));
+      buckets.clear();
     };
   }, []);
 
