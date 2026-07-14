@@ -186,21 +186,27 @@ export default function Listings() {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'list' | 'table'>(isMobile ? 'list' : 'table');
   
-  const [selectedTable, setSelectedTable] = useState<string | null>(() => getSelectedAirtableTable());
+  // Listings are locked to the Property Intake Master Airtable base — no other datasets should be exposed here.
+  const PROPERTY_INTAKE_TABLE = 'Property Intake Master';
+  useEffect(() => {
+    try { localStorage.removeItem('airtableSelectedTable'); } catch { /* ignore */ }
+  }, []);
+  const selectedTable = PROPERTY_INTAKE_TABLE;
 
   // Use React Query for caching and efficient data fetching
   const { data: listings = [], isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['listings', selectedTable ?? '__default__'],
+    queryKey: ['listings', selectedTable],
     queryFn: async () => {
       const result = await propertyDataService.fetchAllListings({
         includeDebugInfo: true,
-        tableName: selectedTable ?? undefined,
+        tableName: selectedTable,
       });
       return result.listings;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
 
   
   // Load filters from localStorage — always reset keywordSearch to blank on mount
