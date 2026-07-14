@@ -160,121 +160,176 @@ export function ReportCommandPalette({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput
-        placeholder="Search listings, or run a command…"
-        value={search}
-        onValueChange={setSearch}
-      />
-      <CommandList>
-        <CommandEmpty>No matches.</CommandEmpty>
+      <TooltipProvider delayDuration={150}>
+        <CommandInput
+          placeholder="Search listings, or run a command…"
+          value={search}
+          onValueChange={setSearch}
+        />
 
-        {/* Selection actions */}
-        {selectionSize > 0 && (
-          <>
-            <CommandGroup heading={`Selection (${selectionSize})`}>
-              {canBulk && (
-                <CommandItem onSelect={run(onOpenBulkGeneration)}>
-                  <Layers className="h-4 w-4 mr-2 text-primary" />
-                  Generate reports for {selectionSize} selected
-                  <CommandShortcut>↵</CommandShortcut>
-                </CommandItem>
-              )}
-              {canGenerate && selectionSize > 10 && (
-                <CommandItem disabled>
-                  <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
-                  Bulk supports max 10 — reduce selection
-                </CommandItem>
-              )}
-              <CommandItem onSelect={run(onClearSelection)}>
-                <ListChecks className="h-4 w-4 mr-2" />
-                Clear selection
-              </CommandItem>
-            </CommandGroup>
-            <CommandSeparator />
-          </>
-        )}
+        {/* Contextual help panel */}
+        <div className="border-b border-border/60 bg-muted/30 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground"
+            aria-expanded={showHelp}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <HelpCircle className="h-3.5 w-3.5" />
+              How commands work
+            </span>
+            {showHelp ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          {showHelp && (
+            <div className="mt-2 space-y-2 text-[11px] leading-relaxed text-muted-foreground">
+              <p>
+                <span className="font-semibold text-foreground">Search</span> — type an address, suburb or
+                postcode to filter matching listings. Press <kbd className="rounded bg-background/70 px-1 font-mono">↵</kbd> on a
+                match to generate a report for it using your current default scope &amp; tier.
+              </p>
+              <p>
+                <span className="font-semibold text-foreground">Selection</span> — commands here act on the
+                listings you ticked in the table. Bulk generation supports 2–10 selected properties.
+              </p>
+              <p>
+                <span className="font-semibold text-foreground">Tier shortcuts</span> — override the default
+                depth for a one-off generation. Current defaults:
+                <span className="ml-1 rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                  {SCOPE_LABEL[effectiveScope]} · {TIER_LABEL[effectiveTier]}
+                </span>
+              </p>
+              <p>
+                <span className="font-semibold text-foreground">Tips</span> — hover the{' '}
+                <Info className="inline h-3 w-3 align-[-2px] text-muted-foreground/70" /> icon on any
+                command for a plain-English description of what it does before you run it.
+              </p>
+            </div>
+          )}
+        </div>
 
-        {/* Listing matches */}
-        {visibleListings.length > 0 && (
-          <>
-            <CommandGroup
-              heading={`Listings — generate as ${SCOPE_LABEL[effectiveScope]} · ${TIER_LABEL[effectiveTier]}`}
-            >
-              {visibleListings.map((listing) => {
-                const addr = listing.address || listing.location || 'Unknown';
-                const sub = [listing.suburb, listing.state, listing.zipCode]
-                  .filter(Boolean)
-                  .join(' ');
-                const isSel = selectedIds.has(listing.id);
-                return (
-                  <CommandItem
-                    key={listing.id}
-                    value={`${addr} ${sub} ${buildFullAddress(listing)}`}
-                    onSelect={
-                      canGenerate
-                        ? run(() => onGenerateForListing(listing, effectiveScope, effectiveTier))
-                        : undefined
-                    }
-                  >
-                    <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="truncate">{addr}</span>
-                      {sub && <span className="text-[10px] text-muted-foreground truncate">{sub}</span>}
-                    </div>
-                    <CommandShortcut className="flex items-center gap-1">
-                      {isSel && <span className="text-primary">●</span>}
-                      <Sparkles className="h-3 w-3" />
-                    </CommandShortcut>
+        <CommandList>
+          <CommandEmpty>No matches.</CommandEmpty>
+
+          {/* Selection actions */}
+          {selectionSize > 0 && (
+            <>
+              <CommandGroup heading={`Selection (${selectionSize})`}>
+                {canBulk && (
+                  <CommandItem onSelect={run(onOpenBulkGeneration)}>
+                    <Layers className="h-4 w-4 mr-2 text-primary" />
+                    <span className="flex-1">Generate reports for {selectionSize} selected</span>
+                    <HelpDot label={`Opens the bulk generation modal and queues ${selectionSize} reports back-to-back using your current defaults. Runs in the background so you can keep working.`} />
+                    <CommandShortcut>↵</CommandShortcut>
                   </CommandItem>
-                );
-              })}
-            </CommandGroup>
-            <CommandSeparator />
-          </>
-        )}
-
-        {/* Tier shortcuts (apply to first match if any, otherwise hint only) */}
-        {canGenerate && visibleListings.length > 0 && search && (
-          <>
-            <CommandGroup heading="Generate first match with tier">
-              {(['compass', 'strategic', 'briefing', 'snapshot'] as ReportTier[]).map((t) => {
-                const Icon = TIER_ICON[t];
-                return (
-                  <CommandItem
-                    key={t}
-                    onSelect={run(() =>
-                      onGenerateForListing(visibleListings[0], effectiveScope, t)
-                    )}
-                  >
-                    <Icon className="h-4 w-4 mr-2 text-primary" />
-                    {TIER_LABEL[t]}
-                    {t === effectiveTier && (
-                      <CommandShortcut className="text-[10px]">default</CommandShortcut>
-                    )}
+                )}
+                {canGenerate && selectionSize > 10 && (
+                  <CommandItem disabled>
+                    <Layers className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span className="flex-1">Bulk supports max 10 — reduce selection</span>
+                    <HelpDot label="To protect token spend and keep queue times reasonable, bulk generation is capped at 10 properties per run. Untick some listings and try again." />
                   </CommandItem>
-                );
-              })}
-            </CommandGroup>
-            <CommandSeparator />
-          </>
-        )}
+                )}
+                <CommandItem onSelect={run(onClearSelection)}>
+                  <ListChecks className="h-4 w-4 mr-2" />
+                  <span className="flex-1">Clear selection</span>
+                  <HelpDot label="Deselects every listing currently ticked in the table. Does not delete anything." />
+                </CommandItem>
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          )}
 
-        {/* Navigation */}
-        <CommandGroup heading="Navigate">
-          <CommandItem onSelect={run(() => navigate('/generated-reports'))}>
-            <FileText className="h-4 w-4 mr-2" />
-            Open Generated Reports
-          </CommandItem>
-          <CommandItem onSelect={run(() => navigate('/reports'))}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Open Reports page
-          </CommandItem>
-          <CommandItem onSelect={run(() => navigate('/reports'))}>
-            <Settings2 className="h-4 w-4 mr-2" />
-            Manage report defaults
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
+          {/* Listing matches */}
+          {visibleListings.length > 0 && (
+            <>
+              <CommandGroup
+                heading={`Listings — generate as ${SCOPE_LABEL[effectiveScope]} · ${TIER_LABEL[effectiveTier]}`}
+              >
+                {visibleListings.map((listing) => {
+                  const addr = listing.address || listing.location || 'Unknown';
+                  const sub = [listing.suburb, listing.state, listing.zipCode]
+                    .filter(Boolean)
+                    .join(' ');
+                  const isSel = selectedIds.has(listing.id);
+                  return (
+                    <CommandItem
+                      key={listing.id}
+                      value={`${addr} ${sub} ${buildFullAddress(listing)}`}
+                      onSelect={
+                        canGenerate
+                          ? run(() => onGenerateForListing(listing, effectiveScope, effectiveTier))
+                          : undefined
+                      }
+                    >
+                      <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate">{addr}</span>
+                        {sub && <span className="text-[10px] text-muted-foreground truncate">{sub}</span>}
+                      </div>
+                      <HelpDot
+                        label={`Generates a ${TIER_LABEL[effectiveTier]} report scoped to the ${SCOPE_LABEL[effectiveScope]}. ${TIER_HINT[effectiveTier]} ${SCOPE_HINT[effectiveScope]}`}
+                      />
+                      <CommandShortcut className="flex items-center gap-1">
+                        {isSel && <span className="text-primary">●</span>}
+                        <Sparkles className="h-3 w-3" />
+                      </CommandShortcut>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          )}
+
+          {/* Tier shortcuts (apply to first match if any, otherwise hint only) */}
+          {canGenerate && visibleListings.length > 0 && search && (
+            <>
+              <CommandGroup heading="Generate first match with tier">
+                {(['compass', 'strategic', 'briefing', 'snapshot'] as ReportTier[]).map((t) => {
+                  const Icon = TIER_ICON[t];
+                  return (
+                    <CommandItem
+                      key={t}
+                      onSelect={run(() =>
+                        onGenerateForListing(visibleListings[0], effectiveScope, t)
+                      )}
+                    >
+                      <Icon className="h-4 w-4 mr-2 text-primary" />
+                      <span className="flex-1">{TIER_LABEL[t]}</span>
+                      <HelpDot label={TIER_HINT[t]} />
+                      {t === effectiveTier && (
+                        <CommandShortcut className="text-[10px]">default</CommandShortcut>
+                      )}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          )}
+
+          {/* Navigation */}
+          <CommandGroup heading="Navigate">
+            <CommandItem onSelect={run(() => navigate('/generated-reports'))}>
+              <FileText className="h-4 w-4 mr-2" />
+              <span className="flex-1">Open Generated Reports</span>
+              <HelpDot label="Jump to the library of every report that has finished generating for this workspace. You can preview, download or share from there." />
+            </CommandItem>
+            <CommandItem onSelect={run(() => navigate('/reports'))}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              <span className="flex-1">Open Reports page</span>
+              <HelpDot label="Opens the main Reports hub — configure scope, tier, templates and kick off ad-hoc generations from a full-screen workspace." />
+            </CommandItem>
+            <CommandItem onSelect={run(() => navigate('/reports'))}>
+              <Settings2 className="h-4 w-4 mr-2" />
+              <span className="flex-1">Manage report defaults</span>
+              <HelpDot label="Change the default scope (Address / Suburb / Postcode / State) and tier (Compass / Strategic / Briefing / Snapshot / Financial) applied when you generate from the palette." />
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </TooltipProvider>
     </CommandDialog>
   );
 }
+
