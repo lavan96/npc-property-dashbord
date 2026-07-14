@@ -99,16 +99,20 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
           Generate Report
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] sm:w-full sm:max-w-2xl max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-4 sm:px-6 pt-5 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Configure Report
           </DialogTitle>
         </DialogHeader>
-        
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Report Information</h3>
@@ -570,31 +574,34 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
               </div>
             )}
 
-            <div className="flex justify-between gap-2">
-              {!isGenerating && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 border-t px-4 sm:px-6 py-3 shrink-0 bg-background">
+              {!isGenerating ? (
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setOpen(false);
                     navigate('/generated-reports?tab=quantitative');
                   }}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto"
                 >
                   <BarChart3 className="h-4 w-4" />
                   View Charts
                 </Button>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+              ) : <div className="hidden sm:block" />}
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:ml-auto">
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setOpen(false)}
                   disabled={isGenerating}
+                  className="w-full sm:w-auto"
                 >
                   {isGenerating ? 'Generating...' : 'Cancel'}
                 </Button>
-                <Button type="submit" disabled={isGenerating}>
+                <Button type="submit" disabled={isGenerating} className="w-full sm:w-auto">
                   {isGenerating ? `Generating... (${progress}%)` : 'Generate PDF Report'}
                 </Button>
               </div>
