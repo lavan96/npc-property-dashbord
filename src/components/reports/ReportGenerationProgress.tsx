@@ -115,6 +115,27 @@ function ReportGenerationProgressInner() {
   const prevReportsRef = useRef<ReportProgress[]>([]);
   /* IDs cancelled by the user — skip finalizeJob to avoid overwriting the 'cancelled' history entry */
   const cancelledIdsRef = useRef<Set<string>>(new Set());
+  /* IDs the user dismissed locally — hide from the active list even while the
+     server-side job continues. Persisted so a reload/re-poll doesn't resurrect them. */
+  const DISMISSED_KEY = 'report-dismissed-ids';
+  const dismissedIdsRef = useRef<Set<string>>(
+    (() => {
+      try {
+        const raw = localStorage.getItem(DISMISSED_KEY);
+        return new Set<string>(raw ? JSON.parse(raw) : []);
+      } catch {
+        return new Set<string>();
+      }
+    })(),
+  );
+  const persistDismissed = () => {
+    try {
+      localStorage.setItem(
+        DISMISSED_KEY,
+        JSON.stringify(Array.from(dismissedIdsRef.current)),
+      );
+    } catch {}
+  };
 
   /* Persist collapsed + corner */
   useEffect(() => {
@@ -397,8 +418,24 @@ function ReportGenerationProgressInner() {
 
     const recentReports = records.filter((report: any) => {
       const createdAt = new Date(report.created_at).getTime();
-      return now - createdAt < MAX_AGE_MS;
+      if (now - createdAt >= MAX_AGE_MS) return false;
+      if (dismissedIdsRef.current.has(report.id)) return false;
+      return true;
     });
+
+    // Prune dismissed IDs no longer present server-side so the set doesn't
+    // grow unbounded and a re-used ID (unlikely) can re-surface cleanly.
+    if (dismissedIdsRef.current.size > 0) {
+      const serverIds = new Set<string>(records.map((r: any) => r.id));
+      let mutated = false;
+      dismissedIdsRef.current.forEach((id) => {
+        if (!serverIds.has(id)) {
+          dismissedIdsRef.current.delete(id);
+          mutated = true;
+        }
+      });
+      if (mutated) persistDismissed();
+    }
 
     const processedReports: ReportProgress[] = recentReports.map((report: any) => {
       const content = report.report_content || '';
@@ -617,6 +654,13 @@ function ReportGenerationProgressInner() {
       });
     }
     cancelScheduledRetry(reportId);
+    dismissedIdsRef.current.add(reportId);
+    persistDismissed();
+    // Prevent the next poll from re-adding this row via prevReportsRef diffing
+    // and stop finalizeJob from firing a completed/failed toast for a row the
+    // user explicitly hid.
+    previousReportIdsRef.current.delete(reportId);
+    prevReportsRef.current = prevReportsRef.current.filter((x) => x.id !== reportId);
     setReports((prev) => prev.filter((x) => x.id !== reportId));
   };
 
