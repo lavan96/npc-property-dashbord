@@ -88,6 +88,8 @@ export interface RunRepairLoopOptions {
   maxPasses?: number;
   /** Optional callback invoked at the end of every pass for observability. */
   onPass?: (pass: RepairPassReport) => void;
+  /** Injectable scorer (tests / future server-side execution). Defaults to `runVisualDiff`. */
+  runVisualDiffImpl?: (input: VisualDiffInput) => Promise<VisualImportQualityReport>;
 }
 
 /**
@@ -101,6 +103,7 @@ export async function runRepairLoop(opts: RunRepairLoopOptions): Promise<RepairL
     doclingRepairSolver,
   ];
   const maxPasses = Math.max(1, Math.min(MAX_PASSES, opts.maxPasses ?? MAX_PASSES));
+  const score = opts.runVisualDiffImpl ?? runVisualDiff;
 
   // Initial scoring
   const diffBase = {
@@ -114,7 +117,7 @@ export async function runRepairLoop(opts: RunRepairLoopOptions): Promise<RepairL
   } satisfies Omit<VisualDiffInput, 'cdir' | 'repairPassesApplied'>;
 
   let currentCdir = opts.cdir;
-  let report = await runVisualDiff({ ...diffBase, cdir: currentCdir, repairPassesApplied: 0 });
+  let report = await score({ ...diffBase, cdir: currentCdir, repairPassesApplied: 0 });
 
   const { expectedTextByPage, expectedBoundsByPage } = bucketExpectations(opts.expectations);
   const passes: RepairPassReport[] = [];
@@ -172,7 +175,7 @@ export async function runRepairLoop(opts: RunRepairLoopOptions): Promise<RepairL
         continue;
       }
 
-      const trialReport = await runVisualDiff({
+      const trialReport = await score({
         ...diffBase,
         cdir: trialCdir,
         repairPassesApplied: pass + 1,

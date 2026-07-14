@@ -411,7 +411,14 @@ Deno.serve(async (req) => {
   const auth = req.headers.get('authorization') ?? '';
   const token = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
 
-  if (!RECOVERY_TOKEN || token !== RECOVERY_TOKEN) {
+  // Accept the dedicated recovery token OR the service-role key. The pg_cron
+  // scheduler authenticates with the service-role key (read from Vault), so it
+  // works whether or not PDF_PARSE_RECOVERY_TOKEN is separately configured.
+  const authorized = Boolean(token) && (
+    (RECOVERY_TOKEN && token === RECOVERY_TOKEN)
+    || (SERVICE_ROLE && token === SERVICE_ROLE)
+  );
+  if (!authorized) {
     return json({ error: 'unauthorized' }, 401, cors);
   }
 

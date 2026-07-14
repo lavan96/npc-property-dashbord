@@ -78,6 +78,10 @@ interface JobRow {
   bytes_in: number | null;
   bytes_out: number | null;
   page_count: number | null;
+  chunked: boolean | null;
+  chunks_total: number | null;
+  chunks_completed: number | null;
+  chunks_failed: number | null;
   ssim_score: number | null;
   error_code: string | null;
   error_text: string | null;
@@ -330,6 +334,17 @@ export default function PdfImportDiagnostics() {
             </Link>
           </Button>
           <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl border-primary/25 bg-background/70 font-semibold shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+          >
+            <Link to="/admin/template-import-quality">
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Visual quality
+            </Link>
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             className="h-10 rounded-xl border-primary/25 bg-background/70 font-semibold shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
@@ -554,6 +569,7 @@ export default function PdfImportDiagnostics() {
                   <TableHead>Status</TableHead>
                   <TableHead>Stage</TableHead>
                   <TableHead className="text-right">Pages</TableHead>
+                  <TableHead className="text-right">Chunks</TableHead>
                   <TableHead className="text-right">Chars</TableHead>
                   <TableHead className="text-right">OCR</TableHead>
                   <TableHead className="text-right">Tables</TableHead>
@@ -649,6 +665,18 @@ export default function PdfImportDiagnostics() {
 
                       <TableCell className="text-right text-sm">
                         {row.page_count ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {row.chunked ? (
+                          <span>
+                            {row.chunks_completed ?? 0}/{row.chunks_total ?? '—'}
+                            {(row.chunks_failed ?? 0) > 0 ? (
+                              <span className="text-destructive"> · {row.chunks_failed} failed</span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">mono</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {row.result_payload?.summary?.text_chars?.toLocaleString() ?? '—'}
