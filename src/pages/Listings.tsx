@@ -435,8 +435,17 @@ export default function Listings() {
       if (filters.carsMax && listing.carSpaces && listing.carSpaces > parseInt(filters.carsMax)) return false;
 
       return true;
+    }).sort((a, b) => {
+      const getTs = (l: PropertyListing) => {
+        const d = (l as any).receivedAt || l.createdAt || l.createdTime;
+        if (!d) return 0;
+        const t = d instanceof Date ? d.getTime() : new Date(d).getTime();
+        return isNaN(t) ? 0 : t;
+      };
+      return getTs(b) - getTs(a);
     });
   }, [listings, searchQuery, filters, nearbySuburbsList]);
+
 
   const openDetailsModal = (listing: PropertyListing) => {
     setSelectedListing(listing);
