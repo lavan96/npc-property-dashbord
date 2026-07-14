@@ -3210,6 +3210,9 @@ export type Database = {
           country: string | null
           created_at: string
           current_address: string | null
+          current_postcode: string | null
+          current_state: string | null
+          current_suburb: string | null
           display_order: number
           dob: string | null
           email: string | null
@@ -3231,6 +3234,9 @@ export type Database = {
           country?: string | null
           created_at?: string
           current_address?: string | null
+          current_postcode?: string | null
+          current_state?: string | null
+          current_suburb?: string | null
           display_order?: number
           dob?: string | null
           email?: string | null
@@ -3252,6 +3258,9 @@ export type Database = {
           country?: string | null
           created_at?: string
           current_address?: string | null
+          current_postcode?: string | null
+          current_state?: string | null
+          current_suburb?: string | null
           display_order?: number
           dob?: string | null
           email?: string | null
@@ -3286,6 +3295,9 @@ export type Database = {
           contact_type: string
           country: string | null
           created_at: string
+          current_postcode: string | null
+          current_state: string | null
+          current_suburb: string | null
           end_date: string | null
           id: string
           is_current: boolean
@@ -3303,6 +3315,9 @@ export type Database = {
           contact_type?: string
           country?: string | null
           created_at?: string
+          current_postcode?: string | null
+          current_state?: string | null
+          current_suburb?: string | null
           end_date?: string | null
           id?: string
           is_current?: boolean
@@ -3320,6 +3335,9 @@ export type Database = {
           contact_type?: string
           country?: string | null
           created_at?: string
+          current_postcode?: string | null
+          current_state?: string | null
+          current_suburb?: string | null
           end_date?: string | null
           id?: string
           is_current?: boolean
@@ -19807,6 +19825,21 @@ export type Database = {
       }
     }
     Functions: {
+      address_values_match: {
+        Args: {
+          a_address: string
+          a_country: string
+          a_postcode: string
+          a_state: string
+          a_suburb: string
+          b_address: string
+          b_country: string
+          b_postcode: string
+          b_state: string
+          b_suburb: string
+        }
+        Returns: boolean
+      }
       append_migration_upload_chunk: {
         Args: {
           _chunk_index: number
