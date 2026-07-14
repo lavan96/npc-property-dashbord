@@ -90,8 +90,9 @@ export function TokenBalancePill({ compact = false }: TokenBalancePillProps) {
                 )}
               </p>
               <p className="text-xs text-muted-foreground">
-                of {allowance.toLocaleString()} allowance
-                {balance?.planName ? ` · ${balance.planName}` : ""}
+                {balance?.exempt
+                  ? "Unmetered · billing exempt"
+                  : `of ${allowance.toLocaleString()} allowance${balance?.planName ? ` · ${balance.planName}` : ""}`}
               </p>
             </div>
             <Coins

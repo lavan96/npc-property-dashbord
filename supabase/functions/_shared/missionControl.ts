@@ -59,6 +59,10 @@ export interface BalanceResult {
   planName: string | null;
   overagePolicy: string | null;
   currentPeriodEnd: string | null;
+  /** True when Mission Control marks this tenant billing-exempt (no plan,
+   * never funds-gated). Set per-tenant in MC, so clone installs of this same
+   * code keep normal plan enforcement. */
+  exempt: boolean;
 }
 
 export interface TopupPack {
@@ -293,6 +297,7 @@ export async function getBalance(): Promise<BalanceResult> {
     planName: plan?.name ?? null,
     overagePolicy: plan?.overage_policy ?? null,
     currentPeriodEnd: tenant?.current_period_end ?? null,
+    exempt: Boolean(tenant?.billing_exempt),
   };
 }
 
