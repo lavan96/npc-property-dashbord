@@ -499,6 +499,8 @@ export default function Overview() {
     })),
   }), [allListings, kpis, contentStats, filters, suburbData, propertyTypeData, agencyData, recentListings, extractPostcode]);
 
+  const propertyTypeTotal = useMemo(() => propertyTypeData.reduce((sum, item) => sum + item.count, 0), [propertyTypeData]);
+
   const handleExportSnapshot = useCallback(async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -712,23 +714,31 @@ export default function Overview() {
             <CardContent className={`${CHART_CONTENT} flex h-full flex-col overflow-visible`}>
               <div className="overview-chart-container relative min-h-[300px] overflow-visible md:min-h-[360px]">
                 <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={isMobile ? { top: 24, right: 18, bottom: 24, left: 18 } : { top: 36, right: 42, bottom: 36, left: 42 }}>
+                <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
                     cy="50%"
-                    labelLine={!isMobile}
-                    label={renderOverviewPieLabel('type', propertyTypeData, isMobile)}
+                    labelLine={false}
+                    label={false}
                     outerRadius={isMobile ? 78 : 108}
                     fill="#8884d8"
                     dataKey="count"
+                    nameKey="type"
                     stroke="hsl(var(--card))"
                     strokeWidth={2}
                     activeShape={{ outerRadius: isMobile ? 86 : 118 } as any}
                   >
-                    {propertyTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    {propertyTypeData.map((entry, index) => {
+                      const pct = propertyTypeTotal > 0 ? ((entry.count / propertyTypeTotal) * 100).toFixed(1) : '0.0';
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                          aria-label={`${entry.type}: ${entry.count.toLocaleString('en-AU')} properties, ${pct} percent`}
+                        />
+                      );
+                    })}
                   </Pie>
                   <Tooltip content={<PremiumPieTooltip unit="properties" />} wrapperStyle={{ zIndex: 50, pointerEvents: 'none' }} />
                 </PieChart>
