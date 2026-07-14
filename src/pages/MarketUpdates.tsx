@@ -114,6 +114,7 @@ export default function MarketUpdates() {
   const [activeFreshness, setActiveFreshness] = useState<MarketFreshnessTier | 'all'>('all');
   const [filters, setFilters] = useState({ category: 'all', geography: 'all', impact: 'all', audience: 'all' });
   const [sourcesAdminOpen, setSourcesAdminOpen] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<'updates' | 'ask-ai'>('updates');
 
   const loadUpdates = async () => {
     setLoading(true);
@@ -242,6 +243,95 @@ export default function MarketUpdates() {
       void handleAsk();
     }
   };
+
+
+  const renderAskAIWorkspace = () => (
+    <Card className="flex min-h-[560px] flex-col border-primary/20 bg-gradient-to-br from-card to-primary/[0.03]">
+      <CardHeader className="flex-none pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-4 w-4 text-primary" />Ask AI
+            </CardTitle>
+            <p className="mt-2 text-sm text-muted-foreground">Source-grounded, streaming answers from published market updates. Threaded — follow-ups keep prior context.</p>
+          </div>
+          {qaThread.length > 0 && (
+            <Button size="sm" variant="ghost" onClick={() => { setQaThread([]); setQaMessage(null); setConversationId(crypto.randomUUID()); }}>New thread</Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
+        <div aria-label="Ask AI conversation" className="min-h-[320px] flex-1 space-y-3 overflow-y-auto overflow-x-hidden rounded-xl border border-border/60 bg-background/40 p-3">
+          {qaThread.length === 0 ? (
+            <div className="flex h-full min-h-[280px] flex-col items-center justify-center text-center">
+              <Sparkles className="mb-3 h-8 w-8 text-primary/70" />
+              <h3 className="text-base font-semibold">Ask a source-grounded market question</h3>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">Answers use published market updates and may refuse if there are no grounded sources available.</p>
+              {!updates.length && <p className="mt-2 text-xs text-muted-foreground">No published updates loaded yet — the AI may refuse if it has no grounded sources.</p>}
+            </div>
+          ) : qaThread.map((turn, i) => (
+            <div key={i} className={cn('rounded-lg p-3 text-sm leading-relaxed', turn.role === 'user' ? 'bg-primary/10 text-foreground' : 'border border-border/60 bg-background/70')}>
+              <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                <span>{turn.role === 'user' ? 'You' : 'AI'}</span>
+                {turn.role === 'assistant' && turn.sentiment && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.sentiment}</Badge>}
+                {turn.role === 'assistant' && turn.time_horizon && turn.time_horizon !== 'unclear' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.time_horizon.replace('_',' ')}</Badge>}
+                {turn.role === 'assistant' && typeof turn.confidence_score === 'number' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{Math.round(turn.confidence_score)}% conf</Badge>}
+              </div>
+              <p className="whitespace-pre-wrap break-words">{turn.content}</p>
+              {turn.key_figures && turn.key_figures.length > 0 && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {turn.key_figures.map((k, j) => (
+                    <div key={j} className="rounded border border-border/60 bg-background/50 px-2 py-1.5">
+                      <div className="text-[10px] uppercase text-muted-foreground">{k.label}</div>
+                      <div className="text-sm font-semibold text-primary">{k.value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {turn.citations && turn.citations.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {turn.citations.map((url, j) => (
+                    <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs hover:border-primary/40 hover:text-primary"><ExternalLink className="h-3 w-3" />Cite {j + 1}</a>
+                  ))}
+                </div>
+              )}
+              {turn.follow_up_questions && turn.follow_up_questions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {turn.follow_up_questions.map((fq, j) => (
+                    <button key={j} type="button" onClick={() => handleFollowUp(fq)} disabled={asking} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10 disabled:opacity-50">↳ {fq}</button>
+                  ))}
+                </div>
+              )}
+              {turn.limitations && turn.limitations.length > 0 && <ul className="mt-3 list-disc pl-4 text-xs text-muted-foreground">{turn.limitations.map((l, j) => <li key={j}>{l}</li>)}</ul>}
+              {turn.role === 'assistant' && !turn.streaming && (
+                <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} questionText={qaThread[i-1]?.role === "user" ? qaThread[i-1].content : undefined} />
+              )}
+            </div>
+          ))}
+          {asking && (
+            <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
+            </div>
+          )}
+        </div>
+        <div className="flex-none space-y-2" aria-label="Ask AI composer">
+          <Textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={handleQuestionKeyDown}
+            placeholder="Ask anything — e.g. What's the RBA signalling this month?"
+            className="min-h-[96px] text-sm"
+          />
+          <div className="flex gap-2">
+            <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
+            <Button className="flex-1" onClick={() => handleAsk()} disabled={asking || !question.trim()}>
+              {asking ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Asking…</> : <><Sparkles className="mr-2 h-4 w-4" />Ask safely</>}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -431,85 +521,94 @@ export default function MarketUpdates() {
 
         {/* Feed + Sidebar */}
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {filteredUpdates.length} {filteredUpdates.length === 1 ? 'update' : 'updates'}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">of {updates.length} published</span>
-              </h2>
-            </div>
-
-            {loading ? (
-              <div className="space-y-3">
-                {[1,2,3].map(i => <Card key={i} className="animate-pulse"><CardContent className="h-40 p-6" /></Card>)}
+          <Tabs value={workspaceTab} onValueChange={(v) => setWorkspaceTab(v as 'updates' | 'ask-ai')} className="min-w-0 space-y-4">
+            <TabsList aria-label="Market updates workspace" className="w-full justify-start sm:w-auto">
+              <TabsTrigger value="updates">Market Updates</TabsTrigger>
+              <TabsTrigger value="ask-ai">Ask AI</TabsTrigger>
+            </TabsList>
+            <TabsContent value="updates" className="mt-0 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  {filteredUpdates.length} {filteredUpdates.length === 1 ? 'update' : 'updates'}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">of {updates.length} published</span>
+                </h2>
               </div>
-            ) : filteredUpdates.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-10 text-center">
-                  <Globe2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
-                  <h3 className="text-lg font-semibold">No updates match your filters</h3>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Try clearing segment or freshness filters, or run the ingest job to fetch the latest source-backed items.</p>
-                  <div className="mt-4 flex justify-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => { setActiveSegment('all'); setActiveFreshness('all'); setSearch(''); setFilters({ category:'all', geography:'all', impact:'all', audience:'all' }); }}>Clear filters</Button>
-                    <Button size="sm" onClick={handleIngest} disabled={ingesting}>{ingesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}Run Ingest</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredUpdates.map(update => (
-                <article key={update.id} className="group rounded-2xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-md">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <FreshnessBadge tier={update.freshness_tier} />
-                    <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', IMPACT_STYLE[update.impact_level])}>
-                      {update.impact_level} impact
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">{titleCase(update.category)}</Badge>
-                    {update.geography.slice(0, 3).map(g => <Badge key={g} variant="secondary" className="text-[10px]">{g}</Badge>)}
-                    <div className="ml-auto"><ConfidenceBar score={update.confidence_score} /></div>
-                  </div>
 
-                  <h3 className="mt-3 text-lg font-semibold leading-snug text-foreground group-hover:text-primary">{update.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground/80">{update.source_name}</span> · {dateLabel(update.source_published_at ?? update.ingested_at)}
-                  </p>
-
-                  {update.ai_summary && <p className="mt-3 text-sm leading-relaxed text-foreground/90">{update.ai_summary}</p>}
-
-                  {update.why_it_matters && (
-                    <div className="mt-3 rounded-lg border-l-2 border-primary/60 bg-primary/5 py-2 pl-3 pr-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">Why it matters</p>
-                      <p className="mt-0.5 text-sm text-foreground/90">{update.why_it_matters}</p>
+              {loading ? (
+                <div className="space-y-3">
+                  {[1,2,3].map(i => <Card key={i} className="animate-pulse"><CardContent className="h-40 p-6" /></Card>)}
+                </div>
+              ) : filteredUpdates.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-10 text-center">
+                    <Globe2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
+                    <h3 className="text-lg font-semibold">No updates match your filters</h3>
+                    <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">Try clearing segment or freshness filters, or run the ingest job to fetch the latest source-backed items.</p>
+                    <div className="mt-4 flex justify-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => { setActiveSegment('all'); setActiveFreshness('all'); setSearch(''); setFilters({ category:'all', geography:'all', impact:'all', audience:'all' }); }}>Clear filters</Button>
+                      <Button size="sm" onClick={handleIngest} disabled={ingesting}>{ingesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}Run Ingest</Button>
                     </div>
-                  )}
-
-                  {update.segments.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {update.segments.map(s => (
-                        <button key={s} onClick={() => setActiveSegment(s)} className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
-                          {titleCase(s)}
-                        </button>
-                      ))}
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredUpdates.map(update => (
+                  <article key={update.id} className="group rounded-2xl border border-border/60 bg-card p-5 transition-all hover:border-primary/30 hover:shadow-md">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FreshnessBadge tier={update.freshness_tier} />
+                      <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide', IMPACT_STYLE[update.impact_level])}>
+                        {update.impact_level} impact
+                      </span>
+                      <Badge variant="outline" className="text-[10px]">{titleCase(update.category)}</Badge>
+                      {update.geography.slice(0, 3).map(g => <Badge key={g} variant="secondary" className="text-[10px]">{g}</Badge>)}
+                      <div className="ml-auto"><ConfidenceBar score={update.confidence_score} /></div>
                     </div>
-                  )}
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-                    <Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button>
-                    <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQaThread([]); setQuestion(''); setDialogConversationId(crypto.randomUUID()); }}>Ask AI</Button>
-                    <div className="ml-auto flex flex-wrap items-center gap-1">
-                      {update.citation_urls.slice(0, 3).map((url, i) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
-                          <ExternalLink className="h-2.5 w-2.5" />Cite {i + 1}
+                    <h3 className="mt-3 text-lg font-semibold leading-snug text-foreground group-hover:text-primary">{update.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground/80">{update.source_name}</span> · {dateLabel(update.source_published_at ?? update.ingested_at)}
+                    </p>
+
+                    {update.ai_summary && <p className="mt-3 text-sm leading-relaxed text-foreground/90">{update.ai_summary}</p>}
+
+                    {update.why_it_matters && (
+                      <div className="mt-3 rounded-lg border-l-2 border-primary/60 bg-primary/5 py-2 pl-3 pr-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Why it matters</p>
+                        <p className="mt-0.5 text-sm text-foreground/90">{update.why_it_matters}</p>
+                      </div>
+                    )}
+
+                    {update.segments.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {update.segments.map(s => (
+                          <button key={s} onClick={() => setActiveSegment(s)} className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
+                            {titleCase(s)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                      <Button size="sm" onClick={() => setSelectedUpdate(update)}>Open Analysis</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setQaUpdate(update); setQaMessage(null); setQaThread([]); setQuestion(''); setDialogConversationId(crypto.randomUUID()); }}>Ask AI</Button>
+                      <div className="ml-auto flex flex-wrap items-center gap-1">
+                        {update.citation_urls.slice(0, 3).map((url, i) => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-primary">
+                            <ExternalLink className="h-2.5 w-2.5" />Cite {i + 1}
+                          </a>
+                        ))}
+                        <a href={update.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/20">
+                          <ExternalLink className="h-2.5 w-2.5" />Source
                         </a>
-                      ))}
-                      <a href={update.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/20">
-                        <ExternalLink className="h-2.5 w-2.5" />Source
-                      </a>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
+                  </article>
+                ))
+              )}
+            </TabsContent>
+            <TabsContent value="ask-ai" className="mt-0 min-h-0">
+              {renderAskAIWorkspace()}
+            </TabsContent>
+          </Tabs>
 
           {/* Sidebar */}
           <aside className="space-y-4">
@@ -546,94 +645,6 @@ export default function MarketUpdates() {
                 })}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-4 w-4 text-primary" />Ask AI</CardTitle>
-                  {qaThread.length > 0 && (
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => { setQaThread([]); setQaMessage(null); setConversationId(crypto.randomUUID()); }}>New thread</Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-xs text-muted-foreground">Source-grounded, streaming answers from published market updates. Threaded — follow-ups keep prior context.</p>
-                {qaThread.length > 0 && (
-                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border/60 bg-background/40 p-2">
-                    {qaThread.map((turn, i) => (
-                      <div key={i} className={cn('rounded-md p-2 text-xs leading-relaxed', turn.role === 'user' ? 'bg-primary/10 text-foreground' : 'bg-background/70 border border-border/60')}>
-                        <div className="mb-0.5 flex flex-wrap items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                          <span>{turn.role === 'user' ? 'You' : 'AI'}</span>
-                          {turn.role === 'assistant' && turn.sentiment && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.sentiment}</Badge>}
-                          {turn.role === 'assistant' && turn.time_horizon && turn.time_horizon !== 'unclear' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{turn.time_horizon.replace('_',' ')}</Badge>}
-                          {turn.role === 'assistant' && typeof turn.confidence_score === 'number' && <Badge variant="outline" className="h-4 px-1 py-0 text-[9px]">{Math.round(turn.confidence_score)}% conf</Badge>}
-                        </div>
-                        <p className="whitespace-pre-wrap">{turn.content}</p>
-                        {turn.key_figures && turn.key_figures.length > 0 && (
-                          <div className="mt-1.5 grid grid-cols-2 gap-1">
-                            {turn.key_figures.map((k, j) => (
-                              <div key={j} className="rounded border border-border/60 bg-background/50 px-1.5 py-1">
-                                <div className="text-[9px] uppercase text-muted-foreground">{k.label}</div>
-                                <div className="text-[11px] font-semibold text-primary">{k.value}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {turn.citations && turn.citations.length > 0 && (
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {turn.citations.map((url, j) => (
-                              <a key={url + j} href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] hover:border-primary/40 hover:text-primary">
-                                <ExternalLink className="h-2.5 w-2.5" />Cite {j + 1}
-                              </a>
-                            ))}
-                          </div>
-                        )}
-                        {turn.follow_up_questions && turn.follow_up_questions.length > 0 && (
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {turn.follow_up_questions.map((fq, j) => (
-                              <button key={j} type="button" onClick={() => handleFollowUp(fq)} disabled={asking} className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[10px] text-primary hover:bg-primary/10 disabled:opacity-50">
-                                ↳ {fq}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {turn.limitations && turn.limitations.length > 0 && (
-                          <ul className="mt-1.5 list-disc pl-4 text-[10px] text-muted-foreground">
-                            {turn.limitations.map((l, j) => <li key={j}>{l}</li>)}
-                          </ul>
-                        )}
-                        {turn.role === 'assistant' && !turn.streaming && (
-                          <MarketQAAnswerActions content={turn.content} retrieved={turn.retrieved} questionId={turn.question_id} questionText={qaThread[i-1]?.role === "user" ? qaThread[i-1].content : undefined} compact />
-                        )}
-                      </div>
-                    ))}
-                    {asking && (
-                      <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/70 p-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Thinking…
-                      </div>
-                    )}
-                  </div>
-                )}
-                <Textarea
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={handleQuestionKeyDown}
-                  placeholder="Ask anything — e.g. What's the RBA signalling this month?"
-                  className="min-h-[80px] text-sm"
-                />
-                <div className="flex gap-2">
-                  <MarketQAVoiceButton onTranscript={(t) => setQuestion((q) => (q ? `${q.trim()} ${t}` : t))} disabled={asking} />
-                  <Button size="sm" className="flex-1" onClick={() => handleAsk()} disabled={asking || !question.trim()}>
-                    {asking ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking…</> : 'Ask safely'}
-                  </Button>
-                </div>
-                {qaThread.length === 0 && !updates.length && (
-                  <p className="text-[10px] text-muted-foreground">No published updates loaded yet — the AI may refuse if it has no grounded sources.</p>
-                )}
-              </CardContent>
-            </Card>
-
-
 
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Source Health</CardTitle></CardHeader>
