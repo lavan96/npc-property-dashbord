@@ -129,6 +129,8 @@ export function ReportCommandPalette({
 }: ReportCommandPaletteProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
+
 
   // Global ⌘K / Ctrl+K binding
   useEffect(() => {
