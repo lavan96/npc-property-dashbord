@@ -31,6 +31,11 @@ function rawTextBlockToOverlay(block: RawImportBlock, unlockConfidence: number):
   if (!content) return null;
   const confidence = clamp01(block.confidence);
   const fontSize = finiteOr(block.style?.fontSize, Math.max(8, Math.min(72, block.bbox.height * 0.72)));
+  const lineHeight = block.style?.lineHeight ?? 1.2;
+  // Single-line source text must not wrap when the substituted font runs wider
+  // than the original — a wrapped second line overlaps the content below.
+  const isSingleLine = !content.includes('\n')
+    && finiteOr(block.bbox.height, fontSize * 1.3) <= fontSize * lineHeight * 1.6;
   return {
     id: stableImportId('text', block.id),
     type: 'text',
@@ -48,8 +53,9 @@ function rawTextBlockToOverlay(block: RawImportBlock, unlockConfidence: number):
     color: block.style?.color ?? '#111111',
     align: block.style?.textAlign ?? 'left',
     // Phase 2: prefer real leading/tracking from the extractor when present.
-    lineHeight: block.style?.lineHeight ?? 1.2,
+    lineHeight,
     letterSpacing: block.style?.letterSpacing ?? 0,
+    ...(isSingleLine ? { whiteSpace: 'nowrap' as const } : {}),
     locked: confidence < unlockConfidence,
     confidence,
     name: `Imported text · ${block.source}`,

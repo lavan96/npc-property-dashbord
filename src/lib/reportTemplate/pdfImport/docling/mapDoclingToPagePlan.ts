@@ -75,6 +75,18 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
   if (block.type === 'text' || block.type === 'formula' || block.type === 'code') {
     const isCode = block.type === 'code';
     const isFormula = block.type === 'formula';
+    const fontSize = block.style?.fontSize ?? 11;
+    const lineHeight = block.style?.lineHeight ?? (isCode ? 1.4 : 1.3);
+    // Single-line source text must never wrap: substituted fonts run slightly
+    // wider than the original, and a wrapped second line collides with the
+    // block below (the dominant overlap artifact in imported previews). A
+    // bbox taller than ~1.6 line-heights indicates a real multi-line
+    // paragraph, which keeps normal wrapping.
+    const isSingleLine = Boolean(
+      (block.text ?? '').trim()
+      && !(block.text ?? '').includes('\n')
+      && block.bbox.height <= fontSize * lineHeight * 1.6,
+    );
     const overlay: TextOverlay = {
       ...base,
       type: 'text',
@@ -82,7 +94,7 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
       fontFamily: isCode ? 'Menlo, Consolas, monospace'
         : isFormula ? 'Times, "Times New Roman", serif'
         : (block.style?.fontFamily ?? DEFAULT_IMPORT_FONT_STACK),
-      fontSize: block.style?.fontSize ?? 11,
+      fontSize,
       // Phase 6E — preserve a numeric weight grade (e.g. 300/600 derived from the
       // source font name) instead of collapsing every weight to bold/normal.
       fontWeight: (typeof block.style?.fontWeight === 'number'
@@ -92,8 +104,9 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
       color: block.style?.color ?? '#111111',
       align: (block.style?.textAlign ?? 'left') as TextOverlay['align'],
       // Phase 2: prefer real leading/tracking from the PyMuPDF span pass.
-      lineHeight: block.style?.lineHeight ?? (isCode ? 1.4 : 1.3),
+      lineHeight,
       letterSpacing: block.style?.letterSpacing ?? 0,
+      ...(isSingleLine ? { whiteSpace: 'nowrap' as const } : {}),
     } as TextOverlay;
     return overlay;
   }
@@ -202,6 +215,15 @@ function pageWarnings(
       message: `Page ${pageNo}: ${substitutedFonts.length} source font(s) are not available as web fonts and were substituted (${substitutedFonts.slice(0, 4).join(', ')}${substitutedFonts.length > 4 ? '…' : ''}).`,
     });
   }
+  const glyphArtifactBlocks = blocks.filter((b) => b.meta?.glyphArtifacts).length;
+  if (glyphArtifactBlocks > 0) {
+    warnings.push({
+      code: 'docling.glyph_extraction_artifacts',
+      severity: 'warning',
+      pageId: pageId(pageNo),
+      message: `Page ${pageNo}: ${glyphArtifactBlocks} text block(s) contained GLYPH<n> extraction artifacts (font without a usable character map); the artifacts were stripped but the text needs manual review.`,
+    });
+  }
   const lowConf = blocks.filter((b) => b.confidence < lockThreshold).length;
   if (!blocks.length) return warnings;
   const ratio = lowConf / blocks.length;
@@ -252,6 +274,10 @@ function pagePlanForPage(
       opacity: opts.mode === 'pixel-perfect' ? 1 : opts.mode === 'hybrid' ? 0.5 : 0,
       // Full-page source raster must fill the exact page box, never crop/stretch.
       ...(opts.mode === 'semantic' ? {} : { imageFit: 'fill' as const }),
+      // Hybrid's raster is an editor-only alignment underlay: the overlays are
+      // the printable reconstruction, so preview/print/export must skip the
+      // raster or every element renders twice (dim ghost + overlay).
+      ...(opts.mode === 'hybrid' ? { underlay: true } : {}),
     },
     overlays,
     sourcePageId: pageId(page.page_no),

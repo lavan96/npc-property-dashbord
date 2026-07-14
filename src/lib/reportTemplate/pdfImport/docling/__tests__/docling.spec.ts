@@ -3,6 +3,8 @@ import type { DoclingDocument } from '../doclingTypes';
 import { mapDoclingToRawBlocks } from '../mapDoclingToRawBlocks';
 import { mapDoclingToPagePlan } from '../mapDoclingToPagePlan';
 import { fontLookupKey } from '../../fontResolver';
+import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconciliation/applyPlan';
+import { parseTemplate } from '@/lib/reportTemplate/templateSchema';
 
 const FIXTURE: DoclingDocument = {
   schema_version: '1.0.0',
@@ -63,6 +65,129 @@ describe('docling adapter', () => {
     expect(plan.pages[0].overlays.every((o) => o.locked === false)).toBe(true);
     expect(plan.pages[0].background.imageUrl).toBe('');
     expect(plan.importSummary.visualFidelityMode).toBe('semantic');
+  });
+
+  it('hybrid marks the source raster as an editor-only reference underlay', () => {
+    const plan = mapDoclingToPagePlan(FIXTURE, {
+      importId: 'imp-underlay',
+      mode: 'hybrid',
+      rastersByPage: { 1: { width: 1190, height: 1684, dataUrl: 'data:image/png;base64,RASTER' } },
+    });
+    const bg = plan.pages[0].background;
+    expect(bg.imageUrl).toBe('data:image/png;base64,RASTER');
+    expect(bg.underlay).toBe(true);
+    expect(bg.opacity).toBe(0.5);
+
+    // The flag survives applyTemplateImportPlan + parseTemplate so renderers
+    // (which all parse first) can skip the underlay in print/export.
+    const template = applyTemplateImportPlan(plan, { templateName: 'T' });
+    const parsed = parseTemplate(template);
+    expect((parsed.pages[0].background as any).underlay).toBe(true);
+  });
+
+  it('pixel-perfect and semantic do not mark the background as underlay', () => {
+    const pixel = mapDoclingToPagePlan(FIXTURE, {
+      importId: 'imp-underlay-pp',
+      mode: 'pixel-perfect',
+      rastersByPage: { 1: { width: 1190, height: 1684, dataUrl: 'data:image/png;base64,RASTER' } },
+    });
+    expect(pixel.pages[0].background.underlay).toBeUndefined();
+    const semantic = mapDoclingToPagePlan(FIXTURE, { importId: 'imp-underlay-sem', mode: 'semantic' });
+    expect(semantic.pages[0].background.underlay).toBeUndefined();
+    expect(semantic.pages[0].background.imageUrl).toBe('');
+  });
+
+  it('strips GLYPH<n> extraction artifacts, caps confidence, and flags the block', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'paragraph',
+          text: 'GLYPH<0>sGLYPH<0>1GLYPH<0>1GLYPH<0>,GLYPH<0>5GLYPH<0>5GLYPH<0>6',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 120, r: 535, b: 140, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+        {
+          label: 'paragraph',
+          text: 'GLYPH<0>GLYPH<12>GLYPH<7>',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 160, r: 535, b: 180, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+        {
+          label: 'paragraph',
+          text: 'Clean text stays untouched.',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 200, r: 535, b: 220, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    // The all-artifact block is dropped entirely; the recoverable one is kept.
+    expect(mapped.byPage[1]).toHaveLength(2);
+    const recovered = mapped.byPage[1][0];
+    expect(recovered.text).toBe('s11,556');
+    expect(recovered.confidence).toBe(0.5);
+    expect(recovered.meta?.glyphArtifacts).toBe(true);
+    const clean = mapped.byPage[1][1];
+    expect(clean.text).toBe('Clean text stays untouched.');
+    expect(clean.confidence).toBe(0.9);
+    expect(clean.meta?.glyphArtifacts).toBeUndefined();
+
+    // Hybrid locks the artifact block (0.5 < 0.6 threshold) and warns the page.
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-glyph', mode: 'hybrid' });
+    const overlay = plan.pages[0].overlays.find((o) => (o as any).content === 's11,556');
+    expect(overlay?.locked).toBe(true);
+    expect(plan.warnings.some((w) => w.code === 'docling.glyph_extraction_artifacts')).toBe(true);
+  });
+
+  it('strips GLYPH artifacts inside table cells and caps the table confidence', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      tables: [
+        {
+          data: {
+            num_rows: 1,
+            num_cols: 2,
+            table_cells: [{ text: 'GLYPH<0>$GLYPH<0>4GLYPH<0>4GLYPH<0>0' }, { text: 'Clean' }],
+          },
+          prov: [{ page_no: 1, bbox: { l: 60, t: 250, r: 535, b: 360, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    const table = mapped.byPage[1][0];
+    expect(table.meta?.tableData?.rows[0]).toEqual(['$440', 'Clean']);
+    expect(table.confidence).toBe(0.5);
+    expect(table.meta?.glyphArtifacts).toBe(true);
+  });
+
+  it('single-line text overlays get whiteSpace:nowrap; multi-line paragraphs keep wrapping', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'section_header',
+          text: 'Executive Summary',
+          font: { size: 16 },
+          // ~1 line tall at 16pt → must not wrap when a wider substitute font renders it.
+          prov: [{ page_no: 1, bbox: { l: 60, t: 100, r: 220, b: 122, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.95,
+        },
+        {
+          label: 'paragraph',
+          text: 'A long paragraph that spans multiple visual lines in the source document and must keep wrapping.',
+          font: { size: 11 },
+          prov: [{ page_no: 1, bbox: { l: 60, t: 140, r: 535, b: 200, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-nowrap', mode: 'semantic' });
+    const heading = plan.pages[0].overlays.find((o) => (o as any).content === 'Executive Summary') as any;
+    const para = plan.pages[0].overlays.find((o) => String((o as any).content).startsWith('A long paragraph')) as any;
+    expect(heading.whiteSpace).toBe('nowrap');
+    expect(para.whiteSpace).toBeUndefined();
   });
 
   it('Phase B: pairs picture + caption via shared groupId and lifts alt-text into the overlay name', () => {

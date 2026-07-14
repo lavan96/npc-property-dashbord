@@ -39,7 +39,9 @@ export async function exportTemplateAsPptxBlob(
     if (page.background?.color) {
       slide.background = { color: hex(resolveBindableColor(page.background.color, ctx, '#FFFFFF')) };
     }
-    if (page.background?.imageUrl) {
+    // Skip PDF-import reference underlays — they are editor-only alignment
+    // aids; exporting them would double-render the page content.
+    if (page.background?.imageUrl && !(page.background as any)?.underlay) {
       try {
         slide.addImage({
           data: String(page.background.imageUrl),

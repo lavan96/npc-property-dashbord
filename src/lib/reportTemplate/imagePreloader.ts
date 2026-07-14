@@ -59,10 +59,14 @@ export async function preloadImages(template: ReportTemplate): Promise<ReportTem
   const IMAGE_PROP_KEYS = ['imageUrl', 'src', 'chartUrl', 'backgroundUrl'];
 
   for (const page of next.pages) {
+    // PDF-import reference underlays never render in the print/export paths
+    // that preload images — skip resolving/inlining them (a full-page raster
+    // per page would bloat the render payload for nothing).
+    const isReferenceUnderlay = Boolean((page.background as any)?.underlay);
     // Phase 3 — Storage-backed source raster reference (hybrid / pixel-perfect).
     // Resolve to a signed URL → data URL only when no explicit bg image is set.
     const rasterRef = (page as any).meta?.sourceRasterRef as PdfImportRasterRef | undefined;
-    if (rasterRef && rasterRef.path && !page.background?.imageUrl) {
+    if (rasterRef && rasterRef.path && !page.background?.imageUrl && !isReferenceUnderlay) {
       tasks.push(
         resolveRasterRefDataUrl(rasterRef).then((dataUrl) => {
           if (!dataUrl) return;
@@ -72,7 +76,7 @@ export async function preloadImages(template: ReportTemplate): Promise<ReportTem
     }
     // Page background image
     const bgUrl = page.background?.imageUrl;
-    if (typeof bgUrl === 'string' && /^https?:\/\//i.test(bgUrl)) {
+    if (typeof bgUrl === 'string' && /^https?:\/\//i.test(bgUrl) && !isReferenceUnderlay) {
       tasks.push(fetchAsDataUrl(bgUrl).then((d) => { if (d) page.background.imageUrl = d; }));
     }
     for (const block of page.blocks) {
