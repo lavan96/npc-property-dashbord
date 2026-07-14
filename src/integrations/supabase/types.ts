@@ -2942,11 +2942,13 @@ export type Database = {
           completed_at: string | null
           created_at: string
           description: string | null
+          due_date: string | null
           generated_by: string | null
           icon: string | null
           id: string
           name: string
           progress_percent: number | null
+          recurrence_key: string | null
           status: string
           template_id: string | null
           updated_at: string
@@ -2955,11 +2957,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           generated_by?: string | null
           icon?: string | null
           id?: string
           name: string
           progress_percent?: number | null
+          recurrence_key?: string | null
           status?: string
           template_id?: string | null
           updated_at?: string
@@ -2968,11 +2972,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           generated_by?: string | null
           icon?: string | null
           id?: string
           name?: string
           progress_percent?: number | null
+          recurrence_key?: string | null
           status?: string
           template_id?: string | null
           updated_at?: string
@@ -14175,6 +14181,47 @@ export type Database = {
           },
         ]
       }
+      pdf_import_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          diagnostics_path: string | null
+          file_hash: string | null
+          id: string
+          job_id: string | null
+          metadata: Json
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          diagnostics_path?: string | null
+          file_hash?: string | null
+          id?: string
+          job_id?: string | null
+          metadata?: Json
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          diagnostics_path?: string | null
+          file_hash?: string | null
+          id?: string
+          job_id?: string | null
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdf_import_audit_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "pdf_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdf_import_chunks: {
         Row: {
           artifact_paths: Json
@@ -14573,6 +14620,7 @@ export type Database = {
           started_at: string | null
           status: string
           template_id: string | null
+          timed_out_at: string | null
           updated_at: string
           user_id: string
         }
@@ -14615,6 +14663,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           template_id?: string | null
+          timed_out_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -14657,6 +14706,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           template_id?: string | null
+          timed_out_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -19740,6 +19790,22 @@ export type Database = {
         }
         Relationships: []
       }
+      pdf_import_cost_daily: {
+        Row: {
+          avg_duration_ms: number | null
+          avg_ssim_score: number | null
+          bytes_in: number | null
+          bytes_out: number | null
+          cloud_run_ms: number | null
+          day: string | null
+          engine: string | null
+          engine_version: string | null
+          failed: number | null
+          jobs: number | null
+          succeeded: number | null
+        }
+        Relationships: []
+      }
       purchase_file_activity_feed: {
         Row: {
           actor_id: string | null
@@ -19882,6 +19948,7 @@ export type Database = {
         Returns: undefined
       }
       chart_config_is_live: { Args: { cfg: Json }; Returns: boolean }
+      check_pdf_import_success_rate: { Args: never; Returns: undefined }
       claim_migration_jobs: {
         Args: { p_lease_seconds?: number; p_limit?: number }
         Returns: {
@@ -19948,6 +20015,7 @@ export type Database = {
           gst_registered: boolean
         }[]
       }
+      gc_pdf_import_jobs: { Args: never; Returns: undefined }
       get_all_cache_stats: {
         Args: never
         Returns: {
@@ -20205,6 +20273,7 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      refresh_pdf_import_cost_daily: { Args: never; Returns: undefined }
       release_migration_job_lock: {
         Args: { p_job_id: string }
         Returns: undefined
@@ -20219,6 +20288,18 @@ export type Database = {
       resolve_client_display_name: {
         Args: { p_client_id: string }
         Returns: string
+      }
+      resolve_report_template: {
+        Args: {
+          p_agency_id?: string
+          p_report_type: string
+          p_user_id?: string
+          p_variant?: string
+        }
+        Returns: {
+          source: string
+          template: Json
+        }[]
       }
       resume_migration_job: { Args: { p_job_id: string }; Returns: undefined }
       retry_failed_bulk_items: { Args: { p_job_id: string }; Returns: number }
