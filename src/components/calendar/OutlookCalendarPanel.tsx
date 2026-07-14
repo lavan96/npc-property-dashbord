@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Mail, Plus, Trash2, Users, Clock, RefreshCw, Settings, Check, X, MapPin, FileText, Bell, Tag, ChevronDown, ChevronUp, Shield } from 'lucide-react';
+import { Mail, Plus, Trash2, Users, Clock, RefreshCw, Settings, Check, X, MapPin, FileText, Bell, Tag, ChevronDown, ChevronUp, Shield, Globe } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import { OutlookEvent, OutlookTeamMember, CreateOutlookEventPayload } from '@/ho
 import { useTeamUsers } from '@/hooks/useTeamUsers';
 import { OutlookCalendarSettings as OutlookCalendarSettingsComponent } from '@/components/calendar/OutlookCalendarSettings';
 import { format, parseISO } from 'date-fns';
+import { toTimezoneISO } from '@/lib/sydneyTime';
+import { getBookingTimezone, AUSTRALIAN_TIMEZONES } from '@/lib/bookingTimezone';
 
 interface OutlookCalendarPanelProps {
   outlookEvents: OutlookEvent[];
@@ -89,6 +91,7 @@ export function OutlookCalendarPanel({
   const [newSubject, setNewSubject] = useState('');
   const [newStartTime, setNewStartTime] = useState('');
   const [newEndTime, setNewEndTime] = useState('');
+  const [newTimezone, setNewTimezone] = useState<string>(() => getBookingTimezone());
   const [newBody, setNewBody] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newShowAs, setNewShowAs] = useState('busy');
@@ -143,6 +146,7 @@ export function OutlookCalendarPanel({
     setNewSubject('');
     setNewBody('');
     setNewLocation('');
+    setNewTimezone(getBookingTimezone());
     setNewShowAs('busy');
     setNewReminder('15');
     setNewCategories([]);
@@ -154,10 +158,15 @@ export function OutlookCalendarPanel({
   const handleCreateEvent = async () => {
     if (!newSubject || !newStartTime || !newEndTime) return;
     
+    const [startDate, startTime] = newStartTime.split('T');
+    const [endDate, endTime] = newEndTime.split('T');
+    if (!startDate || !startTime || !endDate || !endTime) return;
+
     const payload: CreateOutlookEventPayload = {
       subject: newSubject,
-      startTime: new Date(newStartTime).toISOString(),
-      endTime: new Date(newEndTime).toISOString(),
+      startTime: toTimezoneISO(startDate, startTime, newTimezone),
+      endTime: toTimezoneISO(endDate, endTime, newTimezone),
+      timezone: newTimezone,
     };
 
     if (newBody.trim()) payload.body = newBody;
@@ -377,6 +386,25 @@ export function OutlookCalendarPanel({
                   onChange={(e) => setNewEndTime(e.target.value)}
                   className="h-8 text-xs"
                 />
+              </div>
+
+              {/* Timezone */}
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Globe className="h-3 w-3" /> Timezone
+                </Label>
+                <Select value={newTimezone} onValueChange={setNewTimezone} disabled={isCreating}>
+                  <SelectTrigger className="h-8 text-xs w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUSTRALIAN_TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Location */}
