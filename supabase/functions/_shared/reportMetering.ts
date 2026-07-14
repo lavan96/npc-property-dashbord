@@ -134,8 +134,11 @@ export function withReportMetering(
     })();
 
     // Catalog override: if the caller forwarded a `__catalog.report_slug`, look
-    // up the canonical credit_cost in Mission Control's pricing catalog and
-    // convert credits → tokens via MC_TOKENS_PER_CREDIT (default 1000).
+    // up the canonical credit_cost in Mission Control's pricing catalog. The
+    // token balance is already denominated in billing credits, so a report's
+    // credit_cost maps 1:1 to reserved balance. MC_TOKENS_PER_CREDIT stays a
+    // knob (default 1) in case the balance is ever re-scaled to raw tokens —
+    // it must NOT re-inflate credits back into thousands of LLM tokens.
     let catalogTokens: number | null = null;
     const catalogHint = body?.__catalog;
     if (catalogHint?.report_slug) {
@@ -146,8 +149,8 @@ export function withReportMetering(
             ? catalogHint.credit_cost
             : await getReportCreditCost(String(catalogHint.report_slug));
         if (credits && credits > 0) {
-          const perCredit = Number(Deno.env.get("MC_TOKENS_PER_CREDIT") ?? "1000");
-          catalogTokens = Math.max(1, Math.ceil(credits * (isFinite(perCredit) ? perCredit : 1000)));
+          const perCredit = Number(Deno.env.get("MC_TOKENS_PER_CREDIT") ?? "1");
+          catalogTokens = Math.max(1, Math.ceil(credits * (isFinite(perCredit) ? perCredit : 1)));
         }
       } catch (e) {
         console.warn("[reportMetering] catalog lookup failed", e);
