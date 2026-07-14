@@ -165,6 +165,10 @@ export function withReportMetering(
 
     const startedAt = Date.now();
     let reservation: ReserveResult | null = null;
+    // Operator-assigned tracking id for this tenant/clone, echoed by Mission
+    // Control on reserve. Stamped onto usage/audit rows so token usage joins
+    // Stripe payments (which carry the same billing_user_id) on one key.
+    let billingUserId: string | null = null;
     try {
       reservation = await reserveTokens({
         kind: plan.kind,
@@ -173,9 +177,11 @@ export function withReportMetering(
         userId: plan.userId,
         requestPayload: plan.requestPayload,
       });
+      billingUserId = reservation.billingUserId ?? null;
       await logAudit({
         event: "reserve",
         user_id: plan.userId,
+        billing_user_id: billingUserId,
         agency_ref: AGENCY_TENANT_REF,
         function_name: functionName,
         kind: plan.kind,
@@ -244,6 +250,7 @@ export function withReportMetering(
       await logAudit({
         event: "cancel",
         user_id: plan.userId,
+        billing_user_id: billingUserId,
         agency_ref: AGENCY_TENANT_REF,
         function_name: functionName,
         kind: plan.kind,
@@ -256,6 +263,7 @@ export function withReportMetering(
       });
       await logUsage({
         user_id: plan.userId,
+        billing_user_id: billingUserId,
         agency_ref: AGENCY_TENANT_REF,
         function_name: functionName,
         kind: plan.kind,
@@ -281,6 +289,7 @@ export function withReportMetering(
       await logAudit({
         event: "cancel",
         user_id: plan.userId,
+        billing_user_id: billingUserId,
         agency_ref: AGENCY_TENANT_REF,
         function_name: functionName,
         kind: plan.kind,
@@ -292,6 +301,7 @@ export function withReportMetering(
       });
       await logUsage({
         user_id: plan.userId,
+        billing_user_id: billingUserId,
         agency_ref: AGENCY_TENANT_REF,
         function_name: functionName,
         kind: plan.kind,
@@ -311,6 +321,7 @@ export function withReportMetering(
       await logAudit({
         event: "commit",
         user_id: plan.userId,
+        billing_user_id: billingUserId,
         agency_ref: AGENCY_TENANT_REF,
         function_name: functionName,
         kind: plan.kind,
@@ -326,6 +337,7 @@ export function withReportMetering(
 
     await logUsage({
       user_id: plan.userId,
+      billing_user_id: billingUserId,
       agency_ref: AGENCY_TENANT_REF,
       function_name: functionName,
       kind: plan.kind,

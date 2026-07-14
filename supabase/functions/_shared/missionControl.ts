@@ -45,6 +45,8 @@ export interface ReserveResult {
   available: number;
   idempotent?: boolean;
   status?: string;
+  /** Operator-assigned tracking id for this tenant/clone (Mission Control). */
+  billingUserId?: string | null;
 }
 
 export interface BalanceResult {
@@ -205,6 +207,7 @@ export async function reserveTokens(args: ReserveArgs): Promise<ReserveResult> {
     available: Number(body.available_after ?? body.available ?? 0),
     idempotent: Boolean(body.idempotent),
     status: body.status,
+    billingUserId: body.billing_user_id ?? null,
   };
 }
 

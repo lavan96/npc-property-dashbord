@@ -136,9 +136,18 @@ export async function preflightTokens(estimate: number): Promise<TokenBalance> {
  *
  * Handoff-minted deep links already point here (Mission Control mints them
  * against its PUBLIC_PRICING_SITE_URL); this constant is the LAST-RESORT
- * fallback when the handoff mint is unavailable.
+ * fallback when the handoff mint is unavailable. It carries this workspace's
+ * stable billing uid (Mission Control tenants.billing_user_id — 'npc-prime'
+ * for the prime install, seeded by MC migration 20260714180000) so that even
+ * a failed mint lands on the pricing page with purchase CTAs LIVE and
+ * correctly attributed, never on a browse-only dead end.
  */
-export const AURIXA_PRICING_URL = "https://www.aurixasystems.com.au/pricing";
+const AURIXA_BILLING_UID =
+  ((import.meta.env.VITE_AURIXA_BILLING_UID as string | undefined) ?? "npc-prime").trim();
+
+export const AURIXA_PRICING_URL = AURIXA_BILLING_UID
+  ? `https://www.aurixasystems.com.au/pricing?uid=${encodeURIComponent(AURIXA_BILLING_UID)}`
+  : "https://www.aurixasystems.com.au/pricing";
 
 export function openMissionControl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
