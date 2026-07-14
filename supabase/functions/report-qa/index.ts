@@ -3059,22 +3059,32 @@ ${transcript}`;
     }
 
     if (action === "get-mailboxes") {
+      if (!userId) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Authentication required" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Only return the current session user's own mailbox — never other tenant users.
       const { data, error } = await supabase
         .from("custom_users")
         .select("id, username, personal_mailbox")
+        .eq("id", userId)
         .eq("is_active", true)
         .not("personal_mailbox", "is", null);
 
       if (error) throw error;
 
       const mailboxes = (data || []).filter((u: any) => u.personal_mailbox);
-      console.log(`[report-qa] Fetched ${mailboxes.length} mailboxes`);
+      console.log(`[report-qa] Fetched ${mailboxes.length} mailbox(es) for user ${userId}`);
 
       return new Response(
         JSON.stringify({ success: true, mailboxes }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
 
     // Handle email sending
     if (action === "send-email") {
