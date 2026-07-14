@@ -212,6 +212,8 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                   options={uniqueValues.suburbs.filter(s => s?.trim())}
                   placeholder="All suburbs"
                   allLabel="All suburbs"
+                  contentClassName="flex max-h-[min(320px,var(--radix-popover-content-available-height))] flex-col overflow-hidden"
+                  optionsClassName="max-h-[min(280px,calc(var(--radix-popover-content-available-height)-44px))] min-h-0 flex-1"
                 />
                 {localFilters.includeNearbySuburbs && localFilters.suburb && localFilters.suburb !== 'all' && (
                   <p className="text-xs text-muted-foreground">
@@ -229,6 +231,8 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
                   options={uniqueValues.zipCodes.filter(z => z?.trim())}
                   placeholder="All postcodes"
                   allLabel="All postcodes"
+                  contentClassName="flex max-h-[min(320px,var(--radix-popover-content-available-height))] flex-col overflow-hidden"
+                  optionsClassName="max-h-[min(280px,calc(var(--radix-popover-content-available-height)-44px))] min-h-0 flex-1"
                 />
               </div>
             </div>
