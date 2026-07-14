@@ -665,7 +665,7 @@ export function PreGenerationOverrides({
         </CardDescription>
       </CardHeader>
       <CardContent className="reports-overrides-content px-3 md:px-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="reports-overrides-tabs w-full">
           <div className={isMobile ? "reports-overrides-tabs-scroll overflow-x-auto -mx-3 px-3 pb-2" : "reports-overrides-tabs-wrap"}>
             <TabsList className={isMobile ? "reports-overrides-tabs-list inline-flex w-auto min-w-full mb-4" : "reports-overrides-tabs-list grid w-full grid-cols-4 mb-4"}>
               <TabsTrigger 
@@ -699,7 +699,8 @@ export function PreGenerationOverrides({
             </TabsList>
           </div>
 
-          <ScrollArea className={isMobile ? "reports-overrides-scroll h-[350px] pr-2" : "reports-overrides-scroll h-[450px] pr-4"}>
+          <ScrollArea className={isMobile ? "reports-overrides-scroll reports-overrides-scroll-mobile pr-2" : "reports-overrides-scroll reports-overrides-scroll-desktop pr-4"}
+            aria-label="Pre-generation override fields">
             <TabsContent value="property" className="reports-overrides-tab-content mt-0">
               <PropertyTab
                 buildType={buildType}
