@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import type { ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { CdirLayer } from '@/lib/reportTemplate/ingestion/cdir';
-import type { VisualQaReviewSummary, VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import type { VisualQaReviewSummary, VisualRecommendedAction, VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 import type { ReconciliationPolicyDecision, ReconciliationRecommendation, AiReconciliationAuditSummary } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 interface Props {
@@ -87,6 +87,25 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
+function scoreBadgeVariant(score: number): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (score >= 0.92) return 'default';
+  if (score >= 0.8) return 'secondary';
+  if (score >= 0.65) return 'outline';
+  return 'destructive';
+}
+
+function actionTone(action: VisualRecommendedAction): { label: string } {
+  switch (action) {
+    case 'accept': return { label: 'Accept' };
+    case 'accept_with_warnings': return { label: 'Accept w/ warnings' };
+    case 'repair': return { label: 'Repair' };
+    case 'fallback_to_hybrid': return { label: 'Fallback → hybrid' };
+    case 'fallback_to_pixel': return { label: 'Fallback → pixel' };
+    case 'manual_review':
+    default: return { label: 'Manual review' };
+  }
+}
+
 export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy, onForceMode, forceModeAvailable, forceModeBusy, onRunAiReconciliation, reconciliationPolicy, aiReconciliationBusy, aiReconciliationSummary }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
@@ -100,9 +119,25 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
   const signedSourceCount = Object.keys(signedUrls).filter((key) => key.endsWith(':source')).length;
   const signedGeneratedCount = Object.keys(signedUrls).filter((key) => key.endsWith(':generated')).length;
   const signedDiffCount = Object.keys(signedUrls).filter((key) => key.endsWith(':diff')).length;
-  const firstDiffUrl = Object.entries(signedUrls).find(([key]) => key.endsWith(':diff'))?.[1] ?? null;
-  const firstGeneratedUrl = Object.entries(signedUrls).find(([key]) => key.endsWith(':generated'))?.[1] ?? null;
-  const firstSourceUrl = Object.entries(signedUrls).find(([key]) => key.endsWith(':source'))?.[1] ?? null;
+  // Per-page visual review grid: page numbers come from the signed-URL keys
+  // (`${pageNumber}:${kind}`) and/or the diff-raster artifact meta (which carries
+  // the per-page score + recommended action).
+  const visualPageMeta = new Map<number, { overallScore?: number; recommendedAction?: VisualRecommendedAction; warningCount?: number }>();
+  for (const art of diffRasterArtifacts) {
+    const pn = Number((art.meta as Record<string, unknown> | undefined)?.pageNumber);
+    if (Number.isFinite(pn)) {
+      const meta = art.meta as Record<string, unknown>;
+      visualPageMeta.set(pn, {
+        overallScore: typeof meta.overallScore === 'number' ? meta.overallScore : undefined,
+        recommendedAction: meta.recommendedAction as VisualRecommendedAction | undefined,
+        warningCount: typeof meta.warningCount === 'number' ? meta.warningCount : undefined,
+      });
+    }
+  }
+  const visualPageNumbers = Array.from(new Set([
+    ...Object.keys(signedUrls).map((key) => Number(key.split(':')[0])),
+    ...visualPageMeta.keys(),
+  ])).filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
 
   const recordDecision = async (value: ImportReviewDecision) => {
     if (!onRecordDecision) return;
@@ -220,11 +255,60 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
                       <Row label="Generated rasters" value={String(signedGeneratedCount)} />
                       <Row label="Diff rasters" value={String(signedDiffCount)} />
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {firstSourceUrl && <a className="text-primary underline underline-offset-2" href={firstSourceUrl} target="_blank" rel="noreferrer">Open source</a>}
-                      {firstGeneratedUrl && <a className="text-primary underline underline-offset-2" href={firstGeneratedUrl} target="_blank" rel="noreferrer">Open generated</a>}
-                      {firstDiffUrl && <a className="text-primary underline underline-offset-2" href={firstDiffUrl} target="_blank" rel="noreferrer">Open diff</a>}
-                    </div>
+                    {visualPageNumbers.length > 0 && (
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {visualPageNumbers.map((pageNo) => {
+                          const meta = visualPageMeta.get(pageNo);
+                          const kinds: Array<{ label: string; url: string | undefined }> = [
+                            { label: 'Source', url: signedUrls[`${pageNo}:source`] },
+                            { label: 'Generated', url: signedUrls[`${pageNo}:generated`] },
+                            { label: 'Diff', url: signedUrls[`${pageNo}:diff`] },
+                          ];
+                          return (
+                            <div key={pageNo} className="rounded-md border p-2">
+                              <div className="mb-1 flex items-center justify-between gap-1">
+                                <span className="text-[11px] font-medium">Page {pageNo}</span>
+                                {typeof meta?.overallScore === 'number' && (
+                                  <Badge variant={scoreBadgeVariant(meta.overallScore)} className="h-4 px-1 text-[9px]">
+                                    {pct(meta.overallScore)}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                {kinds.map(({ label, url }) => (
+                                  <a
+                                    key={label}
+                                    href={url || undefined}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block"
+                                    aria-label={`${label} raster for page ${pageNo}`}
+                                  >
+                                    {url ? (
+                                      <img
+                                        src={url}
+                                        alt={`${label} page ${pageNo}`}
+                                        loading="lazy"
+                                        className="h-16 w-full rounded border object-cover object-top"
+                                      />
+                                    ) : (
+                                      <div className="flex h-16 items-center justify-center rounded border text-[9px] text-muted-foreground">—</div>
+                                    )}
+                                    <div className="mt-0.5 text-center text-[9px] text-muted-foreground">{label}</div>
+                                  </a>
+                                ))}
+                              </div>
+                              {meta?.recommendedAction && (
+                                <div className="mt-1 text-center text-[9px] text-muted-foreground">
+                                  {actionTone(meta.recommendedAction).label}
+                                  {meta.warningCount ? ` · ${meta.warningCount} warning${meta.warningCount === 1 ? '' : 's'}` : ''}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     {visualQualityArtifactPaths?.summary && (
                       <div className="mt-2 font-mono text-[10px] text-muted-foreground break-all">
                         summary: {visualQualityArtifactPaths.summary}

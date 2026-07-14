@@ -2037,6 +2037,24 @@ async def _run_async_job(req: ParseRequest) -> None:
                     "page_languages": parse_result.get("page_languages") or {},
                     "outline_node_count": len(outline),
                     "summary": summary,
+                    # Phase 10 — consolidated operational metrics (rides inside
+                    # result_payload so the callback merges it and the diagnostics
+                    # dashboard can surface per-phase timings without a schema change).
+                    "metrics": {
+                        "parse_ms": int(parse_result.get("parsed_ms") or 0),
+                        "raster_ms": max(0, cloud_run_ms - int(parse_result.get("parsed_ms") or 0)),
+                        "cloud_run_ms": cloud_run_ms,
+                        "duration_ms": duration_ms,
+                        "bytes_in": bytes_in,
+                        "bytes_out": bytes_out,
+                        "page_count": page_count,
+                        "chunk_count": 1,
+                        "avg_ms_per_page": round(duration_ms / page_count, 1) if page_count else None,
+                        "table_count": int(summary.get("table_count") or 0),
+                        "picture_count": int(summary.get("picture_count") or 0),
+                        "ocr_page_ratio": _ocr_ratio(summary, page_count),
+                        "memory_profile": os.environ.get("PDF_PARSE_MEMORY_PROFILE") or "default",
+                    },
                     "mode": effective_mode,
                     "requested_mode": requested_mode,
                     "auto_mode_selected": effective_mode != requested_mode,

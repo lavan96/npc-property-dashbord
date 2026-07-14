@@ -493,10 +493,42 @@ interface PlanResult {
   scanned_page_ratio: number;
   ocr_hint: boolean;
   byte_size: number;
+  // Phase 1 preflight-router fields (present on current sidecars; optional for
+  // forward/backward compatibility with older deployments).
+  engine_version?: string;
+  file_type?: string;
+  has_selectable_text?: boolean;
+  selectable_text_ratio?: number;
+  estimated_complexity?: string;
+  table_likelihood?: string;
+  image_heavy?: boolean;
+  design_heavy?: boolean;
+  recommended_mode?: string;
+  recommended_lane?: string;
+  recommended_chunk_size?: number;
+  requires_raster?: boolean;
+  requires_ocr?: boolean;
+  requires_picture_description?: boolean;
 }
 
-async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanResult | null> {
+async function callSidecarPlan(
+  signedUrl: string,
+  jobId: string,
+  mode?: string,
+  requestPayload?: Record<string, unknown>,
+): Promise<PlanResult | null> {
   try {
+    // Forward the requested mode + chunk hint so the sidecar plans against the
+    // operator's intent instead of always defaulting to hybrid. The sidecar
+    // normalises mode (`_`→`-`, lower), so the wire form is accepted as-is.
+    const body: Record<string, unknown> = { url: signedUrl };
+    if (mode) body.mode = mode;
+    const maxChunkPagesRaw = Number(requestPayload?.max_chunk_pages ?? 0);
+    if (Number.isFinite(maxChunkPagesRaw) && maxChunkPagesRaw > 0) {
+      body.max_chunk_pages = Math.max(1, Math.min(50, Math.floor(maxChunkPagesRaw)));
+    }
+    if (requestPayload?.force_chunked === true) body.force_chunking = true;
+
     const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/plan`, {
       method: 'POST',
       headers: {
@@ -504,7 +536,7 @@ async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanRe
         Authorization: `Bearer ${PARSE_TOKEN}`,
         'X-Request-Id': jobId,
       },
-      body: JSON.stringify({ url: signedUrl }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       console.warn('[pdf-parse-dispatch] /plan returned', res.status);

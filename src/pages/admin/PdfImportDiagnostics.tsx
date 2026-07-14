@@ -93,6 +93,21 @@ interface JobRow {
       table_count?: number;
       avg_text_confidence?: number | null;
     } | null;
+    /** Mode the sidecar actually ran (may differ from the requested `mode`). */
+    effective_mode?: string | null;
+    mode?: string | null;
+    /** Phase 10 — consolidated operational metrics. */
+    metrics?: {
+      parse_ms?: number;
+      raster_ms?: number;
+      cloud_run_ms?: number;
+      duration_ms?: number;
+      avg_ms_per_page?: number | null;
+      table_count?: number;
+      picture_count?: number;
+      ocr_page_ratio?: number | null;
+      memory_profile?: string;
+    } | null;
     ssim_path?: string | null;
     rasters_manifest_path?: string | null;
     page_raster_paths?: string[] | null;
@@ -634,7 +649,22 @@ export default function PdfImportDiagnostics() {
                           ) : null}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs">{row.mode}</TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const finalMode = row.result_payload?.effective_mode ?? row.result_payload?.mode ?? null;
+                          const normalise = (m: string) => m.replace(/_/g, '-');
+                          if (finalMode && normalise(String(finalMode)) !== normalise(String(row.mode))) {
+                            return (
+                              <span className="whitespace-nowrap">
+                                {row.mode}
+                                <span className="text-muted-foreground"> → </span>
+                                <span className="font-medium text-primary">{finalMode}</span>
+                              </span>
+                            );
+                          }
+                          return row.mode;
+                        })()}
+                      </TableCell>
                       <TableCell>
                         <Badge className={`rounded-full gap-1 ${STATUS_COLOR[row.status]}`}>
                           {row.status === 'succeeded' ? (
@@ -697,8 +727,18 @@ export default function PdfImportDiagnostics() {
                       <TableCell className="text-right text-sm">
                         {formatMs(row.duration_ms)}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell
+                        className="text-right text-sm"
+                        title={row.result_payload?.metrics
+                          ? `parse ${formatMs(row.result_payload.metrics.parse_ms ?? null)} · raster ${formatMs(row.result_payload.metrics.raster_ms ?? null)}${row.result_payload.metrics.avg_ms_per_page ? ` · ${Math.round(row.result_payload.metrics.avg_ms_per_page)}ms/pg` : ''}${row.result_payload.metrics.memory_profile ? ` · ${row.result_payload.metrics.memory_profile}` : ''}`
+                          : undefined}
+                      >
                         {formatMs(row.cloud_run_ms)}
+                        {row.result_payload?.metrics?.avg_ms_per_page ? (
+                          <div className="text-[10px] text-muted-foreground">
+                            {Math.round(row.result_payload.metrics.avg_ms_per_page)}ms/pg
+                          </div>
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {row.ssim_score !== null && row.ssim_score !== undefined
