@@ -36,6 +36,7 @@ export interface CreateOutlookEventPayload {
   subject: string;
   startTime: string;
   endTime: string;
+  timezone?: string;
   body?: string;
   location?: string;
   attendees?: string[];
