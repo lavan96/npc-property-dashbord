@@ -418,8 +418,24 @@ function ReportGenerationProgressInner() {
 
     const recentReports = records.filter((report: any) => {
       const createdAt = new Date(report.created_at).getTime();
-      return now - createdAt < MAX_AGE_MS;
+      if (now - createdAt >= MAX_AGE_MS) return false;
+      if (dismissedIdsRef.current.has(report.id)) return false;
+      return true;
     });
+
+    // Prune dismissed IDs no longer present server-side so the set doesn't
+    // grow unbounded and a re-used ID (unlikely) can re-surface cleanly.
+    if (dismissedIdsRef.current.size > 0) {
+      const serverIds = new Set<string>(records.map((r: any) => r.id));
+      let mutated = false;
+      dismissedIdsRef.current.forEach((id) => {
+        if (!serverIds.has(id)) {
+          dismissedIdsRef.current.delete(id);
+          mutated = true;
+        }
+      });
+      if (mutated) persistDismissed();
+    }
 
     const processedReports: ReportProgress[] = recentReports.map((report: any) => {
       const content = report.report_content || '';
