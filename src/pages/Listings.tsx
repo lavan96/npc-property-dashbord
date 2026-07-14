@@ -54,6 +54,10 @@ const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/
 const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
 const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
 const LISTINGS_TABLE_CARD = 'overflow-hidden';
+const LISTINGS_TABLE_VIEWPORT = 'overflow-x-auto overscroll-x-contain';
+const LISTINGS_TABLE_MIN_WIDTH = 'min-w-[1520px]';
+const LISTINGS_RECEIVED_COLUMN = 'min-w-[230px] w-[230px] whitespace-nowrap';
+const LISTINGS_ACTIONS_COLUMN = 'sticky right-0 z-20 w-20 min-w-20 pr-5 text-right bg-muted/95 backdrop-blur dark:bg-background/95 shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)]';
 const LISTING_SELECTION_CHECKBOX = 'h-5 w-5 rounded-md border-border/80 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2';
 const LISTING_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold leading-none tracking-[0.02em] shadow-sm';
 const LISTING_PROPERTY_TYPE_BADGE = 'max-w-full border-brand-200/70 bg-brand-50/75 text-brand-800 dark:border-brand-300/20 dark:bg-brand-400/10 dark:text-brand-100';
@@ -312,6 +316,12 @@ export default function Listings() {
       hour: '2-digit',
       minute: '2-digit',
     }).format(dateObj);
+  };
+
+  const formatDateTimeAttribute = (date: Date | string | null | undefined) => {
+    if (!date) return undefined;
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return isNaN(dateObj.getTime()) ? undefined : dateObj.toISOString();
   };
 
   // Get unique values for filter options — extract state from address if field is empty
@@ -789,8 +799,8 @@ export default function Listings() {
       ) : (
         <Card className={cn(LISTINGS_CARD_SURFACE, LISTINGS_TABLE_CARD)}>
           <CardContent className="p-0">
-            <div className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Listings table" tabIndex={0}>
-            <Table className="min-w-[1180px] border-separate border-spacing-0 lg:min-w-[1240px]">
+            <div className={LISTINGS_TABLE_VIEWPORT} role="region" aria-label="Listings table" tabIndex={0}>
+            <Table className={cn(LISTINGS_TABLE_MIN_WIDTH, "border-separate border-spacing-0")}>
             <TableHeader className="sticky top-0 z-10 bg-muted/55 backdrop-blur dark:bg-background/80">
               <TableRow className="border-border/70 hover:bg-transparent">
                 <TableHead className={cn(LISTING_TABLE_HEAD, "w-14 pl-5")}>
@@ -807,8 +817,8 @@ export default function Listings() {
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[180px]")}>Inspection</TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[170px]")}>Source</TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[130px]")}>Confidence</TableHead>
-                <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[180px] text-right")}>Received</TableHead>
-                <TableHead className={cn(LISTING_TABLE_HEAD, "sticky right-0 z-20 w-16 pr-5 text-right bg-muted/95 backdrop-blur dark:bg-background/95 shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)]")}><span className="sr-only">Actions</span></TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, LISTINGS_RECEIVED_COLUMN, "text-right")} title="Received At">Received At</TableHead>
+                <TableHead className={cn(LISTING_TABLE_HEAD, LISTINGS_ACTIONS_COLUMN)}><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -913,15 +923,15 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 text-right align-middle">
+                  <TableCell className={cn("py-4 text-right align-middle", LISTINGS_RECEIVED_COLUMN)}>
                     {listing.receivedAt ? (
-                      <div className="text-sm font-medium tabular-nums text-muted-foreground/90">{formatDate(listing.receivedAt)}</div>
+                      <time className="block text-sm font-medium tabular-nums text-muted-foreground/90" dateTime={formatDateTimeAttribute(listing.receivedAt)} title={formatDate(listing.receivedAt)}>{formatDate(listing.receivedAt)}</time>
                     ) : (
                       <span className={LISTING_MISSING_VALUE}>-</span>
                     )}
                   </TableCell>
                   
-                  <TableCell className="sticky right-0 z-10 py-4 pr-5 text-right align-middle last:rounded-r-xl bg-card/95 backdrop-blur group-hover:bg-transparent shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)] dark:bg-background/92">
+                  <TableCell className="sticky right-0 z-10 w-20 min-w-20 py-4 pr-5 text-right align-middle last:rounded-r-xl bg-card/95 backdrop-blur group-hover:bg-transparent shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)] dark:bg-background/92">
                     {(() => {
                       const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
