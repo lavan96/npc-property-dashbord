@@ -574,31 +574,34 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
               </div>
             )}
 
-            <div className="flex justify-between gap-2">
-              {!isGenerating && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 border-t px-4 sm:px-6 py-3 shrink-0 bg-background">
+              {!isGenerating ? (
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setOpen(false);
                     navigate('/generated-reports?tab=quantitative');
                   }}
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto"
                 >
                   <BarChart3 className="h-4 w-4" />
                   View Charts
                 </Button>
-              )}
-              <div className="flex gap-2 ml-auto">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+              ) : <div className="hidden sm:block" />}
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:ml-auto">
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setOpen(false)}
                   disabled={isGenerating}
+                  className="w-full sm:w-auto"
                 >
                   {isGenerating ? 'Generating...' : 'Cancel'}
                 </Button>
-                <Button type="submit" disabled={isGenerating}>
+                <Button type="submit" disabled={isGenerating} className="w-full sm:w-auto">
                   {isGenerating ? `Generating... (${progress}%)` : 'Generate PDF Report'}
                 </Button>
               </div>
