@@ -3,7 +3,7 @@ import type { ElementType, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Search, Download, Bed, Bath, Car, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff, List, Table2, FilterX, Inbox } from 'lucide-react';
+import { Search, Download, Bed, Bath, Car, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff, List, Table2, FilterX, Inbox, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import { MobileFilterSheet } from '@/components/listings/MobileFilterSheet';
 import { PropertyCard } from '@/components/listings/PropertyCard';
 import { propertyDataService } from '@/services/propertyDataService';
 import { PropertyListing } from '@/lib/airtable';
-import { AirtableTableSelector, getSelectedAirtableTable } from '@/components/listings/AirtableTableSelector';
+
 
 import { buildFullAddress, extractAUState, extractPostcode } from '@/lib/addressUtils';
 import { getNearbySuburbs } from '@/lib/postcodeProximity';
@@ -186,21 +186,27 @@ export default function Listings() {
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<'list' | 'table'>(isMobile ? 'list' : 'table');
   
-  const [selectedTable, setSelectedTable] = useState<string | null>(() => getSelectedAirtableTable());
+  // Listings are locked to the Property Intake Master Airtable base — no other datasets should be exposed here.
+  const PROPERTY_INTAKE_TABLE = 'Property Intake Master';
+  useEffect(() => {
+    try { localStorage.removeItem('airtableSelectedTable'); } catch { /* ignore */ }
+  }, []);
+  const selectedTable = PROPERTY_INTAKE_TABLE;
 
   // Use React Query for caching and efficient data fetching
   const { data: listings = [], isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['listings', selectedTable ?? '__default__'],
+    queryKey: ['listings', selectedTable],
     queryFn: async () => {
       const result = await propertyDataService.fetchAllListings({
         includeDebugInfo: true,
-        tableName: selectedTable ?? undefined,
+        tableName: selectedTable,
       });
       return result.listings;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
 
   
   // Load filters from localStorage — always reset keywordSearch to blank on mount
@@ -596,16 +602,12 @@ export default function Listings() {
           </div>
           
           <div className="flex w-full flex-wrap items-stretch justify-start gap-3 rounded-[1.35rem] sm:items-center lg:w-auto border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-background/40 dark:shadow-black/20 lg:justify-end">
-            <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 p-1.5 shadow-sm dark:border-white/10 dark:bg-background/35">
-              <span className="hidden pl-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70 sm:inline">Dataset</span>
-              <AirtableTableSelector
-                value={selectedTable}
-                onChange={(next) => {
-                  setSelectedTable(next);
-                  propertyDataService.clearCache();
-                }}
-              />
+            <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 px-3 py-1.5 shadow-sm dark:border-white/10 dark:bg-background/35">
+              <Database className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">Dataset</span>
+              <span className="truncate text-sm font-semibold text-foreground">Property Intake Master</span>
             </div>
+
 
             <div className={LISTINGS_VIEW_SWITCHER} role="group" aria-label="Listing view mode">
               <Button
