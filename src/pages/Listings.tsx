@@ -34,8 +34,6 @@ import { ReportActionMenu } from '@/components/reports/ReportActionMenu';
 import { useReportPreferences, type ReportScope, type ReportTier } from '@/hooks/useReportPreferences';
 import { useNavigate } from 'react-router-dom';
 import { ListingRowContextMenu } from '@/components/listings/ListingRowContextMenu';
-import { ReportCommandPalette } from '@/components/reports/ReportCommandPalette';
-import { Command as CommandIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -48,7 +46,6 @@ const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-car
 const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
 const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-50/70 hover:text-brand-700 dark:border-white/10 dark:bg-background/45 dark:hover:bg-brand-400/10 dark:hover:text-brand-200';
 const LISTINGS_CHIP_ACTIVE = 'border-brand-400/70 bg-gradient-to-r from-brand-500 to-brand-500 text-foreground dark:text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-brand-500 hover:to-brand-400 hover:text-white dark:border-brand-300/60';
-const LISTINGS_HEADER_ICON_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-3 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 const LISTINGS_VIEW_SWITCHER = 'inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/45 p-1 shadow-inner dark:border-white/10 dark:bg-white/[0.04]';
 const LISTINGS_VIEW_CONTROL = 'h-9 rounded-full px-3 text-xs font-bold tracking-[0.01em] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 disabled:cursor-default';
 const LISTINGS_VIEW_CONTROL_ACTIVE = 'border-primary/45 bg-background text-foreground shadow-[0_8px_22px_rgba(15,23,42,0.10)] ring-1 ring-primary/20 dark:bg-background dark:shadow-black/30';
@@ -235,7 +232,6 @@ export default function Listings() {
   const { prefs, update: updatePrefs, recordLastUsed, effectiveScope, effectiveTier } = useReportPreferences();
   // Per-row pending scope/tier choice in the picker (controlled)
   const [rowPicker, setRowPicker] = useState<Record<string, { scope: ReportScope; tier: ReportTier }>>({});
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
     setViewMode(isMobile ? 'list' : 'table');
@@ -647,18 +643,6 @@ export default function Listings() {
                 Export ({selectedListings.size})
               </Button>
             )}
-            <Button
-              onClick={() => setIsCommandPaletteOpen(true)}
-              size="sm"
-              variant="outline"
-              className={`${LISTINGS_HEADER_ICON_ACTION} gap-2`}
-              aria-label="Open command palette"
-            >
-              <CommandIcon className="h-4 w-4" />
-              <kbd className="hidden pointer-events-none h-5 select-none items-center rounded-full border border-border/70 bg-muted/80 px-1.5 font-mono text-[10px] font-semibold text-muted-foreground md:inline-flex">
-                ⌘K
-              </kbd>
-            </Button>
             <Button onClick={loadListings} size="sm" variant="outline" disabled={isFetching} data-refreshing={isFetching} className={`${LISTINGS_REFRESH_ACTION} gap-2`}>
               {isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1025,21 +1009,6 @@ export default function Listings() {
           />
         </Suspense>
       )}
-
-      {/* Phase C: ⌘K command palette */}
-      <ReportCommandPalette
-        open={isCommandPaletteOpen}
-        onOpenChange={setIsCommandPaletteOpen}
-        listings={filteredListings}
-        selectedIds={selectedListings}
-        effectiveScope={effectiveScope}
-        effectiveTier={effectiveTier}
-        canGenerate={canEditListings}
-        onGenerateForListing={(listing, scope, tier) => launchScopedGeneration(listing, scope, tier)}
-        onOpenBulkGeneration={() => setIsBulkGenerationModalOpen(true)}
-        onToggleSelect={(id) => handleSelectListing(id, !selectedListings.has(id))}
-        onClearSelection={() => setSelectedListings(new Set())}
-      />
 
       {isBulkGenerationModalOpen && (
         <Suspense fallback={null}>
