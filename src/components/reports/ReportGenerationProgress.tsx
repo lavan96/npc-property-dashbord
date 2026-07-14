@@ -654,6 +654,13 @@ function ReportGenerationProgressInner() {
       });
     }
     cancelScheduledRetry(reportId);
+    dismissedIdsRef.current.add(reportId);
+    persistDismissed();
+    // Prevent the next poll from re-adding this row via prevReportsRef diffing
+    // and stop finalizeJob from firing a completed/failed toast for a row the
+    // user explicitly hid.
+    previousReportIdsRef.current.delete(reportId);
+    prevReportsRef.current = prevReportsRef.current.filter((x) => x.id !== reportId);
     setReports((prev) => prev.filter((x) => x.id !== reportId));
   };
 
