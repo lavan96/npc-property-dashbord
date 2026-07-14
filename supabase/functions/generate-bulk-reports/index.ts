@@ -137,7 +137,7 @@ const __bulkReportHandler = async (req: Request): Promise<Response> => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
 
 // Bulk endpoint only kicks off the job; per-item metering happens inside
 // generate-investment-report (called by the bulk worker). No reservation here.
