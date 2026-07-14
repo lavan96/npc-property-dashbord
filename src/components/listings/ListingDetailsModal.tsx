@@ -83,9 +83,9 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-[min(90dvh,calc(100dvh-3rem))] sm:max-h-[calc(100dvh-3rem)] sm:w-[min(88vw,1480px)] sm:max-w-[calc(100vw-3rem)] sm:rounded-lg lg:h-[min(90dvh,calc(100dvh-4rem))] lg:max-h-[calc(100dvh-4rem)] lg:max-w-[min(1480px,calc(100vw-4rem))]">
         {/* Hero header */}
-        <DialogHeader className="relative px-6 pt-6 pb-5 border-b border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+        <DialogHeader className="relative shrink-0 px-5 pt-5 pb-5 sm:px-6 lg:px-8 border-b border-border/60 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
           <div className="absolute inset-0 opacity-[0.04] pointer-events-none [background-image:radial-gradient(circle_at_1px_1px,hsl(var(--primary))_1px,transparent_0)] [background-size:14px_14px]" />
           <div className="relative flex flex-col gap-3">
             <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
@@ -93,7 +93,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
               Property Intake
               {listing.category && <span className="opacity-60">· {listing.category}</span>}
             </div>
-            <DialogTitle className="flex items-start gap-3 text-2xl font-semibold leading-tight pr-8">
+            <DialogTitle className="flex items-start gap-3 text-xl sm:text-2xl font-semibold leading-tight pr-10">
               <MapPin className="h-6 w-6 text-primary shrink-0 mt-1" />
               <span className="break-words">{buildFullAddress(listing)}</span>
             </DialogTitle>
@@ -122,7 +122,43 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           </div>
         </DialogHeader>
 
-        <div className="p-6 space-y-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-5 sm:px-6 lg:px-8 lg:py-6">
+          <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)] xl:gap-6">
+            <aside className="min-w-0 space-y-5 lg:space-y-6 xl:order-2 xl:sticky xl:top-0 xl:self-start">
+              {/* Sticky action bar */}
+              <div className="flex flex-wrap gap-2 rounded-xl border border-border/60 bg-card/30 p-4">
+                <Button
+                  variant="default"
+                  onClick={() => setInvestmentModalOpen(true)}
+                  className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20"
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Investment Report
+                </Button>
+                {listing.webLinks && (
+                  <Button variant="outline" onClick={openWebLink}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> View Listing
+                  </Button>
+                )}
+                {listing.url && (
+                  <Button variant="outline" onClick={openSourceUrl}>
+                    <ExternalLink className="h-4 w-4 mr-2" /> View Source
+                  </Button>
+                )}
+                {listing.address && (
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
+                    <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Address
+                  </Button>
+                )}
+                {listing.url && (
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(listing.url!, "URL")}>
+                    <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy URL
+                  </Button>
+                )}
+              </div>
+            </aside>
+
+            <div className="min-w-0 space-y-5 lg:space-y-6 xl:order-1">
           {/* Stat tiles */}
           {(listing.beds > 0 || listing.baths > 0 || listing.carSpaces > 0 || listing.landSize) && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -142,7 +178,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           )}
 
           {/* Two-column: Agent & Quality */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             {/* Agent & Agency */}
             <div className="rounded-xl border border-border/60 bg-card/30 p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
@@ -152,13 +188,13 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                 {listing.agencyName && (
                   <div className="flex items-center gap-2 text-sm">
                     <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{listing.agencyName}</span>
+                    <span className="min-w-0 break-words font-medium">{listing.agencyName}</span>
                   </div>
                 )}
                 {listing.agentName && (
                   <div className="flex items-center gap-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{listing.agentName}</span>
+                    <span className="min-w-0 break-words">{listing.agentName}</span>
                   </div>
                 )}
                 {listing.agentPhone && (
@@ -167,7 +203,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                     className="group flex items-center gap-2 text-sm w-full text-left rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/50 transition-colors"
                   >
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-mono">{listing.agentPhone}</span>
+                    <span className="min-w-0 break-all font-mono">{listing.agentPhone}</span>
                     <Copy className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-60 transition-opacity" />
                   </button>
                 )}
@@ -232,13 +268,13 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
 
           {/* Description & Summary */}
           {(listing.description || listing.summary) && (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
               {listing.description && (
                 <div className="rounded-xl border border-border/60 bg-card/30 p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5" /> Property Description
                   </h3>
-                  <p className="text-sm leading-relaxed">{listing.description}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{listing.description}</p>
                 </div>
               )}
               {listing.summary && listing.summary !== listing.description && (
@@ -246,7 +282,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5" /> AI Summary
                   </h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{listing.summary}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">{listing.summary}</p>
                 </div>
               )}
             </div>
@@ -256,7 +292,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           {listing.keyEntities && (
             <div className="rounded-xl border border-border/60 bg-card/30 p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Key Entities</h3>
-              <p className="text-sm text-muted-foreground">{listing.keyEntities}</p>
+              <p className="break-words text-sm text-muted-foreground">{listing.keyEntities}</p>
             </div>
           )}
 
@@ -380,36 +416,7 @@ export function ListingDetailsModal({ listing, isOpen, onClose }: ListingDetails
           </div>
         </div>
 
-        {/* Sticky action bar */}
-        <div className="sticky bottom-0 z-10 flex flex-wrap gap-2 px-6 py-4 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <Button
-            variant="default"
-            onClick={() => setInvestmentModalOpen(true)}
-            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-md shadow-primary/20"
-          >
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Investment Report
-          </Button>
-          {listing.webLinks && (
-            <Button variant="outline" onClick={openWebLink}>
-              <ExternalLink className="h-4 w-4 mr-2" /> View Listing
-            </Button>
-          )}
-          {listing.url && (
-            <Button variant="outline" onClick={openSourceUrl}>
-              <ExternalLink className="h-4 w-4 mr-2" /> View Source
-            </Button>
-          )}
-          {listing.address && (
-            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(buildFullAddress(listing), "Full address")}>
-              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Address
-            </Button>
-          )}
-          {listing.url && (
-            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(listing.url!, "URL")}>
-              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy URL
-            </Button>
-          )}
+          </div>
         </div>
 
         <InvestmentReportModal
