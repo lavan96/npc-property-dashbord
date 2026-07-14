@@ -180,6 +180,10 @@ function EditorialCanvasImpl({
         data: sampleData,
         customCss,
         editorMode: false, // we draw our own selection chrome
+        // The canvas is the ONE surface that shows PDF-import reference
+        // underlays (dim source raster) so overlays can be aligned to the
+        // original; every preview/print/export path renders without them.
+        showReferenceUnderlay: true,
       });
       // Inject CSS so the page lays out without the editor's drop-shadow chrome.
       return r.html.replace(

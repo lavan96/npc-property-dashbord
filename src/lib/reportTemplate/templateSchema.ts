@@ -498,6 +498,11 @@ export const PageSchema = z.object({
     // must fill the exact page box — 'fill' (background-size:100% 100%) — so the
     // reference never crops/stretches. Decorative images default to 'cover'.
     imageFit: z.enum(['cover', 'contain', 'fill']).optional(),
+    // PDF-import reference underlay: the source-page raster kept purely as an
+    // alignment aid behind the reconstructed overlays. Rendered ONLY on the
+    // editor canvas — preview/print/export renderers must skip it, otherwise
+    // every text element prints twice (dim source ghost + editable overlay).
+    underlay: z.boolean().optional(),
     // Phase 11 — optional gradient overlay/fill. When present and stops.length>0
     // the HTML renderer composites it above any solid color / image.
     gradient: z.object({
@@ -715,15 +720,34 @@ export function makeBlankTemplate(): ReportTemplate {
   };
 }
 
+/**
+ * Back-compat: hybrid PDF imports created before `background.underlay` existed
+ * persisted the dimmed source raster (opacity < 1, imageFit 'fill') with no
+ * flag, so preview/print rendered a ghost copy of every text element behind
+ * the reconstructed overlays. Tag those pages as underlays at parse time.
+ * Explicit `underlay: false` (or any explicit value) is always respected.
+ */
+function normaliseImportUnderlays(template: ReportTemplate): ReportTemplate {
+  for (const page of template.pages ?? []) {
+    const bg = page.background as { imageUrl?: unknown; imageFit?: string; opacity?: number; underlay?: boolean } | undefined;
+    if (!bg?.imageUrl || bg.underlay !== undefined) continue;
+    const opacity = typeof bg.opacity === 'number' ? bg.opacity : 1;
+    const isHybridImportPage = typeof page.notes === 'string'
+      && page.notes.includes('Import Reconciliation Engine (hybrid)');
+    if (isHybridImportPage && bg.imageFit === 'fill' && opacity < 1) bg.underlay = true;
+  }
+  return template;
+}
+
 /** Parse arbitrary JSON safely; returns EMPTY_TEMPLATE on failure. */
 export function parseTemplate(input: unknown): ReportTemplate {
   const result = ReportTemplateSchema.safeParse(input);
   if (!result.success) {
     console.warn('[templateSchema] Failed to parse template, using empty', result.error.flatten());
     const fallback = salvageTemplate(input);
-    return fallback ?? EMPTY_TEMPLATE;
+    return fallback ? normaliseImportUnderlays(fallback) : EMPTY_TEMPLATE;
   }
-  return result.data;
+  return normaliseImportUnderlays(result.data);
 }
 
 function normaliseFontWeight(value: unknown): 'normal' | 'bold' {

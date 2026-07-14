@@ -120,6 +120,70 @@ describe('golden render — editor→renderer contract (renderers must stay byte
     expect(html).toContain('background-size:100% 100%');
   });
 
+  it('reference underlay (background.underlay) is skipped in default (print/export) renders', () => {
+    const underlayPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill', opacity: 0.5, underlay: true },
+        blocks: [],
+      }],
+    });
+    const { html } = renderTemplateToHtml(underlayPage, { data: {}, editorMode: false });
+    // The source raster must NOT print — it would ghost every overlay.
+    expect(html).not.toContain('page-001.png');
+    expect(html).not.toContain('linear-gradient(rgba(255,255,255');
+  });
+
+  it('reference underlay renders (dimmed) when showReferenceUnderlay is set (editor canvas)', () => {
+    const underlayPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill', opacity: 0.5, underlay: true },
+        blocks: [],
+      }],
+    });
+    const { html } = renderTemplateToHtml(underlayPage, { data: {}, editorMode: false, showReferenceUnderlay: true });
+    expect(html).toContain('page-001.png');
+    // Still dimmed by the Phase 6B white veil on the canvas.
+    expect(html).toContain('linear-gradient(rgba(255,255,255,0.500),rgba(255,255,255,0.500))');
+  });
+
+  it('legacy hybrid-import pages (no underlay flag) are normalised to underlays at parse time', () => {
+    const legacy = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill', opacity: 0.5 },
+        blocks: [],
+        notes: 'Imported by Template Import Reconciliation Engine (hybrid). Source page: docling-page-1. Warnings: 0.',
+      }],
+    });
+    expect((legacy.pages[0].background as any).underlay).toBe(true);
+    const { html } = renderTemplateToHtml(legacy, { data: {}, editorMode: false });
+    expect(html).not.toContain('page-001.png');
+  });
+
+  it('pixel-perfect (background-first) pages keep printing their raster', () => {
+    const pixelPerfect = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill', opacity: 1 },
+        blocks: [],
+        notes: 'Imported by Template Import Reconciliation Engine (background-first). Source page: docling-page-1. Warnings: 0.',
+      }],
+    });
+    expect((pixelPerfect.pages[0].background as any).underlay).toBeUndefined();
+    const { html } = renderTemplateToHtml(pixelPerfect, { data: {}, editorMode: false });
+    expect(html).toContain('page-001.png');
+  });
+
   it('decorative background image keeps the cover default', () => {
     const coverPage = parseTemplate({
       version: 1,

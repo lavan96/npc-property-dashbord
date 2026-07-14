@@ -100,8 +100,10 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
     doc.setFillColor(r, g, b);
     doc.rect(0, 0, page.size.width, page.size.height, 'F');
   }
-  // Background image (preloaded to data URL by imagePreloader)
-  if (page.background?.imageUrl) {
+  // Background image (preloaded to data URL by imagePreloader).
+  // PDF-import reference underlays are editor-only alignment aids — printing
+  // them would duplicate every element behind the reconstructed overlays.
+  if (page.background?.imageUrl && !(page.background as any)?.underlay) {
     const url = String(page.background.imageUrl);
     if (url.startsWith('data:') || url.startsWith('http')) {
       try {

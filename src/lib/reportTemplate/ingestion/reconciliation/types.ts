@@ -115,6 +115,12 @@ export interface RawImportBlock {
     sourceFont?: string;
     /** Phase 3: true when the source font was not catalog-known and was substituted. */
     fontSubstituted?: boolean;
+    /**
+     * True when the extracted text contained `GLYPH<n>` extraction artifacts
+     * (fonts without a usable ToUnicode map). The tokens are stripped from the
+     * overlay text; confidence is capped so hybrid mode keeps the block locked.
+     */
+    glyphArtifacts?: boolean;
     /** Phase 2: vector geometry for `vector` blocks (SVG paths + viewBox). */
     vector?: {
       viewBox: string;
@@ -200,6 +206,12 @@ export interface TemplateImportPagePlan {
     opacity?: number;
     /** Sizing for the background image; 'fill' for full-page source rasters. */
     imageFit?: 'cover' | 'contain' | 'fill';
+    /**
+     * Editor-only reference underlay (hybrid PDF import): the source raster is
+     * an alignment backdrop for the canvas and must NOT appear in preview/
+     * print/export renders — the overlays are the deliverable.
+     */
+    underlay?: boolean;
   };
   overlays: Overlay[];
   sourcePageId: string;

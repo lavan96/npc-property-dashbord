@@ -51,6 +51,13 @@ export interface HtmlRenderOptions {
   cascadeMetadata?: boolean;
   /** Render visible designer proof tags near anchored blocks/overlays. */
   cascadeDebug?: boolean;
+  /**
+   * Render PDF-import reference underlays (`page.background.underlay`). The
+   * editor canvas opts in so designers can align overlays against the source
+   * raster; every preview/print/export path leaves this off — printing the
+   * underlay would duplicate all source content behind the reconstruction.
+   */
+  showReferenceUnderlay?: boolean;
 }
 
 export interface HtmlRenderResult {
@@ -432,7 +439,11 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     bgImages.push(grad);
     bgSizes.push('100% 100%');
   }
-  if (page.background?.imageUrl) {
+  // PDF-import reference underlays are editor-canvas-only alignment aids; in
+  // preview/print/export the reconstructed overlays ARE the page, and painting
+  // the source raster behind them would double-render every element.
+  const isHiddenUnderlay = Boolean((page.background as any)?.underlay) && !(ctxBase as any)._showReferenceUnderlay;
+  if (page.background?.imageUrl && !isHiddenUnderlay) {
     const url = resolveBindable(page.background.imageUrl, ctxBase);
     if (url) {
       // Full-page source rasters set imageFit:'fill' so the reference exactly
@@ -623,6 +634,7 @@ export function renderTemplateToHtml(
         String(!!options.editorMode),
         String(!!options.cascadeMetadata),
         String(!!options.cascadeDebug),
+        String(!!options.showReferenceUnderlay),
         String(visiblePages.length),
         visiblePages.map((p) => `${p.id}\u0000${p.name}`).join('\u0001'),
         JSON.stringify(tocEntries),
@@ -655,6 +667,7 @@ export function renderTemplateToHtml(
     (pageCtx as any)._cascadeMetadata = !!options.cascadeMetadata;
     (pageCtx as any)._cascadeDebug = !!options.cascadeDebug;
     (pageCtx as any)._editorMode = !!options.editorMode;
+    (pageCtx as any)._showReferenceUnderlay = !!options.showReferenceUnderlay;
     const rendered = renderPage(page, pageCtx, idx, template, visiblePages, !!options.editorMode);
     if (pageCache) pageCache.set(cacheKey, rendered);
     return rendered;

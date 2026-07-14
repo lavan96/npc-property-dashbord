@@ -152,6 +152,28 @@ function blockId(prefix: string, pageNo: number, index: number): string {
   return `docling-${prefix}-p${pageNo}-${index.toString(36)}`;
 }
 
+/**
+ * Docling emits `GLYPH<n>` placeholder tokens when a font has no usable
+ * ToUnicode map (each unmapped glyph becomes an 8+ char token interleaved with
+ * the recoverable characters). Left in place they balloon the text to many
+ * times its true width, wrap across everything below, and read as garbage —
+ * strip the tokens, keep the recoverable characters, and flag the block so it
+ * is confidence-capped (locked in hybrid) and surfaced as a page warning.
+ */
+const GLYPH_ARTIFACT = /GLYPH<[^>]{0,16}>/g;
+
+function sanitizeExtractedText(raw: string | undefined): { text: string | undefined; hadGlyphArtifacts: boolean } {
+  if (!raw || !raw.includes('GLYPH<')) return { text: raw, hadGlyphArtifacts: false };
+  const stripped = raw
+    .replace(GLYPH_ARTIFACT, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+  return { text: stripped, hadGlyphArtifacts: true };
+}
+
+/** Confidence ceiling for blocks whose text carried GLYPH extraction artifacts. */
+const GLYPH_ARTIFACT_MAX_CONFIDENCE = 0.5;
+
 interface MapOptions {
   defaultConfidence?: number;
   source?: RawImportBlockSource;
@@ -193,7 +215,11 @@ function textItemToBlock(
   // Phase D: prefer LaTeX when this is a formula; preserve raw text otherwise.
   const latex = item.latex ?? item.equation;
   const codeLanguage = item.code_language;
-  const displayText = blockType === 'formula' && latex ? latex : item.text;
+  const sanitized = sanitizeExtractedText(item.text);
+  const displayText = blockType === 'formula' && latex ? latex : sanitized.text;
+  // Nothing recoverable after stripping GLYPH artifacts → no overlay at all
+  // (hybrid keeps the raster reference; semantic drops the garbage cleanly).
+  if (!displayText || !displayText.trim()) return null;
   // Phase D: capture explicit cross-reference if exactly one ref present.
   const refList = (item.refs ?? []).map((r) => (typeof r === 'string' ? r : (r.$ref ?? r.cref))).filter(Boolean) as string[];
   const xref = refList.length === 1 ? refList[0] : undefined;
@@ -228,10 +254,14 @@ function textItemToBlock(
       ...(typeof item.font?.line_height === 'number' ? { lineHeight: item.font.line_height } : {}),
       ...(typeof item.font?.letter_spacing === 'number' ? { letterSpacing: item.font.letter_spacing } : {}),
     },
-    confidence: typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.85,
+    confidence: Math.min(
+      typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.85,
+      sanitized.hadGlyphArtifacts ? GLYPH_ARTIFACT_MAX_CONFIDENCE : 1,
+    ),
     source: opts.source ?? 'pdf-text',
     meta: {
       label: item.label,
+      ...(sanitized.hadGlyphArtifacts ? { glyphArtifacts: true } : {}),
       headingLevel,
       listGroupId,
       readingOrder,
@@ -264,7 +294,9 @@ function buildTableGrid(item: DoclingTableItem): {
   headerRows: number;
   numRows: number;
   numCols: number;
+  hadGlyphArtifacts: boolean;
 } {
+  let hadGlyphArtifacts = false;
   const numRows = Math.max(0, item.data?.num_rows ?? 0);
   const numCols = Math.max(0, item.data?.num_cols ?? 0);
   const grid: string[][] = Array.from({ length: numRows }, () => Array<string>(numCols).fill(''));
@@ -280,7 +312,9 @@ function buildTableGrid(item: DoclingTableItem): {
     const c0 = cell.start_col_offset_idx ?? (hasExplicitPosition ? 0 : inferredCol);
     const r1 = cell.end_row_offset_idx ?? r0 + (cell.row_span ?? 1);
     const c1 = cell.end_col_offset_idx ?? c0 + (cell.col_span ?? 1);
-    const text = (cell.text ?? '').trim();
+    const cellSanitized = sanitizeExtractedText(cell.text ?? '');
+    if (cellSanitized.hadGlyphArtifacts) hadGlyphArtifacts = true;
+    const text = (cellSanitized.text ?? '').trim();
     structuralCells.push({
       text,
       row: r0,
@@ -316,7 +350,7 @@ function buildTableGrid(item: DoclingTableItem): {
     }
   }
 
-  return { rows: grid, cells: structuralCells, headerRows, numRows, numCols };
+  return { rows: grid, cells: structuralCells, headerRows, numRows, numCols, hadGlyphArtifacts };
 }
 
 function tableItemToBlock(
@@ -331,7 +365,7 @@ function tableItemToBlock(
   if (!prov) return null;
   const bbox = bboxToTopLeft(prov.bbox, pageInfo.size.height);
   if (bbox.width <= 0 || bbox.height <= 0) return null;
-  const tableData = buildTableGrid(item);
+  const { hadGlyphArtifacts, ...tableData } = buildTableGrid(item);
   const preview = tableData.rows
     .flat()
     .filter(Boolean)
@@ -348,7 +382,10 @@ function tableItemToBlock(
       fontWeight: 'normal',
       color: '#111111',
     },
-    confidence: typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.7,
+    confidence: Math.min(
+      typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.7,
+      hadGlyphArtifacts ? GLYPH_ARTIFACT_MAX_CONFIDENCE : 1,
+    ),
     source: opts.source ?? 'pdf-text',
     meta: {
       label: 'table',
@@ -356,6 +393,7 @@ function tableItemToBlock(
       tableData,
       caption: item.caption,
       groupId: captionGroupId,
+      ...(hadGlyphArtifacts ? { glyphArtifacts: true } : {}),
     },
   };
 }
