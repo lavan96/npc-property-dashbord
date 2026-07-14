@@ -28,6 +28,9 @@ export interface TokenBalance {
   planName?: string | null;
   overagePolicy?: string | null;
   currentPeriodEnd?: string | null;
+  /** Mission Control marked this tenant billing-exempt (no plan, never
+   * funds-gated). Per-tenant flag in MC — clones are unaffected. */
+  exempt?: boolean;
 }
 
 export interface TopupPack {
@@ -122,7 +125,7 @@ export async function fetchTopupPacks(): Promise<TopupPacksResult> {
 /** Throws InsufficientTokensError if available < estimate. Returns balance otherwise. */
 export async function preflightTokens(estimate: number): Promise<TokenBalance> {
   const balance = await fetchTokenBalance();
-  if (balance.available < estimate) {
+  if (!balance.exempt && balance.available < estimate) {
     throw new InsufficientTokensError(balance.available, estimate);
   }
   return balance;

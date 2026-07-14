@@ -95,9 +95,11 @@ export function useTokenBalance(opts: UseTokenBalanceOptions = {}) {
   }, [enabled, refetchOnTokenEvent, refresh]);
 
   const lowBalance =
-    balance != null && balance.allowance > 0 && balance.available / balance.allowance < 0.1;
+    balance != null && !balance.exempt && balance.allowance > 0 &&
+    balance.available / balance.allowance < 0.1;
   const criticalBalance =
-    balance != null && balance.allowance > 0 && balance.available / balance.allowance < 0.05;
+    balance != null && !balance.exempt && balance.allowance > 0 &&
+    balance.available / balance.allowance < 0.05;
 
   return { balance, loading, error, refresh, lowBalance, criticalBalance };
 }

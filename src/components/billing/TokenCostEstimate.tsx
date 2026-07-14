@@ -38,8 +38,9 @@ export function TokenCostEstimate({
   if (need <= 0) return null;
 
   const available = balance?.available ?? null;
-  const insufficient = available != null && need > available;
-  const low = available != null && available - need < (balance?.allowance ?? 0) * 0.1;
+  const exempt = Boolean(balance?.exempt);
+  const insufficient = !exempt && available != null && need > available;
+  const low = !exempt && available != null && available - need < (balance?.allowance ?? 0) * 0.1;
 
   const stateClass = insufficient
     ? "border-destructive/40 bg-destructive/10 text-destructive"
