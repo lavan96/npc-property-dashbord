@@ -90,6 +90,8 @@ export function TokenEventsListener() {
     return () => {
       offUsed();
       offOOT();
+      buckets.forEach((b) => clearTimeout(b.timer));
+      buckets.clear();
     };
   }, []);
 
