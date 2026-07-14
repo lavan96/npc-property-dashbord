@@ -602,16 +602,12 @@ export default function Listings() {
           </div>
           
           <div className="flex w-full flex-wrap items-stretch justify-start gap-3 rounded-[1.35rem] sm:items-center lg:w-auto border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-background/40 dark:shadow-black/20 lg:justify-end">
-            <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 p-1.5 shadow-sm dark:border-white/10 dark:bg-background/35">
-              <span className="hidden pl-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70 sm:inline">Dataset</span>
-              <AirtableTableSelector
-                value={selectedTable}
-                onChange={(next) => {
-                  setSelectedTable(next);
-                  propertyDataService.clearCache();
-                }}
-              />
+            <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 px-3 py-1.5 shadow-sm dark:border-white/10 dark:bg-background/35">
+              <Database className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">Dataset</span>
+              <span className="truncate text-sm font-semibold text-foreground">Property Intake Master</span>
             </div>
+
 
             <div className={LISTINGS_VIEW_SWITCHER} role="group" aria-label="Listing view mode">
               <Button
