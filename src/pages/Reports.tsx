@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -14,7 +15,7 @@ import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
 import { useReportGenerator } from '@/hooks/useReportGenerator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb, Loader2, AlertTriangle } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb, Loader2, AlertTriangle, FileText } from 'lucide-react';
 
 // Lazy load heavy analytics components
 const AdvancedAnalytics = lazy(() => import('@/components/reports/AdvancedAnalytics').then(m => ({ default: m.AdvancedAnalytics })));
@@ -198,8 +199,20 @@ export default function Reports() {
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">Generate property analysis and investment reports</p>
                 </div>
               </div>
-              <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm">
-                Quantitative insights · Investment analysis
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-end">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-11 rounded-2xl border-primary/35 bg-primary/10 px-4 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/55 hover:bg-primary/15 hover:text-primary focus-visible:ring-primary/60 active:scale-[0.98]"
+                >
+                  <a href="/generated-reports?tab=investment" target="_blank" rel="noopener noreferrer" aria-label="Open recent investment reports in a new tab">
+                    <FileText className="h-4 w-4" />
+                    Recent Reports
+                  </a>
+                </Button>
+                <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm">
+                  Quantitative insights · Investment analysis
+                </div>
               </div>
             </div>
 
