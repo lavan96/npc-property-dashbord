@@ -2041,8 +2041,28 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                     if (!payload || payload === '[DONE]') continue;
                     try {
                       const j = JSON.parse(payload);
-                      const c = j?.choices?.[0]?.delta?.content;
-                      if (typeof c === 'string') assistantText += c;
+                      // Try multiple SSE shapes so persistence survives when
+                      // the upstream provider returns non-OpenAI delta formats
+                      // (Anthropic/Gemini via gateway, Responses API, etc).
+                      const candidates: unknown[] = [
+                        j?.choices?.[0]?.delta?.content,
+                        j?.choices?.[0]?.message?.content,
+                        j?.delta?.content,
+                        j?.delta?.text,
+                        j?.output_text,
+                        j?.content,
+                        j?.text,
+                      ];
+                      for (const c of candidates) {
+                        if (typeof c === 'string' && c.length > 0) { assistantText += c; break; }
+                        if (Array.isArray(c)) {
+                          for (const part of c) {
+                            const pt = typeof part === 'string' ? part : (part?.text ?? part?.content);
+                            if (typeof pt === 'string') assistantText += pt;
+                          }
+                          break;
+                        }
+                      }
                     } catch { /* partial json — ignore */ }
                   }
                 } catch { /* peek is best-effort */ }
