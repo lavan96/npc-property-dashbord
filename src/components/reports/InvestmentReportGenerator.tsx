@@ -1445,15 +1445,15 @@ export function InvestmentReportGenerator() {
                     <TabsList aria-label="Investment report input method" className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
                       <TabsTrigger value="manual" className="reports-investment-mode-tab">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        Manual
+                        <span className="reports-investment-mode-label">Manual</span>
                       </TabsTrigger>
                       <TabsTrigger value="url" className="reports-investment-mode-tab">
                         <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        URL Scrape
+                        <span className="reports-investment-mode-label">URL Scrape</span>
                       </TabsTrigger>
                       <TabsTrigger value="pdf" className="reports-investment-mode-tab">
                         <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        PDF Upload
+                        <span className="reports-investment-mode-label">PDF Upload</span>
                       </TabsTrigger>
                     </TabsList>
                   </div>
