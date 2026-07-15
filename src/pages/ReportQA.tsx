@@ -2068,7 +2068,7 @@ export default function ReportQA() {
               </p>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-3 min-h-0 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden px-3 pb-3 sm:px-4 sm:pb-4">
             <div className="report-qa-panel-section space-y-2">
               <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                 <span>Document intake</span>
@@ -2188,34 +2188,14 @@ export default function ReportQA() {
               </div>
             )}
 
-            {/* Search across reports */}
+            {/* Reports in this chat — primary flexible list */}
             {uploadedReports.length > 0 && (
-              <div className="report-qa-panel-section space-y-2">
-                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  <span>Loaded Reports</span>
-                  <span className="normal-case tracking-normal text-primary">{uploadedReports.length} loaded</span>
-                </div>
-              <ReportSearch
-                reports={uploadedReports}
-                onResultClick={(reportIndex) => {
-                  setSelectedReportNames([uploadedReports[reportIndex].name]);
-                  toast({
-                    title: 'Report selected',
-                    description: `Focused on ${uploadedReports[reportIndex].name}`,
-                  });
-                }}
-              />
-              </div>
-            )}
-
-            {/* Uploaded Reports — compact list */}
-            {uploadedReports.length > 0 && (
-              <div className="report-qa-loaded-reports flex min-h-0 flex-1 flex-col gap-2">
+              <div className="report-qa-loaded-reports flex min-h-0 flex-1 basis-0 flex-col gap-2">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   <span>Reports in this chat</span>
                   <span className="normal-case tracking-normal text-primary">{selectedReports.length > 1 ? `Comparing ${selectedReports.length}` : selectedReports.length === 1 ? '1 selected' : 'Select reports'}</span>
                 </div>
-                <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1">
+                <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1" aria-label="Reports in this chat">
                   <div className="space-y-1.5">
                   {uploadedReports.map((report, index) => {
                     const isSelected = selectedReportNames.includes(report.name);
@@ -2286,6 +2266,26 @@ export default function ReportQA() {
               <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-xl border border-primary/20">
                 <GitCompare className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs text-primary font-medium">Comparison mode: {selectedReports.length} selected reports</span>
+              </div>
+            )}
+
+            {/* Loaded reports search — secondary action anchored below chat reports */}
+            {uploadedReports.length > 0 && (
+              <div className="report-qa-panel-section space-y-2 shrink-0">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span>Loaded Reports</span>
+                  <span className="normal-case tracking-normal text-primary">{uploadedReports.length} loaded</span>
+                </div>
+                <ReportSearch
+                  reports={uploadedReports}
+                  onResultClick={(reportIndex) => {
+                    setSelectedReportNames([uploadedReports[reportIndex].name]);
+                    toast({
+                      title: 'Report selected',
+                      description: `Focused on ${uploadedReports[reportIndex].name}`,
+                    });
+                  }}
+                />
               </div>
             )}
           </CardContent>
