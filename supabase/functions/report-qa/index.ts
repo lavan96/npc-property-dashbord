@@ -1866,15 +1866,25 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 `[report-qa] Agent loop complete: ${turns} turn(s), ${toolInvocations.length} tool invocation(s)`,
               );
               // Persist user + assistant messages so historical conversation
-              // reload has content to render (streaming path used to skip this).
-              if (conversationId && finalText) {
+              // reload has content to render. Always persist so the user turn
+              // is never dropped, even if finalText couldn't be captured.
+              if (conversationId) {
+                const finalAssistant = (finalText && finalText.trim().length > 0)
+                  ? finalText
+                  : '⚠️ Agent completed but text could not be captured. Please retry.';
+                console.log('[report-qa] Persisting agent messages', {
+                  conversationId,
+                  userLen: String(question || '').length,
+                  assistantLen: finalAssistant.length,
+                  tools: toolInvocations.length,
+                });
                 try {
-                  await supabase.from('report_qa_messages').insert([
+                  const { error: persistDbErr } = await supabase.from('report_qa_messages').insert([
                     { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
                     {
                       conversation_id: conversationId,
                       role: 'assistant',
-                      content: sanitizeForPostgres(finalText),
+                      content: sanitizeForPostgres(finalAssistant),
                       model_provider: modelProvider,
                       citations: structuredCitationsAgent.length > 0 ? structuredCitationsAgent : null,
                       comparison_mode: comparisonMode,
@@ -1883,6 +1893,11 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                       tool_invocations: toolInvocations.length > 0 ? toolInvocations : null,
                     },
                   ]);
+                  if (persistDbErr) console.error('[report-qa] Agent persist DB error:', persistDbErr);
+                  await supabase
+                    .from('report_qa_conversations')
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq('id', conversationId);
                 } catch (persistErr) {
                   console.error('[report-qa] Failed to persist agent messages:', persistErr);
                 }
