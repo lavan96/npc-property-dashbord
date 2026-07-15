@@ -1442,7 +1442,7 @@ export function InvestmentReportGenerator() {
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
                 {isPropertySpecific ? (
                   <div className="reports-investment-mode-shell overflow-x-auto -mx-1 px-1 scrollbar-hide">
-                    <TabsList aria-label="Investment report input method" className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
+                    <TabsList aria-label="Investment report input method" className="reports-investment-mode-list rounded-2xl border border-border/70 bg-background/60 p-1">
                       <TabsTrigger value="manual" className="reports-investment-mode-tab">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         <span className="reports-investment-mode-label">Manual</span>
@@ -1471,46 +1471,15 @@ export function InvestmentReportGenerator() {
                   {/* Build Type Radio Selection - Only for property-specific */}
                   {isPropertySpecific && (
                     <>
-                      <div className="space-y-3">
+                      <div className="reports-build-type-control space-y-3">
                         <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
-                        <div className="reports-build-type-grid">
-                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="buildType"
-                              value="existing_property"
-                              checked={preGenData.buildType === 'existing_property'}
-                              onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
-                              className="reports-build-type-radio h-4 w-4 text-primary"
-                              disabled={isGenerating}
-                            />
-                            <span className="text-sm">Existing Property</span>
-                          </label>
-                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="buildType"
-                              value="new_build"
-                              checked={preGenData.buildType === 'new_build'}
-                              onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
-                              className="reports-build-type-radio h-4 w-4 text-primary"
-                              disabled={isGenerating}
-                            />
-                            <span className="text-sm">New Build</span>
-                          </label>
-                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="buildType"
-                              value="land_only"
-                              checked={preGenData.buildType === 'land_only'}
-                              onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'land_only' }))}
-                              className="reports-build-type-radio h-4 w-4 text-primary"
-                              disabled={isGenerating}
-                            />
-                            <span className="text-sm">Land Only</span>
-                          </label>
-                        </div>
+                        <BuildTypeSelector
+                          value={preGenData.buildType as BuildType}
+                          onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
+                          disabled={isGenerating}
+                          showCard={false}
+                          size="sm"
+                        />
                       </div>
                       <Separator />
                     </>
