@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSecureInvestmentReports } from '@/hooks/useSecureInvestmentReports';
@@ -247,14 +246,14 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="w-[calc(100vw-1rem)] h-[92dvh] max-h-[92dvh] overflow-hidden flex flex-col gap-0 p-0 sm:w-[min(94vw,1580px)] sm:max-w-none sm:h-[min(90dvh,980px)] sm:max-h-[calc(100dvh-40px)] sm:p-0">
+        <DialogHeader className="flex-shrink-0 border-b border-border/70 px-4 py-4 pr-14 sm:px-6">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Edit Investment Report
           </DialogTitle>
           <div className="space-y-2 mt-2">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
               <Input
                 value={editedPropertyAddress}
@@ -270,7 +269,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
           </div>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0 px-4 py-4 sm:px-6">
           {hasChanges && (
             <Alert className="mb-4 flex-shrink-0">
               <AlertCircle className="h-4 w-4" />
@@ -280,8 +279,8 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
             </Alert>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0 h-0">
-            <TabsList className="grid w-full grid-cols-3 mb-4 flex-shrink-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
+            <TabsList className="grid w-full grid-cols-3 mb-4 flex-shrink-0 lg:max-w-3xl">
               <TabsTrigger value="content" className="flex items-center gap-2">
                 <Type className="h-4 w-4" />
                 Edit Content
@@ -303,14 +302,12 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
                   Edit the main investment analysis report using markdown syntax.
                 </p>
               </div>
-              <ScrollArea className="flex-1 border rounded-md">
-                <Textarea
-                  value={editedContent}
-                  onChange={(e) => handleContentChange(e.target.value)}
-                  placeholder="Enter your investment analysis report content..."
-                  className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
-                />
-              </ScrollArea>
+              <Textarea
+                value={editedContent}
+                onChange={(e) => handleContentChange(e.target.value)}
+                placeholder="Enter your investment analysis report content..."
+                className="flex-1 min-h-0 w-full resize-none overflow-auto rounded-md border p-4 font-mono text-sm leading-6 focus-visible:ring-1"
+              />
             </TabsContent>
 
             <TabsContent value="sources" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
@@ -320,14 +317,12 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
                   Edit the sources and citations section that will be appended to the report.
                 </p>
               </div>
-              <ScrollArea className="flex-1 border rounded-md">
-                <Textarea
-                  value={editedSources}
-                  onChange={(e) => handleSourcesChange(e.target.value)}
-                  placeholder="Enter sources and citations here..."
-                  className="w-full min-h-[500px] resize-none border-0 focus-visible:ring-0 p-4 font-mono text-sm"
-                />
-              </ScrollArea>
+              <Textarea
+                value={editedSources}
+                onChange={(e) => handleSourcesChange(e.target.value)}
+                placeholder="Enter sources and citations here..."
+                className="flex-1 min-h-0 w-full resize-none overflow-auto rounded-md border p-4 font-mono text-sm leading-6 focus-visible:ring-1"
+              />
             </TabsContent>
 
             <TabsContent value="preview" className="flex-1 overflow-hidden mt-0 min-h-0 data-[state=active]:flex flex-col">
@@ -337,8 +332,8 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
                   See how your markdown will appear when rendered with proper formatting.
                 </p>
               </div>
-              <div className="flex-1 border rounded-md overflow-y-auto">
-                <div className="p-4">
+              <div className="flex-1 min-h-0 overflow-y-auto rounded-md border">
+                <div className="p-4 sm:p-6 lg:p-8">
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={markdownComponents}
@@ -362,8 +357,8 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
           </Tabs>
         </div>
 
-        <DialogFooter className="flex-shrink-0 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <DialogFooter className="flex-shrink-0 items-stretch justify-between gap-3 border-t border-border/70 px-4 py-4 sm:flex-row sm:items-center sm:px-6 sm:space-x-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {hasChanges ? (
               <Badge variant="outline" className="text-warning border-warning/30">
                 <AlertCircle className="h-3 w-3 mr-1" />
@@ -380,7 +375,7 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
             </span>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
