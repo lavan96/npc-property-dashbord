@@ -243,6 +243,8 @@ interface SavedConversation {
   id: string;
   title: string;
   report_names: string[];
+  report_contents?: string[];
+  agent_mode?: boolean | null;
   client_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -892,6 +894,12 @@ export default function ReportQA() {
     return '';
   };
 
+  const getStoredMessageTime = (message: any): number => {
+    const candidate = message?.created_at || message?.inserted_at || message?.timestamp;
+    const parsed = new Date(candidate || Date.now()).getTime();
+    return Number.isNaN(parsed) ? Date.now() : parsed;
+  };
+
   const normaliseStoredMessages = (storedMessages: any[]): ChatMessage[] => {
     const seen = new Set<string>();
 
@@ -914,10 +922,10 @@ export default function ReportQA() {
           attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
           sent_by: m.sent_by || null,
           sent_by_username: m.sent_by_username || null,
-          modelProvider: m.model_provider || null,
-          modelVersion: m.model_version || null,
+          modelProvider: m.model_provider || m.modelProvider || null,
+          modelVersion: m.model_version || m.modelVersion || null,
           citations: Array.isArray(m.url_citations) ? m.url_citations : undefined,
-          documentCitations: Array.isArray(m.citations) ? m.citations : undefined,
+          documentCitations: Array.isArray(m.citations) ? m.citations : Array.isArray(m.documentCitations) ? m.documentCitations : undefined,
           comparisonMode: !!m.comparison_mode,
           toolInvocations: Array.isArray(m.tool_invocations) && m.tool_invocations.length > 0 ? m.tool_invocations : undefined,
           aiFollowups: Array.isArray(m.ai_followups) ? m.ai_followups : undefined,
@@ -951,23 +959,42 @@ export default function ReportQA() {
       let messagesToSet = Array.isArray(data.messages) ? data.messages : [];
 
       if (totalMsgCount > messagesToSet.length) {
-        const { data: allData, error: allError } = await invokeSecureFunction('report-qa', {
-          action: 'load-conversation',
-          conversationId: conv.id,
-          limit: totalMsgCount,
-          offset: 0,
-        });
-        if (allError) throw allError;
-        messagesToSet = Array.isArray(allData?.messages) ? allData.messages : messagesToSet;
+        const restoredPages: any[] = [];
+        const pageSize = 500;
+        for (let offset = 0; offset < totalMsgCount; offset += pageSize) {
+          const { data: pageData, error: pageError } = await invokeSecureFunction('report-qa', {
+            action: 'load-conversation',
+            conversationId: conv.id,
+            limit: Math.min(pageSize, totalMsgCount - offset),
+            offset,
+          });
+          if (pageError) throw pageError;
+          if (Array.isArray(pageData?.messages)) restoredPages.push(...pageData.messages);
+        }
+        if (restoredPages.length > 0) messagesToSet = restoredPages;
       }
 
+      messagesToSet = [...messagesToSet].sort((a, b) => getStoredMessageTime(a) - getStoredMessageTime(b));
+
       const reportNames = Array.isArray(conversation.report_names) ? conversation.report_names : conv.report_names || [];
-      const reportContents = Array.isArray(conversation.report_contents) ? conversation.report_contents : [];
+      const reportContents = Array.isArray(conversation.report_contents) ? conversation.report_contents : conv.report_contents || [];
       const restoredMessages = normaliseStoredMessages(messagesToSet);
+      const restoredAgentKey = [...restoredMessages]
+        .reverse()
+        .find((message) => message.role === 'assistant' && message.modelProvider)?.modelProvider;
 
       setConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
       setHasOlderMessages(false);
+      setInputMessage('');
+      setFailedMessage(null);
+      setStreamingContent('');
+      setStreamingToolInvocations([]);
+      setPendingAudioUrl(null);
+      setShowInPlaceEmailCompose(false);
+      setEmailContext(null);
+      setAgentMode(Boolean(conversation.agent_mode));
+      if (restoredAgentKey && REPORT_QA_SLOT_KEY_SET.has(restoredAgentKey)) setSelectedAgentKey(restoredAgentKey);
       const restoredReports = reportNames.map((name: string, idx: number) => ({
         name,
         content: reportContents[idx] || '',
@@ -1003,6 +1030,8 @@ export default function ReportQA() {
         report_names: reportNames,
         client_id: conversation.client_id ?? c.client_id ?? null,
         updated_at: conversation.updated_at || c.updated_at,
+        agent_mode: conversation.agent_mode ?? c.agent_mode ?? null,
+        report_contents: reportContents,
       } : c));
       setShowHistory(false);
       setLiveAnnouncement(`Conversation ${conversation.title || conv.title} loaded`);

@@ -1283,6 +1283,15 @@ Deno.serve(async (req) => {
       const selectedDocumentNames = Array.isArray(selectedReportNames) && selectedReportNames.length > 0
         ? selectedReportNames.filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0)
         : (Array.isArray(reportNames) ? reportNames.filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0) : []);
+
+      if (conversationId) {
+        supabase
+          .from("report_qa_conversations")
+          .update({ agent_mode: Boolean(agentMode), updated_at: new Date().toISOString() })
+          .eq("id", conversationId)
+          .then(() => console.log(`[report-qa] Persisted conversation chat state for ${conversationId}`))
+          .catch((stateError: any) => console.warn(`[report-qa] Failed to persist conversation chat state:`, stateError));
+      }
       const hasReports = (reportContents && reportContents.length > 0);
       const isMultiReport = selectedDocumentNames.length > 1 || (reportContents && reportContents.length > 1);
       // Comparison mode is enabled when the user has selected ≥2 reports.
@@ -2547,7 +2556,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
       // Fetch own conversations
       const { data, error } = await supabase
         .from("report_qa_conversations")
-        .select("id, title, report_names, created_at, updated_at, structured_report, client_id, branched_from_conversation_id, branched_from_message_id")
+        .select("id, title, report_names, created_at, updated_at, structured_report, client_id, agent_mode, branched_from_conversation_id, branched_from_message_id")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -2557,7 +2566,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
       if (userId) {
         const { data: shared } = await supabase
           .from("report_qa_conversation_shares")
-          .select("conversation_id, permission, handoff_note, report_qa_conversations(id, title, report_names, created_at, updated_at, structured_report), custom_users!report_qa_conversation_shares_shared_by_fkey(username)")
+          .select("conversation_id, permission, handoff_note, report_qa_conversations(id, title, report_names, created_at, updated_at, structured_report, agent_mode), custom_users!report_qa_conversation_shares_shared_by_fkey(username)")
           .eq("shared_with", userId)
           .eq("is_active", true)
           .order("created_at", { ascending: false });
