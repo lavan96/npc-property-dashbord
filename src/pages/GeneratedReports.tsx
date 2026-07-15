@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,7 +47,7 @@ const ManualDataOverrideModal = lazy(() => import('@/components/reports/ManualDa
 import type { ReportTier } from '@/components/reports/TierBadge';
 
 // Loading fallback for modals
-const GENERATED_REPORTS_STICKY_ACTION_TOP = 'calc(72px + 1rem)';
+const GENERATED_REPORTS_COMPARE_OVERLAY_TOP = 'calc(72px + 1rem)';
 
 const ModalLoader = () => (
   <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
@@ -883,16 +884,21 @@ export default function GeneratedReports() {
     return <ReportLibrarySkeleton />;
   }
 
-  return (
-    <div className="flex-1 space-y-4 overflow-visible p-4 pb-20 pt-4 md:p-8 md:pb-6 md:pt-6">
-      {selectedReports.length > 0 && (
+  const comparisonOverlay = selectedReports.length > 0 && typeof document !== 'undefined'
+    ? createPortal(
         <div
-          className="sticky z-[39] flex w-full justify-center pointer-events-none"
-          style={{ top: GENERATED_REPORTS_STICKY_ACTION_TOP }}
+          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4"
+          style={{ top: GENERATED_REPORTS_COMPARE_OVERLAY_TOP }}
         >
           <ComparisonBasket onCompare={handleCompare} />
-        </div>
-      )}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <div className="flex-1 space-y-4 overflow-visible p-4 pb-20 pt-4 md:p-8 md:pb-6 md:pt-6">
+      {comparisonOverlay}
 
       <ReportLibraryHero
         quantitativeCount={reports.length}
