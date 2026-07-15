@@ -1306,65 +1306,43 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
   };
 
   const renderField = (field: OverrideField, showSeparator: boolean = true) => (
-    <div key={field.key} className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Label className="text-base font-semibold">{field.label}</Label>
-          {hasOverride(field.key) && (
-            <Badge variant="secondary" className="text-xs">
-              Overridden
-            </Badge>
-          )}
-          {field.isCashFlowField && (
-            <Badge variant="outline" className="text-xs bg-primary/10">
-              <Calculator className="h-3 w-3 mr-1" />
-              Cash Flow
-            </Badge>
-          )}
+    <div key={field.key} className="min-w-0 space-y-4 rounded-lg border bg-card/40 p-4">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(220px,1.1fr)_minmax(240px,1fr)_minmax(280px,1.1fr)_minmax(210px,auto)] xl:items-start">
+        <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Label className="min-w-0 text-base font-semibold leading-snug">{field.label}</Label>
+            {hasOverride(field.key) && (
+              <Badge variant="secondary" className="shrink-0 text-xs">
+                Overridden
+              </Badge>
+            )}
+            {field.isCashFlowField && (
+              <Badge variant="outline" className="shrink-0 bg-primary/10 text-xs">
+                <Calculator className="mr-1 h-3 w-3" />
+                Cash Flow
+              </Badge>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {field.isCashFlowField && (
-            <div className="flex items-center gap-2 mr-2">
-              <Label className="text-xs text-muted-foreground">Include in Report</Label>
-              <Switch
-                checked={cashFlowFieldToggles[field.key] || false}
-                onCheckedChange={(checked) => handleToggleChange(field.key, checked)}
-              />
-            </div>
-          )}
-          {hasOverride(field.key) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleReset(field.key)}
-              className="h-8 text-xs"
-            >
-              <RotateCcw className="h-3 w-3 mr-1" />
-              Reset
-            </Button>
-          )}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
         {/* Original Value */}
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label className="text-sm text-muted-foreground">Original Value (API)</Label>
-          <div className="flex items-center h-10 px-3 py-2 rounded-md border bg-muted/50 text-muted-foreground">
-            {formatValue(field.originalValue, field.prefix, field.suffix)}
+          <div className="flex min-h-10 min-w-0 items-center rounded-md border bg-muted/50 px-3 py-2 text-muted-foreground">
+            <span className="min-w-0 break-words">{formatValue(field.originalValue, field.prefix, field.suffix)}</span>
           </div>
         </div>
 
         {/* Override Value */}
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label className="text-sm font-medium">Manual Override</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {field.type === 'select' ? (
               <Select
                 value={getFieldValue(field) as string || ''}
                 onValueChange={(value) => handleOverrideChange(field.key, value)}
               >
-                <SelectTrigger className={hasOverride(field.key) ? 'border-primary' : ''}>
+                <SelectTrigger className={`min-w-0 ${hasOverride(field.key) ? 'border-primary' : ''}`}>
                   <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -1376,7 +1354,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
             ) : (
               <>
                 {field.prefix && (
-                  <span className="text-muted-foreground">{field.prefix}</span>
+                  <span className="shrink-0 text-muted-foreground">{field.prefix}</span>
                 )}
                 <Input
                   type="text"
@@ -1390,31 +1368,54 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                       handleOverrideChange(field.key, rawValue);
                     }
                   }}
-                  className={`${hasOverride(field.key) ? 'border-primary' : ''} ${validationErrors[field.key] ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  className={`min-w-0 ${hasOverride(field.key) ? 'border-primary' : ''} ${validationErrors[field.key] ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                 />
                 {field.suffix && (
-                  <span className="text-muted-foreground text-sm whitespace-nowrap">{field.suffix}</span>
+                  <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">{field.suffix}</span>
                 )}
               </>
             )}
           </div>
           {validationErrors[field.key] && (
-            <p className="text-sm text-destructive flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
+            <p className="flex items-center gap-1 text-sm text-destructive">
+              <AlertCircle className="h-3 w-3 shrink-0" />
               {validationErrors[field.key]}
             </p>
           )}
         </div>
+
+        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 xl:justify-end xl:pt-7">
+          {field.isCashFlowField && (
+            <div className="flex min-w-max items-center gap-2 rounded-md border bg-muted/30 px-3 py-2">
+              <Label className="whitespace-nowrap text-xs text-muted-foreground">Include in Report</Label>
+              <Switch
+                checked={cashFlowFieldToggles[field.key] || false}
+                onCheckedChange={(checked) => handleToggleChange(field.key, checked)}
+              />
+            </div>
+          )}
+          {hasOverride(field.key) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleReset(field.key)}
+              className="h-8 text-xs"
+            >
+              <RotateCcw className="mr-1 h-3 w-3" />
+              Reset
+            </Button>
+          )}
+        </div>
       </div>
 
-      {showSeparator && <Separator className="mt-4" />}
+      {showSeparator && <Separator className="mt-1" />}
     </div>
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[96vw] max-w-[1600px] h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <div className="px-6 pt-6 pb-4">
+      <DialogContent className="flex h-[min(90dvh,960px)] max-h-[calc(100dvh-40px)] w-[min(94vw,1540px)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-40px)] sm:max-w-none sm:overflow-hidden">
+        <div className="shrink-0 px-6 pb-4 pt-6 sm:px-8">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-primary" />
@@ -1429,8 +1430,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
         <Separator />
 
         {/* Tabs Navigation */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'investment' | 'cashflow')} className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 pt-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'investment' | 'cashflow')} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="shrink-0 px-6 pt-3 sm:px-8">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger 
                 value="investment" 
@@ -1450,8 +1451,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
           </div>
 
           {/* Investment Report Tab */}
-          <TabsContent value="investment" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full w-full [&>[data-radix-scroll-area-viewport]]:pl-6 [&>[data-radix-scroll-area-viewport]]:pr-8">
+          <TabsContent value="investment" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full w-full [&>[data-radix-scroll-area-viewport]]:px-6 sm:[&>[data-radix-scroll-area-viewport]]:px-8">
               <div className="space-y-6 py-4">
                 {/* Property Details Section */}
                 <div className="space-y-4">
@@ -1782,8 +1783,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
           </TabsContent>
 
           {/* Cash Flow Analysis Tab */}
-          <TabsContent value="cashflow" className="flex-1 overflow-hidden mt-0">
-            <ScrollArea className="h-full w-full [&>[data-radix-scroll-area-viewport]]:pl-6 [&>[data-radix-scroll-area-viewport]]:pr-8">
+          <TabsContent value="cashflow" className="mt-0 min-h-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-full w-full [&>[data-radix-scroll-area-viewport]]:px-6 sm:[&>[data-radix-scroll-area-viewport]]:px-8">
               <div className="space-y-6 py-4">
                 {/* Loan & Mortgage Settings */}
                 <div className="space-y-4">
@@ -2367,7 +2368,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
         <Separator />
 
-        <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex shrink-0 flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <Button
             variant="outline"
             onClick={handleResetAll}
@@ -2377,7 +2378,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
             Reset All
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
