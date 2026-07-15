@@ -2632,7 +2632,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
     // Handle updating conversation (e.g., title)
     if (action === "update-conversation") {
-      const { conversationId, title, clientId } = body;
+      const { conversationId, title, clientId, reportNames, reportContents } = body;
       
       if (!conversationId) {
         return new Response(
@@ -2643,6 +2643,8 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
       const updateData: any = {};
       if (title !== undefined) updateData.title = title;
+      if (reportNames !== undefined) updateData.report_names = Array.isArray(reportNames) ? reportNames : [];
+      if (reportContents !== undefined) updateData.report_contents = Array.isArray(reportContents) ? reportContents : [];
       // clientId may be a uuid string or null (to unlink)
       if (clientId !== undefined) updateData.client_id = clientId || null;
       updateData.updated_at = new Date().toISOString();

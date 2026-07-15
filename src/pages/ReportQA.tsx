@@ -794,9 +794,75 @@ export default function ReportQA() {
     }
   }, []);
 
-  const removeReport = (name: string) => {
-    setUploadedReports(prev => prev.filter(r => r.name !== name));
-  };
+  const removeReport = useCallback(async (name: string) => {
+    const nextReports = uploadedReports.filter((report) => report.name !== name);
+    const removedReport = uploadedReports.find((report) => report.name === name);
+    const previousSelectedReportNames = selectedReportNames;
+
+    setUploadedReports(nextReports);
+    setSelectedReportNames((prev) => prev.filter((selectedName) => selectedName !== name));
+    setSavedConversations((prev) =>
+      conversationId
+        ? prev.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  report_names: nextReports.map((report) => report.name),
+                  report_contents: nextReports.map((report) => report.content),
+                  updated_at: new Date().toISOString(),
+                }
+              : conversation,
+          )
+        : prev,
+    );
+
+    if (!conversationId) {
+      toast({
+        title: 'Report removed',
+        description: `${name} has been removed from this chat.`,
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await invokeSecureFunction('report-qa', {
+        action: 'update-conversation',
+        conversationId,
+        reportNames: nextReports.map((report) => report.name),
+        reportContents: nextReports.map((report) => report.content),
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to remove report');
+
+      toast({
+        title: 'Report removed',
+        description: `${name} has been removed from this chat.`,
+      });
+    } catch (error) {
+      console.error('Failed to remove report from conversation:', error);
+      if (removedReport) {
+        setUploadedReports(uploadedReports);
+        setSelectedReportNames(previousSelectedReportNames);
+        setSavedConversations((prev) =>
+          prev.map((conversation) =>
+            conversation.id === conversationId
+              ? {
+                  ...conversation,
+                  report_names: uploadedReports.map((report) => report.name),
+                  report_contents: uploadedReports.map((report) => report.content),
+                }
+              : conversation,
+          ),
+        );
+      }
+      toast({
+        title: 'Report not removed',
+        description: 'Unable to update this conversation. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [conversationId, selectedReportNames, toast, uploadedReports]);
 
   const startNewConversation = async (): Promise<string | null> => {
     try {
@@ -2218,15 +2284,15 @@ export default function ReportQA() {
             )}
 
             {/* Reports in this chat — primary flexible list */}
-            {uploadedReports.length > 0 && (
-              <div className="report-qa-loaded-reports flex min-h-0 flex-1 basis-0 flex-col gap-2">
+            <div className="report-qa-loaded-reports flex min-h-0 flex-1 basis-0 flex-col gap-2">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   <span>Reports in this chat</span>
                   <span className="normal-case tracking-normal text-primary">{selectedReports.length > 1 ? `Comparing ${selectedReports.length}` : selectedReports.length === 1 ? '1 selected' : 'Select reports'}</span>
                 </div>
-                <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1" aria-label="Reports in this chat">
-                  <div className="space-y-1.5">
-                  {uploadedReports.map((report, index) => {
+                {uploadedReports.length > 0 ? (
+                  <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1" aria-label="Reports in this chat">
+                    <div className="space-y-1.5">
+                    {uploadedReports.map((report, index) => {
                     const isSelected = selectedReportNames.includes(report.name);
                     const sizeKB = report.fileSizeBytes
                       ? report.fileSizeBytes < 1024 * 1024
@@ -2273,22 +2339,27 @@ export default function ReportQA() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          className="h-7 w-7 shrink-0 rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive"
+                          aria-label={`Remove ${report.name} from this chat`}
+                          title="Remove report from this chat"
                           onClick={(e) => {
                             e.stopPropagation();
-                            removeReport(report.name);
-                            setSelectedReportNames(prev => prev.filter(selectedName => selectedName !== report.name));
+                            void removeReport(report.name);
                           }}
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     );
                   })}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-[11px] leading-4 text-muted-foreground">
+                    Reports you upload or pick from the library will appear here for selection and removal.
                   </div>
-                </ScrollArea>
+                )}
               </div>
-            )}
 
             {/* Comparison Badge */}
             {selectedReports.length > 1 && (
@@ -2299,8 +2370,7 @@ export default function ReportQA() {
             )}
 
             {/* Loaded reports search — secondary action anchored below chat reports */}
-            {uploadedReports.length > 0 && (
-              <div className="report-qa-panel-section space-y-2 shrink-0">
+            <div className="report-qa-panel-section space-y-2 shrink-0">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   <span>Loaded Reports</span>
                   <span className="normal-case tracking-normal text-primary">{uploadedReports.length} loaded</span>
@@ -2316,7 +2386,6 @@ export default function ReportQA() {
                   }}
                 />
               </div>
-            )}
           </CardContent>
         </DashboardThemeFrame>
         )}
