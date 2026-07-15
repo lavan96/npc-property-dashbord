@@ -443,9 +443,9 @@ export default function ReportRequests() {
 
       {/* Detail / Action Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-brand-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground dark:text-foreground shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-brand-300/40 [&>button:hover]:bg-brand-300/10 [&>button:hover]:text-brand-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-brand-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
+        <DialogContent className="!flex w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] flex-col gap-0 !overflow-hidden border-brand-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-h-[min(calc(100dvh-2rem),760px)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-brand-300/40 [&>button:hover]:bg-brand-300/10 [&>button:hover]:text-brand-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-brand-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
-          <DialogHeader className="border-b border-border dark:border-white/10 bg-white/[0.02] px-4 pb-5 pt-6 text-left sm:px-6">
+          <DialogHeader className="shrink-0 border-b border-border bg-white/[0.02] px-4 pb-5 pt-6 pr-16 text-left dark:border-white/10 sm:px-6 sm:pr-16">
             <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-foreground dark:text-white">
               <span className="rounded-2xl border border-brand-300/25 bg-brand-300/10 p-2 text-brand-200 shadow-inner shadow-sm dark:shadow-black/20">
                 <Send className="h-4 w-4" />
@@ -454,20 +454,20 @@ export default function ReportRequests() {
             </DialogTitle>
             <DialogDescription className="pt-1 text-sm leading-6 text-muted-foreground dark:text-muted-foreground">Review and manage this client report request.</DialogDescription>
           </DialogHeader>
-          <div className="px-4 py-5 sm:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 sm:px-6">
 
           {selectedRequest && (() => {
             const typeConf = requestTypeConfig[selectedRequest.request_type] || requestTypeConfig.portfolio_review;
             const statConf = statusConfig[selectedRequest.status] || statusConfig.pending;
             const TypeIcon = typeConf.icon;
             return (
-              <div className="space-y-4">
+              <div className="space-y-4 pb-2">
                 <div className="space-y-4 rounded-3xl border border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.62),rgba(9,9,11,0.46))] p-4 shadow-inner shadow-sm dark:shadow-black/30 ring-1 ring-border dark:ring-white/[0.03]">
                   <div className="rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner shadow-sm dark:shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
-                        <p className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground dark:text-white">{typeConf.label}</p>
+                        <p className="min-w-0 [overflow-wrap:anywhere] break-words text-base font-semibold tracking-tight text-foreground dark:text-white">{typeConf.label}</p>
                       </div>
                       <Badge variant="outline" className={cn('w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                     </div>
