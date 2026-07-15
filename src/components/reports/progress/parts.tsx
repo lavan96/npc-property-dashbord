@@ -347,7 +347,7 @@ export function GenerationProgressPill({ counts, etaMs, onClick }: PillProps) {
       variant="default"
       onClick={onClick}
       aria-label={`${counts.total} reports generating, ${pct}% complete${eta ? `, ${eta} remaining` : ''}`}
-      className="h-11 rounded-full shadow-lg pl-2 pr-3 gap-2"
+      className="h-11 rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/35 ring-1 ring-primary-foreground/20 pl-2 pr-3 gap-2 transition-all duration-200 hover:scale-[1.03] hover:bg-primary/90 hover:shadow-primary/50 focus-visible:ring-2 focus-visible:ring-primary-foreground/70 active:scale-[0.98]"
     >
       <span className="relative flex h-7 w-7 items-center justify-center">
         <svg className="absolute inset-0 -rotate-90" viewBox="0 0 28 28">
