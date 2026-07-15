@@ -27,25 +27,29 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
   const canCompare = selectedReports.length >= 2;
   const progressPercent = (selectedReports.length / MAX_COMPARISON_REPORTS) * 100;
 
+  const collapsedInteractionClass = canCompare
+    ? 'hover:-translate-y-0.5 hover:border-brand-400/80 hover:bg-brand-500/10 hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.25),0_18px_45px_hsl(var(--primary)/0.22)] hover:[&_.comparison-basket-icon]:bg-brand-500/20 hover:[&_.comparison-basket-icon]:text-brand-200 hover:[&_.comparison-basket-title]:text-white hover:[&_.comparison-basket-count]:border-brand-300/70 hover:[&_.comparison-basket-count]:bg-brand-500/20 hover:[&_.comparison-basket-progress>div]:brightness-125'
+    : 'hover:border-brand-400/45 hover:bg-brand-500/5';
+
   if (isMobile) {
     return (
-      <div className="fixed inset-x-3 bottom-20 z-50 md:hidden">
+      <div className="w-full max-w-sm pointer-events-auto md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <button type="button" className="w-full rounded-2xl border border-brand-400/30 bg-card/95 p-3 text-left shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
+            <button type="button" className={`w-full rounded-2xl border border-brand-400/30 bg-card/95 p-3 text-left shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95 transition-all duration-200 motion-reduce:transform-none motion-reduce:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${collapsedInteractionClass}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-300">
+                  <div className="comparison-basket-icon flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-700 transition-colors dark:text-brand-300">
                     <BarChart3 className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-foreground">Compare Properties</div>
+                    <div className="comparison-basket-title text-sm font-semibold text-foreground transition-colors">Compare Properties</div>
                     <div className="text-xs text-muted-foreground">{selectedReports.length} of {MAX_COMPARISON_REPORTS} selected</div>
                   </div>
                 </div>
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
               </div>
-              <ProgressBar value={progressPercent} className="mt-3" />
+              <ProgressBar value={progressPercent} className="comparison-basket-progress mt-3" />
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="max-h-[82vh] rounded-t-3xl p-0">
@@ -70,31 +74,32 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
   }
 
   return (
-    <div className="fixed right-[max(2rem,calc((100vw-1600px)/2+2rem))] top-[calc(72px+1.5rem)] z-30 hidden md:block">
+    <div className="hidden pointer-events-auto md:block">
       {!isExpanded ? (
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="rounded-full border border-brand-400/30 bg-card/95 px-4 py-3 text-left shadow-2xl shadow-sm dark:shadow-black/15 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-primary/20 dark:bg-background/95"
+          aria-label={`Compare ${selectedReports.length} of ${MAX_COMPARISON_REPORTS} selected properties. ${canCompare ? 'Ready to compare.' : 'Select one more to compare.'}`}
+          className={`rounded-full border border-brand-400/30 bg-card/95 px-4 py-3 text-left shadow-2xl shadow-sm dark:shadow-black/15 backdrop-blur transition-all duration-200 motion-reduce:transform-none motion-reduce:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-background/95 ${collapsedInteractionClass}`}
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-300">
+            <div className="comparison-basket-icon flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-brand-700 transition-colors dark:text-brand-300">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div className="min-w-[12rem]">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-foreground">Compare Properties</span>
-                <Badge variant="secondary" className="rounded-full">{selectedReports.length}/{MAX_COMPARISON_REPORTS}</Badge>
+                <span className="comparison-basket-title text-sm font-semibold text-foreground transition-colors">Compare Properties</span>
+                <Badge variant="secondary" className="comparison-basket-count rounded-full transition-colors">{selectedReports.length}/{MAX_COMPARISON_REPORTS}</Badge>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
                 {canCompare ? 'Ready to compare' : 'Select one more to compare'}
               </div>
-              <ProgressBar value={progressPercent} className="mt-2" />
+              <ProgressBar value={progressPercent} className="comparison-basket-progress mt-2" />
             </div>
           </div>
         </button>
       ) : (
-        <Card className="max-h-[calc(100vh-7rem)] w-[420px] overflow-hidden rounded-3xl border-brand-400/25 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
+        <Card className="max-h-[calc(100vh-7rem)] w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-3xl border-brand-400/25 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
           <CardHeader className="border-b border-border/60 pb-4">
             <div className="flex items-start justify-between gap-3">
               <div>

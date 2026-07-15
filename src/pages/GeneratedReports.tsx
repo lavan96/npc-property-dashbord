@@ -883,6 +883,12 @@ export default function GeneratedReports() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6 pb-20 md:pb-6">
+      {selectedReports.length > 0 && (
+        <div className="sticky top-[calc(72px+1rem)] z-30 flex w-full justify-center pointer-events-none">
+          <ComparisonBasket onCompare={handleCompare} />
+        </div>
+      )}
+
       <ReportLibraryHero
         quantitativeCount={reports.length}
         investmentCount={investmentReports.length}
@@ -1067,8 +1073,6 @@ export default function GeneratedReports() {
           )}
         </TabsContent>
       </Tabs>
-
-      <ComparisonBasket onCompare={handleCompare} />
 
       {/* Lazy loaded modals - only render when open */}
       {comparisonModalOpen && (
