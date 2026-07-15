@@ -19,11 +19,11 @@ import { convertPdfToImages } from '@/utils/pdfToImages';
 import { extractPdfTextClientSide } from '@/lib/pdfClientExtractor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { 
-  Upload, 
-  FileText, 
-  Send, 
-  Copy, 
+import {
+  Upload,
+  FileText,
+  Send,
+  Copy,
   MessageSquare,
   X,
   CheckCircle2,
@@ -59,7 +59,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Sparkles } from 'lucide-react';
 
 // Feature components
@@ -67,7 +66,6 @@ import { useReportQAKeyboardShortcuts } from '@/hooks/useReportQAKeyboardShortcu
 import { TypingIndicator } from '@/components/report-qa/TypingIndicator';
 import { StreamingTypingIndicator } from '@/components/report-qa/StreamingTypingIndicator';
 import { ConversationClientLinker } from '@/components/report-qa/ConversationClientLinker';
-import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
 import { ConversationTags } from '@/components/report-qa/ConversationTags';
 import { type Theme } from '@/components/report-qa/ChatThemeSelector';
 import { ConversationExport } from '@/components/report-qa/ConversationExport';
@@ -297,7 +295,7 @@ export default function ReportQA() {
   const [titleSaveError, setTitleSaveError] = useState<string | null>(null);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
-  
+
   // New feature states
   const [chatTheme] = useState<Theme | null>(null);
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
@@ -320,7 +318,7 @@ export default function ReportQA() {
     sampleQuestions: string[];
     generatedAt: string;
   } | null>(null);
-  
+
   // Phase 1 UX improvements
   const [streamingContent, setStreamingContent] = useState('');
   // Tool invocations emitted by the agent loop for the currently-streaming
@@ -333,11 +331,11 @@ export default function ReportQA() {
   const MAX_CHAT_HISTORY_MESSAGES = 30;
   const MAX_HISTORY_MESSAGE_CHARS = 10000;
   const SUMMARY_THRESHOLD = 12; // Summarize older messages beyond this count
-  
+
   // Phase 2 UX improvements
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
-  const [activeReportIndex, setActiveReportIndex] = useState<number | null>(null);
-  
+  const [selectedReportNames, setSelectedReportNames] = useState<string[]>([]);
+
   // Phase 5 UX improvements
   const [liveTranscript, setLiveTranscript] = useState('');
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -367,6 +365,28 @@ export default function ReportQA() {
   );
   const agentModeSupported = supportsAgentToolsForAssignment(selectedReportQaSlot?.assignment ?? null);
   const effectiveAgentMode = agentMode && agentModeSupported;
+
+  const selectedReports = useMemo(
+    () => uploadedReports.filter((report) => selectedReportNames.includes(report.name)),
+    [uploadedReports, selectedReportNames],
+  );
+  const selectedReportCount = selectedReports.length;
+  const selectedReportStorageKey = conversationId ? `reportqa:selectedReports:${conversationId}` : null;
+
+  useEffect(() => {
+    setSelectedReportNames((prev) => {
+      const availableNames = uploadedReports.map((report) => report.name);
+      if (availableNames.length === 0) return [];
+      if (prev.length === 0) return availableNames;
+      return prev.filter((name) => availableNames.includes(name));
+    });
+  }, [uploadedReports]);
+
+  useEffect(() => {
+    if (!selectedReportStorageKey || typeof window === 'undefined') return;
+    window.localStorage.setItem(selectedReportStorageKey, JSON.stringify(selectedReportNames));
+  }, [selectedReportNames, selectedReportStorageKey]);
+
   const [snippetViewer, setSnippetViewer] = useState<{
     open: boolean;
     reportName: string | null;
@@ -409,13 +429,13 @@ export default function ReportQA() {
       el.classList.remove('ring-2', 'ring-primary/60', 'ring-offset-2', 'ring-offset-background');
     }, 1600);
   }, []);
-  
+
   // Lazy loading for chat history
   const [totalMessageCount, setTotalMessageCount] = useState(0);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const MESSAGES_PER_PAGE = 50;
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -423,18 +443,18 @@ export default function ReportQA() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
+
   // Custom hooks
   const { addReply, getReplies } = useMessageThreads();
   const { getPinnedIds, togglePin, isPinned } = usePinnedConversations();
   const reducedMotion = useReducedMotion();
-  
+
   // Accessibility - live region announcements
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
 
   // Get last assistant message for follow-up suggestions
   const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop()?.content || '';
-  
+
   // Copy last response handler
   const handleCopyLastResponse = useCallback(() => {
     if (lastAssistantMessage) {
@@ -502,12 +522,12 @@ export default function ReportQA() {
       const { data, error } = await invokeSecureFunction('report-qa', {
         action: 'get-conversations',
       });
-      
+
       if (error) {
         console.error('[ReportQA] Error loading conversations:', error);
         throw error;
       }
-      
+
       const ownConversations = (data?.conversations || []).map((c: any) => ({ ...c, shared: false }));
       const sharedConversations = (data?.shared_conversations || []).map((c: any) => ({ ...c, shared: true }));
       const allConversations = [...ownConversations, ...sharedConversations];
@@ -544,16 +564,16 @@ export default function ReportQA() {
         conversationId: targetConversationId,
         title: trimmedTitle,
       });
-      
+
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to update');
-      
-      setSavedConversations(prev => 
+
+      setSavedConversations(prev =>
         prev.map(c => c.id === targetConversationId ? { ...c, title: trimmedTitle, updated_at: new Date().toISOString() } : c)
       );
       setEditingConversationId(null);
       setIsEditingMainTitle(false);
-      
+
       toast({
         title: 'Title updated',
         description: 'Conversation title has been saved',
@@ -618,7 +638,7 @@ export default function ReportQA() {
 
     try {
       const updateProgress = (progress: number, status: UploadProgress['status']) => {
-        setUploadProgress(prev => 
+        setUploadProgress(prev =>
           prev.map(p => p.fileName === file.name ? { ...p, progress, status } : p)
         );
       };
@@ -687,7 +707,7 @@ export default function ReportQA() {
       }
 
       updateProgress(100, 'complete');
-      
+
       const newReport: UploadedReport = {
         name: file.name,
         content: extractedText,
@@ -696,17 +716,14 @@ export default function ReportQA() {
         totalPages: result.totalPages,
         imagesProcessed: 0,
       };
-      
-      setUploadedReports(prev => {
-        const nextReports = [...prev, newReport];
-        setActiveReportIndex(nextReports.length - 1);
-        return nextReports;
-      });
-      
+
+      setUploadedReports(prev => [...prev, newReport]);
+      setSelectedReportNames(prev => prev.includes(newReport.name) ? prev : [...prev, newReport.name]);
+
       setTimeout(() => {
         setUploadProgress(prev => prev.filter(p => p.fileName !== file.name));
       }, 1500);
-      
+
       toast({
         title: 'Report uploaded',
         description: `${file.name} added (${result.extractedPages}/${result.totalPages} pages). ${uploadedReports.length + 1} report(s) loaded.`,
@@ -715,9 +732,9 @@ export default function ReportQA() {
       setIsUploading(false);
     } catch (error) {
       console.error('Upload error:', error);
-      setUploadProgress(prev => 
-        prev.map(p => p.fileName === file.name 
-          ? { ...p, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' } 
+      setUploadProgress(prev =>
+        prev.map(p => p.fileName === file.name
+          ? { ...p, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' }
           : p
         )
       );
@@ -744,11 +761,11 @@ export default function ReportQA() {
         imagesProcessed: 0,
       }));
     if (additions.length === 0) return;
-    setUploadedReports((prev) => {
-      const nextReports = [...prev, ...additions];
-      setActiveReportIndex(prev.length);
-      return nextReports;
-    });
+    setUploadedReports((prev) => [...prev, ...additions]);
+    setSelectedReportNames((prev) => [
+      ...prev,
+      ...additions.map((report) => report.name).filter((name) => !prev.includes(name)),
+    ]);
   }, [uploadedReports]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -781,7 +798,7 @@ export default function ReportQA() {
 
   const startNewConversation = async (): Promise<string | null> => {
     try {
-      const title = uploadedReports.length > 1 
+      const title = uploadedReports.length > 1
         ? `Comparison: ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(' vs ')}`
         : uploadedReports.length === 1
           ? `Q&A: ${uploadedReports[0].name}`
@@ -800,7 +817,7 @@ export default function ReportQA() {
       setConversationId(newConversationId);
       setMessages([]);
       loadSavedConversations();
-      
+
       // Trigger RAG indexing (blocking until complete - prevents race condition)
       if (uploadedReports.length > 0) {
         console.log(`[ReportQA] Triggering RAG indexing for conversation ${newConversationId}...`);
@@ -821,7 +838,7 @@ export default function ReportQA() {
           setIsIndexing(false);
         }
       }
-      
+
       // Log conversation created
       logActivityDirect({
         actionType: 'qa_conversation_created',
@@ -830,11 +847,11 @@ export default function ReportQA() {
         entityName: title,
         metadata: { report_count: uploadedReports.length }
       });
-      
+
       toast({
         title: 'Conversation started',
-        description: uploadedReports.length > 0 
-          ? 'Indexing reports for intelligent retrieval...' 
+        description: uploadedReports.length > 0
+          ? 'Indexing reports for intelligent retrieval...'
           : 'Your chat will be saved automatically',
       });
 
@@ -951,12 +968,27 @@ export default function ReportQA() {
       setConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
       setHasOlderMessages(false);
-      setActiveReportIndex(null);
-      setUploadedReports(reportNames.map((name: string, idx: number) => ({
+      const restoredReports = reportNames.map((name: string, idx: number) => ({
         name,
         content: reportContents[idx] || '',
         uploadedAt: new Date(conversation.created_at || conv.created_at),
-      })));
+      }));
+      let restoredSelectedNames = restoredReports.map((report) => report.name);
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = window.localStorage.getItem(`reportqa:selectedReports:${conv.id}`);
+          const parsed = stored ? JSON.parse(stored) : null;
+          if (Array.isArray(parsed)) {
+            const available = new Set(restoredReports.map((report) => report.name));
+            const validStored = parsed.filter((name): name is string => typeof name === 'string' && available.has(name));
+            if (validStored.length > 0) restoredSelectedNames = validStored;
+          }
+        } catch (storageError) {
+          console.warn('[ReportQA] Failed to restore selected report context', storageError);
+        }
+      }
+      setSelectedReportNames(restoredSelectedNames);
+      setUploadedReports(restoredReports);
       setMessages(restoredMessages);
       if (import.meta.env.DEV && restoredMessages.length !== messagesToSet.length) {
         console.warn('[ReportQA] Some stored messages were skipped during restoration because they were invalid or unsupported.', {
@@ -991,14 +1023,14 @@ export default function ReportQA() {
 
   const loadOlderMessages = async () => {
     if (!conversationId || isLoadingOlder || !hasOlderMessages) return;
-    
+
     setIsLoadingOlder(true);
     try {
       const currentCount = messages.length;
       const totalRemaining = totalMessageCount - currentCount;
       const nextBatch = Math.min(MESSAGES_PER_PAGE, totalRemaining);
       const offset = totalRemaining - nextBatch;
-      
+
       const { data, error } = await invokeSecureFunction('report-qa', {
         action: 'load-conversation',
         conversationId,
@@ -1016,7 +1048,7 @@ export default function ReportQA() {
         const newMessages = olderMessages.filter((m: any) => !existingIds.has(m.id));
         return [...newMessages, ...prev];
       });
-      
+
       setHasOlderMessages(offset > 0);
     } catch (error) {
       console.error('Failed to load older messages:', error);
@@ -1051,12 +1083,21 @@ export default function ReportQA() {
   const handleSendMessage = async (retryContent?: string, retryAudioUrl?: string) => {
     const messageContent = retryContent || inputMessage.trim();
     const audioUrl = retryAudioUrl || pendingAudioUrl;
-    
+
     if (!messageContent || isProcessing) return;
     if (messageContent.length > MAX_MESSAGE_LENGTH) {
       toast({
         title: 'Message too long',
         description: `Please shorten your message to ${MAX_MESSAGE_LENGTH} characters or less.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (uploadedReports.length > 0 && selectedReports.length === 0) {
+      toast({
+        title: 'Select a report',
+        description: 'Choose at least one ready report to ground the answer.',
         variant: 'destructive',
       });
       return;
@@ -1101,18 +1142,16 @@ export default function ReportQA() {
       // Use streaming for better UX
       const SUPABASE_URL = 'https://dduzbchuswwbefdunfct.supabase.co';
       const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk';
-      
-      // Filter reports based on active selection
-      const reportsToUse = activeReportIndex !== null 
-        ? [uploadedReports[activeReportIndex]]
-        : uploadedReports;
-      
+
+      // Ground retrieval and fallback context only in the reports selected for this chat.
+      const reportsToUse = selectedReports;
+
       // Get session token with dual-storage fallback (sessionStorage → localStorage)
       const sessionToken = sessionStorage.getItem('session_token') || localStorage.getItem('session_token');
       // Prefer real access token over anon key for Bearer header
       const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
       const bearerToken = accessToken || SUPABASE_KEY;
-      
+
       const { formatted: chatHistoryForRequest, needsSummary, totalMessages } = buildChatHistoryForRequest(messages);
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/report-qa`, {
@@ -1129,6 +1168,7 @@ export default function ReportQA() {
           // Send report contents as fallback in case RAG indexing hasn't completed
           reportContents: reportsToUse.map(r => r.content),
           reportNames: reportsToUse.map(r => r.name),
+          selectedReportNames: reportsToUse.map(r => r.name),
           question: messageContent,
           chatHistory: chatHistoryForRequest,
           conversationId: activeConversationId,
@@ -1181,7 +1221,7 @@ export default function ReportQA() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        
+
         // Process line by line
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
@@ -1318,7 +1358,7 @@ export default function ReportQA() {
 
       const mailboxes = data.mailboxes || [];
       setAvailableMailboxes(mailboxes);
-      
+
       if (mailboxes.length > 0 && !selectedSenderMailbox) {
         setSelectedSenderMailbox(mailboxes[0].personal_mailbox || '');
       }
@@ -1411,21 +1451,21 @@ export default function ReportQA() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
           channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true,
-        } 
+        }
       });
-      
+
       streamRef.current = stream;
-      
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
-      
+
       mediaRecorderRef.current = mediaRecorder;
       // Don't reset audio chunks if we're resuming from a paused state
       if (!isPaused) {
@@ -1434,7 +1474,7 @@ export default function ReportQA() {
         setRecordingDuration(0);
       }
       setIsPaused(false);
-      
+
       // Start duration timer with auto-stop at max duration
       durationIntervalRef.current = setInterval(() => {
         setRecordingDuration(prev => {
@@ -1450,11 +1490,11 @@ export default function ReportQA() {
           return newDuration;
         });
       }, 1000);
-      
+
       mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          
+
           // Live transcription preview every 10 seconds (20 chunks × 500ms) to reduce API spam
           // Only do live preview for recordings under 2 minutes to save resources
           if (audioChunksRef.current.length % 20 === 0 && audioChunksRef.current.length <= 240) {
@@ -1485,7 +1525,7 @@ export default function ReportQA() {
           }
         }
       };
-      
+
       mediaRecorder.onstop = async () => {
         // Clean up timers
         if (durationIntervalRef.current) {
@@ -1496,13 +1536,13 @@ export default function ReportQA() {
           clearTimeout(liveTranscriptTimeoutRef.current);
           liveTranscriptTimeoutRef.current = null;
         }
-        
+
         // Only stop tracks if we're finalizing (not pausing)
         if (!isPaused && streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
         }
-        
+
         // Only transcribe if finalizing (not pausing)
         if (!isPaused && audioChunksRef.current.length > 0) {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
@@ -1512,7 +1552,7 @@ export default function ReportQA() {
           setRecordingDuration(0);
         }
       };
-      
+
       // Request data every 500ms for chunking
       mediaRecorder.start(500);
       setIsRecording(true);
@@ -1531,19 +1571,19 @@ export default function ReportQA() {
   const pauseRecording = () => {
     if (mediaRecorderRef.current && isRecording && !isPaused) {
       mediaRecorderRef.current.stop();
-      
+
       // Stop the stream tracks while paused
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
-      
+
       // Clear the duration timer but keep the duration value
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
         durationIntervalRef.current = null;
       }
-      
+
       setIsPaused(true);
       setIsRecording(false);
       setLiveAnnouncement('Recording paused');
@@ -1566,7 +1606,7 @@ export default function ReportQA() {
   const finalizeRecording = () => {
     if (mediaRecorderRef.current && (isRecording || isPaused)) {
       setIsPaused(false);
-      
+
       if (isRecording) {
         // If currently recording, stop the recorder (triggers onstop)
         mediaRecorderRef.current.stop();
@@ -1578,7 +1618,7 @@ export default function ReportQA() {
         setLiveTranscript('');
         setRecordingDuration(0);
       }
-      
+
       setIsRecording(false);
       setLiveAnnouncement('Recording stopped, transcribing...');
     }
@@ -1591,11 +1631,11 @@ export default function ReportQA() {
 
   const transcribeAudio = async (audioBlob: Blob) => {
     setIsTranscribing(true);
-    
+
     // Create audio URL for playback
     const audioUrl = URL.createObjectURL(audioBlob);
     setPendingAudioUrl(audioUrl);
-    
+
     try {
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve) => {
@@ -1606,7 +1646,7 @@ export default function ReportQA() {
       });
       reader.readAsDataURL(audioBlob);
       const base64Audio = await base64Promise;
-      
+
       const { data, error } = await invokeSecureFunction('report-qa', {
         action: 'transcribe',
         audio: base64Audio,
@@ -1616,12 +1656,12 @@ export default function ReportQA() {
 
       if (data.success && data.text) {
         // Append to accumulated transcript instead of replacing
-        const newTranscript = accumulatedTranscript 
+        const newTranscript = accumulatedTranscript
           ? `${accumulatedTranscript} ${data.text}`.trim()
           : data.text;
         setAccumulatedTranscript(newTranscript);
         setInputMessage(newTranscript);
-        
+
         // Clear accumulated transcript and chunks after successful transcription
         audioChunksRef.current = [];
       } else {
@@ -1673,10 +1713,10 @@ export default function ReportQA() {
         action: 'delete-conversation',
         conversationId: convId,
       });
-      
+
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Failed to delete');
-      
+
       // Log conversation deleted
       const deletedConv = savedConversations.find(c => c.id === convId);
       logActivityDirect({
@@ -1685,12 +1725,12 @@ export default function ReportQA() {
         entityId: convId,
         entityName: deletedConv?.title
       });
-      
+
       setSavedConversations(prev => prev.filter(c => c.id !== convId));
       if (conversationId === convId) {
         handleNewChat();
       }
-      
+
       toast({
         title: 'Conversation deleted',
         description: 'The conversation has been removed',
@@ -1786,9 +1826,9 @@ export default function ReportQA() {
           timestamp: new Date(),
           attachments: [data.attachment],
         };
-        
+
         setMessages(prev => [...prev, attachmentMessage]);
-        
+
         toast({
           title: 'PDF Generated',
           description: 'Your conversation has been exported to PDF',
@@ -1811,7 +1851,7 @@ export default function ReportQA() {
     setPendingPDFAttachment(attachment);
     setPdfValidationError(null);
     setShowEmailCopilotModal(true);
-    
+
     // Validate that the PDF URL is still accessible
     setIsValidatingPDF(true);
     try {
@@ -1834,7 +1874,7 @@ export default function ReportQA() {
       const reportNames = uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ');
       const messageCount = messages.length;
       const userQuestions = messages.filter(m => m.role === 'user').slice(0, 3).map(m => m.content.substring(0, 100));
-      
+
       // Create a dynamic email context object
       const emailContext = {
         attachment: pendingPDFAttachment,
@@ -1846,7 +1886,7 @@ export default function ReportQA() {
           generatedAt: new Date().toISOString(),
         }
       };
-      
+
       // Store the enhanced context in localStorage for Email Copilot
       localStorage.setItem('qa_pdf_attachment', JSON.stringify(emailContext));
       // Navigate to Email Copilot
@@ -1888,7 +1928,7 @@ export default function ReportQA() {
     yesterday.setDate(yesterday.getDate() - 1);
     const lastWeek = new Date(today);
     lastWeek.setDate(lastWeek.getDate() - 7);
-    
+
     const groups: { [key: string]: SavedConversation[] } = {
       'Pinned': [],
       'Today': [],
@@ -1896,7 +1936,7 @@ export default function ReportQA() {
       'This Week': [],
       'Older': [],
     };
-    
+
     conversations.forEach(conv => {
       if (pinnedIds.includes(conv.id)) {
         groups['Pinned'].push(conv);
@@ -1913,7 +1953,7 @@ export default function ReportQA() {
         groups['Older'].push(conv);
       }
     });
-    
+
     return groups;
   };
 
@@ -1974,9 +2014,9 @@ export default function ReportQA() {
             )}
           </Button>
           {messages.length > 0 && conversationId && (
-            <Button 
-              variant="outline" 
-              onClick={handleGeneratePDFAttachment} 
+            <Button
+              variant="outline"
+              onClick={handleGeneratePDFAttachment}
               className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm"
               disabled={isGeneratingPDF}
               size="sm"
@@ -2158,7 +2198,7 @@ export default function ReportQA() {
               <ReportSearch
                 reports={uploadedReports}
                 onResultClick={(reportIndex) => {
-                  setActiveReportIndex(reportIndex);
+                  setSelectedReportNames([uploadedReports[reportIndex].name]);
                   toast({
                     title: 'Report selected',
                     description: `Focused on ${uploadedReports[reportIndex].name}`,
@@ -2173,12 +2213,12 @@ export default function ReportQA() {
               <div className="report-qa-loaded-reports flex min-h-0 flex-1 flex-col gap-2">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                   <span>Reports in this chat</span>
-                  <span className="normal-case tracking-normal text-primary">{activeReportIndex === null && uploadedReports.length > 1 ? 'Compare all' : 'Ready'}</span>
+                  <span className="normal-case tracking-normal text-primary">{selectedReports.length > 1 ? `Comparing ${selectedReports.length}` : selectedReports.length === 1 ? '1 selected' : 'Select reports'}</span>
                 </div>
                 <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1">
                   <div className="space-y-1.5">
                   {uploadedReports.map((report, index) => {
-                    const isActive = activeReportIndex === index;
+                    const isSelected = selectedReportNames.includes(report.name);
                     const sizeKB = report.fileSizeBytes
                       ? report.fileSizeBytes < 1024 * 1024
                         ? `${Math.round(report.fileSizeBytes / 1024)} KB`
@@ -2187,19 +2227,29 @@ export default function ReportQA() {
                     return (
                       <div
                         key={report.name}
-                        onClick={() => setActiveReportIndex(isActive ? null : index)}
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        tabIndex={0}
+                        aria-label={`${isSelected ? 'Deselect' : 'Select'} ${report.name} for AI grounding`}
+                        onClick={() => setSelectedReportNames(prev => isSelected ? prev.filter(name => name !== report.name) : [...prev, report.name])}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedReportNames(prev => isSelected ? prev.filter(name => name !== report.name) : [...prev, report.name]);
+                          }
+                        }}
                         className={cn(
                           "group report-qa-report-item flex items-center gap-2.5 rounded-xl border p-2.5 cursor-pointer transition-all",
-                          isActive
+                          isSelected
                             ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                             : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
                         )}
                       >
                         <div className={cn(
                           "flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
-                          isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                          isSelected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
                         )}>
-                          <FileText className="h-4 w-4" />
+                          {isSelected ? <CheckCircle2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium truncate" title={report.name}>
@@ -2208,7 +2258,7 @@ export default function ReportQA() {
                           <p className="text-[10px] text-muted-foreground">
                             <span className="font-medium text-success dark:text-success">Ready</span>
                             <span> · {report.totalPages ?? '—'} pages · {sizeKB}</span>
-                            {isActive && <span className="ml-1.5 text-primary font-medium">· Active</span>}
+                            {isSelected && <span className="ml-1.5 text-primary font-medium">· Selected</span>}
                           </p>
                         </div>
                         <Button
@@ -2218,7 +2268,7 @@ export default function ReportQA() {
                           onClick={(e) => {
                             e.stopPropagation();
                             removeReport(report.name);
-                            if (isActive) setActiveReportIndex(null);
+                            setSelectedReportNames(prev => prev.filter(selectedName => selectedName !== report.name));
                           }}
                         >
                           <X className="h-3 w-3" />
@@ -2232,36 +2282,12 @@ export default function ReportQA() {
             )}
 
             {/* Comparison Badge */}
-            {uploadedReports.length > 1 && activeReportIndex === null && (
+            {selectedReports.length > 1 && (
               <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-xl border border-primary/20">
                 <GitCompare className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs text-primary font-medium">Comparing all reports</span>
+                <span className="text-xs text-primary font-medium">Comparison mode: {selectedReports.length} selected reports</span>
               </div>
             )}
-
-            {/* Smart Suggestions — collapsible */}
-            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="report-qa-suggestions group rounded-2xl border px-3 py-3 shadow-sm data-[state=closed]:bg-muted/20 data-[state=open]:shadow-md">
-              <CollapsibleTrigger className="report-qa-suggestions-trigger flex w-full items-center justify-between gap-3 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
-                    <Sparkles className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="truncate">Smart suggestions</span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors group-data-[state=open]:border-primary/30 group-data-[state=open]:text-primary">
-                  <span className="hidden sm:inline group-data-[state=closed]:inline">Tips</span>
-                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
-                </span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
-                <SmartSuggestions
-                  hasReports={uploadedReports.length > 0}
-                  isComparison={uploadedReports.length > 1}
-                  messageCount={messages.length}
-                  onSelect={setInputMessage}
-                />
-              </CollapsibleContent>
-            </Collapsible>
           </CardContent>
         </DashboardThemeFrame>
         )}
@@ -2299,7 +2325,7 @@ export default function ReportQA() {
                     </Button>
                   </div>
                 ) : (
-                  <span 
+                  <span
                     className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight cursor-pointer"
                     title={getCurrentTitle()}
                     onClick={() => {
@@ -2410,7 +2436,7 @@ export default function ReportQA() {
                   </div>
                 )}
               </div>
-              
+
               {titleSaveError && <p className="pl-11 text-xs text-destructive" role="alert">{titleSaveError}</p>}
               <div className="report-qa-toolbar flex min-w-0 flex-wrap items-center justify-start gap-1 rounded-xl border border-border/50 bg-background/40 px-2 py-1 sm:justify-start">
                 <ReportQAModelSlotSelector selectedAgentKey={selectedAgentKey} onAgentKeyChange={setSelectedAgentKey} disabled={isProcessing} />
@@ -2438,11 +2464,13 @@ export default function ReportQA() {
               </div>
             </div>
             <CardDescription className="report-qa-chat-subtitle hidden pl-11 text-xs sm:block">
-              {uploadedReports.length > 1 
-                ? `Comparing ${uploadedReports.length} reports` 
-                : 'Ask questions about the uploaded report'}
+              {selectedReports.length > 1
+                ? `Comparing ${selectedReports.length} selected reports`
+                : selectedReports.length === 1
+                  ? `Ask questions about ${selectedReports[0].name.replace(/\.pdf$/i, '')}`
+                  : 'Select at least one report to ask grounded questions'}
             </CardDescription>
-            
+
             {conversationId && (conversationTags.get(conversationId) || []).length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1 sm:mt-2">
                 <ConversationTags tags={conversationTags.get(conversationId) || []} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} compact />
@@ -2496,9 +2524,11 @@ export default function ReportQA() {
                     <div className="space-y-2">
                       <p className="report-qa-empty-title">
                         {uploadedReports.length > 0
-                          ? uploadedReports.length > 1 
-                            ? 'Ask a question to compare the reports'
-                            : 'Ask a question about the report'
+                          ? selectedReports.length > 1
+                            ? 'Ask a question to compare the selected reports'
+                            : selectedReports.length === 1
+                              ? 'Ask a question about the selected report'
+                              : 'Select at least one report to start asking questions'
                           : 'Upload reports to start asking questions'}
                       </p>
                       <p className="report-qa-empty-helper">
@@ -2573,7 +2603,7 @@ export default function ReportQA() {
                       message.timestamp,
                       previousMessage?.timestamp || null
                     );
-                    
+
                     return (
                       <div key={message.id} id={`qa-msg-${message.id}`} className="report-qa-message-row w-full scroll-mt-24 rounded-lg transition-shadow">
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
@@ -2586,7 +2616,7 @@ export default function ReportQA() {
                               <Bot className="h-4 w-4 text-primary" />
                             </div>
                           )}
-                          <div 
+                          <div
                             className={cn(
                               "report-qa-message-bubble min-w-0 max-w-[92%] rounded-2xl p-3 shadow-sm sm:p-4",
                               message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
@@ -2613,7 +2643,7 @@ export default function ReportQA() {
                             </div>
                             {message.role === 'assistant' ? (
                               <div className="report-qa-assistant-content qa-markdown text-sm break-words overflow-hidden [overflow-wrap:anywhere]">
-                                <ReactMarkdown 
+                                <ReactMarkdown
                                   remarkPlugins={[remarkGfm]}
                                   components={{
                                     strong: ({ children, ...props }) => {
@@ -2641,9 +2671,9 @@ export default function ReportQA() {
                             ) : (
                               <div className="report-qa-user-content space-y-2">
                                 {message.audioUrl && (
-                                  <VoiceMessagePlayer 
-                                    audioUrl={message.audioUrl} 
-                                    compact 
+                                  <VoiceMessagePlayer
+                                    audioUrl={message.audioUrl}
+                                    compact
                                     waveColor="rgba(255, 255, 255, 0.4)"
                                     progressColor="rgba(255, 255, 255, 0.8)"
                                   />
@@ -2714,8 +2744,8 @@ export default function ReportQA() {
                                     lastAssistantMessage={message.content}
                                     aiSuggestions={message.aiFollowups}
                                     reportContext={
-                                      uploadedReports.length > 1 ? 'comparison' : 
-                                      uploadedReports.length === 1 ? 'single' : 'none'
+                                      selectedReports.length > 1 ? 'comparison' :
+                                      selectedReports.length === 1 ? 'single' : 'none'
                                     }
                                     onSelect={(suggestion) => setInputMessage(suggestion)}
                                   />
@@ -2734,9 +2764,9 @@ export default function ReportQA() {
                     );
                   })}
                   {isProcessing && (
-                    <StreamingTypingIndicator 
+                    <StreamingTypingIndicator
                       className="report-qa-streaming-state"
-                      isMultiReport={uploadedReports.length > 1} 
+                      isMultiReport={selectedReports.length > 1}
                       streamingContent={streamingContent}
                     />
                   )}
@@ -2754,7 +2784,7 @@ export default function ReportQA() {
 
             {/* Recording indicator with live transcription - show when recording or paused */}
             {(isRecording || isPaused) && (
-              <RecordingIndicator 
+              <RecordingIndicator
                 isRecording={isRecording}
                 isPaused={isPaused}
                 liveTranscript={liveTranscript}
@@ -2800,11 +2830,13 @@ export default function ReportQA() {
                 <Textarea
                   ref={inputRef}
                   placeholder={
-                    uploadedReports.length === 0 
-                      ? 'Ask anything or upload a report for context...' 
-                      : uploadedReports.length > 1 
-                        ? 'Ask a comparison question...'
-                        : 'Ask a question about the report...'
+                    uploadedReports.length === 0
+                      ? 'Ask anything or upload a report for context...'
+                      : selectedReportCount > 1
+                        ? 'Ask a comparison question about selected reports...'
+                        : selectedReportCount === 1
+                          ? 'Ask a question about the selected report...'
+                          : 'Select at least one report to ask a grounded question...'
                   }
                   value={inputMessage}
                   onChange={(e) => {
@@ -2818,7 +2850,7 @@ export default function ReportQA() {
                       handleSendMessage();
                     }
                   }}
-                  disabled={isProcessing || isRecording || isTranscribing || isIndexing}
+                  disabled={isProcessing || isRecording || isTranscribing || isIndexing || (uploadedReports.length > 0 && selectedReportCount === 0)}
                   className="report-qa-composer-input min-h-[44px] max-h-24 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-xl px-3 py-2.5 text-sm leading-5 sm:flex-1"
                   aria-label="Prompt message input"
                   rows={1}
@@ -2889,7 +2921,7 @@ export default function ReportQA() {
               )}
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
+                  disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH || (uploadedReports.length > 0 && selectedReportCount === 0)}
                   className="report-qa-composer-control report-qa-send-button h-9 w-9 flex-shrink-0 rounded-xl sm:h-10 sm:w-10"
                   title="Send message"
                   aria-label="Send message"
@@ -2960,15 +2992,15 @@ export default function ReportQA() {
                   uploadedAt={report.uploadedAt}
                   fileSizeBytes={report.fileSizeBytes}
                   totalPages={report.totalPages}
-                  isActive={activeReportIndex === index}
-                  onClick={() => setActiveReportIndex(
-                    activeReportIndex === index ? null : index
+                  isActive={selectedReportNames.includes(report.name)}
+                  onClick={() => setSelectedReportNames(prev =>
+                    prev.includes(report.name)
+                      ? prev.filter(name => name !== report.name)
+                      : [...prev, report.name]
                   )}
                   onRemove={() => {
                     removeReport(report.name);
-                    if (activeReportIndex === index) {
-                      setActiveReportIndex(null);
-                    }
+                    setSelectedReportNames(prev => prev.filter(name => name !== report.name));
                   }}
                 />
               ))}
@@ -2976,10 +3008,10 @@ export default function ReportQA() {
           )}
 
           {/* Comparison Badge */}
-          {uploadedReports.length > 1 && activeReportIndex === null && (
+          {selectedReports.length > 1 && (
             <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg">
               <GitCompare className="h-4 w-4 text-primary" />
-              <span className="text-sm text-primary">Comparison mode active</span>
+              <span className="text-sm text-primary">Comparison mode active for {selectedReports.length} selected reports</span>
             </div>
           )}
         </div>
@@ -3020,7 +3052,7 @@ export default function ReportQA() {
               Search and load previous Q&A conversations (⌘K)
             </DialogDescription>
           </DialogHeader>
-          
+
           {/* Search Input */}
           <div className="relative shrink-0 border-b bg-muted/20 px-5 py-4 sm:px-6">
             <Search className="absolute left-8 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground sm:left-9" />
@@ -3044,7 +3076,7 @@ export default function ReportQA() {
               </Button>
             )}
           </div>
-          
+
           <ScrollArea ref={historyListRef} className="min-h-0 overflow-hidden px-3 py-3 [--scrollbar-size:10px] sm:px-4">
             {isLoadingConversations ? (
               <div className="mx-auto my-10 flex max-w-sm flex-col items-center rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
@@ -3079,7 +3111,7 @@ export default function ReportQA() {
               </div>
             ) : (
               <div className="space-y-5">
-                {Object.entries(groupConversationsByDate(sortedConversations)).map(([group, convs]) => 
+                {Object.entries(groupConversationsByDate(sortedConversations)).map(([group, convs]) =>
                   convs.length > 0 && (
                     <div key={group} className="space-y-2">
                       <div className="sticky top-0 z-10 flex items-center gap-2 bg-background/95 px-1 py-1 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -3214,7 +3246,7 @@ export default function ReportQA() {
                                         {pinnedIds.includes(conv.id) ? 'Unpin' : 'Pin'}
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem 
+                                      <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
                                         onClick={(e) => handleDeleteConversation(conv.id, e)}
                                       >
@@ -3248,7 +3280,7 @@ export default function ReportQA() {
               </div>
             )}
           </ScrollArea>
-          
+
           {/* Footer with count */}
           <div className="flex shrink-0 items-center justify-between gap-3 border-t bg-muted/20 px-5 py-3 text-xs text-muted-foreground sm:px-6">
               <span>
@@ -3303,7 +3335,7 @@ export default function ReportQA() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Recipient */}
             <div className="space-y-2">
               <Label htmlFor="email-to">To *</Label>
@@ -3315,7 +3347,7 @@ export default function ReportQA() {
                 onChange={(e) => setEmailTo(e.target.value)}
               />
             </div>
-            
+
             {/* CC/BCC Toggle */}
             <button
               type="button"
@@ -3324,7 +3356,7 @@ export default function ReportQA() {
             >
               {showCcBcc ? '− Hide CC/BCC' : '+ Add CC/BCC'}
             </button>
-            
+
             {/* CC/BCC Fields */}
             {showCcBcc && (
               <>
@@ -3350,7 +3382,7 @@ export default function ReportQA() {
                 </div>
               </>
             )}
-            
+
             {/* Subject */}
             <div className="space-y-2">
               <Label htmlFor="email-subject">Subject</Label>
@@ -3360,7 +3392,7 @@ export default function ReportQA() {
                 onChange={(e) => setEmailSubject(e.target.value)}
               />
             </div>
-            
+
             {/* Content */}
             <div className="space-y-2">
               <Label htmlFor="email-content">Message *</Label>
@@ -3376,8 +3408,8 @@ export default function ReportQA() {
             <Button variant="outline" onClick={() => setShowEmailModal(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleSendEmail} 
+            <Button
+              onClick={handleSendEmail}
               disabled={!emailTo || !emailContent || !selectedSenderMailbox || isSendingEmail}
             >
               {isSendingEmail ? (
@@ -3414,7 +3446,7 @@ export default function ReportQA() {
               You'll be redirected to Email Copilot with this PDF ready to send.
             </DialogDescription>
           </DialogHeader>
-          
+
           {pendingPDFAttachment && (
             <div className="space-y-4">
               {/* PDF File Preview */}
@@ -3443,18 +3475,18 @@ export default function ReportQA() {
                   )}
                 </div>
               </div>
-              
+
               {/* Email Preview */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">Email Subject Preview</Label>
                 <div className="p-3 bg-muted/50 rounded-md text-sm">
-                  {uploadedReports.length > 0 
+                  {uploadedReports.length > 0
                     ? `Property Analysis: ${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ').substring(0, 50)}${uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ').length > 50 ? '...' : ''}`
                     : `Q&A Conversation Export - ${pendingPDFAttachment.fileName}`
                   }
                 </div>
               </div>
-              
+
               {/* Context info */}
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1.5">
@@ -3466,7 +3498,7 @@ export default function ReportQA() {
                   {uploadedReports.length} report{uploadedReports.length !== 1 ? 's' : ''}
                 </div>
               </div>
-              
+
               {/* Validation warning */}
               {pdfValidationError && (
                 <div className="p-3 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-md">
@@ -3475,10 +3507,10 @@ export default function ReportQA() {
               )}
             </div>
           )}
-          
+
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setShowEmailCopilotModal(false);
                 setPendingPDFAttachment(null);
@@ -3489,7 +3521,7 @@ export default function ReportQA() {
               Cancel
             </Button>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={handleConfirmEmailCopilot}
                 disabled={isValidatingPDF}
@@ -3507,13 +3539,13 @@ export default function ReportQA() {
                   </>
                 )}
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   // Build context for in-place compose
                   const reportNames = uploadedReports.map(r => r.name.replace('.pdf', '')).join(', ');
                   const messageCount = messages.length;
                   const userQuestions = messages.filter(m => m.role === 'user').slice(0, 3).map(m => m.content.substring(0, 100));
-                  
+
                   setEmailContext({
                     title: getCurrentTitle(),
                     reportNames,
@@ -3521,7 +3553,7 @@ export default function ReportQA() {
                     sampleQuestions: userQuestions,
                     generatedAt: new Date().toISOString(),
                   });
-                  
+
                   setShowEmailCopilotModal(false);
                   setShowInPlaceEmailCompose(true);
                 }}
@@ -3565,9 +3597,9 @@ export default function ReportQA() {
           }}
           content={editingMessage.content}
           messageId={editingMessage.id}
-          title={uploadedReports.length > 1 
+          title={uploadedReports.length > 1
             ? 'Property Comparison Summary'
-            : uploadedReports.length === 1 
+            : uploadedReports.length === 1
               ? 'Investment Report Summary'
               : 'Property Investment Analysis'}
           reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
