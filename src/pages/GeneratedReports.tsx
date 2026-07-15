@@ -500,9 +500,8 @@ export default function GeneratedReports() {
       const report = investmentReports.find(r => r.id === reportId);
       
       const { data, error } = await invokeSecureFunction('manage-investment-reports', {
-        operation: 'update',
+        action: 'archive',
         reportId,
-        data: { is_archived: true }
       });
       
       if (error || !data?.success) throw new Error(data?.error || error?.message);
@@ -549,12 +548,12 @@ export default function GeneratedReports() {
       // Get report address for notification
       const report = investmentReports.find(r => r.id === reportId);
       
-      const { error } = await supabase
-        .from('investment_reports')
-        .update({ is_archived: false })
-        .eq('id', reportId);
+      const { data, error } = await invokeSecureFunction('manage-investment-reports', {
+        action: 'unarchive',
+        reportId,
+      });
       
-      if (error) throw error;
+      if (error || !data?.success) throw new Error(data?.error || error?.message);
       
       // Update local state
       setInvestmentReports(prev => 
