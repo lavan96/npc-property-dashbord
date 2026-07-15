@@ -49,8 +49,6 @@ import {
   Play,
   Square,
   Download,
-  Quote,
-  Wrench,
   AlertCircle,
 } from 'lucide-react';
 import {
@@ -71,12 +69,11 @@ import { StreamingTypingIndicator } from '@/components/report-qa/StreamingTyping
 import { ConversationClientLinker } from '@/components/report-qa/ConversationClientLinker';
 import { SmartSuggestions } from '@/components/report-qa/SmartSuggestions';
 import { ConversationTags } from '@/components/report-qa/ConversationTags';
-import { ChatThemeSelector, useCurrentTheme, type Theme } from '@/components/report-qa/ChatThemeSelector';
+import { type Theme } from '@/components/report-qa/ChatThemeSelector';
 import { ConversationExport } from '@/components/report-qa/ConversationExport';
 import { MessageThreading, useMessageThreads } from '@/components/report-qa/MessageThreading';
 import { AutoSummarize } from '@/components/report-qa/AutoSummarize';
 import { PinConversation, usePinnedConversations } from '@/components/report-qa/PinConversation';
-import { KeyboardShortcutsHelp } from '@/components/report-qa/KeyboardShortcutsHelp';
 import { VoiceMessagePlayer } from '@/components/report-qa/VoiceMessagePlayer';
 import { RecordingIndicator } from '@/components/report-qa/RecordingIndicator';
 import { PDFAttachmentMessage } from '@/components/report-qa/PDFAttachmentMessage';
@@ -88,7 +85,6 @@ import { FollowUpSuggestions } from '@/components/report-qa/FollowUpSuggestions'
 import { TextToSpeech } from '@/components/report-qa/TextToSpeech';
 import { CopyWithFeedback } from '@/components/report-qa/CopyWithFeedback';
 import { LiveRegion, SkipToContent, useReducedMotion } from '@/components/report-qa/AccessibilityWrapper';
-import { AccessibilitySettings } from '@/components/report-qa/AccessibilitySettings';
 import { MobileReportsPanel, useSwipeGesture } from '@/components/report-qa/MobileReportsPanel';
 import { ReportLibraryPicker, type PickedReport } from '@/components/report-qa/ReportLibraryPicker';
 import { InPlaceEmailCompose } from '@/components/report-qa/InPlaceEmailCompose';
@@ -303,7 +299,7 @@ export default function ReportQA() {
   const historyListRef = useRef<HTMLDivElement | null>(null);
   
   // New feature states
-  const [chatTheme, setChatTheme] = useState<Theme | null>(null);
+  const [chatTheme] = useState<Theme | null>(null);
   const [conversationTags, setConversationTags] = useState<Map<string, string[]>>(new Map());
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [pendingAudioUrl, setPendingAudioUrl] = useState<string | null>(null);
@@ -701,7 +697,11 @@ export default function ReportQA() {
         imagesProcessed: 0,
       };
       
-      setUploadedReports(prev => [...prev, newReport]);
+      setUploadedReports(prev => {
+        const nextReports = [...prev, newReport];
+        setActiveReportIndex(nextReports.length - 1);
+        return nextReports;
+      });
       
       setTimeout(() => {
         setUploadProgress(prev => prev.filter(p => p.fileName !== file.name));
@@ -744,7 +744,11 @@ export default function ReportQA() {
         imagesProcessed: 0,
       }));
     if (additions.length === 0) return;
-    setUploadedReports((prev) => [...prev, ...additions]);
+    setUploadedReports((prev) => {
+      const nextReports = [...prev, ...additions];
+      setActiveReportIndex(prev.length);
+      return nextReports;
+    });
   }, [uploadedReports]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -1938,7 +1942,7 @@ export default function ReportQA() {
       <DashboardThemeFrame
         as="main"
         variant="page"
-        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-2.5 sm:p-3 sm:pb-16 md:h-[calc(100dvh-6.5rem)] md:max-h-[calc(100dvh-6.5rem)] md:gap-3 md:overflow-hidden md:p-3.5 md:pb-0 xl:h-[calc(100dvh-7rem)] xl:max-h-[calc(100dvh-7rem)]"
+        className="report-qa-premium report-qa-density-shell flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden p-2 pb-14 sm:gap-2.5 sm:p-3 sm:pb-16 md:h-[calc(100dvh-5.25rem)] md:max-h-[calc(100dvh-5.25rem)] md:gap-2.5 md:overflow-hidden md:p-3 md:pb-0 xl:h-[calc(100dvh-5.75rem)] xl:max-h-[calc(100dvh-5.75rem)]"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
@@ -1994,7 +1998,7 @@ export default function ReportQA() {
         </div>
       </DashboardThemeFrame>
 
-      <div className="report-qa-workspace-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-3 md:gap-4 lg:grid-cols-[minmax(17rem,0.78fr)_minmax(0,1.72fr)] lg:overflow-hidden lg:pr-0 xl:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.82fr)] xl:gap-5">
+      <div className="report-qa-workspace-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-3 md:gap-4 lg:grid-cols-[minmax(18rem,30%)_minmax(0,70%)] lg:overflow-hidden lg:pr-0 xl:grid-cols-[minmax(19rem,29%)_minmax(0,71%)] xl:gap-5">
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
         <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[16rem] p-0 md:max-h-[44dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
@@ -2148,8 +2152,8 @@ export default function ReportQA() {
             {uploadedReports.length > 0 && (
               <div className="report-qa-panel-section space-y-2">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  <span>Report library</span>
-                  <span className="normal-case tracking-normal text-primary">{uploadedReports.length} active</span>
+                  <span>Loaded Reports</span>
+                  <span className="normal-case tracking-normal text-primary">{uploadedReports.length} loaded</span>
                 </div>
               <ReportSearch
                 reports={uploadedReports}
@@ -2166,8 +2170,13 @@ export default function ReportQA() {
 
             {/* Uploaded Reports — compact list */}
             {uploadedReports.length > 0 && (
-              <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1">
-                <div className="space-y-1.5">
+              <div className="report-qa-loaded-reports flex min-h-0 flex-1 flex-col gap-2">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span>Reports in this chat</span>
+                  <span className="normal-case tracking-normal text-primary">{activeReportIndex === null && uploadedReports.length > 1 ? 'Compare all' : 'Ready'}</span>
+                </div>
+                <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1">
+                  <div className="space-y-1.5">
                   {uploadedReports.map((report, index) => {
                     const isActive = activeReportIndex === index;
                     const sizeKB = report.fileSizeBytes
@@ -2197,7 +2206,8 @@ export default function ReportQA() {
                             {report.name.replace(/\.pdf$/i, '')}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {report.totalPages ?? '—'} pages · {sizeKB}
+                            <span className="font-medium text-success dark:text-success">Ready</span>
+                            <span> · {report.totalPages ?? '—'} pages · {sizeKB}</span>
                             {isActive && <span className="ml-1.5 text-primary font-medium">· Active</span>}
                           </p>
                         </div>
@@ -2216,8 +2226,9 @@ export default function ReportQA() {
                       </div>
                     );
                   })}
-                </div>
-              </ScrollArea>
+                  </div>
+                </ScrollArea>
+              </div>
             )}
 
             {/* Comparison Badge */}
@@ -2328,9 +2339,6 @@ export default function ReportQA() {
                     </>
                   )}
                   <DropdownMenuItem asChild>
-                    <div className="p-0"><ChatThemeSelector onThemeChange={setChatTheme} /></div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <div className="p-0">
                       <ConversationExport
                         messages={messages}
@@ -2348,9 +2356,6 @@ export default function ReportQA() {
                         disabled={messages.length < 2}
                       />
                     </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <div className="p-0"><AccessibilitySettings /></div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -2427,55 +2432,8 @@ export default function ReportQA() {
                     <ConversationTags tags={conversationTags.get(conversationId) || []} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} />
                   </>
                 )}
-                <ChatThemeSelector onThemeChange={setChatTheme} />
                 <ConversationExport messages={messages} title={getCurrentTitle()} reportNames={uploadedReports.map(r => r.name)} conversationId={conversationId} />
                 <AutoSummarize messages={messages.map(m => ({ role: m.role, content: m.content }))} reportNames={uploadedReports.map(r => r.name)} disabled={messages.length < 2} />
-                <KeyboardShortcutsHelp />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="report-qa-toolbar-control h-8 w-8"
-                  onClick={() => setShowCitations((v) => !v)}
-                  title={
-                    showCitations
-                      ? 'Hide citation chips & snippet tooltips'
-                      : 'Show citation chips & snippet tooltips'
-                  }
-                  aria-pressed={showCitations}
-                  aria-label="Toggle citations"
-                  data-active={showCitations ? 'true' : undefined}
-                >
-                  {showCitations ? (
-                    <Quote className="h-4 w-4" />
-                  ) : (
-                    <Quote className="h-4 w-4 opacity-40" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="report-qa-toolbar-control h-8 w-8"
-                  disabled={!agentModeSupported}
-                  onClick={() => setAgentMode((v) => !v)}
-                  title={
-                    !agentModeSupported
-                      ? 'Agent tools are unavailable for this active model route — switch slot or model to enable'
-                      : agentMode
-                        ? 'Disable agent tools (calculators, live data)'
-                        : 'Enable agent tools (calculators, live data, scenarios)'
-                  }
-                  aria-pressed={agentMode && agentModeSupported}
-                  aria-label="Toggle agent mode"
-                  data-active={agentMode && agentModeSupported ? 'true' : undefined}
-                >
-                  <Wrench
-                    className={cn(
-                      'h-4 w-4',
-                      agentMode && agentModeSupported ? 'text-primary' : 'opacity-40',
-                    )}
-                  />
-                </Button>
-                <AccessibilitySettings />
                 {conversationId && <Badge variant="outline" className="ml-1 whitespace-nowrap border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] text-primary">Auto-saving</Badge>}
               </div>
             </div>
