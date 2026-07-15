@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
 import { TierBadge, type ReportTier } from '@/components/reports/TierBadge';
+import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from '@/components/reports/report-view/utils';
 import type { InvestmentReport } from './types';
 
 interface InvestmentReportCardProps {
@@ -71,11 +72,11 @@ export function InvestmentReportCard({
     ? scopeMeta[report.report_scope as keyof typeof scopeMeta]
     : null;
   const ScopeIcon = scope?.icon;
-  const score = report.investment_score?.totalScore || 0;
-  const grade = report.investment_score?.grade || 'N/A';
+  const scoreSummary = getInvestmentScoreSummary(report as any);
+  const hasGradeDisplay = !!(scoreSummary?.grade || scoreSummary?.recommendation || scoreSummary?.score != null || scoreSummary?.partialLabel);
   const scoreType = report.investment_score?.scoreType === 'area' ? 'Area Grade' : 'Investment Grade';
-  const recommendation = report.investment_score?.recommendation?.split(' ').slice(0, 3).join(' ') || 'Not rated';
-  const hasAreaPlaceholder = !report.investment_score && ['suburb', 'zipcode', 'state'].includes(report.report_scope || '');
+  const recommendation = scoreSummary?.recommendation || 'Score calculated from market, financial & location data';
+  const hasAreaPlaceholder = !hasGradeDisplay && !report.investment_score && ['suburb', 'zipcode', 'state'].includes(report.report_scope || '');
 
   return (
     <Card
@@ -175,12 +176,12 @@ export function InvestmentReportCard({
       </CardHeader>
 
       <CardContent className="relative space-y-4 px-4 pb-4">
-        {report.investment_score ? (
+        {hasGradeDisplay && scoreSummary ? (
           <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-muted/25 to-background p-3 shadow-inner shadow-sm dark:shadow-black/5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold shadow-sm ${getGradeColor(grade)}`}>
-                  {grade}
+                <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold shadow-sm ${getInvestmentGradeTone(scoreSummary.grade)}`}>
+                  {scoreSummary.grade || '—'}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -188,11 +189,23 @@ export function InvestmentReportCard({
                     {scoreType}
                   </div>
                   <p className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">{recommendation}</p>
+                  {scoreSummary.partialLabel && (
+                    <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">{scoreSummary.partialLabel}</p>
+                  )}
                 </div>
               </div>
               <div className="shrink-0 text-right">
-                <div className={`text-3xl font-bold tracking-tight ${getScoreColor(score)}`}>{score}</div>
-                <div className="text-xs text-muted-foreground">/100 score</div>
+                {scoreSummary.score == null ? (
+                  <>
+                    <div className="text-sm font-semibold text-muted-foreground">Insufficient data</div>
+                    <div className="text-xs text-muted-foreground">score pending</div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`text-3xl font-bold tracking-tight ${getScoreTone(scoreSummary.score)}`}>{scoreSummary.score}</div>
+                    <div className="text-xs text-muted-foreground">/100 score</div>
+                  </>
+                )}
               </div>
             </div>
           </div>
