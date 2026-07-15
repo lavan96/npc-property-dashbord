@@ -46,6 +46,8 @@ const ManualDataOverrideModal = lazy(() => import('@/components/reports/ManualDa
 import type { ReportTier } from '@/components/reports/TierBadge';
 
 // Loading fallback for modals
+const GENERATED_REPORTS_STICKY_ACTION_TOP = 'calc(72px + 1rem)';
+
 const ModalLoader = () => (
   <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
     <div className="bg-card rounded-lg p-8 shadow-lg">
@@ -882,9 +884,12 @@ export default function GeneratedReports() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6 pb-20 md:pb-6">
+    <div className="flex-1 space-y-4 overflow-visible p-4 pb-20 pt-4 md:p-8 md:pb-6 md:pt-6">
       {selectedReports.length > 0 && (
-        <div className="sticky top-[calc(72px+1rem)] z-30 flex w-full justify-center pointer-events-none">
+        <div
+          className="sticky z-[39] flex w-full justify-center pointer-events-none"
+          style={{ top: GENERATED_REPORTS_STICKY_ACTION_TOP }}
+        >
           <ComparisonBasket onCompare={handleCompare} />
         </div>
       )}
