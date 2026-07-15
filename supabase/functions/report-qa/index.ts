@@ -1866,15 +1866,25 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 `[report-qa] Agent loop complete: ${turns} turn(s), ${toolInvocations.length} tool invocation(s)`,
               );
               // Persist user + assistant messages so historical conversation
-              // reload has content to render (streaming path used to skip this).
-              if (conversationId && finalText) {
+              // reload has content to render. Always persist so the user turn
+              // is never dropped, even if finalText couldn't be captured.
+              if (conversationId) {
+                const finalAssistant = (finalText && finalText.trim().length > 0)
+                  ? finalText
+                  : '⚠️ Agent completed but text could not be captured. Please retry.';
+                console.log('[report-qa] Persisting agent messages', {
+                  conversationId,
+                  userLen: String(question || '').length,
+                  assistantLen: finalAssistant.length,
+                  tools: toolInvocations.length,
+                });
                 try {
-                  await supabase.from('report_qa_messages').insert([
+                  const { error: persistDbErr } = await supabase.from('report_qa_messages').insert([
                     { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
                     {
                       conversation_id: conversationId,
                       role: 'assistant',
-                      content: sanitizeForPostgres(finalText),
+                      content: sanitizeForPostgres(finalAssistant),
                       model_provider: modelProvider,
                       citations: structuredCitationsAgent.length > 0 ? structuredCitationsAgent : null,
                       comparison_mode: comparisonMode,
@@ -1883,6 +1893,11 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                       tool_invocations: toolInvocations.length > 0 ? toolInvocations : null,
                     },
                   ]);
+                  if (persistDbErr) console.error('[report-qa] Agent persist DB error:', persistDbErr);
+                  await supabase
+                    .from('report_qa_conversations')
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq('id', conversationId);
                 } catch (persistErr) {
                   console.error('[report-qa] Failed to persist agent messages:', persistErr);
                 }
@@ -2041,8 +2056,28 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                     if (!payload || payload === '[DONE]') continue;
                     try {
                       const j = JSON.parse(payload);
-                      const c = j?.choices?.[0]?.delta?.content;
-                      if (typeof c === 'string') assistantText += c;
+                      // Try multiple SSE shapes so persistence survives when
+                      // the upstream provider returns non-OpenAI delta formats
+                      // (Anthropic/Gemini via gateway, Responses API, etc).
+                      const candidates: unknown[] = [
+                        j?.choices?.[0]?.delta?.content,
+                        j?.choices?.[0]?.message?.content,
+                        j?.delta?.content,
+                        j?.delta?.text,
+                        j?.output_text,
+                        j?.content,
+                        j?.text,
+                      ];
+                      for (const c of candidates) {
+                        if (typeof c === 'string' && c.length > 0) { assistantText += c; break; }
+                        if (Array.isArray(c)) {
+                          for (const part of c) {
+                            const pt = typeof part === 'string' ? part : (part?.text ?? part?.content);
+                            if (typeof pt === 'string') assistantText += pt;
+                          }
+                          break;
+                        }
+                      }
                     } catch { /* partial json — ignore */ }
                   }
                 } catch { /* peek is best-effort */ }
@@ -2119,15 +2154,27 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                 }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
               }
               // Persist user + assistant messages so historical conversation
-              // reload has content to render (previously skipped in stream path).
-              if (conversationId && assistantText) {
+              // reload has content to render. We always attempt to persist
+              // (even when the SSE parser couldn't extract assistantText) so
+              // the user turn is never lost — the assistant row falls back to
+              // a marker so the UI still renders a paired exchange.
+              if (conversationId) {
+                const finalAssistant = (assistantText && assistantText.trim().length > 0)
+                  ? assistantText
+                  : '⚠️ Response completed but text could not be captured. Please retry.';
+                console.log('[report-qa] Persisting stream messages', {
+                  conversationId,
+                  userLen: String(question || '').length,
+                  assistantLen: finalAssistant.length,
+                  captured: assistantText.length > 0,
+                });
                 try {
-                  await supabase.from('report_qa_messages').insert([
+                  const { error: persistDbErr } = await supabase.from('report_qa_messages').insert([
                     { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
                     {
                       conversation_id: conversationId,
                       role: 'assistant',
-                      content: sanitizeForPostgres(assistantText),
+                      content: sanitizeForPostgres(finalAssistant),
                       model_provider: modelProvider,
                       citations: structuredCitations.length > 0 ? structuredCitations : null,
                       comparison_mode: comparisonMode,
@@ -2135,6 +2182,12 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                       model_version: streamModelName,
                     },
                   ]);
+                  if (persistDbErr) console.error('[report-qa] Persist DB error:', persistDbErr);
+                  // Bump conversation updated_at so history sort is accurate
+                  await supabase
+                    .from('report_qa_conversations')
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq('id', conversationId);
                 } catch (persistErr) {
                   console.error('[report-qa] Failed to persist stream messages:', persistErr);
                 }
