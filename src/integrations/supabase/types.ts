@@ -18060,6 +18060,7 @@ export type Database = {
           sent_by: string | null
           sent_by_username: string | null
           share_token: string | null
+          stream_id: string | null
           tool_invocations: Json
         }
         Insert: {
@@ -18080,6 +18081,7 @@ export type Database = {
           sent_by?: string | null
           sent_by_username?: string | null
           share_token?: string | null
+          stream_id?: string | null
           tool_invocations?: Json
         }
         Update: {
@@ -18100,6 +18102,7 @@ export type Database = {
           sent_by?: string | null
           sent_by_username?: string | null
           share_token?: string | null
+          stream_id?: string | null
           tool_invocations?: Json
         }
         Relationships: [
