@@ -869,7 +869,7 @@ function ReportGenerationProgressInner() {
 
   const cornerClass = (() => {
     if (isGeneratedReportsRoute) {
-      return isMobile ? 'top-20 right-4' : 'top-24 right-8';
+      return isMobile ? 'bottom-44 right-4' : 'bottom-24 right-6';
     }
 
     switch (corner) {
