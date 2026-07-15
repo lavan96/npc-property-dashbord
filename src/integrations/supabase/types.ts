@@ -20159,6 +20159,7 @@ export type Database = {
         Args: { p_job_id: string; p_lease_seconds?: number }
         Returns: undefined
       }
+      invoke_pdf_parse_recover_stuck_jobs: { Args: never; Returns: undefined }
       list_resumable_bulk_jobs: {
         Args: never
         Returns: {
