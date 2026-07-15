@@ -70,7 +70,7 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 hidden md:block">
+    <div className="fixed right-[max(2rem,calc((100vw-1600px)/2+2rem))] top-[calc(72px+1.5rem)] z-30 hidden md:block">
       {!isExpanded ? (
         <button
           type="button"
@@ -94,7 +94,7 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
           </div>
         </button>
       ) : (
-        <Card className="w-[420px] overflow-hidden rounded-3xl border-brand-400/25 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
+        <Card className="max-h-[calc(100vh-7rem)] w-[420px] overflow-hidden rounded-3xl border-brand-400/25 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
           <CardHeader className="border-b border-border/60 pb-4">
             <div className="flex items-start justify-between gap-3">
               <div>
