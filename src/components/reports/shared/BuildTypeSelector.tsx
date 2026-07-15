@@ -57,7 +57,7 @@ export function BuildTypeSelector({
           "text-muted-foreground mt-0.5 text-center",
           size === 'sm' ? 'text-[10px]' : 'text-xs'
         )}>
-          Established home
+          Established Home
         </span>
       </Label>
 
@@ -89,7 +89,7 @@ export function BuildTypeSelector({
           "text-muted-foreground mt-0.5 text-center",
           size === 'sm' ? 'text-[10px]' : 'text-xs'
         )}>
-          House & land package
+          House & Land Package
         </span>
       </Label>
 
@@ -121,7 +121,7 @@ export function BuildTypeSelector({
           "text-muted-foreground mt-0.5 text-center",
           size === 'sm' ? 'text-[10px]' : 'text-xs'
         )}>
-          Vacant land
+          Vacant Land
         </span>
       </Label>
     </RadioGroup>
