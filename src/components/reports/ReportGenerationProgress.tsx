@@ -92,6 +92,8 @@ export function ReportGenerationProgress() {
 }
 
 function ReportGenerationProgressInner() {
+  const location = useLocation();
+  const isGeneratedReportsRoute = location.pathname === '/generated-reports';
   const { user } = useAuth();
   const currentUserLabel = user?.username || 'unknown user';
   const [reports, setReports] = useState<ReportProgress[]>([]);
@@ -142,8 +144,10 @@ function ReportGenerationProgressInner() {
     localStorage.setItem(COLLAPSED_KEY, isMinimized ? '1' : '0');
   }, [isMinimized]);
   useEffect(() => {
-    localStorage.setItem(POSITION_KEY, corner);
-  }, [corner]);
+    if (!isGeneratedReportsRoute) {
+      localStorage.setItem(POSITION_KEY, corner);
+    }
+  }, [corner, isGeneratedReportsRoute]);
 
   /* Sync auto-continue settings (cross-tab + periodic).
      IMPORTANT: only update state when values actually change, otherwise the
@@ -864,6 +868,10 @@ function ReportGenerationProgressInner() {
   if (!hasAnything) return null;
 
   const cornerClass = (() => {
+    if (isGeneratedReportsRoute) {
+      return isMobile ? 'top-20 right-4' : 'top-24 right-8';
+    }
+
     switch (corner) {
       case 'bl':
         return isMobile ? 'bottom-44 left-4' : 'bottom-24 left-6';
@@ -893,7 +901,7 @@ function ReportGenerationProgressInner() {
         <span aria-live="polite" className="sr-only">
           {liveText}
         </span>
-        <div className={cn('fixed z-50 transition-all', cornerClass)}>
+        <div className={cn('fixed z-50 transition-all duration-300', cornerClass)}>
           <GenerationProgressPill
             counts={counts}
             etaMs={aggregateEta}
@@ -965,7 +973,7 @@ function ReportGenerationProgressInner() {
             onClick={() => setIsMinimized(false)}
           />
         ) : (
-          <div className="w-80 bg-card border border-border rounded-lg shadow-xl overflow-hidden">
+          <div className="w-80 overflow-hidden rounded-xl border border-primary/40 bg-card/95 shadow-2xl shadow-primary/20 ring-1 ring-primary/20 backdrop-blur">
             <GenerationProgressHeader
               counts={counts}
               paused={paused}
@@ -986,8 +994,8 @@ function ReportGenerationProgressInner() {
                 saveAutoContinueSettings(next);
               }}
               onMinimize={() => setIsMinimized(true)}
-              onDragStart={onDragStart}
-              draggable
+              onDragStart={isGeneratedReportsRoute ? undefined : onDragStart}
+              draggable={!isGeneratedReportsRoute}
             />
             <div className="max-h-64 overflow-y-auto">
               {historyOpen ? (
