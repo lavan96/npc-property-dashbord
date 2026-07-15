@@ -840,7 +840,8 @@ async function retrieveRelevantChunks(
         match_count: matchCount,
       });
       if (legacyErr) throw legacyErr;
-      return legacy || [];
+      const allowedNames = filters?.documentNames?.length ? new Set(filters.documentNames) : null;
+      return allowedNames ? (legacy || []).filter((chunk: RetrievedChunk) => allowedNames.has(chunk.document_name)) : (legacy || []);
     }
 
     console.log(`[RAG] Hybrid found ${data?.length || 0} chunks (top score: ${data?.[0]?.hybrid_score?.toFixed(3) ?? 'n/a'})`);
@@ -1259,7 +1260,7 @@ Deno.serve(async (req) => {
 
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
-      const { reportContents, reportNames, question, chatHistory, conversationId, useRAG = true, modelProvider: requestedModelProvider = 'report_qa', agentKey: requestedAgentKey, needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
+      const { reportContents, reportNames, selectedReportNames, question, chatHistory, conversationId, useRAG = true, modelProvider: requestedModelProvider = 'report_qa', agentKey: requestedAgentKey, needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
       const modelAssignment = await loadReportQAModelAssignment(supabase, requestedAgentKey ?? requestedModelProvider);
       const modelProvider = modelAssignment.agent_key;
       const modelVersion = modelAssignment.model_id;
@@ -1279,12 +1280,14 @@ Deno.serve(async (req) => {
       // Hold onto retrieved chunks so we can build paragraph-level citations
       // and return them to the client alongside the answer.
       let retrievedChunksForCitations: RetrievedChunk[] = [];
+      const selectedDocumentNames = Array.isArray(selectedReportNames) && selectedReportNames.length > 0
+        ? selectedReportNames.filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0)
+        : (Array.isArray(reportNames) ? reportNames.filter((name: unknown): name is string => typeof name === 'string' && name.trim().length > 0) : []);
       const hasReports = (reportContents && reportContents.length > 0);
-      const isMultiReport = reportContents && reportContents.length > 1;
+      const isMultiReport = selectedDocumentNames.length > 1 || (reportContents && reportContents.length > 1);
       // Comparison mode is enabled when the user has selected ≥2 reports.
       // It drives both prompt selection and a UI badge on the answer.
-      const comparisonMode = !!isMultiReport ||
-        (Array.isArray(reportNames) && reportNames.length > 1);
+      const comparisonMode = selectedDocumentNames.length > 1 || (Array.isArray(reportContents) && reportContents.length > 1);
 
       // Per-client memory (Phase 3.3): if conversation is linked to a client,
       // load durable facts/preferences and inject them into the system prompt.
@@ -1301,9 +1304,16 @@ Deno.serve(async (req) => {
             .eq("id", conversationId)
             .single();
 
-          if (conv?.structured_report && conv.structured_report.length > 100) {
+          const allConversationReportNames = Array.isArray(conv?.report_names) ? conv.report_names : [];
+          const selectedAllConversationReports = selectedDocumentNames.length === 0 || (
+            selectedDocumentNames.length === allConversationReportNames.length &&
+            selectedDocumentNames.every((name) => allConversationReportNames.includes(name))
+          );
+          if (conv?.structured_report && conv.structured_report.length > 100 && selectedAllConversationReports) {
             summaryContext = conv.structured_report;
             console.log(`[report-qa] Loaded structural summary: ${summaryContext.length} chars`);
+          } else if (conv?.structured_report && !selectedAllConversationReports) {
+            console.log(`[report-qa] Skipping all-report structural summary because selected report grounding is narrowed to ${selectedDocumentNames.length} report(s)`);
           }
           conversationClientId = (conv?.client_id as string | null) || null;
         } catch (e) {
@@ -1347,7 +1357,8 @@ Deno.serve(async (req) => {
               OPENAI_API_KEY,
               conversationId,
               0.5, // Lower threshold for broader matches
-              12   // More chunks for comprehensive context
+              12,  // More chunks for comprehensive context
+              selectedDocumentNames.length > 0 ? { documentNames: selectedDocumentNames } : undefined
             );
 
             if (relevantChunks.length > 0) {
@@ -1418,14 +1429,19 @@ Deno.serve(async (req) => {
             .single();
 
           if (convFallback?.report_contents && convFallback.report_contents.length > 0) {
-            const dbContents = convFallback.report_contents;
             const dbNames = convFallback.report_names || [];
+            const allowedNames = selectedDocumentNames.length > 0 ? new Set(selectedDocumentNames) : null;
+            const filteredPairs = (convFallback.report_contents || [])
+              .map((content: string, idx: number) => ({ content, name: dbNames[idx] || `Report ${idx + 1}` }))
+              .filter((pair: { content: string; name: string }) => !allowedNames || allowedNames.has(pair.name));
+            const dbContents = filteredPairs.map((pair: { content: string; name: string }) => pair.content);
+            const filteredDbNames = filteredPairs.map((pair: { content: string; name: string }) => pair.name);
             console.log(`[report-qa] DB fallback: loaded ${dbContents.length} reports from conversation`);
 
             if (dbContents.length > 1) {
               const perReportLimit = Math.floor(MAX_CONTEXT_CHARS / dbContents.length);
               contextSection = dbContents.map((content: string, idx: number) =>
-                `--- REPORT ${idx + 1}: ${dbNames[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
+                `--- REPORT ${idx + 1}: ${filteredDbNames[idx] || `Report ${idx + 1}`} ---\n${truncateContext(content, perReportLimit)}\n`
               ).join("\n\n");
             } else {
               contextSection = truncateContext(dbContents[0], MAX_CONTEXT_CHARS);
