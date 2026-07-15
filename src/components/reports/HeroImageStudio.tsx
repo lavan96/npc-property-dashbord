@@ -455,8 +455,8 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1200px] w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-6 pt-5 pb-3 border-b">
+      <DialogContent className="w-full sm:w-[94vw] sm:max-w-[1600px] h-[92vh] max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 px-5 sm:px-6 pt-5 pb-3 pr-14 border-b">
           <DialogTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5 text-primary" />
             Hero Image Studio
@@ -466,15 +466,15 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
+        <div className="min-h-0 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-y-auto lg:overflow-hidden">
           {/* ─── Generate panel ─── */}
-          <aside className="col-span-3 border-r flex flex-col bg-muted/20">
-            <div className="px-4 py-3 border-b">
+          <aside className="min-h-[520px] min-w-0 border-b lg:min-h-0 lg:border-b-0 lg:col-span-3 xl:col-span-3 lg:border-r flex flex-col bg-muted/20 overflow-hidden">
+            <div className="shrink-0 px-4 py-3 border-b">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Wand2 className="h-4 w-4 text-primary" /> Generate
               </h3>
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="p-4 space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Prompt</Label>
@@ -483,7 +483,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="e.g. Sweeping aerial of a Brisbane riverside neighbourhood at dusk"
                     rows={5}
-                    className="text-xs resize-none"
+                    className="min-h-[120px] text-xs resize-y"
                   />
                   <Button
                     size="sm"
@@ -504,7 +504,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                 <div className="space-y-1.5">
                   <Label className="text-xs">Model</Label>
                   <Select value={model} onValueChange={setModel}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs min-w-0"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {MODEL_OPTIONS.map((m) => (
                         <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>
@@ -516,7 +516,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                 <div className="space-y-1.5">
                   <Label className="text-xs">Aspect ratio</Label>
                   <Select value={aspect} onValueChange={setAspect}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-xs min-w-0"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {ASPECT_OPTIONS.map((a) => (
                         <SelectItem key={a.value} value={a.value} className="text-xs">{a.label}</SelectItem>
@@ -628,24 +628,24 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
           </aside>
 
           {/* ─── Library ─── */}
-          <section className="col-span-6 flex flex-col border-r">
-            <div className="px-4 py-3 border-b flex flex-wrap items-center gap-2">
+          <section className="min-h-[520px] min-w-0 border-b lg:min-h-0 lg:border-b-0 lg:col-span-6 xl:col-span-6 flex flex-col lg:border-r overflow-hidden">
+            <div className="shrink-0 px-4 py-3 border-b flex flex-wrap items-center gap-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary" /> Library
                 <Badge variant="secondary" className="ml-1 text-[10px]">{library.length}</Badge>
               </h3>
-              <div className="ml-auto flex items-center gap-2">
-                <div className="relative">
+              <div className="flex w-full flex-wrap items-center gap-2 xl:ml-auto xl:w-auto">
+                <div className="relative min-w-[180px] flex-1 xl:flex-none">
                   <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search prompts"
-                    className="h-8 pl-7 text-xs w-44"
+                    className="h-8 pl-7 text-xs w-full xl:w-56"
                   />
                 </div>
                 <Select value={orientationFilter} onValueChange={setOrientationFilter}>
-                  <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all" className="text-xs">All shapes</SelectItem>
                     <SelectItem value="landscape" className="text-xs">Landscape</SelectItem>
@@ -654,7 +654,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                   </SelectContent>
                 </Select>
                 <Select value={modelFilter} onValueChange={setModelFilter}>
-                  <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all" className="text-xs">All models</SelectItem>
                     {MODEL_OPTIONS.map((m) => (
@@ -678,7 +678,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
               </div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="p-4">
                 {libLoading && library.length === 0 ? (
                   <div className="flex items-center justify-center py-20">
@@ -690,7 +690,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                     <p className="text-sm">No images yet. Use the generator on the left.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
                     {library.map((img) => (
                       <div
                         key={img.id}
@@ -771,14 +771,14 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
           </section>
 
           {/* ─── Chapter placements ─── */}
-          <aside className="col-span-3 flex flex-col bg-muted/20">
-            <div className="px-4 py-3 border-b">
+          <aside className="min-h-[520px] min-w-0 lg:min-h-0 lg:col-span-3 xl:col-span-3 flex flex-col bg-muted/20 overflow-hidden">
+            <div className="shrink-0 px-4 py-3 border-b">
               <h3 className="text-sm font-semibold">Chapters</h3>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                 Click a chapter to select it, then click <strong>Place</strong> on any library image.
               </p>
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="p-3 space-y-2">
                 {chapters.length === 0 && (
                   <p className="text-xs text-muted-foreground p-4 text-center">No chapters detected.</p>
@@ -794,8 +794,8 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                         selected ? "ring-2 ring-primary border-primary" : "hover:border-primary/40"
                       }`}
                     >
-                      <div className="px-2.5 py-1.5 flex items-center gap-1.5">
-                        <span className="text-[11px] font-medium line-clamp-1 flex-1" title={c.section_title}>
+                      <div className="px-3 py-2 flex items-start gap-2">
+                        <span className="min-w-0 flex-1 text-[12px] font-medium leading-snug break-words" title={c.section_title}>
                           {c.section_title}
                         </span>
                         {p && (
@@ -804,7 +804,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                               size="icon"
                               variant="ghost"
                               onClick={(e) => { e.stopPropagation(); setPreviewPlacement(p); }}
-                              className="h-5 w-5"
+                              className="h-7 w-7 shrink-0"
                               title="Preview in PDF"
                             >
                               <Eye className="h-3 w-3" />
@@ -813,7 +813,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
                               size="icon"
                               variant="ghost"
                               onClick={(e) => { e.stopPropagation(); clearPlacement(p); }}
-                              className="h-5 w-5"
+                              className="h-7 w-7 shrink-0"
                               title="Remove"
                             >
                               <X className="h-3 w-3" />
@@ -860,7 +860,7 @@ export function HeroImageStudio({ reportId, open, onOpenChange }: Props) {
 
       {/* PDF preview for a placement */}
       <Dialog open={!!previewPlacement} onOpenChange={(o) => !o && setPreviewPlacement(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-primary" />
@@ -954,10 +954,10 @@ function PlacementControl({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <Label className="text-[10px] w-12 shrink-0">{label}</Label>
+    <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
+      <Label className="text-[10px] shrink-0">{label}</Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-7 text-[11px] flex-1"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-7 min-w-0 text-[11px]"><SelectValue /></SelectTrigger>
         <SelectContent>
           {options.map((o) => (
             <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
