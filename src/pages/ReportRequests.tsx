@@ -485,22 +485,6 @@ export default function ReportRequests() {
                   </div>
                 </div>
 
-                {/* Admin Notes */}
-                <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
-                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-foreground">
-                    <MessageSquare className="h-3.5 w-3.5 text-brand-200/75" />
-                    Admin Notes
-                  </Label>
-                  <Textarea
-                    aria-label="Admin Notes"
-                    placeholder="Add internal notes or a response to the client..."
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    rows={4}
-                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-background/70 text-sm leading-6 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-                  />
-                </div>
-
                 {/* Status Selector */}
                 <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
                   <Label className="text-sm font-semibold text-foreground dark:text-foreground">Update Status</Label>
@@ -533,6 +517,22 @@ export default function ReportRequests() {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Admin Notes */}
+                <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
+                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-foreground">
+                    <MessageSquare className="h-3.5 w-3.5 text-brand-200/75" />
+                    Admin Notes
+                  </Label>
+                  <Textarea
+                    aria-label="Admin Notes"
+                    placeholder="Add internal notes or a response to the client..."
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    rows={4}
+                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-background/70 text-sm leading-6 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  />
                 </div>
               </div>
             );
