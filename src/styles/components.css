@@ -995,6 +995,10 @@
     @apply justify-center gap-2 border border-transparent text-center shadow-sm hover:-translate-y-0.5 hover:border-primary/25 data-[state=active]:border-primary/45 data-[state=active]:ring-1 data-[state=active]:ring-primary/25;
   }
 
+  .reports-investment-mode-label {
+    @apply whitespace-nowrap text-[15px] font-bold leading-snug tracking-tight antialiased sm:text-base;
+  }
+
   .reports-investment-mode-tab svg {
     @apply shrink-0 transition-transform duration-200;
   }
