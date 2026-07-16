@@ -361,6 +361,7 @@ const App = () => (
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
                 <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
                 <Route path="admin/agent-quality" element={<AgentQuality />} />
+                <Route path="admin/aml/cases" element={<AmlCases />} />
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
