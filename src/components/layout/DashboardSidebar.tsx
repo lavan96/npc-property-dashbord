@@ -166,6 +166,29 @@ const adminItems = [
   { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
 ];
 
+// Phase 2 — AML/CTF Compliance sidebar group. Every entry is gated by the
+// aml_ctf feature flag AND the user's assigned AML role via useAmlAccess.
+const amlNavItems: Array<{
+  title: string;
+  url: string;
+  icon: any;
+  capability: AmlCapability;
+}> = [
+  { title: 'AML Overview', url: '/admin/aml', icon: ShieldCheck, capability: 'aml.view' },
+  { title: 'Intake Queue', url: '/admin/aml/intake', icon: Inbox, capability: 'aml.view' },
+  { title: 'Customer Cases', url: '/admin/aml/cases', icon: FileStack, capability: 'aml.view' },
+  { title: 'Verification', url: '/admin/aml/verification', icon: ShieldCheck, capability: 'aml.view' },
+  { title: 'Screening', url: '/admin/aml/screening', icon: AlertTriangle, capability: 'aml.view' },
+  { title: 'Risk', url: '/admin/aml/risk', icon: Gauge, capability: 'aml.view' },
+  { title: 'Counterparty', url: '/admin/aml/counterparty', icon: Users, capability: 'aml.view' },
+  { title: 'Monitoring', url: '/admin/aml/monitoring', icon: Activity, capability: 'aml.view' },
+  { title: 'Investigations', url: '/admin/aml/investigations', icon: FileSignature, capability: 'aml.investigate' },
+  { title: 'AUSTRAC Reporting', url: '/admin/aml/austrac', icon: FileText, capability: 'aml.report' },
+  { title: 'Governance', url: '/admin/aml/governance', icon: ClipboardList, capability: 'aml.view' },
+  { title: 'Configuration', url: '/admin/aml/configuration', icon: Settings, capability: 'aml.configure' },
+];
+
+
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
