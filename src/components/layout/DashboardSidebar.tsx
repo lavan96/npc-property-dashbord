@@ -53,6 +53,8 @@ import {
 } from '@/components/ui/sidebar';
 import { useWhiteLabel } from '@/contexts/WhiteLabelContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAmlAccess } from '@/hooks/useAmlAccess';
+import { hasAmlCapability, type AmlCapability } from '@/lib/aml/permissions';
 import { BrandLockup, BrandLogo } from '@/components/branding/BrandAssets';
 import { cn } from '@/lib/utils';
 
