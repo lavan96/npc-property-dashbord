@@ -557,6 +557,22 @@ export const PageSchema = z.object({
       mime: z.string(),
       dpi: z.number().nullable().optional(),
     }).optional(),
+    // C5 — pdf-page-output-policy-v1. Authoritative page output policy; the
+    // legacy `background.underlay` flag is kept in sync for backward compat.
+    pdfImport: z.object({
+      version: z.literal('pdf-page-output-policy-v1'),
+      finalMode: z.enum(['semantic', 'hybrid', 'pixel-perfect']),
+      outputStrategy: z.enum(['native', 'raster-only']),
+      sourceRasterRole: z.enum(['none', 'editor-reference', 'final-output']),
+      nativeLayerPolicy: z.enum(['editable', 'locked']),
+      decision: z.object({
+        score: z.number().nullable(),
+        action: z.string(),
+        reason: z.string(),
+        decidedAt: z.string(),
+        decidedBy: z.enum(['quality-gate', 'operator', 'migration']),
+      }).optional(),
+    }).optional(),
   }).passthrough().optional(),
 });
 
