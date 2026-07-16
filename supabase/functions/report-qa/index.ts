@@ -976,6 +976,90 @@ function buildStructuredCitations(chunks: RetrievedChunk[]): Array<{
   }));
 }
 
+type ReportQAPersistTurnArgs = {
+  conversationId: string | null | undefined;
+  userId?: string | null;
+  question: unknown;
+  assistantText: unknown;
+  modelProvider?: string | null;
+  modelVersion?: string | null;
+  citations?: unknown[] | null;
+  comparisonMode?: boolean;
+  promptVersion?: string;
+  toolInvocations?: unknown[] | null;
+  streamId?: string | null;
+  fallbackAssistantText: string;
+  source: string;
+};
+
+async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs): Promise<void> {
+  const conversationId = typeof args.conversationId === 'string' && args.conversationId.trim()
+    ? args.conversationId.trim()
+    : null;
+  if (!conversationId) return;
+
+  const questionText = sanitizeForPostgres(String(args.question ?? '').trim() || '[Question not captured]');
+  const assistantTextRaw = String(args.assistantText ?? '').trim();
+  const assistantText = sanitizeForPostgres(assistantTextRaw || args.fallbackAssistantText);
+  const nowIso = new Date().toISOString();
+  const safeToolInvocations = Array.isArray(args.toolInvocations) ? args.toolInvocations : [];
+  const safeCitations = Array.isArray(args.citations) && args.citations.length > 0 ? args.citations : null;
+
+  console.log('[report-qa] Persisting Q&A turn', {
+    source: args.source,
+    conversationId,
+    userLen: questionText.length,
+    assistantLen: assistantText.length,
+    capturedAssistant: assistantTextRaw.length > 0,
+    toolCount: safeToolInvocations.length,
+    streamId: args.streamId || null,
+  });
+
+  const userInsert = await supabase.from('report_qa_messages').insert({
+    conversation_id: conversationId,
+    role: 'user',
+    content: questionText,
+    sent_by: args.userId || null,
+    stream_id: args.streamId || null,
+  });
+  if (userInsert.error) {
+    console.error('[report-qa] User message persist failed:', userInsert.error);
+  }
+
+  const assistantInsert = await supabase.from('report_qa_messages').insert({
+    conversation_id: conversationId,
+    role: 'assistant',
+    content: assistantText,
+    model_provider: args.modelProvider || null,
+    citations: safeCitations,
+    comparison_mode: Boolean(args.comparisonMode),
+    prompt_version: args.promptVersion || PROMPT_VERSION,
+    model_version: args.modelVersion || null,
+    tool_invocations: safeToolInvocations,
+    stream_id: args.streamId || null,
+  });
+  if (assistantInsert.error) {
+    console.error('[report-qa] Assistant message persist failed:', assistantInsert.error);
+  }
+
+  const convUpdate = await supabase
+    .from('report_qa_conversations')
+    .update({ updated_at: nowIso })
+    .eq('id', conversationId);
+  if (convUpdate.error) {
+    console.error('[report-qa] Conversation timestamp update failed:', convUpdate.error);
+  }
+}
+
+function waitUntilIfAvailable(promise: Promise<unknown>): void {
+  try {
+    const runtime = (globalThis as any).EdgeRuntime;
+    if (runtime?.waitUntil) runtime.waitUntil(promise);
+  } catch {
+    // Ignore outside Supabase Edge Runtime.
+  }
+}
+
 /**
  * fetchUpstreamWithRetry — wraps fetch() with exponential backoff for
  * transient upstream failures (429 / 5xx / network errors). Used for all
