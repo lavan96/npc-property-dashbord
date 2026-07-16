@@ -1,0 +1,648 @@
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import {
+  Settings2, ShieldCheck, Palette, Package, Plug, Activity, Trash2, Plus, HeartPulse,
+  AlertTriangle, Info, DollarSign, Lock,
+} from "lucide-react";
+import {
+  amlTenantApi, AML_PROVIDER_CAPABILITIES,
+  type AmlTenantSummary, type AmlPlanTier, type AmlProviderConfig,
+  type AmlProviderCapability, type AmlProviderHealth, type AmlEntitlementOverride,
+} from "@/lib/aml/amlTenantApi";
+import { useAmlAccess } from "@/hooks/useAmlAccess";
+
+function fmtMoney(cents: number, currency = "AUD") {
+  return new Intl.NumberFormat("en-AU", { style: "currency", currency }).format((cents ?? 0) / 100);
+}
+function healthColor(status: AmlProviderHealth | null): string {
+  switch (status) {
+    case "ok": return "border-success/40 text-success";
+    case "degraded": return "border-yellow-500/40 text-yellow-500";
+    case "failing": return "border-destructive/40 text-destructive";
+    default: return "border-border text-muted-foreground";
+  }
+}
+
+export default function AmlConfiguration() {
+  const { isMlro } = useAmlAccess();
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<AmlTenantSummary | null>(null);
+
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const s = await amlTenantApi.summary();
+      setSummary(s);
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to load configuration");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { reload(); }, []);
+
+  if (loading || !summary) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            <Settings2 className="h-6 w-6 text-primary" /> AML Configuration
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics.
+          </p>
+        </div>
+        {!isMlro && (
+          <Alert className="max-w-md">
+            <Lock className="h-4 w-4" />
+            <AlertTitle>Read-only</AlertTitle>
+            <AlertDescription>Only the MLRO can change configuration.</AlertDescription>
+          </Alert>
+        )}
+      </div>
+
+      <SummaryTiles summary={summary} />
+
+      <Tabs defaultValue="branding" className="w-full">
+        <TabsList>
+          <TabsTrigger value="branding"><Palette className="h-4 w-4 mr-1.5" />Branding</TabsTrigger>
+          <TabsTrigger value="plan"><Package className="h-4 w-4 mr-1.5" />Plan & Entitlements</TabsTrigger>
+          <TabsTrigger value="providers"><Plug className="h-4 w-4 mr-1.5" />Providers</TabsTrigger>
+          <TabsTrigger value="metrics"><Activity className="h-4 w-4 mr-1.5" />Metrics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="branding" className="mt-4">
+          <BrandingPanel summary={summary} canWrite={isMlro} onSaved={reload} />
+        </TabsContent>
+        <TabsContent value="plan" className="mt-4">
+          <PlanPanel summary={summary} canWrite={isMlro} onSaved={reload} />
+        </TabsContent>
+        <TabsContent value="providers" className="mt-4">
+          <ProvidersPanel summary={summary} canWrite={isMlro} onSaved={reload} />
+        </TabsContent>
+        <TabsContent value="metrics" className="mt-4">
+          <MetricsPanel />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+/* -------------------- summary tiles -------------------- */
+
+function SummaryTiles({ summary }: { summary: AmlTenantSummary }) {
+  const activeProviders = summary.providers.filter((p) => p.active).length;
+  const failureRate = summary.metrics_30d.calls > 0
+    ? (summary.metrics_30d.failures / summary.metrics_30d.calls) * 100 : 0;
+  const plan = summary.plans.find((p) => p.key === summary.settings?.plan_tier_key);
+
+  const tiles = [
+    { label: "Plan", value: plan?.label ?? "—", icon: Package, sub: plan?.description ?? "" },
+    { label: "Active providers", value: String(activeProviders), icon: Plug, sub: `${summary.providers.length} total` },
+    { label: "30-day calls", value: summary.metrics_30d.calls.toLocaleString(), icon: Activity, sub: `${failureRate.toFixed(1)}% failure` },
+    { label: "30-day cost", value: fmtMoney(summary.metrics_30d.cost_cents), icon: DollarSign, sub: "across all providers" },
+  ];
+  return (
+    <div className="grid gap-3 md:grid-cols-4">
+      {tiles.map((t) => (
+        <Card key={t.label} className="border-border/60 bg-card/60">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{t.label}</span>
+              <t.icon className="h-3.5 w-3.5" />
+            </div>
+            <div className="mt-1 text-xl font-semibold">{t.value}</div>
+            {t.sub && <div className="text-[11px] text-muted-foreground truncate">{t.sub}</div>}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/* -------------------- branding tab -------------------- */
+
+function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
+  const s = summary.settings;
+  const [displayName, setDisplayName] = useState(s?.display_name ?? "");
+  const [contactEmail, setContactEmail] = useState(s?.contact_email ?? "");
+  const [mlroName, setMlroName] = useState(s?.mlro_contact_name ?? "");
+  const [mlroEmail, setMlroEmail] = useState(s?.mlro_contact_email ?? "");
+  const [supportUrl, setSupportUrl] = useState(s?.support_url ?? "");
+  const [timezone, setTimezone] = useState(s?.timezone ?? "Australia/Sydney");
+  const [locale, setLocale] = useState(s?.locale ?? "en-AU");
+  const [disposalGrace, setDisposalGrace] = useState(s?.disposal_grace_days ?? 7);
+  const [terminologyText, setTerminologyText] = useState(
+    JSON.stringify(s?.terminology_overrides ?? {}, null, 2)
+  );
+  const [saving, setSaving] = useState(false);
+
+  const locked = summary.locked_terminology_keys ?? [];
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      let termino: Record<string, string> = {};
+      try { termino = terminologyText.trim() ? JSON.parse(terminologyText) : {}; }
+      catch { toast.error("Terminology overrides must be valid JSON"); setSaving(false); return; }
+      await amlTenantApi.updateSettings({
+        display_name: displayName, contact_email: contactEmail || null,
+        mlro_contact_name: mlroName || null, mlro_contact_email: mlroEmail || null,
+        support_url: supportUrl || null, timezone, locale,
+        disposal_grace_days: Number(disposalGrace) || 0,
+        terminology_overrides: termino,
+      });
+      toast.success("Branding & terminology saved");
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message ?? "Save failed");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card className="border-border/60">
+        <CardHeader><CardTitle className="text-base">Tenant identity</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <FormRow label="Display name">
+            <Input value={displayName} disabled={!canWrite} onChange={(e) => setDisplayName(e.target.value)} />
+          </FormRow>
+          <FormRow label="Contact email">
+            <Input type="email" value={contactEmail} disabled={!canWrite} onChange={(e) => setContactEmail(e.target.value)} />
+          </FormRow>
+          <FormRow label="Support URL">
+            <Input value={supportUrl} disabled={!canWrite} onChange={(e) => setSupportUrl(e.target.value)} />
+          </FormRow>
+          <div className="grid grid-cols-2 gap-3">
+            <FormRow label="Locale">
+              <Input value={locale} disabled={!canWrite} onChange={(e) => setLocale(e.target.value)} />
+            </FormRow>
+            <FormRow label="Timezone">
+              <Input value={timezone} disabled={!canWrite} onChange={(e) => setTimezone(e.target.value)} />
+            </FormRow>
+          </div>
+          <FormRow label="Disposal grace (days)">
+            <Input type="number" min={0} value={disposalGrace} disabled={!canWrite}
+              onChange={(e) => setDisposalGrace(Number(e.target.value))} />
+          </FormRow>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader><CardTitle className="text-base">MLRO contact</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <FormRow label="Name">
+            <Input value={mlroName} disabled={!canWrite} onChange={(e) => setMlroName(e.target.value)} />
+          </FormRow>
+          <FormRow label="Email">
+            <Input type="email" value={mlroEmail} disabled={!canWrite} onChange={(e) => setMlroEmail(e.target.value)} />
+          </FormRow>
+          <div className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+            The MLRO contact appears on internal escalation banners and AUSTRAC signoff blocks.
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="md:col-span-2 border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" /> Terminology overrides
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Locked control names</AlertTitle>
+            <AlertDescription>
+              These regulatory terms cannot be renamed and will be dropped from any override:
+              <div className="mt-2 flex flex-wrap gap-1">
+                {locked.map((k) => (
+                  <Badge key={k} variant="outline" className="text-[10px]">{k}</Badge>
+                ))}
+              </div>
+            </AlertDescription>
+          </Alert>
+          <Label className="text-xs uppercase text-muted-foreground">JSON map (label → replacement text)</Label>
+          <Textarea
+            className="font-mono text-xs min-h-[160px]"
+            disabled={!canWrite}
+            value={terminologyText}
+            onChange={(e) => setTerminologyText(e.target.value)}
+            placeholder='{\n  "Customer Case": "Client Matter"\n}'
+          />
+        </CardContent>
+      </Card>
+
+      <div className="md:col-span-2 flex justify-end">
+        <Button disabled={!canWrite || saving} onClick={save}>{saving ? "Saving…" : "Save branding"}</Button>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- plan tab -------------------- */
+
+function PlanPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
+  const [selected, setSelected] = useState(summary.settings?.plan_tier_key ?? "starter");
+  const [overrides, setOverrides] = useState<AmlEntitlementOverride[]>(summary.overrides ?? []);
+  const [newKey, setNewKey] = useState("");
+  const [newValue, setNewValue] = useState("");
+
+  useEffect(() => { setOverrides(summary.overrides); }, [summary.overrides]);
+
+  const activePlan = summary.plans.find((p) => p.key === selected);
+  const effectiveEntries = useMemo(() => {
+    const base = (activePlan?.entitlements ?? {}) as Record<string, any>;
+    const merged: Record<string, any> = { ...base };
+    for (const o of overrides) merged[o.entitlement_key] = o.value;
+    return Object.entries(merged);
+  }, [activePlan, overrides]);
+
+  const changePlan = async (key: string) => {
+    setSelected(key);
+    if (!canWrite) return;
+    try {
+      await amlTenantApi.updateSettings({ plan_tier_key: key });
+      toast.success(`Plan switched to ${key}`);
+      onSaved();
+    } catch (e: any) { toast.error(e.message ?? "Plan switch failed"); }
+  };
+
+  const addOverride = async () => {
+    if (!newKey.trim()) return;
+    let parsed: any = newValue;
+    try { parsed = JSON.parse(newValue); } catch { /* string ok */ }
+    try {
+      const o = await amlTenantApi.upsertEntitlementOverride({ entitlement_key: newKey.trim(), value: parsed });
+      setOverrides((prev) => {
+        const others = prev.filter((x) => x.entitlement_key !== o.entitlement_key);
+        return [...others, o];
+      });
+      setNewKey(""); setNewValue("");
+      toast.success("Override saved");
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const removeOverride = async (id: string) => {
+    try {
+      await amlTenantApi.deleteEntitlementOverride(id);
+      setOverrides((prev) => prev.filter((o) => o.id !== id));
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-3">
+      {summary.plans.map((p) => (
+        <PlanCard key={p.id} plan={p} active={p.key === selected} canWrite={canWrite} onChoose={() => changePlan(p.key)} />
+      ))}
+
+      <Card className="md:col-span-3 border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base">Effective entitlements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow><TableHead>Key</TableHead><TableHead>Value</TableHead><TableHead>Source</TableHead><TableHead className="w-16"></TableHead></TableRow>
+            </TableHeader>
+            <TableBody>
+              {effectiveEntries.map(([k, v]) => {
+                const override = overrides.find((o) => o.entitlement_key === k);
+                return (
+                  <TableRow key={k}>
+                    <TableCell className="font-mono text-xs">{k}</TableCell>
+                    <TableCell className="font-mono text-xs">{typeof v === "string" ? v : JSON.stringify(v)}</TableCell>
+                    <TableCell>
+                      {override
+                        ? <Badge variant="outline" className="border-primary/40 text-primary">Override</Badge>
+                        : <Badge variant="outline">Plan default</Badge>}
+                    </TableCell>
+                    <TableCell>
+                      {override && canWrite && (
+                        <Button size="icon" variant="ghost" onClick={() => removeOverride(override.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+
+          {canWrite && (
+            <div className="mt-4 flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[180px]">
+                <Label className="text-xs">Entitlement key</Label>
+                <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="max_active_cases" />
+              </div>
+              <div className="flex-1 min-w-[180px]">
+                <Label className="text-xs">Value (JSON or string)</Label>
+                <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="500" />
+              </div>
+              <Button onClick={addOverride}><Plus className="h-3.5 w-3.5 mr-1" />Add override</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PlanCard({ plan, active, canWrite, onChoose }: {
+  plan: AmlPlanTier; active: boolean; canWrite: boolean; onChoose: () => void;
+}) {
+  const features: string[] = (plan.entitlements?.features as string[]) ?? [];
+  return (
+    <Card className={`border-border/60 ${active ? "ring-1 ring-primary" : ""}`}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{plan.label}</CardTitle>
+          {active && <Badge className="bg-primary/20 text-primary border border-primary/40">Current</Badge>}
+        </div>
+        <div className="text-xs text-muted-foreground">{plan.description}</div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="text-2xl font-semibold">{fmtMoney(plan.monthly_price_cents)}<span className="text-xs text-muted-foreground"> /mo</span></div>
+        <div className="flex flex-wrap gap-1">
+          {features.slice(0, 8).map((f) => (
+            <Badge key={f} variant="secondary" className="text-[10px]">{f}</Badge>
+          ))}
+        </div>
+        <Button size="sm" variant={active ? "outline" : "default"} disabled={!canWrite || active} onClick={onChoose} className="w-full">
+          {active ? "Selected" : "Choose plan"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------- providers tab -------------------- */
+
+function ProvidersPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
+  const [editing, setEditing] = useState<Partial<AmlProviderConfig> | null>(null);
+
+  const groups = useMemo(() => {
+    const by: Record<string, AmlProviderConfig[]> = {};
+    for (const p of summary.providers) (by[p.capability] ??= []).push(p);
+    return by;
+  }, [summary.providers]);
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this provider configuration?")) return;
+    await amlTenantApi.deleteProvider(id); toast.success("Provider deleted"); onSaved();
+  };
+  const setHealth = async (id: string, status: AmlProviderHealth) => {
+    await amlTenantApi.setProviderHealth(id, status); toast.success(`Marked ${status}`); onSaved();
+  };
+
+  return (
+    <div className="space-y-4">
+      {canWrite && (
+        <div className="flex justify-end">
+          <Button onClick={() => setEditing({ capability: "idv", provider_key: "", priority: 1, cost_per_unit_cents: 0, currency: "AUD", active: true, config: {} })}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add provider
+          </Button>
+        </div>
+      )}
+
+      {AML_PROVIDER_CAPABILITIES.map((cap) => (
+        <Card key={cap.key} className="border-border/60">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Plug className="h-4 w-4" /> {cap.label}
+              <Badge variant="outline" className="text-[10px]">{cap.key}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(groups[cap.key] ?? []).length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                No providers configured. Suggested: {cap.suggested.join(", ")}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Provider</TableHead><TableHead>Priority</TableHead>
+                    <TableHead>Cost/unit</TableHead><TableHead>Health</TableHead>
+                    <TableHead>Active</TableHead><TableHead className="w-32">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groups[cap.key].map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>
+                        <div className="font-medium">{p.display_label ?? p.provider_key}</div>
+                        <div className="text-[11px] text-muted-foreground">{p.provider_key}</div>
+                      </TableCell>
+                      <TableCell>{p.priority}</TableCell>
+                      <TableCell>{fmtMoney(p.cost_per_unit_cents, p.currency)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={healthColor(p.last_health_status)}>
+                          {p.last_health_status ?? "unknown"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={p.active ? "default" : "secondary"}>{p.active ? "Yes" : "No"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {canWrite && (
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => setEditing(p)} title="Edit">
+                              <Settings2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setHealth(p.id, "ok")} title="Mark healthy">
+                              <HeartPulse className="h-3.5 w-3.5 text-success" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setHealth(p.id, "failing")} title="Mark failing">
+                              <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => remove(p.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+
+      <ProviderEditor editing={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onSaved(); }} />
+    </div>
+  );
+}
+
+function ProviderEditor({ editing, onClose, onSaved }: {
+  editing: Partial<AmlProviderConfig> | null; onClose: () => void; onSaved: () => void;
+}) {
+  const [form, setForm] = useState<Partial<AmlProviderConfig>>({});
+  useEffect(() => { if (editing) setForm(editing); }, [editing]);
+  const setF = (patch: Partial<AmlProviderConfig>) => setForm((f) => ({ ...f, ...patch }));
+
+  const save = async () => {
+    try {
+      if (!form.capability || !form.provider_key?.trim()) {
+        toast.error("Capability and provider key are required"); return;
+      }
+      await amlTenantApi.upsertProvider(form);
+      toast.success("Provider saved");
+      onSaved();
+    } catch (e: any) { toast.error(e.message ?? "Save failed"); }
+  };
+
+  return (
+    <Dialog open={!!editing} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{form.id ? "Edit provider" : "Add provider"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <FormRow label="Capability">
+            <Select value={form.capability ?? "idv"} onValueChange={(v) => setF({ capability: v as AmlProviderCapability })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {AML_PROVIDER_CAPABILITIES.map((c) => (
+                  <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormRow>
+          <FormRow label="Provider key">
+            <Input value={form.provider_key ?? ""} onChange={(e) => setF({ provider_key: e.target.value })} placeholder="frankieone" />
+          </FormRow>
+          <FormRow label="Display label">
+            <Input value={form.display_label ?? ""} onChange={(e) => setF({ display_label: e.target.value })} />
+          </FormRow>
+          <div className="grid grid-cols-2 gap-2">
+            <FormRow label="Priority"><Input type="number" value={form.priority ?? 1} onChange={(e) => setF({ priority: Number(e.target.value) })} /></FormRow>
+            <FormRow label="Cost / unit (cents)">
+              <Input type="number" value={form.cost_per_unit_cents ?? 0} onChange={(e) => setF({ cost_per_unit_cents: Number(e.target.value) })} />
+            </FormRow>
+          </div>
+          <FormRow label="Secret reference (name of stored secret)">
+            <Input value={form.secret_ref ?? ""} onChange={(e) => setF({ secret_ref: e.target.value })} placeholder="FRANKIEONE_API_KEY" />
+          </FormRow>
+          <div className="flex items-center justify-between rounded-md border border-border/60 p-2">
+            <Label htmlFor="active" className="text-sm">Active</Label>
+            <Switch id="active" checked={!!form.active} onCheckedChange={(v) => setF({ active: v })} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* -------------------- metrics tab -------------------- */
+
+function MetricsPanel() {
+  const [rollup, setRollup] = useState<{ providers: any[]; timeline: any[]; days: number } | null>(null);
+  const [days, setDays] = useState(30);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try { setRollup(await amlTenantApi.metricsRollup(days)); }
+      finally { setLoading(false); }
+    })();
+  }, [days]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Label className="text-xs">Window:</Label>
+        {[7, 30, 90].map((d) => (
+          <Button key={d} size="sm" variant={days === d ? "default" : "outline"} onClick={() => setDays(d)}>
+            {d}d
+          </Button>
+        ))}
+      </div>
+
+      {loading || !rollup ? (
+        <Skeleton className="h-40 w-full" />
+      ) : rollup.providers.length === 0 ? (
+        <Card className="border-border/60">
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            No provider metrics recorded yet. Metrics are captured automatically when integrated verification/screening functions run.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border/60">
+          <CardHeader><CardTitle className="text-base">Provider health over last {rollup.days} days</CardTitle></CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Capability</TableHead><TableHead>Provider</TableHead>
+                  <TableHead>Calls</TableHead><TableHead>Failures</TableHead>
+                  <TableHead>Failure rate</TableHead><TableHead>Avg latency</TableHead>
+                  <TableHead>Cost</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rollup.providers.map((p, i) => (
+                  <TableRow key={`${p.capability}-${p.provider_key}-${i}`}>
+                    <TableCell><Badge variant="outline">{p.capability}</Badge></TableCell>
+                    <TableCell>{p.provider_key}</TableCell>
+                    <TableCell>{p.calls.toLocaleString()}</TableCell>
+                    <TableCell>{p.failures.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <span className={p.failure_rate > 0.1 ? "text-destructive" : p.failure_rate > 0.03 ? "text-yellow-500" : "text-success"}>
+                        {(p.failure_rate * 100).toFixed(1)}%
+                      </span>
+                    </TableCell>
+                    <TableCell>{p.avg_latency_ms} ms</TableCell>
+                    <TableCell>{fmtMoney(p.cost_cents)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* -------------------- form row helper -------------------- */
+
+function FormRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs uppercase text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
