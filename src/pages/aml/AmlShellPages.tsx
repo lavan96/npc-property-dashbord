@@ -38,11 +38,5 @@ export const AmlGovernance = () => (
   />
 );
 
-export const AmlConfiguration = () => (
-  <AmlShellPage
-    title="Configuration"
-    description="Tenant, mandatory controls, risk thresholds, and provider connections."
-    icon={Settings2}
-    phaseLabel="Wires in Phase 0 tenant surface (Configuration UI in a later phase)"
-  />
-);
+export { default as AmlConfiguration } from "./AmlConfiguration";
+
