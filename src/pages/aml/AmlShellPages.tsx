@@ -33,14 +33,7 @@ export const AmlMonitoring = () => (
   />
 );
 
-export const AmlInvestigations = () => (
-  <AmlShellPage
-    title="Investigations"
-    description="Analyst and reviewer workspace for escalated cases and EDD workflow."
-    icon={FileWarning}
-    phaseLabel="Wires in Phases 5 & 9"
-  />
-);
+export { default as AmlInvestigations } from "./AmlInvestigations";
 
 export const AmlAustracReporting = () => (
   <AmlShellPage
