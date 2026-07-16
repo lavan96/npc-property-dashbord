@@ -79,6 +79,13 @@ import MarketQAQuality from "./pages/admin/MarketQAQuality";
 import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
 import AgentQuality from "./pages/admin/AgentQuality";
 import AmlCases from "./pages/aml/AmlCases";
+import AmlOverview from "./pages/aml/AmlOverview";
+import {
+  AmlIntakeQueue, AmlVerification, AmlScreening, AmlRisk, AmlCounterparty,
+  AmlMonitoring, AmlInvestigations, AmlAustracReporting, AmlGovernance, AmlConfiguration,
+} from "./pages/aml/AmlShellPages";
+import { AmlLayout } from "@/components/aml/AmlLayout";
+import { AmlGuard } from "@/components/aml/AmlGuard";
 import AgentMemoryManager from "./pages/agent/MemoryManager";
 import AgentInsights from "./pages/agent/AgentInsights";
 import AgentPlans from "./pages/agent/AgentPlans";
