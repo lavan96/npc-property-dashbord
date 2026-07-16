@@ -816,6 +816,12 @@ export async function extractPdfViaDocling(
           parse_guardrails: parseGuardrails,
           artifact_guardrails: artifactGuardrails,
           artifact_contract_version: job.result_payload?.artifact_contract_version ?? null,
+          // C2.4: persist the explicit per-page manifest path + contract version
+          // so get_artifacts resolves the preferred source directly instead of
+          // relying only on the derived `${jobId}/pages-manifest.json` fallback.
+          per_page_docling_manifest_path: job.result_payload?.per_page_docling_manifest_path ?? null,
+          per_page_docling_artifact_version: job.result_payload?.per_page_docling_artifact_version
+            ?? job.result_payload?.per_page_docling_contract_version ?? null,
           docling_page_rebase_version: job.result_payload?.docling_page_rebase_version ?? null,
           chunk_merge_validation_version: job.result_payload?.chunk_merge_validation_version ?? null,
           terminal_state_version: job.result_payload?.terminal_state_version ?? null,

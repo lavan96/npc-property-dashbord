@@ -13,6 +13,9 @@ export interface PageContextSourceRenderArtifact {
   tablesPath: string | null;
   picturesPath: string | null;
   summaryPath: string | null;
+  // C2.2: optional OCR + vector artifacts.
+  ocrPath?: string | null;
+  vectorsPath?: string | null;
   width: number | null;
   height: number | null;
   hasParentGlobalArtifacts: boolean;
@@ -75,6 +78,8 @@ export function buildPageContextRenderArtifactManifest(options: {
       tablesPath: ctx.artifacts.tables_path ?? null,
       picturesPath: ctx.artifacts.pictures_path ?? null,
       summaryPath: ctx.artifacts.summary_path ?? null,
+      ocrPath: ctx.artifacts.ocr_path ?? null,
+      vectorsPath: ctx.artifacts.vectors_path ?? null,
       width: ctx.width ?? null,
       height: ctx.height ?? null,
       hasParentGlobalArtifacts: Boolean(ctx.flags.has_parent_global_artifacts),
@@ -134,6 +139,8 @@ export function pageContextRenderManifestToReviewArtifacts(
         tablesPath: page.tablesPath,
         picturesPath: page.picturesPath,
         summaryPath: page.summaryPath,
+        ocrPath: page.ocrPath,
+        vectorsPath: page.vectorsPath,
         width: page.width,
         height: page.height,
         hasParentGlobalArtifacts: page.hasParentGlobalArtifacts,
