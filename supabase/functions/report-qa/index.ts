@@ -1912,7 +1912,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           });
 
           const structuredCitationsAgent = buildStructuredCitations(retrievedChunksForCitations);
-          const agentStreamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+          const agentStreamId = streamId;
 
           // Best-effort checkpoint so dropped streams are diagnosable.
           try {
@@ -1978,6 +1978,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                   streamId: agentStreamId,
                   fallbackAssistantText: '⚠️ Agent completed but text could not be captured. Please retry.',
                   source: 'agent-stream',
+                  persistUser: false,
                 });
               } catch (persistErr) {
                 console.error('[report-qa] Failed to persist agent messages:', persistErr);
