@@ -355,8 +355,9 @@ export default function FinancePortalPurchaseFileDetail() {
             
             <div className="grid gap-4 md:grid-cols-2">
               <NpcHandoffCard purchaseFileId={fileId!} />
-              <EntityCommentsThread purchaseFileId={fileId!} entityType="purchase_file" title="File comments" />
+              <LimitedAmlStatusCard purchaseFileId={fileId!} clientId={data.client_id} />
             </div>
+            <EntityCommentsThread purchaseFileId={fileId!} entityType="purchase_file" title="File comments" />
             <NudgeSequencesPanel purchaseFileId={fileId!} clientId={data.client_id} />
           </div>
 
