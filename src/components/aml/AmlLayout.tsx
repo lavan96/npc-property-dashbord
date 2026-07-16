@@ -21,6 +21,7 @@ const TABS: AmlTab[] = [
   { label: "Screening", to: "/admin/aml/screening", capability: "aml.view" },
   { label: "Risk", to: "/admin/aml/risk", capability: "aml.view" },
   { label: "Counterparty", to: "/admin/aml/counterparty", capability: "aml.view" },
+  { label: "Finance Comparison", to: "/admin/aml/finance", capability: "aml.investigate" },
   { label: "Monitoring", to: "/admin/aml/monitoring", capability: "aml.view" },
   { label: "Investigations", to: "/admin/aml/investigations", capability: "aml.investigate", restrictedNote: "Analyst+" },
   { label: "AUSTRAC Reporting", to: "/admin/aml/austrac", capability: "aml.report", restrictedNote: "MLRO" },
