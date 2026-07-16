@@ -249,6 +249,18 @@ export function DashboardSidebar() {
     }),
   };
 
+  // Phase 2 — AML/CTF Compliance group. Only rendered when the tenant has
+  // aml_ctf enabled and the current user has at least one AML role assigned.
+  const amlGroupedItems = (() => {
+    if (aml.loading || !aml.flagEnabled || !aml.hasAnyRole) return null;
+    const items = amlNavItems
+      .filter((item) => hasAmlCapability(aml.roles, item.capability))
+      .map(({ capability, ...rest }) => rest);
+    if (items.length === 0) return null;
+    return { title: 'AML/CTF Compliance', items };
+  })();
+
+
   const renderNavigationItem = (item: (typeof navigationItems)[number], isAdministration = false) => {
     const active = isActive(item.url);
 
