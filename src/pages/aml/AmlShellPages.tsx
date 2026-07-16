@@ -19,6 +19,8 @@ export { default as AmlCounterparty } from "./AmlCounterparty";
 
 export { default as AmlFinance } from "./AmlFinance";
 
+export { default as AmlTransactions } from "./AmlTransactions";
+
 export const AmlMonitoring = () => (
   <AmlShellPage
     title="Ongoing Monitoring"

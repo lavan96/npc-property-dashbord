@@ -1,0 +1,157 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export type AmlTransactionKind = "purchase" | "sale" | "refinance" | "off_the_plan" | "auction" | "private_treaty" | "other";
+export type AmlTransactionStatus = "draft" | "under_contract" | "unconditional" | "settled" | "terminated";
+export type AmlPartyType = "buyer" | "seller" | "guarantor" | "agent" | "solicitor" | "mortgagee" | "beneficiary" | "other";
+export type AmlCounterpartyCaseStatus = "open" | "in_progress" | "awaiting_info" | "cleared" | "escalated" | "closed";
+export type AmlCpRequestStatus = "pending" | "sent" | "awaiting_response" | "resolved" | "waived" | "escalated";
+
+export interface AmlTransaction {
+  id: string;
+  case_id: string;
+  purchase_file_id: string | null;
+  kind: AmlTransactionKind;
+  status: AmlTransactionStatus;
+  reference: string | null;
+  property_address: string | null;
+  contract_date: string | null;
+  settlement_date: string | null;
+  original_settlement_date: string | null;
+  purchase_price: number | null;
+  deposit_amount: number | null;
+  currency: string;
+  source: string;
+  notes: string | null;
+  metadata: Record<string, any>;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlTransactionParty {
+  id: string;
+  transaction_id: string;
+  case_id: string;
+  party_type: AmlPartyType;
+  capacity: string | null;
+  display_name: string;
+  entity_id: string | null;
+  external_reference: string | null;
+  contact: Record<string, any>;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlTransactionEvent {
+  id: string;
+  transaction_id: string;
+  case_id: string;
+  category: string;
+  summary: string;
+  payload: Record<string, any>;
+  actor_id: string | null;
+  actor_label: string | null;
+  prev_hash: string | null;
+  row_hash: string | null;
+  created_at: string;
+}
+
+export interface AmlCounterpartyCase {
+  id: string;
+  case_id: string;
+  transaction_id: string | null;
+  party_id: string | null;
+  subject_display_name: string;
+  subject_type: string;
+  status: AmlCounterpartyCaseStatus;
+  risk_rating: string | null;
+  assigned_analyst_id: string | null;
+  notes: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlCounterpartyRequest {
+  id: string;
+  counterparty_case_id: string;
+  case_id: string;
+  request_type: string;
+  channel: string;
+  status: AmlCpRequestStatus;
+  due_date: string | null;
+  summary: string;
+  detail: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlCounterpartyAttempt {
+  id: string;
+  request_id: string;
+  counterparty_case_id: string;
+  attempted_at: string;
+  channel: string;
+  outcome: string;
+  notes: string | null;
+  actor_id: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export interface AmlSettlementGateStatus {
+  gate_enabled: boolean;
+  blocked: boolean;
+  reasons: string[];
+  aml_case_id: string | null;
+  case_status?: string;
+  risk_rating?: string | null;
+}
+
+async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke("aml-transactions", { body: payload });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as T;
+}
+
+export const amlTransactionsApi = {
+  listTransactions: (case_id: string) =>
+    invoke<{ transactions: AmlTransaction[] }>({ op: "list_transactions", case_id }),
+  upsertTransaction: (transaction: Partial<AmlTransaction> & { case_id: string }) =>
+    invoke<{ transaction: AmlTransaction }>({ op: "upsert_transaction", transaction }),
+  deleteTransaction: (id: string) => invoke<{ ok: true }>({ op: "delete_transaction", id }),
+  listEvents: (transaction_id: string) =>
+    invoke<{ events: AmlTransactionEvent[] }>({ op: "list_events", transaction_id }),
+  appendEvent: (transaction_id: string, category: string, summary: string, payload: Record<string, any> = {}) =>
+    invoke<{ ok: true }>({ op: "append_event", transaction_id, category, summary, payload }),
+
+  listParties: (transaction_id: string) =>
+    invoke<{ parties: AmlTransactionParty[] }>({ op: "list_parties", transaction_id }),
+  upsertParty: (party: Partial<AmlTransactionParty> & { transaction_id: string; case_id: string; display_name: string; party_type: AmlPartyType }) =>
+    invoke<{ party: AmlTransactionParty }>({ op: "upsert_party", party }),
+  deleteParty: (id: string) => invoke<{ ok: true }>({ op: "delete_party", id }),
+
+  listCpCases: (case_id: string) =>
+    invoke<{ counterparty_cases: AmlCounterpartyCase[] }>({ op: "list_cp_cases", case_id }),
+  upsertCpCase: (counterparty_case: Partial<AmlCounterpartyCase> & { case_id: string; subject_display_name: string }) =>
+    invoke<{ counterparty_case: AmlCounterpartyCase }>({ op: "upsert_cp_case", counterparty_case }),
+  deleteCpCase: (id: string) => invoke<{ ok: true }>({ op: "delete_cp_case", id }),
+
+  listCpRequests: (params: { counterparty_case_id?: string; case_id?: string }) =>
+    invoke<{ requests: AmlCounterpartyRequest[] }>({ op: "list_cp_requests", ...params }),
+  upsertCpRequest: (request: Partial<AmlCounterpartyRequest> & { counterparty_case_id: string; case_id: string; request_type: string; summary: string }) =>
+    invoke<{ request: AmlCounterpartyRequest }>({ op: "upsert_cp_request", request }),
+  resolveCpRequest: (id: string, status: AmlCpRequestStatus, metadata?: Record<string, any>) =>
+    invoke<{ request: AmlCounterpartyRequest }>({ op: "resolve_cp_request", id, status, metadata }),
+
+  listCpAttempts: (request_id: string) =>
+    invoke<{ attempts: AmlCounterpartyAttempt[] }>({ op: "list_cp_attempts", request_id }),
+  addCpAttempt: (attempt: Partial<AmlCounterpartyAttempt> & { request_id: string; counterparty_case_id: string; channel: string }) =>
+    invoke<{ attempt: AmlCounterpartyAttempt }>({ op: "add_cp_attempt", attempt }),
+
+  settlementGateStatus: (purchase_file_id: string) =>
+    invoke<AmlSettlementGateStatus>({ op: "settlement_gate_status", purchase_file_id }),
+};
