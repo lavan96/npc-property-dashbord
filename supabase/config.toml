@@ -6,6 +6,12 @@ verify_jwt = true
 [functions.aml-client-portal]
 verify_jwt = false
 
+[functions.aml-verification]
+verify_jwt = true
+
+[functions.aml-provider-webhook]
+verify_jwt = false
+
 
 
 
