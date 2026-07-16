@@ -39,6 +39,8 @@ import {
 } from '../ingestion/visualQuality';
 import type { DoclingRasterByPage } from './docling/doclingTypes';
 import type { DoclingPlanMode } from './docling/mapDoclingToPagePlan';
+import { decidePageFidelity, applyPageDecisionsToTemplate } from './pageFidelityDecision';
+import type { PdfImportPagePolicy } from '../rendering/pdfImportPagePolicy';
 
 export const IMPORT_QUALITY_GATE_VERSION = 'import-quality-gate-v1';
 
@@ -78,6 +80,14 @@ export interface ImportQualityGateSummary {
   batchesCompleted: number;
   pagesScored: number;
   pagesUnscored: number[];
+  /** C6: per-page output policy decisions keyed by pageId. */
+  pageDecisions: Record<string, PdfImportPagePolicy>;
+  pagesNative: number;
+  pagesHybridFallback: number;
+  pagesPixelFallback: number;
+  pagesFallbackUnavailable: number;
+  /** C6: whether finalization must persist a changed template (repairs and/or decisions). */
+  templateChanged: boolean;
   pageCount: number;
   pagesNeedingReview: number;
   perPage: ImportQualityGatePageVerdict[];
@@ -163,6 +173,12 @@ function skippedSummary(
     batchesCompleted: 0,
     pagesScored: 0,
     pagesUnscored: [],
+    pageDecisions: {},
+    pagesNative: 0,
+    pagesHybridFallback: 0,
+    pagesPixelFallback: 0,
+    pagesFallbackUnavailable: 0,
+    templateChanged: false,
     pageCount: options.cdir?.pages?.length ?? 0,
     pagesNeedingReview: 0,
     perPage: [],
@@ -381,7 +397,37 @@ export async function runImportQualityGate(
       (sum, page) => sum + (page.warnings?.length ?? 0),
       0,
     );
+    // C6: per-page fidelity decisions from full-metric post-repair scores. Every
+    // scored page receives a truthful, applied output policy (not merely a
+    // recommendation); document-level recommendedFinalMode stays summary-only.
+    const decidedByPageId = new Map<string, PdfImportPagePolicy>();
+    const pageDecisions: Record<string, PdfImportPagePolicy> = {};
+    let pagesNative = 0;
+    let pagesHybridFallback = 0;
+    let pagesPixelFallback = 0;
+    let pagesFallbackUnavailable = 0;
+    let decisionManualReview = false;
+    for (const report of batched.pageReports) {
+      const pageId = (report as { pageId?: string }).pageId ?? `docling-page-${report.pageNumber}`;
+      const decision = decidePageFidelity({
+        score: report.overallScore,
+        hasSourceRaster: Boolean(rastersByPage[report.pageNumber]),
+        requestedMode: options.requestedMode,
+        decidedAt: now().toISOString(),
+      });
+      pageDecisions[pageId] = decision.policy;
+      decidedByPageId.set(pageId, decision.policy);
+      decisionManualReview = decisionManualReview || decision.manualReviewRequired;
+      if (decision.action === 'hybrid_fallback') pagesHybridFallback += 1;
+      else if (decision.action === 'pixel_fallback' || decision.action === 'pixel_requested') pagesPixelFallback += 1;
+      else if (decision.action === 'fallback_unavailable') pagesFallbackUnavailable += 1;
+      else pagesNative += 1;
+    }
+    const decided = applyPageDecisionsToTemplate(batched.template, decidedByPageId);
+    const templateChanged = decided.changed || batched.template !== options.template;
+
     const manualReviewRequired = batched.manualReviewRequired
+      || decisionManualReview
       || (finalScore !== null && finalScore < QUALITY_THRESHOLDS.repair);
 
     const summary: ImportQualityGateSummary = {
@@ -403,6 +449,12 @@ export async function runImportQualityGate(
       batchesCompleted: batched.batch.batchesCompleted,
       pagesScored: batched.batch.pagesScored,
       pagesUnscored: batched.batch.pagesUnscored,
+      pageDecisions,
+      pagesNative,
+      pagesHybridFallback,
+      pagesPixelFallback,
+      pagesFallbackUnavailable,
+      templateChanged,
       pageCount,
       pagesNeedingReview,
       perPage,
@@ -411,7 +463,7 @@ export async function runImportQualityGate(
     };
 
     return {
-      template: batched.template,
+      template: decided.template,
       recommendedFinalMode,
       repairPassesApplied: summary.repairPassesApplied,
       manualReviewRequired,

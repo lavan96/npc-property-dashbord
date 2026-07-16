@@ -185,8 +185,12 @@ describe('runImportQualityGate', () => {
     expect(res.summary.finalScore).toBe(0.94);
     expect(res.recommendedFinalMode).toBe('hybrid');
     expect(res.manualReviewRequired).toBe(false);
-    expect(res.template).toBe(repaired);
     expect(res.summary.perPage).toHaveLength(2);
+    // C6: healthy pages get an applied native output policy (not a fallback).
+    expect(res.summary.pagesNative).toBe(2);
+    expect(res.summary.pageDecisions['docling-page-1']?.outputStrategy).toBe('native');
+    expect((res.template.pages[0].meta as { pdfImport?: { outputStrategy: string } })?.pdfImport?.outputStrategy).toBe('native');
+    expect(res.summary.templateChanged).toBe(true);
   });
 
   it('flags manual review and recommends pixel fallback on a weak final score', async () => {
