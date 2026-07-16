@@ -195,6 +195,7 @@ export function DashboardSidebar() {
   const currentPath = location.pathname;
   const { settings } = useWhiteLabel();
   const { hasModuleAccess, isSuperadmin, loading: permissionsLoading } = usePermissions();
+  const aml = useAmlAccess();
   const isCollapsed = state === 'collapsed';
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   
