@@ -24,7 +24,7 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
   const { loading, flagEnabled, roles, hasAnyRole } = useAmlAccess();
   const location = useLocation();
   const requiresStepUp = AML_STEP_UP_CAPABILITIES.includes(capability);
-  const stepUpKey = `aml_step_up_ok:${capability}`;
+  const stepUpKey = `aml_step_up_session:${capability}`;
 
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [stepUpOk, setStepUpOk] = useState<boolean>(() => {
@@ -32,9 +32,8 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
     try {
       const raw = sessionStorage.getItem(stepUpKey);
       if (!raw) return false;
-      const ts = Number(raw);
-      // Re-prompt after 30 minutes of inactivity for restricted surfaces.
-      return Number.isFinite(ts) && Date.now() - ts < 30 * 60 * 1000;
+      const parsed = JSON.parse(raw) as { expires_at: string };
+      return !!parsed?.expires_at && new Date(parsed.expires_at).getTime() > Date.now();
     } catch {
       return false;
     }
@@ -45,6 +44,7 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
       setStepUpOpen(true);
     }
   }, [requiresStepUp, stepUpOk, hasAnyRole, flagEnabled, location.pathname]);
+
 
   if (loading) {
     return (
@@ -120,14 +120,15 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
           onCancel={() => {
             setStepUpOpen(false);
           }}
-          onConfirm={() => {
+          onConfirm={(payload) => {
             try {
-              sessionStorage.setItem(stepUpKey, String(Date.now()));
+              sessionStorage.setItem(stepUpKey, JSON.stringify(payload));
             } catch { /* ignore */ }
             setStepUpOk(true);
             setStepUpOpen(false);
           }}
         />
+
       </>
     );
   }

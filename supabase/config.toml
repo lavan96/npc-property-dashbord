@@ -36,6 +36,19 @@ verify_jwt = true
 [functions.aml-tenant]
 verify_jwt = true
 
+[functions.aml-step-up]
+verify_jwt = true
+
+[functions.aml-ai-guardrail]
+verify_jwt = true
+
+[functions.aml-release-gate]
+verify_jwt = true
+
+[functions.aml-resilience]
+verify_jwt = true
+
+
 
 
 

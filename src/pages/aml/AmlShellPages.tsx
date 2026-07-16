@@ -29,14 +29,8 @@ export { default as AmlAustracReporting } from "./AmlAustracReporting";
 
 export { default as AmlRecords } from "./AmlRecords";
 
-export const AmlGovernance = () => (
-  <AmlShellPage
-    title="Governance"
-    description="Policy pack versions, MLRO reviews, board reports, and audit chain verification."
-    icon={ClipboardList}
-    phaseLabel="Wires in Phase 13 (Security, Resilience & Governance)"
-  />
-);
+export { default as AmlGovernance } from "./AmlGovernance";
+
 
 export { default as AmlConfiguration } from "./AmlConfiguration";
 
