@@ -30,6 +30,10 @@ verify_jwt = false
 [functions.aml-reporting]
 verify_jwt = true
 
+[functions.aml-records]
+verify_jwt = true
+
+
 
 
 
