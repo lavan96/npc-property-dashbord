@@ -379,8 +379,10 @@ function buildPdfPageArtifactSignedUrls(
       ['raster', artifacts.raster_path],
       ['docling', artifacts.docling_path],
       ['blocks', artifacts.blocks_path],
+      ['ocr', artifacts.ocr_path],
       ['tables', artifacts.tables_path],
       ['pictures', artifacts.pictures_path],
+      ['vectors', artifacts.vectors_path],
       ['summary', artifacts.summary_path],
     ];
 
@@ -411,6 +413,7 @@ function summarizePdfPageManifest(manifest: any) {
 
   return {
     version: manifest.version ?? null,
+    artifact_contract_version: manifest.artifact_contract_version ?? null,
     parent_manifest_version: manifest.parent_manifest_version ?? null,
     global_artifact_copy_version: manifest.global_artifact_copy_version ?? null,
     source: manifest.source ?? null,
@@ -445,6 +448,9 @@ function buildPdfPageContexts(manifest: any) {
       const picturesPath = typeof page?.pictures_path === 'string' ? page.pictures_path : null;
       const summaryPath = typeof page?.summary_path === 'string' ? page.summary_path : null;
       const rasterPath = typeof page?.raster_path === 'string' ? page.raster_path : null;
+      // C2.2: OCR + vectors are optional; propagate when present.
+      const ocrPath = typeof page?.ocr_path === 'string' ? page.ocr_path : null;
+      const vectorsPath = typeof page?.vectors_path === 'string' ? page.vectors_path : null;
 
       const hasParentGlobalArtifacts = Boolean(
         doclingPath?.includes(expectedPrefix)
@@ -466,6 +472,8 @@ function buildPdfPageContexts(manifest: any) {
           pictures_path: picturesPath,
           summary_path: summaryPath,
           raster_path: rasterPath,
+          ocr_path: ocrPath,
+          vectors_path: vectorsPath,
         },
 
         source: {
@@ -484,6 +492,8 @@ function buildPdfPageContexts(manifest: any) {
           has_pictures: Boolean(picturesPath),
           has_summary: Boolean(summaryPath),
           has_raster: Boolean(rasterPath),
+          has_ocr: Boolean(ocrPath),
+          has_vectors: Boolean(vectorsPath),
           has_parent_global_artifacts: hasParentGlobalArtifacts,
         },
 
@@ -1197,8 +1207,10 @@ Deno.serve(async (req) => {
           ctx?.artifacts?.raster_path,
           ctx?.artifacts?.docling_path,
           ctx?.artifacts?.blocks_path,
+          ctx?.artifacts?.ocr_path,
           ctx?.artifacts?.tables_path,
           ctx?.artifacts?.pictures_path,
+          ctx?.artifacts?.vectors_path,
           ctx?.artifacts?.summary_path,
         ]),
       ];
@@ -1215,6 +1227,12 @@ Deno.serve(async (req) => {
         pdfPageManifestSummary,
         pdfPageContexts,
         pdfPageContextSummary,
+        // C2.1: return the signed-URL maps (previously computed but dropped) so
+        // the authenticated review UI can load private per-page artifacts. URLs
+        // are short-lived and never persisted.
+        pdfDiagnosticsSignedByPath,
+        pdfPageArtifactSignedUrls,
+        pdfDiagnosticsSignedUrlTtlSeconds: PDF_DIAGNOSTICS_SIGNED_URL_TTL_SECONDS,
         pageContextEntrypoint: {
           available: Boolean(pdfPageManifestPath && pdfPageManifest && pdfPageContexts.length > 0),
           source: pdfPageManifestSource,

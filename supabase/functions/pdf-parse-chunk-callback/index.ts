@@ -89,11 +89,15 @@ async function dispatchChunk(admin: Admin, jobId: string, chunk: ChunkRow): Prom
   }
   const { data: job } = await admin
     .from('pdf_import_jobs')
-    .select('mode, request_payload')
+    .select('mode, request_payload, plan_payload')
     .eq('id', jobId)
     .maybeSingle();
-  const mode = (job as any)?.mode ?? 'semantic';
   const rp = ((job as any)?.request_payload ?? {}) as Record<string, unknown>;
+  // C1.6: redispatch on the job's persisted effective mode + lane, not the raw
+  // requested mode with a dropped lane.
+  const plan = ((job as any)?.plan_payload ?? {}) as Record<string, unknown>;
+  const mode = String(plan.dispatch_effective_mode ?? (job as any)?.mode ?? 'semantic');
+  const selectedLane = String(plan.selected_lane ?? plan.recommended_lane ?? 'unplanned');
   await admin.from('pdf_import_chunks').update({
     status: 'dispatched',
     attempts: (chunk.attempts ?? 0) + 1,
@@ -110,9 +114,10 @@ async function dispatchChunk(admin: Admin, jobId: string, chunk: ChunkRow): Prom
     page_end: chunk.page_end,
     url: signedUrl,
     mode,
+    extractor_lane: selectedLane,
     callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`,
     callback_token: CALLBACK_TOKEN,
-    enable_picture_description: rp.description_tier !== 'off',
+    enable_picture_description: rp.description_tier !== 'off' && plan.requires_picture_description === true,
     include_doctags: true,
     include_markdown: rp.include_markdown !== false,
     redact_pii: Boolean(rp.redact_pii),
@@ -360,6 +365,10 @@ function computeMergedConfidence(texts: any[]): {
 const PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION = 'chunk-parent-pages-manifest-v1';
 const PER_PAGE_DOCLING_PARENT_VALIDATION_VERSION = 'per-page-docling-parent-validation-v1';
 const PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION = 'parent-global-page-artifact-copy-v1';
+// C2.3: contract identifier surfaced to consumers alongside the manifest so they
+// can recognize an OCR/vector-complete page-artifact manifest. Additive — the
+// legacy `version` field is preserved for backward compatibility.
+const PDF_PAGE_ARTIFACT_CONTRACT_VERSION = 'pdf-page-artifact-contract-v2';
 
 function numberHistogram(values: number[]): Map<number, number> {
   const hist = new Map<number, number>();
@@ -520,6 +529,11 @@ async function copyParentGlobalPerPageArtifacts(
     { key: 'tables_path', file: 'tables.json', required: false },
     { key: 'pictures_path', file: 'pictures.json', required: false },
     { key: 'summary_path', file: 'summary.json', required: true },
+    // C2.2: OCR + vector artifacts. Optional (legacy chunks predate them), but
+    // when present they must be re-homed to global paths like the rest, so the
+    // parent manifest never references soon-deleted chunk-local paths.
+    { key: 'ocr_path', file: 'ocr.json', required: false },
+    { key: 'vectors_path', file: 'vectors.json', required: false },
   ];
 
   for (const rawPage of parentPages) {
@@ -1021,6 +1035,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const perPageDoclingManifestPath = parentGlobalPerPagePages.length
     ? await uploadJson(admin, `${jobId}/pages-manifest.json`, {
         version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        artifact_contract_version: PDF_PAGE_ARTIFACT_CONTRACT_VERSION,
         parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
         global_artifact_copy_version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
         source: 'chunk-merge-global-artifacts',

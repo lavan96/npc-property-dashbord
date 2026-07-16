@@ -15,6 +15,9 @@ export interface PdfPageContextArtifacts {
   pictures_path: string | null;
   summary_path: string | null;
   raster_path: string | null;
+  // C2.2: OCR + vectors are optional (legacy jobs predate them).
+  ocr_path?: string | null;
+  vectors_path?: string | null;
 }
 
 export interface PdfPageContextFlags {
@@ -24,6 +27,8 @@ export interface PdfPageContextFlags {
   has_pictures: boolean;
   has_summary: boolean;
   has_raster: boolean;
+  has_ocr?: boolean;
+  has_vectors?: boolean;
   has_parent_global_artifacts: boolean;
 }
 
@@ -140,6 +145,8 @@ export function normalizePdfPageContexts(raw: unknown): PdfPageContext[] {
         pictures_path: normalizeArtifactPath(artifactsRaw.pictures_path),
         summary_path: normalizeArtifactPath(artifactsRaw.summary_path),
         raster_path: normalizeArtifactPath(artifactsRaw.raster_path),
+        ocr_path: normalizeArtifactPath(artifactsRaw.ocr_path),
+        vectors_path: normalizeArtifactPath(artifactsRaw.vectors_path),
       };
 
       const flagsRaw = page.flags && typeof page.flags === 'object'
@@ -153,6 +160,8 @@ export function normalizePdfPageContexts(raw: unknown): PdfPageContext[] {
         has_pictures: Boolean(flagsRaw.has_pictures ?? artifacts.pictures_path),
         has_summary: Boolean(flagsRaw.has_summary ?? artifacts.summary_path),
         has_raster: Boolean(flagsRaw.has_raster ?? artifacts.raster_path),
+        has_ocr: Boolean(flagsRaw.has_ocr ?? artifacts.ocr_path),
+        has_vectors: Boolean(flagsRaw.has_vectors ?? artifacts.vectors_path),
         has_parent_global_artifacts: Boolean(flagsRaw.has_parent_global_artifacts),
       };
 
