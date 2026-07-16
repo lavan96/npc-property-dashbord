@@ -2151,6 +2151,25 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             } catch (err) {
               console.error('[report-qa] Stream pipe error:', err);
             } finally {
+              try {
+                await persistReportQATurn(supabase, {
+                  conversationId,
+                  userId,
+                  question,
+                  assistantText,
+                  modelProvider,
+                  modelVersion: streamModelName,
+                  citations: structuredCitations,
+                  comparisonMode,
+                  promptVersion: PROMPT_VERSION,
+                  streamId,
+                  fallbackAssistantText: '⚠️ Response completed but text could not be captured. Please retry.',
+                  source: 'chat-stream',
+                });
+              } catch (persistErr) {
+                console.error('[report-qa] Failed to persist stream messages:', persistErr);
+              }
+
               // Phase 2.4 — generate 3 AI follow-up suggestions and emit as
               // a `_followups` SSE event. Best-effort: any failure is logged
               // and swallowed so it never blocks closing the stream.
@@ -2218,45 +2237,6 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                   answer: assistantText,
                   lovableApiKey: LOVABLE_API_KEY,
                 }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
-              }
-              // Persist user + assistant messages so historical conversation
-              // reload has content to render. We always attempt to persist
-              // (even when the SSE parser couldn't extract assistantText) so
-              // the user turn is never lost — the assistant row falls back to
-              // a marker so the UI still renders a paired exchange.
-              if (conversationId) {
-                const finalAssistant = (assistantText && assistantText.trim().length > 0)
-                  ? assistantText
-                  : '⚠️ Response completed but text could not be captured. Please retry.';
-                console.log('[report-qa] Persisting stream messages', {
-                  conversationId,
-                  userLen: String(question || '').length,
-                  assistantLen: finalAssistant.length,
-                  captured: assistantText.length > 0,
-                });
-                try {
-                  const { error: persistDbErr } = await supabase.from('report_qa_messages').insert([
-                    { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
-                    {
-                      conversation_id: conversationId,
-                      role: 'assistant',
-                      content: sanitizeForPostgres(finalAssistant),
-                      model_provider: modelProvider,
-                      citations: structuredCitations.length > 0 ? structuredCitations : null,
-                      comparison_mode: comparisonMode,
-                      prompt_version: PROMPT_VERSION,
-                      model_version: streamModelName,
-                    },
-                  ]);
-                  if (persistDbErr) console.error('[report-qa] Persist DB error:', persistDbErr);
-                  // Bump conversation updated_at so history sort is accurate
-                  await supabase
-                    .from('report_qa_conversations')
-                    .update({ updated_at: new Date().toISOString() })
-                    .eq('id', conversationId);
-                } catch (persistErr) {
-                  console.error('[report-qa] Failed to persist stream messages:', persistErr);
-                }
               }
               controller.close();
               // Best-effort: mark checkpoint complete
