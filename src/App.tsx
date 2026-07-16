@@ -139,6 +139,7 @@ import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 import PortalBooking from "./pages/portal/PortalBooking";
 import PortalAppointments from "./pages/portal/PortalAppointments";
+import PortalAml from "./pages/portal/PortalAml";
 import PortalConfig from "./pages/PortalConfig";
 import { PortalConsentWall } from "@/components/portal/PortalConsentWall";
 import { FinancePortalAuthProvider } from "@/hooks/useFinancePortalAuth";
@@ -263,6 +264,7 @@ const App = () => (
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
                           <Route path="booking" element={<PortalBooking />} />
                           <Route path="appointments" element={<PortalAppointments />} />
+                          <Route path="aml" element={<PortalAml />} />
                         </Route>
 
                         {/* Finance Portal Routes - single provider wrapping all /finance/* */}

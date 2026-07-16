@@ -36,6 +36,7 @@ const portalNavItems = [
   { to: '/client/notifications', icon: Bell, label: 'Notifications', end: true, tourId: 'notifications' },
   { to: '/client/appointments', icon: CalendarDays, label: 'My Appointments', end: true },
   { to: '/client/booking', icon: CalendarDays, label: 'Book Appointment', end: true },
+  { to: '/client/aml', icon: Shield, label: 'Identity & Compliance', end: true, tourId: 'aml' },
 ];
 
 function getInitials(name?: string): string {

@@ -328,6 +328,164 @@ Deno.serve(async (req) => {
         return jsonResponse({ events: data ?? [] });
       }
 
+      case 'list_requirements': {
+        if (!body.case_id) return jsonResponse({ error: 'case_id is required' }, 400);
+        const { data, error } = await admin.schema('aml').from('document_requirements')
+          .select('*').eq('case_id', body.case_id).order('created_at', { ascending: true });
+        if (error) throw error;
+        return jsonResponse({ requirements: data ?? [] });
+      }
+
+      case 'seed_default_requirements': {
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+        if (!body.case_id) return jsonResponse({ error: 'case_id is required' }, 400);
+        const defaults = [
+          { code: 'photo_id_primary', label: 'Photo ID — primary (passport or driver licence)', required: true },
+          { code: 'photo_id_secondary', label: 'Photo ID — secondary', required: false },
+          { code: 'proof_of_address', label: 'Proof of address (utility bill or bank statement < 3 months)', required: true },
+          { code: 'source_of_funds', label: 'Source of funds evidence', required: true },
+          { code: 'source_of_wealth', label: 'Source of wealth statement', required: false },
+        ];
+        const rows = defaults.map((d) => ({ ...d, case_id: body.case_id, created_by_type: 'staff', created_by: userId }));
+        const { data, error } = await admin.schema('aml').from('document_requirements')
+          .upsert(rows, { onConflict: 'case_id,code' }).select('*');
+        if (error) throw error;
+        await appendEvent(admin, body.case_id, 'document_added',
+          `Seeded ${rows.length} default document requirements`,
+          { codes: defaults.map((d) => d.code) }, userId, userEmail);
+        return jsonResponse({ requirements: data ?? [] });
+      }
+
+      case 'upsert_requirement': {
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+        const r = body.requirement ?? {};
+        if (!r.case_id || !r.code || !r.label) {
+          return jsonResponse({ error: 'case_id, code, label required' }, 400);
+        }
+        const row = {
+          case_id: r.case_id, code: String(r.code), label: String(r.label),
+          description: r.description ?? null, required: r.required !== false,
+          assigned_to_party: r.assigned_to_party ?? null, due_at: r.due_at ?? null,
+          metadata: r.metadata ?? {}, created_by_type: 'staff', created_by: userId,
+        };
+        const { data, error } = await admin.schema('aml').from('document_requirements')
+          .upsert(row, { onConflict: 'case_id,code' }).select('*').single();
+        if (error) throw error;
+        return jsonResponse({ requirement: data });
+      }
+
+      case 'list_documents': {
+        if (!body.case_id) return jsonResponse({ error: 'case_id is required' }, 400);
+        const { data, error } = await admin.schema('aml').from('documents')
+          .select('*').eq('case_id', body.case_id).neq('status', 'deleted')
+          .order('uploaded_at', { ascending: false });
+        if (error) throw error;
+        return jsonResponse({ documents: data ?? [] });
+      }
+
+      case 'get_document_download_url': {
+        if (!body.document_id) return jsonResponse({ error: 'document_id is required' }, 400);
+        const { data: doc, error } = await admin.schema('aml').from('documents')
+          .select('storage_path, filename').eq('id', body.document_id).maybeSingle();
+        if (error) throw error;
+        if (!doc) return jsonResponse({ error: 'Not found' }, 404);
+        const { data: signed, error: sErr } = await admin.storage.from('aml-documents')
+          .createSignedUrl(doc.storage_path, 300, { download: doc.filename });
+        if (sErr) throw sErr;
+        return jsonResponse({ url: signed.signedUrl, filename: doc.filename });
+      }
+
+      case 'review_document': {
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+        if (!body.document_id || !['accepted','rejected'].includes(body.decision)) {
+          return jsonResponse({ error: 'document_id + decision(accepted|rejected) required' }, 400);
+        }
+        const patch: Record<string, any> = {
+          status: body.decision, reviewed_by: userId, reviewed_at: new Date().toISOString(),
+        };
+        if (body.decision === 'rejected') patch.rejection_reason = body.reason ?? null;
+        const { data: doc, error } = await admin.schema('aml').from('documents')
+          .update(patch).eq('id', body.document_id).select('*').single();
+        if (error) throw error;
+        if (doc.requirement_id) {
+          await admin.schema('aml').from('document_requirements')
+            .update({ status: body.decision === 'accepted' ? 'accepted' : 'rejected' })
+            .eq('id', doc.requirement_id);
+        }
+        await appendEvent(admin, doc.case_id, 'document_added',
+          `Document "${doc.filename}" ${body.decision}`,
+          { document_id: doc.id, decision: body.decision, reason: body.reason ?? null },
+          userId, userEmail);
+        return jsonResponse({ document: doc });
+      }
+
+      case 'list_submissions': {
+        if (!body.case_id) return jsonResponse({ error: 'case_id is required' }, 400);
+        const { data, error } = await admin.schema('aml').from('submission_versions')
+          .select('*').eq('case_id', body.case_id)
+          .order('version_number', { ascending: false });
+        if (error) throw error;
+        return jsonResponse({ submissions: data ?? [] });
+      }
+
+      case 'review_submission': {
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+        if (!body.submission_id || !['accepted','rejected','changes_requested'].includes(body.decision)) {
+          return jsonResponse({ error: 'submission_id + decision required' }, 400);
+        }
+        const { data: sub, error } = await admin.schema('aml').from('submission_versions')
+          .update({
+            status: body.decision, reviewer_id: userId,
+            reviewer_notes: body.notes ?? null, reviewed_at: new Date().toISOString(),
+          }).eq('id', body.submission_id).select('*').single();
+        if (error) throw error;
+        await appendEvent(admin, sub.case_id, 'edd_note',
+          `Submission v${sub.version_number} ${body.decision}`,
+          { submission_id: sub.id, decision: body.decision, notes: body.notes ?? null },
+          userId, userEmail);
+        return jsonResponse({ submission: sub });
+      }
+
+      case 'list_client_requests': {
+        if (!body.case_id) return jsonResponse({ error: 'case_id is required' }, 400);
+        const { data, error } = await admin.schema('aml').from('client_requests')
+          .select('*').eq('case_id', body.case_id)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        return jsonResponse({ requests: data ?? [] });
+      }
+
+      case 'create_client_request': {
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+        const r = body.request ?? {};
+        if (!r.case_id || !r.kind || !r.subject || !r.message) {
+          return jsonResponse({ error: 'case_id, kind, subject, message required' }, 400);
+        }
+        if (!['additional_info','new_document','clarification','re_consent'].includes(r.kind)) {
+          return jsonResponse({ error: 'Invalid kind' }, 400);
+        }
+        const { data, error } = await admin.schema('aml').from('client_requests').insert({
+          case_id: r.case_id, kind: r.kind, subject: String(r.subject).slice(0, 200),
+          message: String(r.message), request_payload: r.request_payload ?? {},
+          requested_by: userId, requested_by_label: userEmail,
+        }).select('*').single();
+        if (error) throw error;
+        await appendEvent(admin, r.case_id, 'edd_note',
+          `Client request sent: ${data.subject}`,
+          { request_id: data.id, kind: data.kind }, userId, userEmail);
+        return jsonResponse({ request: data });
+      }
+
+      case 'resolve_client_request': {
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+        if (!body.request_id) return jsonResponse({ error: 'request_id is required' }, 400);
+        const { data, error } = await admin.schema('aml').from('client_requests')
+          .update({ status: 'resolved', resolved_at: new Date().toISOString(), resolved_by: userId })
+          .eq('id', body.request_id).select('*').single();
+        if (error) throw error;
+        return jsonResponse({ request: data });
+      }
+
       default:
         return jsonResponse({ error: `Unknown op: ${op}` }, 400);
     }
