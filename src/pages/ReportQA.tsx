@@ -1515,10 +1515,11 @@ export default function ReportQA() {
         variant: 'destructive',
       });
     } finally {
-      if (activeStreamRef.current?.controller === streamController) {
+      const isCurrentStream = activeStreamRef.current?.controller === streamController;
+      if (isCurrentStream) {
         activeStreamRef.current = null;
       }
-      if (conversationIdRef.current === turnConversationId) {
+      if (isCurrentStream && conversationIdRef.current === turnConversationId) {
         setIsProcessing(false);
       }
     }
