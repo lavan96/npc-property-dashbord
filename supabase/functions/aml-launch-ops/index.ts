@@ -1,0 +1,216 @@
+/**
+ * Phase 14 — AML Launch, Operations & Change Management.
+ *
+ * POST { op, ...args }
+ * Auth required. Reads: any AML role. Writes: MLRO only.
+ *
+ * Ops:
+ *   summary
+ *   get_rollout | advance_rollout | rollback_rollout | rollout_history
+ *   list_scenarios | upsert_scenario | record_scenario_result | delete_scenario
+ *   list_risks | upsert_risk | delete_risk
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jr = (d: unknown, s = 200) =>
+  new Response(JSON.stringify(d), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+const TENANT = "default";
+const STAGES = ["internal_dev_only", "admin_limited", "controlled_team_rollout", "broad_production"] as const;
+type Stage = typeof STAGES[number];
+
+async function loadRoles(admin: any, userId: string): Promise<Set<string>> {
+  const { data } = await admin.schema("aml").from("role_assignments")
+    .select("role").eq("user_id", userId).is("revoked_at", null);
+  return new Set((data ?? []).map((r: any) => String(r.role)));
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(url, service);
+    const aml = admin.schema("aml");
+
+    const auth = req.headers.get("Authorization") ?? "";
+    if (!auth.startsWith("Bearer ")) return jr({ error: "Unauthorized" }, 401);
+    const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
+    const { data: userData, error: uErr } = await userClient.auth.getUser();
+    if (uErr || !userData?.user) return jr({ error: "Invalid session" }, 401);
+    const userId = userData.user.id;
+    const label = userData.user.email ?? userId;
+
+    const roles = await loadRoles(admin, userId);
+    if (roles.size === 0) return jr({ error: "No AML role assigned" }, 403);
+    const isMlro = roles.has("mlro");
+    const requireMlro = () => { if (!isMlro) throw new Error("MLRO role required"); };
+
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const op = String(body?.op ?? "summary");
+
+    switch (op) {
+      case "summary": {
+        const [{ data: t }, { data: scen }, { data: risks }, { data: history }] = await Promise.all([
+          aml.from("tenant_settings").select("rollout_stage,rollout_stage_since,rollout_notes").eq("tenant_id", TENANT).maybeSingle(),
+          aml.from("acceptance_scenarios").select("last_status").eq("tenant_id", TENANT),
+          aml.from("risk_register").select("status,likelihood,impact").eq("tenant_id", TENANT),
+          aml.from("rollout_stage_history").select("id,to_stage,from_stage,changed_by_label,reason,created_at")
+            .eq("tenant_id", TENANT).order("created_at", { ascending: false }).limit(5),
+        ]);
+        const scenariosByStatus: Record<string, number> = {};
+        (scen ?? []).forEach((r: any) => scenariosByStatus[r.last_status] = (scenariosByStatus[r.last_status] ?? 0) + 1);
+        const risksByStatus: Record<string, number> = {};
+        (risks ?? []).forEach((r: any) => risksByStatus[r.status] = (risksByStatus[r.status] ?? 0) + 1);
+        return jr({
+          rollout: t ?? { rollout_stage: "internal_dev_only" },
+          scenarios: { total: (scen ?? []).length, by_status: scenariosByStatus },
+          risks: { total: (risks ?? []).length, by_status: risksByStatus },
+          recent_history: history ?? [],
+          my_role_is_mlro: isMlro,
+        });
+      }
+
+      case "get_rollout": {
+        const { data } = await aml.from("tenant_settings")
+          .select("rollout_stage,rollout_stage_since,rollout_notes").eq("tenant_id", TENANT).maybeSingle();
+        return jr({ rollout: data });
+      }
+
+      case "advance_rollout":
+      case "rollback_rollout": {
+        requireMlro();
+        const to = String(body?.to_stage ?? "");
+        if (!STAGES.includes(to as Stage)) return jr({ error: "Invalid stage" }, 400);
+        const { data: current } = await aml.from("tenant_settings").select("rollout_stage").eq("tenant_id", TENANT).maybeSingle();
+        const from = current?.rollout_stage as Stage | undefined;
+        const fromIdx = from ? STAGES.indexOf(from) : -1;
+        const toIdx = STAGES.indexOf(to as Stage);
+        if (op === "advance_rollout" && toIdx <= fromIdx) return jr({ error: "advance must move forward" }, 400);
+        if (op === "rollback_rollout" && toIdx >= fromIdx) return jr({ error: "rollback must move backward" }, 400);
+
+        // For advance to broad_production, require latest release gate is pass.
+        if (op === "advance_rollout" && to === "broad_production") {
+          const { data: gate } = await aml.from("release_gates").select("status,id")
+            .order("ran_at", { ascending: false }).limit(1).maybeSingle();
+          if (!gate || gate.status !== "pass") return jr({ error: "Latest release gate must be PASS to reach broad_production" }, 400);
+        }
+
+        const { error: upErr } = await aml.from("tenant_settings")
+          .update({ rollout_stage: to, rollout_stage_since: new Date().toISOString(), rollout_notes: body?.notes ?? null })
+          .eq("tenant_id", TENANT);
+        if (upErr) return jr({ error: upErr.message }, 500);
+        await aml.from("rollout_stage_history").insert({
+          tenant_id: TENANT, from_stage: from ?? null, to_stage: to,
+          changed_by: userId, changed_by_label: label, reason: body?.reason ?? null,
+        });
+        return jr({ ok: true, to_stage: to });
+      }
+
+      case "rollout_history": {
+        const { data } = await aml.from("rollout_stage_history").select("*")
+          .eq("tenant_id", TENANT).order("created_at", { ascending: false }).limit(50);
+        return jr({ history: data ?? [] });
+      }
+
+      case "list_scenarios": {
+        const { data } = await aml.from("acceptance_scenarios").select("*")
+          .eq("tenant_id", TENANT).order("phase", { ascending: true }).order("code", { ascending: true });
+        return jr({ scenarios: data ?? [] });
+      }
+
+      case "upsert_scenario": {
+        requireMlro();
+        const row = {
+          tenant_id: TENANT,
+          code: String(body?.code ?? "").trim(),
+          title: String(body?.title ?? "").trim(),
+          description: body?.description ?? null,
+          phase: body?.phase ?? null,
+          category: body?.category ?? null,
+          requirement_refs: Array.isArray(body?.requirement_refs) ? body.requirement_refs : [],
+          steps: Array.isArray(body?.steps) ? body.steps : [],
+          is_active: body?.is_active ?? true,
+        };
+        if (!row.code || !row.title) return jr({ error: "code and title required" }, 400);
+        const { data, error } = await aml.from("acceptance_scenarios")
+          .upsert(row, { onConflict: "tenant_id,code" }).select().single();
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ scenario: data });
+      }
+
+      case "record_scenario_result": {
+        requireMlro();
+        const id = String(body?.id ?? "");
+        const status = String(body?.status ?? "");
+        if (!["passed", "failed", "blocked", "waived", "not_run"].includes(status)) return jr({ error: "invalid status" }, 400);
+        const { data, error } = await aml.from("acceptance_scenarios")
+          .update({
+            last_status: status,
+            last_run_at: new Date().toISOString(),
+            last_run_by: userId,
+            last_run_by_label: label,
+            last_run_notes: body?.notes ?? null,
+          })
+          .eq("tenant_id", TENANT).eq("id", id).select().single();
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ scenario: data });
+      }
+
+      case "delete_scenario": {
+        requireMlro();
+        const id = String(body?.id ?? "");
+        const { error } = await aml.from("acceptance_scenarios").delete().eq("tenant_id", TENANT).eq("id", id);
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ ok: true });
+      }
+
+      case "list_risks": {
+        const { data } = await aml.from("risk_register").select("*")
+          .eq("tenant_id", TENANT).order("status", { ascending: true }).order("impact", { ascending: false });
+        return jr({ risks: data ?? [] });
+      }
+
+      case "upsert_risk": {
+        requireMlro();
+        const row = {
+          tenant_id: TENANT,
+          code: String(body?.code ?? "").trim(),
+          title: String(body?.title ?? "").trim(),
+          description: body?.description ?? null,
+          category: body?.category ?? null,
+          likelihood: body?.likelihood ?? "medium",
+          impact: body?.impact ?? "medium",
+          status: body?.status ?? "open",
+          owner_label: body?.owner_label ?? null,
+          mitigation: body?.mitigation ?? null,
+          next_review_at: body?.next_review_at ?? null,
+        };
+        if (!row.code || !row.title) return jr({ error: "code and title required" }, 400);
+        const { data, error } = await aml.from("risk_register")
+          .upsert(row, { onConflict: "tenant_id,code" }).select().single();
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ risk: data });
+      }
+
+      case "delete_risk": {
+        requireMlro();
+        const id = String(body?.id ?? "");
+        const { error } = await aml.from("risk_register").delete().eq("tenant_id", TENANT).eq("id", id);
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ ok: true });
+      }
+
+      default:
+        return jr({ error: `Unknown op: ${op}` }, 400);
+    }
+  } catch (e: any) {
+    return jr({ error: e?.message ?? String(e) }, 500);
+  }
+});
