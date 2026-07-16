@@ -85,6 +85,7 @@ import {
   AmlFinance, AmlTransactions,
   AmlMonitoring, AmlInvestigations, AmlAustracReporting, AmlRecords, AmlGovernance, AmlConfiguration,
 } from "./pages/aml/AmlShellPages";
+import AmlLaunchOps from "./pages/aml/AmlLaunchOps";
 import { AmlLayout } from "@/components/aml/AmlLayout";
 import { AmlGuard } from "@/components/aml/AmlGuard";
 import AgentMemoryManager from "./pages/agent/MemoryManager";
