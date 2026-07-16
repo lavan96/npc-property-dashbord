@@ -266,7 +266,10 @@ export default function ReportQA() {
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationIdState] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const activeStreamRef = useRef<{ conversationId: string; controller: AbortController } | null>(null);
+  const streamAbortReasonRef = useRef<string | null>(null);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -297,6 +300,22 @@ export default function ReportQA() {
   const [titleSaveError, setTitleSaveError] = useState<string | null>(null);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
+
+  const setActiveConversationId = useCallback((nextConversationId: string | null) => {
+    conversationIdRef.current = nextConversationId;
+    setConversationIdState(nextConversationId);
+  }, []);
+
+  const abortActiveStream = useCallback((reason: string) => {
+    const active = activeStreamRef.current;
+    if (!active || active.controller.signal.aborted) return;
+    streamAbortReasonRef.current = reason;
+    active.controller.abort();
+  }, []);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   // New feature states
   const [chatTheme] = useState<Theme | null>(null);
