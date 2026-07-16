@@ -266,7 +266,10 @@ export default function ReportQA() {
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationIdState] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const activeStreamRef = useRef<{ conversationId: string; controller: AbortController } | null>(null);
+  const conversationLoadRequestRef = useRef(0);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -297,6 +300,22 @@ export default function ReportQA() {
   const [titleSaveError, setTitleSaveError] = useState<string | null>(null);
   const historyButtonRef = useRef<HTMLButtonElement | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
+
+  const setActiveConversationId = useCallback((nextConversationId: string | null) => {
+    conversationIdRef.current = nextConversationId;
+    setConversationIdState(nextConversationId);
+  }, []);
+
+  const abortActiveStream = useCallback((reason: string) => {
+    const active = activeStreamRef.current;
+    if (!active || active.controller.signal.aborted) return;
+    console.info(`[ReportQA] Aborting active stream: ${reason}`);
+    active.controller.abort();
+  }, []);
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   // New feature states
   const [chatTheme] = useState<Theme | null>(null);
@@ -882,7 +901,7 @@ export default function ReportQA() {
       if (error) throw error;
 
       const newConversationId = data.conversation.id;
-      setConversationId(newConversationId);
+      setActiveConversationId(newConversationId);
       setMessages([]);
       loadSavedConversations();
 
@@ -1005,6 +1024,9 @@ export default function ReportQA() {
   const loadConversation = async (conv: SavedConversation) => {
     if (restoringConversationId) return;
 
+    abortActiveStream('switch-conversation');
+    setIsProcessing(false);
+    const loadRequestId = ++conversationLoadRequestRef.current;
     setRestoringConversationId(conv.id);
     setConversationRestoreError(null);
     setLiveAnnouncement(`Loading conversation ${conv.title}`);
@@ -1049,7 +1071,12 @@ export default function ReportQA() {
         .reverse()
         .find((message) => message.role === 'assistant' && message.modelProvider)?.modelProvider;
 
-      setConversationId(conv.id);
+      if (loadRequestId !== conversationLoadRequestRef.current) {
+        // A newer conversation load started while this request was in flight.
+        return;
+      }
+
+      setActiveConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
       setHasOlderMessages(false);
       setInputMessage('');
@@ -1082,7 +1109,9 @@ export default function ReportQA() {
       }
       setSelectedReportNames(restoredSelectedNames);
       setUploadedReports(restoredReports);
-      setMessages(restoredMessages);
+      if (conversationIdRef.current === conv.id) {
+        setMessages(restoredMessages);
+      }
       if (import.meta.env.DEV && restoredMessages.length !== messagesToSet.length) {
         console.warn('[ReportQA] Some stored messages were skipped during restoration because they were invalid or unsupported.', {
           conversationId: conv.id,
@@ -1106,14 +1135,63 @@ export default function ReportQA() {
 
       toast({ title: 'Conversation loaded', description: conversation.title || conv.title });
     } catch (error) {
+      if (loadRequestId !== conversationLoadRequestRef.current) return;
       console.error('Failed to load conversation:', error);
       const message = error instanceof Error ? error.message : 'Could not load the selected conversation';
       setConversationRestoreError(message);
       setLiveAnnouncement('Conversation failed to load');
       toast({ title: 'Failed to load', description: message, variant: 'destructive' });
     } finally {
-      setRestoringConversationId(null);
+      if (loadRequestId === conversationLoadRequestRef.current) {
+        setRestoringConversationId(null);
+      }
     }
+  };
+
+  const refreshConversationMessagesFromSupabase = async (targetConversationId: string, expectedMinimumMessages = 0) => {
+    const pageSize = 500;
+    const { data, error } = await invokeSecureFunction('report-qa', {
+      action: 'load-conversation',
+      conversationId: targetConversationId,
+      limit: pageSize,
+      offset: 0,
+    });
+
+    if (error) throw error;
+    const totalMsgCount = data?.totalMessages || data?.messages?.length || 0;
+    let storedMessages = Array.isArray(data?.messages) ? data.messages : [];
+
+    if (totalMsgCount > storedMessages.length) {
+      const restoredPages: any[] = [...storedMessages];
+      for (let offset = storedMessages.length; offset < totalMsgCount; offset += pageSize) {
+        const { data: pageData, error: pageError } = await invokeSecureFunction('report-qa', {
+          action: 'load-conversation',
+          conversationId: targetConversationId,
+          limit: Math.min(pageSize, totalMsgCount - offset),
+          offset,
+        });
+        if (pageError) throw pageError;
+        if (Array.isArray(pageData?.messages)) restoredPages.push(...pageData.messages);
+      }
+      storedMessages = restoredPages;
+    }
+
+    const restoredMessages = normaliseStoredMessages(storedMessages);
+    if (restoredMessages.length >= expectedMinimumMessages) {
+      if (conversationIdRef.current !== targetConversationId) return false;
+      setMessages(restoredMessages);
+      setTotalMessageCount(totalMsgCount || restoredMessages.length);
+      setHasOlderMessages(false);
+      return true;
+    }
+
+    console.warn('[ReportQA] Persistence verification returned fewer messages than expected; preserving local transcript.', {
+      conversationId: targetConversationId,
+      expectedMinimumMessages,
+      restored: restoredMessages.length,
+      totalMsgCount,
+    });
+    return false;
   };
 
   const loadOlderMessages = async () => {
@@ -1210,6 +1288,10 @@ export default function ReportQA() {
         return;
       }
     }
+    const turnConversationId = activeConversationId;
+    abortActiveStream('new-message');
+    const streamController = new AbortController();
+    activeStreamRef.current = { conversationId: turnConversationId, controller: streamController };
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -1275,6 +1357,7 @@ export default function ReportQA() {
           totalMessageCount: totalMessages,
           agentMode: effectiveAgentMode,
         }),
+        signal: streamController.signal,
       });
 
       if (!response.ok) {
@@ -1367,7 +1450,9 @@ export default function ReportQA() {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullContent += content;
-              setStreamingContent(fullContent);
+              if (conversationIdRef.current === turnConversationId) {
+                setStreamingContent(fullContent);
+              }
             }
           } catch {
             // Re-buffer partial JSON
@@ -1393,15 +1478,24 @@ export default function ReportQA() {
         aiFollowups: streamMeta.followups,
       };
 
+      if (conversationIdRef.current !== turnConversationId) return;
+
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
       setStreamingToolInvocations([]);
+      const expectedPersistedMessages = Math.max(messages.length + (retryContent ? 1 : 2), 2);
+      setTimeout(() => {
+        if (conversationIdRef.current !== turnConversationId) return;
+        refreshConversationMessagesFromSupabase(turnConversationId, expectedPersistedMessages).catch((refreshError) => {
+          console.warn('[ReportQA] Failed to verify persisted conversation after send:', refreshError);
+        });
+      }, 350);
 
       // Log question asked
       logActivityDirect({
         actionType: 'qa_question_asked',
         entityType: 'qa_conversation',
-        entityId: activeConversationId,
+        entityId: turnConversationId,
         metadata: { question_length: messageContent.length }
       });
 
@@ -1409,6 +1503,9 @@ export default function ReportQA() {
         setTimeout(() => loadSavedConversations(), 1000);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
       console.error('Chat error:', error);
       setStreamingContent('');
       setFailedMessage({ content: messageContent, audioUrl: audioUrl || undefined });
@@ -1418,7 +1515,13 @@ export default function ReportQA() {
         variant: 'destructive',
       });
     } finally {
-      setIsProcessing(false);
+      const isCurrentStream = activeStreamRef.current?.controller === streamController;
+      if (isCurrentStream) {
+        activeStreamRef.current = null;
+      }
+      if (isCurrentStream && conversationIdRef.current === turnConversationId) {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -1783,17 +1886,23 @@ export default function ReportQA() {
   };
 
   const clearAll = () => {
+    abortActiveStream('clear-all');
+    conversationLoadRequestRef.current += 1;
     setUploadedReports([]);
     setMessages([]);
-    setConversationId(null);
+    setActiveConversationId(null);
+    setIsProcessing(false);
   };
 
   function handleNewChat() {
+    abortActiveStream('new-chat');
+    conversationLoadRequestRef.current += 1;
     setUploadedReports([]);
     setMessages([]);
-    setConversationId(null);
+    setActiveConversationId(null);
     setTotalMessageCount(0);
     setHasOlderMessages(false);
+    setIsProcessing(false);
     toast({
       title: 'New chat started',
       description: 'Upload reports or start chatting',

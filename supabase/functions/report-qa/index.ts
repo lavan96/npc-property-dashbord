@@ -976,6 +976,90 @@ function buildStructuredCitations(chunks: RetrievedChunk[]): Array<{
   }));
 }
 
+type ReportQAPersistTurnArgs = {
+  conversationId: string | null | undefined;
+  userId?: string | null;
+  question: unknown;
+  assistantText: unknown;
+  modelProvider?: string | null;
+  modelVersion?: string | null;
+  citations?: unknown[] | null;
+  comparisonMode?: boolean;
+  promptVersion?: string;
+  toolInvocations?: unknown[] | null;
+  streamId?: string | null;
+  fallbackAssistantText: string;
+  source: string;
+  persistUser?: boolean;
+  persistAssistant?: boolean;
+};
+
+async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs): Promise<void> {
+  const conversationId = typeof args.conversationId === 'string' && args.conversationId.trim()
+    ? args.conversationId.trim()
+    : null;
+  if (!conversationId) return;
+
+  const questionText = sanitizeForPostgres(String(args.question ?? '').trim() || '[Question not captured]');
+  const assistantTextRaw = String(args.assistantText ?? '').trim();
+  const assistantText = sanitizeForPostgres(assistantTextRaw || args.fallbackAssistantText);
+  const nowIso = new Date().toISOString();
+  const sentBy = typeof args.userId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(args.userId)
+    ? args.userId
+    : null;
+  const safeToolInvocations = Array.isArray(args.toolInvocations) ? args.toolInvocations : [];
+  const safeCitations = Array.isArray(args.citations) && args.citations.length > 0 ? args.citations : null;
+
+  console.log('[report-qa] Persisting Q&A turn', {
+    source: args.source,
+    conversationId,
+    userLen: questionText.length,
+    assistantLen: assistantText.length,
+    capturedAssistant: assistantTextRaw.length > 0,
+    toolCount: safeToolInvocations.length,
+    streamId: args.streamId || null,
+  });
+
+  if (args.persistUser !== false) {
+    const userInsert = await supabase.from('report_qa_messages').insert({
+      conversation_id: conversationId,
+      role: 'user',
+      content: questionText,
+      sent_by: sentBy,
+      stream_id: args.streamId || null,
+    });
+    if (userInsert.error) {
+      console.error('[report-qa] User message persist failed:', userInsert.error);
+    }
+  }
+
+  if (args.persistAssistant !== false) {
+    const assistantInsert = await supabase.from('report_qa_messages').insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: assistantText,
+      model_provider: args.modelProvider || null,
+      citations: safeCitations,
+      comparison_mode: Boolean(args.comparisonMode),
+      prompt_version: args.promptVersion || PROMPT_VERSION,
+      model_version: args.modelVersion || null,
+      tool_invocations: safeToolInvocations,
+      stream_id: args.streamId || null,
+    });
+    if (assistantInsert.error) {
+      console.error('[report-qa] Assistant message persist failed:', assistantInsert.error);
+    }
+  }
+
+  const convUpdate = await supabase
+    .from('report_qa_conversations')
+    .update({ updated_at: nowIso })
+    .eq('id', conversationId);
+  if (convUpdate.error) {
+    console.error('[report-qa] Conversation timestamp update failed:', convUpdate.error);
+  }
+}
+
 /**
  * fetchUpstreamWithRetry — wraps fetch() with exponential backoff for
  * transient upstream failures (429 / 5xx / network errors). Used for all
@@ -1789,6 +1873,20 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
       
       if (streamingEnabled) {
         console.log(`[report-qa] Streaming mode enabled, provider: ${modelProvider}, agentMode: ${agentMode}`);
+        const streamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+        if (conversationId) {
+          await persistReportQATurn(supabase, {
+            conversationId,
+            userId,
+            question,
+            assistantText: '',
+            persistAssistant: false,
+            streamId,
+            fallbackAssistantText: '',
+            source: 'chat-stream-user-eager',
+          });
+        }
 
         // -----------------------------------------------------------------
         // AGENT MODE: multi-turn tool-calling loop
@@ -1814,7 +1912,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
           });
 
           const structuredCitationsAgent = buildStructuredCitations(retrievedChunksForCitations);
-          const agentStreamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+          const agentStreamId = streamId;
 
           // Best-effort checkpoint so dropped streams are diagnosable.
           try {
@@ -1865,42 +1963,25 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
               console.log(
                 `[report-qa] Agent loop complete: ${turns} turn(s), ${toolInvocations.length} tool invocation(s)`,
               );
-              // Persist user + assistant messages so historical conversation
-              // reload has content to render. Always persist so the user turn
-              // is never dropped, even if finalText couldn't be captured.
-              if (conversationId) {
-                const finalAssistant = (finalText && finalText.trim().length > 0)
-                  ? finalText
-                  : '⚠️ Agent completed but text could not be captured. Please retry.';
-                console.log('[report-qa] Persisting agent messages', {
+              try {
+                await persistReportQATurn(supabase, {
                   conversationId,
-                  userLen: String(question || '').length,
-                  assistantLen: finalAssistant.length,
-                  tools: toolInvocations.length,
+                  userId,
+                  question,
+                  assistantText: finalText,
+                  modelProvider,
+                  modelVersion,
+                  citations: structuredCitationsAgent,
+                  comparisonMode,
+                  promptVersion: PROMPT_VERSION,
+                  toolInvocations,
+                  streamId: agentStreamId,
+                  fallbackAssistantText: '⚠️ Agent completed but text could not be captured. Please retry.',
+                  source: 'agent-stream',
+                  persistUser: false,
                 });
-                try {
-                  const { error: persistDbErr } = await supabase.from('report_qa_messages').insert([
-                    { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
-                    {
-                      conversation_id: conversationId,
-                      role: 'assistant',
-                      content: sanitizeForPostgres(finalAssistant),
-                      model_provider: modelProvider,
-                      citations: structuredCitationsAgent.length > 0 ? structuredCitationsAgent : null,
-                      comparison_mode: comparisonMode,
-                      prompt_version: PROMPT_VERSION,
-                      model_version: modelVersion,
-                      tool_invocations: toolInvocations.length > 0 ? toolInvocations : null,
-                    },
-                  ]);
-                  if (persistDbErr) console.error('[report-qa] Agent persist DB error:', persistDbErr);
-                  await supabase
-                    .from('report_qa_conversations')
-                    .update({ updated_at: new Date().toISOString() })
-                    .eq('id', conversationId);
-                } catch (persistErr) {
-                  console.error('[report-qa] Failed to persist agent messages:', persistErr);
-                }
+              } catch (persistErr) {
+                console.error('[report-qa] Failed to persist agent messages:', persistErr);
               }
               try {
                 await supabase
@@ -2001,7 +2082,6 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         // Prepend a metadata SSE event so the client can render paragraph-level
         // citations and the comparison-mode badge without waiting for the answer.
         const structuredCitations = buildStructuredCitations(retrievedChunksForCitations);
-        const streamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
         const metaPayload = {
           _meta: {
             stream_id: streamId,
@@ -2085,6 +2165,26 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
             } catch (err) {
               console.error('[report-qa] Stream pipe error:', err);
             } finally {
+              try {
+                await persistReportQATurn(supabase, {
+                  conversationId,
+                  userId,
+                  question,
+                  assistantText,
+                  modelProvider,
+                  modelVersion: streamModelName,
+                  citations: structuredCitations,
+                  comparisonMode,
+                  promptVersion: PROMPT_VERSION,
+                  streamId,
+                  fallbackAssistantText: '⚠️ Response completed but text could not be captured. Please retry.',
+                  source: 'chat-stream',
+                  persistUser: false,
+                });
+              } catch (persistErr) {
+                console.error('[report-qa] Failed to persist stream messages:', persistErr);
+              }
+
               // Phase 2.4 — generate 3 AI follow-up suggestions and emit as
               // a `_followups` SSE event. Best-effort: any failure is logged
               // and swallowed so it never blocks closing the stream.
@@ -2152,45 +2252,6 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                   answer: assistantText,
                   lovableApiKey: LOVABLE_API_KEY,
                 }).catch(e => console.warn('[report-qa] client memory extract failed:', e));
-              }
-              // Persist user + assistant messages so historical conversation
-              // reload has content to render. We always attempt to persist
-              // (even when the SSE parser couldn't extract assistantText) so
-              // the user turn is never lost — the assistant row falls back to
-              // a marker so the UI still renders a paired exchange.
-              if (conversationId) {
-                const finalAssistant = (assistantText && assistantText.trim().length > 0)
-                  ? assistantText
-                  : '⚠️ Response completed but text could not be captured. Please retry.';
-                console.log('[report-qa] Persisting stream messages', {
-                  conversationId,
-                  userLen: String(question || '').length,
-                  assistantLen: finalAssistant.length,
-                  captured: assistantText.length > 0,
-                });
-                try {
-                  const { error: persistDbErr } = await supabase.from('report_qa_messages').insert([
-                    { conversation_id: conversationId, role: 'user', content: sanitizeForPostgres(String(question || '')) },
-                    {
-                      conversation_id: conversationId,
-                      role: 'assistant',
-                      content: sanitizeForPostgres(finalAssistant),
-                      model_provider: modelProvider,
-                      citations: structuredCitations.length > 0 ? structuredCitations : null,
-                      comparison_mode: comparisonMode,
-                      prompt_version: PROMPT_VERSION,
-                      model_version: streamModelName,
-                    },
-                  ]);
-                  if (persistDbErr) console.error('[report-qa] Persist DB error:', persistDbErr);
-                  // Bump conversation updated_at so history sort is accurate
-                  await supabase
-                    .from('report_qa_conversations')
-                    .update({ updated_at: new Date().toISOString() })
-                    .eq('id', conversationId);
-                } catch (persistErr) {
-                  console.error('[report-qa] Failed to persist stream messages:', persistErr);
-                }
               }
               controller.close();
               // Best-effort: mark checkpoint complete
@@ -2312,19 +2373,19 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
 
       // Save messages to database if conversationId provided
       if (conversationId) {
-        await supabase.from("report_qa_messages").insert([
-          { conversation_id: conversationId, role: "user", content: sanitizeForPostgres(question) },
-          {
-            conversation_id: conversationId,
-            role: "assistant",
-            content: sanitizeForPostgres(responseText),
-            model_provider: modelProvider,
-            citations: structuredCitationsNS.length > 0 ? structuredCitationsNS : null,
-            comparison_mode: comparisonMode,
-            prompt_version: PROMPT_VERSION,
-            model_version: chatModelName,
-          },
-        ]);
+        await persistReportQATurn(supabase, {
+          conversationId,
+          userId,
+          question,
+          assistantText: responseText,
+          modelProvider,
+          modelVersion: chatModelName,
+          citations: structuredCitationsNS,
+          comparisonMode,
+          promptVersion: PROMPT_VERSION,
+          fallbackAssistantText: "I couldn't generate a response. Please try again.",
+          source: 'chat-nonstream',
+        });
 
         // Check if this is the first message and generate a dynamic title
         const { count } = await supabase
