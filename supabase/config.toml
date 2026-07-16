@@ -24,6 +24,9 @@ verify_jwt = true
 [functions.aml-transactions]
 verify_jwt = true
 
+[functions.aml-monitoring]
+verify_jwt = false
+
 
 
 
