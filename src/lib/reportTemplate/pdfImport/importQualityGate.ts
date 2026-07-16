@@ -24,11 +24,16 @@ import {
   imageUrlToImageData,
   QUALITY_THRESHOLDS,
   PAGE_CONTEXT_RENDER_ARTIFACT_MANIFEST_VERSION,
+  DEFAULT_VISUAL_QUALITY_BATCH_SIZE,
+  runBatchedVisualQuality,
+  resolveQualityCoverage,
   type PageContextRenderArtifactManifest,
   type SourceRenderPageRaster,
   type VisualImportFinalMode,
   type VisualQualityCoverage,
   type VisualSourceExpectationBundle,
+  type VisualQualityBatchRunner,
+  type BatchCoverage,
   type RunVisualRepairOrchestrationPipelineOptions,
   type VisualRepairOrchestrationPipelineResult,
 } from '../ingestion/visualQuality';
@@ -67,6 +72,12 @@ export interface ImportQualityGateSummary {
   manualReviewRequired: boolean;
   /** C3: whether the score compared against full source expectations, partial, or image-only. */
   qualityCoverage: VisualQualityCoverage;
+  /** C4: batch coverage — complete requires every page scored. */
+  coverage: BatchCoverage;
+  batchesAttempted: number;
+  batchesCompleted: number;
+  pagesScored: number;
+  pagesUnscored: number[];
   pageCount: number;
   pagesNeedingReview: number;
   perPage: ImportQualityGatePageVerdict[];
@@ -94,6 +105,8 @@ export interface RunImportQualityGateOptions {
   maxRepairPasses?: number;
   maxRasterDim?: number;
   maxPages?: number;
+  /** C4: sequential batch size (pages per batch). Defaults to DEFAULT_VISUAL_QUALITY_BATCH_SIZE. */
+  batchSize?: number;
   /** C3: immutable source-derived expectations built from the source Docling document. */
   sourceExpectations?: VisualSourceExpectationBundle | null;
   /** Injectable (tests / server): data-URL → ImageData. */
@@ -145,6 +158,11 @@ function skippedSummary(
     patchesApplied: 0,
     manualReviewRequired: false,
     qualityCoverage: 'image-only',
+    coverage: 'none',
+    batchesAttempted: 0,
+    batchesCompleted: 0,
+    pagesScored: 0,
+    pagesUnscored: [],
     pageCount: options.cdir?.pages?.length ?? 0,
     pagesNeedingReview: 0,
     perPage: [],
@@ -240,13 +258,11 @@ export async function runImportQualityGate(
     const rastersByPage = options.rastersByPage ?? {};
     const rasterCount = Object.keys(rastersByPage).length;
     const pageCount = options.cdir?.pages?.length ?? 0;
-    const maxPages = options.maxPages ?? DEFAULT_QUALITY_GATE_MAX_PAGES;
 
     if (rasterCount === 0) return skippedResult(options, 'no_source_rasters');
     if (pageCount === 0) return skippedResult(options, 'no_cdir_pages');
-    if (pageCount > maxPages) {
-      return skippedResult(options, 'page_count_exceeds_gate_limit', { pageCount });
-    }
+    // C4: no page-count skip. Large documents are scored in bounded sequential
+    // batches so every page receives a verdict or is explicitly listed unscored.
     if (typeof document === 'undefined' && !options.runOrchestrationImpl) {
       // Real capture needs a browser; without an injected impl there is nothing to run.
       return skippedResult(options, 'no_browser_render_context');
@@ -254,43 +270,106 @@ export async function runImportQualityGate(
 
     const imageUrlToImageDataImpl = options.imageUrlToImageDataImpl ?? imageUrlToImageData;
     const maxRasterDim = options.maxRasterDim ?? 1024;
-    const sourceRasters = await buildSourceRasters(rastersByPage, imageUrlToImageDataImpl, maxRasterDim);
-    if (sourceRasters.length === 0) return skippedResult(options, 'source_rasters_unreadable');
+    const runOrchestration = options.runOrchestrationImpl ?? runVisualRepairOrchestrationPipeline;
+    const finalMode = toVisualFinalMode(options.requestedMode);
 
-    const draft = buildImportReviewDraft({
-      id: options.importId,
-      cdir: options.cdir,
-      template: options.template,
-      artifacts: [],
-      now,
-    });
+    // Per-batch runner (browser-coupled): convert ONLY this batch's source
+    // rasters, build a batch-scoped loaded review + manifest, and run the
+    // orchestration on the subset. Capture is limited to the batch's pages so
+    // browser memory stays bounded regardless of document size.
+    const runBatch: VisualQualityBatchRunner = async (batchInput) => {
+      const wanted = new Set(batchInput.batchContext.pageNumbers);
+      const batchRasters: DoclingRasterByPage = {};
+      for (const [key, raster] of Object.entries(rastersByPage)) {
+        if (wanted.has(Number(key))) batchRasters[Number(key)] = raster;
+      }
+      const sourceRasters = await buildSourceRasters(batchRasters, imageUrlToImageDataImpl, maxRasterDim);
+      if (sourceRasters.length === 0) return { ok: false, problems: ['source_rasters_unreadable'] };
 
-    const loaded = {
-      record: { id: options.importId, created_template_id: null as string | null },
-      draft,
-      renderArtifactManifest: buildManifest(options.importId, pageCount, sourceRasters, now),
+      const draft = buildImportReviewDraft({
+        id: options.importId,
+        cdir: batchInput.cdir,
+        template: batchInput.template,
+        artifacts: [],
+        now,
+      });
+      const loaded = {
+        record: { id: options.importId, created_template_id: null as string | null },
+        draft,
+        // Manifest expects the BATCH's page count, so a valid subset is never
+        // reported as a document page-count mismatch.
+        renderArtifactManifest: buildManifest(
+          options.importId,
+          batchInput.batchContext.expectedBatchPageCount,
+          sourceRasters,
+          now,
+        ),
+      };
+
+      const result = await runOrchestration({
+        loaded,
+        sourceRasters,
+        templateId: null,
+        finalMode,
+        persistVisualQa: false,
+        maxRasterDim,
+        maxRepairPasses: options.maxRepairPasses ?? 2,
+        sourceExpectations: batchInput.sourceExpectations,
+        captureOptions: { pageNumbers: batchInput.batchContext.pageNumbers },
+      });
+
+      const summaryData = result.summary;
+      const finalReport = result.repair.finalReport;
+      return {
+        ok: true,
+        template: result.draft.template ?? batchInput.template,
+        pageReports: finalReport.pages ?? [],
+        initialScore: Number.isFinite(summaryData.visualQaScore) ? summaryData.visualQaScore : null,
+        finalScore: Number.isFinite(summaryData.finalScore) ? summaryData.finalScore : null,
+        repairPassesApplied: summaryData.passesAttempted ?? 0,
+        patchesApplied: summaryData.totalApplied ?? 0,
+        manualReviewRequired: Boolean(summaryData.requiresManualReview) || Boolean(finalReport.manualReviewRequired),
+        problems: summaryData.problems ?? [],
+      };
     };
 
-    const runOrchestration = options.runOrchestrationImpl ?? runVisualRepairOrchestrationPipeline;
-    const result = await runOrchestration({
-      loaded,
-      sourceRasters,
-      templateId: null,
-      finalMode: toVisualFinalMode(options.requestedMode),
-      persistVisualQa: false,
-      maxRasterDim,
-      maxRepairPasses: options.maxRepairPasses ?? 2,
+    const batched = await runBatchedVisualQuality({
+      template: options.template,
+      cdir: options.cdir,
       sourceExpectations: options.sourceExpectations ?? null,
-      captureOptions: { maxPages },
+      batchSize: options.batchSize ?? DEFAULT_VISUAL_QUALITY_BATCH_SIZE,
+      runBatch,
     });
 
-    const summaryData = result.summary;
-    const finalReport = result.repair.finalReport;
-    const finalScore = Number.isFinite(summaryData.finalScore) ? summaryData.finalScore : null;
-    const initialScore = Number.isFinite(summaryData.visualQaScore) ? summaryData.visualQaScore : null;
-    const recommendedFinalMode = recommendFinalMode(options.requestedMode, finalScore);
+    // Fail-open: if no batch completed, keep the ORIGINAL template and require
+    // manual review — never a silent pass, never a bricked import.
+    if (batched.batch.batchesCompleted === 0) {
+      return {
+        template: options.template,
+        recommendedFinalMode: options.requestedMode,
+        repairPassesApplied: 0,
+        manualReviewRequired: true,
+        summary: skippedSummary(options, 'visual_qa_no_batches_completed', {
+          pageCount,
+          coverage: batched.batch.coverage,
+          batchesAttempted: batched.batch.batchesAttempted,
+          batchesCompleted: 0,
+          pagesScored: 0,
+          pagesUnscored: batched.batch.pagesUnscored,
+          manualReviewRequired: true,
+          error: batched.batch.batchProblems.map((p) => p.message).join(' | ') || undefined,
+        }),
+      };
+    }
 
-    const perPage: ImportQualityGatePageVerdict[] = (finalReport.pages ?? []).map((page) => ({
+    const finalScore = batched.finalScore;
+    const initialScore = batched.initialScore;
+    // C4.3: no optimistic final-mode recommendation on partial/none coverage.
+    const recommendedFinalMode = batched.batch.coverage === 'complete'
+      ? recommendFinalMode(options.requestedMode, finalScore)
+      : options.requestedMode;
+
+    const perPage: ImportQualityGatePageVerdict[] = batched.pageReports.map((page) => ({
       pageNumber: page.pageNumber,
       score: page.overallScore,
       recommendedAction: page.recommendedAction,
@@ -298,12 +377,11 @@ export async function runImportQualityGate(
     const pagesNeedingReview = perPage.filter(
       (page) => page.score < QUALITY_THRESHOLDS.acceptWithWarnings,
     ).length;
-    const warningCount = (finalReport.pages ?? []).reduce(
+    const warningCount = batched.pageReports.reduce(
       (sum, page) => sum + (page.warnings?.length ?? 0),
       0,
     );
-    const manualReviewRequired = Boolean(summaryData.requiresManualReview)
-      || finalReport.manualReviewRequired
+    const manualReviewRequired = batched.manualReviewRequired
       || (finalScore !== null && finalScore < QUALITY_THRESHOLDS.repair);
 
     const summary: ImportQualityGateSummary = {
@@ -314,12 +392,17 @@ export async function runImportQualityGate(
       overallScore: finalScore,
       initialScore,
       finalScore,
-      scoreDelta: Number.isFinite(summaryData.scoreDelta) ? summaryData.scoreDelta : null,
-      repairStatus: summaryData.repairStatus ?? null,
-      repairPassesApplied: summaryData.passesAttempted ?? 0,
-      patchesApplied: summaryData.totalApplied ?? 0,
+      scoreDelta: batched.scoreDelta,
+      repairStatus: null,
+      repairPassesApplied: batched.repairPassesApplied,
+      patchesApplied: batched.patchesApplied,
       manualReviewRequired,
-      qualityCoverage: summaryData.qualityCoverage,
+      qualityCoverage: resolveQualityCoverage(options.sourceExpectations),
+      coverage: batched.batch.coverage,
+      batchesAttempted: batched.batch.batchesAttempted,
+      batchesCompleted: batched.batch.batchesCompleted,
+      pagesScored: batched.batch.pagesScored,
+      pagesUnscored: batched.batch.pagesUnscored,
       pageCount,
       pagesNeedingReview,
       perPage,
@@ -328,7 +411,7 @@ export async function runImportQualityGate(
     };
 
     return {
-      template: result.draft.template ?? options.template,
+      template: batched.template,
       recommendedFinalMode,
       repairPassesApplied: summary.repairPassesApplied,
       manualReviewRequired,

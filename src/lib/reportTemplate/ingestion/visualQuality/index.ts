@@ -190,6 +190,23 @@ export {
 } from './repair';
 
 export {
+  VISUAL_QUALITY_BATCH_VERSION,
+  DEFAULT_VISUAL_QUALITY_BATCH_SIZE,
+  planVisualQualityBatches,
+  runBatchedVisualQuality,
+  type VisualQualityBatchContext,
+  type BatchCoverage,
+  type BatchedVisualQualitySummary,
+  type VisualQualityBatchProblem,
+  type PlanVisualQualityBatchesResult,
+  type VisualQualityBatchRunInput,
+  type VisualQualityBatchRunOutput,
+  type VisualQualityBatchRunner,
+  type RunBatchedVisualQualityOptions,
+  type RunBatchedVisualQualityResult,
+} from './visualQualityBatchCoordinator';
+
+export {
   VISUAL_SOURCE_EXPECTATIONS_VERSION,
   buildVisualSourceExpectationBundle,
   isSourceFidelityUsable,
