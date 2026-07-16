@@ -270,6 +270,7 @@ export default function ReportQA() {
   const conversationIdRef = useRef<string | null>(null);
   const activeStreamRef = useRef<{ conversationId: string; controller: AbortController } | null>(null);
   const streamAbortReasonRef = useRef<string | null>(null);
+  const conversationLoadRequestRef = useRef(0);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -1025,6 +1026,7 @@ export default function ReportQA() {
     if (restoringConversationId) return;
 
     abortActiveStream('switch-conversation');
+    const loadRequestId = ++conversationLoadRequestRef.current;
     setRestoringConversationId(conv.id);
     setConversationRestoreError(null);
     setLiveAnnouncement(`Loading conversation ${conv.title}`);
@@ -1069,7 +1071,7 @@ export default function ReportQA() {
         .reverse()
         .find((message) => message.role === 'assistant' && message.modelProvider)?.modelProvider;
 
-      if (conversationIdRef.current && conversationIdRef.current !== conv.id && restoringConversationId !== conv.id) {
+      if (loadRequestId !== conversationLoadRequestRef.current) {
         // A newer conversation load started while this request was in flight.
         return;
       }
