@@ -21,14 +21,7 @@ export { default as AmlFinance } from "./AmlFinance";
 
 export { default as AmlTransactions } from "./AmlTransactions";
 
-export const AmlMonitoring = () => (
-  <AmlShellPage
-    title="Ongoing Monitoring"
-    description="Transactional monitoring, EDD triggers, and existing-client remediation queues."
-    icon={Activity}
-    phaseLabel="Wires in Phase 9 (Ongoing CDD & Monitoring)"
-  />
-);
+export { default as AmlMonitoring } from "./AmlMonitoring";
 
 export { default as AmlInvestigations } from "./AmlInvestigations";
 
