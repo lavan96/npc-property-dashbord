@@ -1135,13 +1135,16 @@ export default function ReportQA() {
 
       toast({ title: 'Conversation loaded', description: conversation.title || conv.title });
     } catch (error) {
+      if (loadRequestId !== conversationLoadRequestRef.current) return;
       console.error('Failed to load conversation:', error);
       const message = error instanceof Error ? error.message : 'Could not load the selected conversation';
       setConversationRestoreError(message);
       setLiveAnnouncement('Conversation failed to load');
       toast({ title: 'Failed to load', description: message, variant: 'destructive' });
     } finally {
-      setRestoringConversationId(null);
+      if (loadRequestId === conversationLoadRequestRef.current) {
+        setRestoringConversationId(null);
+      }
     }
   };
 
