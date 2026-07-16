@@ -1024,6 +1024,7 @@ export default function ReportQA() {
   const loadConversation = async (conv: SavedConversation) => {
     if (restoringConversationId) return;
 
+    abortActiveStream('switch-conversation');
     setRestoringConversationId(conv.id);
     setConversationRestoreError(null);
     setLiveAnnouncement(`Loading conversation ${conv.title}`);
@@ -1068,6 +1069,11 @@ export default function ReportQA() {
         .reverse()
         .find((message) => message.role === 'assistant' && message.modelProvider)?.modelProvider;
 
+      if (conversationIdRef.current && conversationIdRef.current !== conv.id && restoringConversationId !== conv.id) {
+        // A newer conversation load started while this request was in flight.
+        return;
+      }
+
       setActiveConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
       setHasOlderMessages(false);
@@ -1101,7 +1107,9 @@ export default function ReportQA() {
       }
       setSelectedReportNames(restoredSelectedNames);
       setUploadedReports(restoredReports);
-      setMessages(restoredMessages);
+      if (conversationIdRef.current === conv.id) {
+        setMessages(restoredMessages);
+      }
       if (import.meta.env.DEV && restoredMessages.length !== messagesToSet.length) {
         console.warn('[ReportQA] Some stored messages were skipped during restoration because they were invalid or unsupported.', {
           conversationId: conv.id,
