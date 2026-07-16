@@ -120,14 +120,15 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
           onCancel={() => {
             setStepUpOpen(false);
           }}
-          onConfirm={() => {
+          onConfirm={(payload) => {
             try {
-              sessionStorage.setItem(stepUpKey, String(Date.now()));
+              sessionStorage.setItem(stepUpKey, JSON.stringify(payload));
             } catch { /* ignore */ }
             setStepUpOk(true);
             setStepUpOpen(false);
           }}
         />
+
       </>
     );
   }
