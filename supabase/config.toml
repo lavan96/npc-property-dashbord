@@ -18,6 +18,9 @@ verify_jwt = true
 [functions.aml-entities]
 verify_jwt = true
 
+[functions.aml-finance]
+verify_jwt = true
+
 
 
 
