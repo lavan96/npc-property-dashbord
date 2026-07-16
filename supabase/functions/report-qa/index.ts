@@ -2358,19 +2358,19 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
 
       // Save messages to database if conversationId provided
       if (conversationId) {
-        await supabase.from("report_qa_messages").insert([
-          { conversation_id: conversationId, role: "user", content: sanitizeForPostgres(question) },
-          {
-            conversation_id: conversationId,
-            role: "assistant",
-            content: sanitizeForPostgres(responseText),
-            model_provider: modelProvider,
-            citations: structuredCitationsNS.length > 0 ? structuredCitationsNS : null,
-            comparison_mode: comparisonMode,
-            prompt_version: PROMPT_VERSION,
-            model_version: chatModelName,
-          },
-        ]);
+        await persistReportQATurn(supabase, {
+          conversationId,
+          userId,
+          question,
+          assistantText: responseText,
+          modelProvider,
+          modelVersion: chatModelName,
+          citations: structuredCitationsNS,
+          comparisonMode,
+          promptVersion: PROMPT_VERSION,
+          fallbackAssistantText: "I couldn't generate a response. Please try again.",
+          source: 'chat-nonstream',
+        });
 
         // Check if this is the first message and generate a dynamic title
         const { count } = await supabase
