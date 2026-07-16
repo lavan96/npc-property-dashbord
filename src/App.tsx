@@ -139,6 +139,7 @@ import PortalMessages from "./pages/portal/PortalMessages";
 import PortalPropertyInsights from "./pages/portal/PortalPropertyInsights";
 import PortalBooking from "./pages/portal/PortalBooking";
 import PortalAppointments from "./pages/portal/PortalAppointments";
+import PortalAml from "./pages/portal/PortalAml";
 import PortalConfig from "./pages/PortalConfig";
 import { PortalConsentWall } from "@/components/portal/PortalConsentWall";
 import { FinancePortalAuthProvider } from "@/hooks/useFinancePortalAuth";
