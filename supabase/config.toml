@@ -15,6 +15,10 @@ verify_jwt = false
 [functions.aml-risk]
 verify_jwt = true
 
+[functions.aml-entities]
+verify_jwt = true
+
+
 
 
 

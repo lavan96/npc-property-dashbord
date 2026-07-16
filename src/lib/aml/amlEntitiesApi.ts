@@ -1,0 +1,120 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export type AmlEntityType = "company" | "trust" | "smsf" | "partnership" | "sole_trader" | "other";
+export type AmlControlType = "shareholding" | "trustee" | "beneficiary" | "appointor" | "director" | "partner" | "settlor" | "other";
+export type AmlVerificationState = "unverified" | "pending" | "verified" | "failed" | "waived";
+export type AmlEntityLinkRole = "subject" | "owner" | "related" | "counterparty";
+
+export interface AmlEntity {
+  id: string;
+  entity_type: AmlEntityType;
+  legal_name: string;
+  trading_name: string | null;
+  abn: string | null;
+  acn: string | null;
+  tfn_masked: string | null;
+  jurisdiction: string;
+  incorporation_date: string | null;
+  registered_address: Record<string, any>;
+  principal_place_of_business: Record<string, any>;
+  status: string;
+  is_pep_linked: boolean;
+  is_sanctioned: boolean;
+  risk_flags: any[];
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlBeneficialOwner {
+  id: string;
+  entity_id: string;
+  full_name: string;
+  date_of_birth: string | null;
+  residential_country: string;
+  residential_address: Record<string, any>;
+  ownership_percent: number;
+  control_type: AmlControlType;
+  is_ubo: boolean;
+  is_pep: boolean;
+  is_sanctioned: boolean;
+  verification_state: AmlVerificationState;
+  identity_check_id: string | null;
+  screening_check_id: string | null;
+  notes: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlAuthorisedRep {
+  id: string;
+  entity_id: string;
+  full_name: string;
+  role_title: string;
+  appointment_date: string | null;
+  cessation_date: string | null;
+  is_signatory: boolean;
+  is_director: boolean;
+  verification_state: AmlVerificationState;
+  identity_check_id: string | null;
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlEntityCaseLink {
+  id: string;
+  case_id: string;
+  entity_id: string;
+  link_role: AmlEntityLinkRole;
+  notes: string | null;
+  created_at: string;
+  entity?: AmlEntity;
+  case?: { id: string; case_reference: string; subject_display_name: string; status: string; risk_rating: string | null };
+}
+
+export interface AmlOwnershipSummary {
+  total_owners: number;
+  total_ownership_percent: number;
+  ubo_count: number;
+  pep_count: number;
+  sanctioned_count: number;
+  unverified_count: number;
+  missing_ownership_percent: number;
+}
+
+async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke("aml-entities", { body: payload });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as T;
+}
+
+export const amlEntitiesApi = {
+  listEntities: (params: { search?: string; entity_type?: AmlEntityType; limit?: number; offset?: number } = {}) =>
+    invoke<{ entities: AmlEntity[]; total: number }>({ op: "list_entities", ...params }),
+  getEntity: (entity_id: string) =>
+    invoke<{ entity: AmlEntity; owners: AmlBeneficialOwner[]; reps: AmlAuthorisedRep[]; links: AmlEntityCaseLink[] }>({ op: "get_entity", entity_id }),
+  upsertEntity: (entity: Partial<AmlEntity>) => invoke<{ entity: AmlEntity }>({ op: "upsert_entity", entity }),
+  deleteEntity: (entity_id: string) => invoke<{ ok: true }>({ op: "delete_entity", entity_id }),
+
+  listOwners: (entity_id: string) => invoke<{ owners: AmlBeneficialOwner[] }>({ op: "list_owners", entity_id }),
+  upsertOwner: (owner: Partial<AmlBeneficialOwner> & { entity_id: string }) =>
+    invoke<{ owner: AmlBeneficialOwner }>({ op: "upsert_owner", owner }),
+  deleteOwner: (owner_id: string) => invoke<{ ok: true }>({ op: "delete_owner", owner_id }),
+
+  listReps: (entity_id: string) => invoke<{ reps: AmlAuthorisedRep[] }>({ op: "list_reps", entity_id }),
+  upsertRep: (rep: Partial<AmlAuthorisedRep> & { entity_id: string }) =>
+    invoke<{ rep: AmlAuthorisedRep }>({ op: "upsert_rep", rep }),
+  deleteRep: (rep_id: string) => invoke<{ ok: true }>({ op: "delete_rep", rep_id }),
+
+  listEntitiesForCase: (case_id: string) =>
+    invoke<{ links: AmlEntityCaseLink[] }>({ op: "list_entities_for_case", case_id }),
+  linkCase: (params: { case_id: string; entity_id: string; link_role?: AmlEntityLinkRole; notes?: string }) =>
+    invoke<{ link: AmlEntityCaseLink }>({ op: "link_case", ...params }),
+  unlinkCase: (link_id: string) => invoke<{ ok: true }>({ op: "unlink_case", link_id }),
+
+  ownershipSummary: (entity_id: string) =>
+    invoke<{ summary: AmlOwnershipSummary }>({ op: "ownership_summary", entity_id }),
+};

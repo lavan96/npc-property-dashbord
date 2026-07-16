@@ -15,14 +15,7 @@ export { default as AmlScreening } from "./AmlScreening";
 
 export { default as AmlRisk } from "./AmlRisk";
 
-export const AmlCounterparty = () => (
-  <AmlShellPage
-    title="Counterparty & Structures"
-    description="Companies, trusts, SMSFs, beneficial owners and authorised representatives."
-    icon={Users}
-    phaseLabel="Wires in Phase 6 (Entities & Beneficial Owners)"
-  />
-);
+export { default as AmlCounterparty } from "./AmlCounterparty";
 
 export const AmlMonitoring = () => (
   <AmlShellPage

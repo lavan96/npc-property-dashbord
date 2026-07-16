@@ -20154,6 +20154,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_aml_write_role: { Args: { _user_id: string }; Returns: boolean }
       has_any_aml_role: { Args: { _user_id: string }; Returns: boolean }
       has_module_access: {
         Args: { _module_key: string; _user_id: string }

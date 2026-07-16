@@ -1,0 +1,248 @@
+/**
+ * Phase 6 — Entities & Beneficial Owners.
+ *
+ * Ops (POST {op, ...args}):
+ *   Entities:  list_entities, get_entity, upsert_entity, delete_entity
+ *   Owners:    list_owners, upsert_owner, delete_owner
+ *   Reps:      list_reps, upsert_rep, delete_rep
+ *   Linking:   list_case_links, link_case, unlink_case, list_entities_for_case
+ *   Insights:  ownership_summary
+ *
+ * Read: any AML role. Writes: analyst/reviewer/mlro.
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jr = (d: unknown, s = 200) =>
+  new Response(JSON.stringify(d), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+async function sha256Hex(input: string) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function appendCaseEvent(
+  admin: any, caseId: string, category: string, summary: string,
+  payload: any, actorId: string | null, actorLabel: string | null,
+) {
+  const { data: prev } = await admin.schema("aml").from("case_events")
+    .select("row_hash").eq("case_id", caseId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const prevHash = prev?.row_hash ?? null;
+  const now = new Date().toISOString();
+  const rowHash = await sha256Hex(JSON.stringify({
+    case_id: caseId, category, summary, payload, actor_id: actorId, actor_label: actorLabel, prev_hash: prevHash, created_at: now,
+  }));
+  await admin.schema("aml").from("case_events").insert({
+    case_id: caseId, category, summary, payload, actor_id: actorId, actor_label: actorLabel,
+    prev_hash: prevHash, row_hash: rowHash, created_at: now,
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const auth = req.headers.get("Authorization") ?? "";
+    if (!auth.startsWith("Bearer ")) return jr({ error: "Unauthorized" }, 401);
+
+    const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
+    const { data: userData, error: uErr } = await userClient.auth.getUser();
+    if (uErr || !userData?.user) return jr({ error: "Invalid session" }, 401);
+    const userId = userData.user.id;
+    const userLabel = userData.user.email ?? null;
+
+    const admin = createClient(url, service);
+    const { data: hasAny } = await admin.rpc("has_any_aml_role", { _user_id: userId });
+    if (!hasAny) return jr({ error: "AML role required" }, 403);
+
+    const { data: roleRows } = await admin.schema("aml").from("role_assignments")
+      .select("role").eq("user_id", userId).is("revoked_at", null);
+    const roles = new Set<string>((roleRows ?? []).map((r: any) => r.role));
+    const canWrite = roles.has("analyst") || roles.has("reviewer") || roles.has("mlro");
+
+    const body = await req.json().catch(() => ({}));
+    const op = String(body?.op ?? "");
+    const requireWrite = () => { if (!canWrite) throw new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
+
+    const aml = admin.schema("aml");
+
+    // ── ENTITIES ─────────────────────────────────────────────
+    if (op === "list_entities") {
+      const q = String(body.search ?? "").trim();
+      const type = body.entity_type ? String(body.entity_type) : null;
+      const limit = Math.min(Number(body.limit ?? 100), 500);
+      const offset = Number(body.offset ?? 0);
+      let query = aml.from("entities").select("*", { count: "exact" })
+        .order("updated_at", { ascending: false }).range(offset, offset + limit - 1);
+      if (type) query = query.eq("entity_type", type);
+      if (q) query = query.or(`legal_name.ilike.%${q}%,trading_name.ilike.%${q}%,abn.ilike.%${q}%,acn.ilike.%${q}%`);
+      const { data, count, error } = await query;
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ entities: data ?? [], total: count ?? 0 });
+    }
+
+    if (op === "get_entity") {
+      const id = String(body.entity_id ?? "");
+      if (!id) return jr({ error: "entity_id required" }, 400);
+      const [{ data: entity }, { data: owners }, { data: reps }, { data: links }] = await Promise.all([
+        aml.from("entities").select("*").eq("id", id).maybeSingle(),
+        aml.from("beneficial_owners").select("*").eq("entity_id", id).order("ownership_percent", { ascending: false }),
+        aml.from("authorised_representatives").select("*").eq("entity_id", id).order("role_title"),
+        aml.from("entity_case_links").select("*, case:cases(id,case_reference,subject_display_name,status,risk_rating)").eq("entity_id", id),
+      ]);
+      if (!entity) return jr({ error: "Not found" }, 404);
+      return jr({ entity, owners: owners ?? [], reps: reps ?? [], links: links ?? [] });
+    }
+
+    if (op === "upsert_entity") {
+      requireWrite();
+      const patch = body.entity ?? {};
+      const isNew = !patch.id;
+      const row = { ...patch };
+      if (isNew) row.created_by = userId;
+      const { data, error } = await aml.from("entities")
+        .upsert(row).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ entity: data });
+    }
+
+    if (op === "delete_entity") {
+      requireWrite();
+      const id = String(body.entity_id ?? "");
+      if (!id) return jr({ error: "entity_id required" }, 400);
+      const { error } = await aml.from("entities").delete().eq("id", id);
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ ok: true });
+    }
+
+    // ── OWNERS ───────────────────────────────────────────────
+    if (op === "list_owners") {
+      const eid = String(body.entity_id ?? "");
+      if (!eid) return jr({ error: "entity_id required" }, 400);
+      const { data } = await aml.from("beneficial_owners").select("*").eq("entity_id", eid)
+        .order("ownership_percent", { ascending: false });
+      return jr({ owners: data ?? [] });
+    }
+    if (op === "upsert_owner") {
+      requireWrite();
+      const patch = body.owner ?? {};
+      if (!patch.entity_id) return jr({ error: "entity_id required" }, 400);
+      const isNew = !patch.id;
+      const row = { ...patch };
+      if (isNew) row.created_by = userId;
+      const { data, error } = await aml.from("beneficial_owners").upsert(row).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ owner: data });
+    }
+    if (op === "delete_owner") {
+      requireWrite();
+      const id = String(body.owner_id ?? "");
+      if (!id) return jr({ error: "owner_id required" }, 400);
+      const { error } = await aml.from("beneficial_owners").delete().eq("id", id);
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ ok: true });
+    }
+
+    // ── REPS ─────────────────────────────────────────────────
+    if (op === "list_reps") {
+      const eid = String(body.entity_id ?? "");
+      if (!eid) return jr({ error: "entity_id required" }, 400);
+      const { data } = await aml.from("authorised_representatives").select("*").eq("entity_id", eid).order("role_title");
+      return jr({ reps: data ?? [] });
+    }
+    if (op === "upsert_rep") {
+      requireWrite();
+      const patch = body.rep ?? {};
+      if (!patch.entity_id) return jr({ error: "entity_id required" }, 400);
+      const isNew = !patch.id;
+      const row = { ...patch };
+      if (isNew) row.created_by = userId;
+      const { data, error } = await aml.from("authorised_representatives").upsert(row).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ rep: data });
+    }
+    if (op === "delete_rep") {
+      requireWrite();
+      const id = String(body.rep_id ?? "");
+      if (!id) return jr({ error: "rep_id required" }, 400);
+      const { error } = await aml.from("authorised_representatives").delete().eq("id", id);
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ ok: true });
+    }
+
+    // ── CASE LINKS ───────────────────────────────────────────
+    if (op === "list_entities_for_case") {
+      const caseId = String(body.case_id ?? "");
+      if (!caseId) return jr({ error: "case_id required" }, 400);
+      const { data } = await aml.from("entity_case_links")
+        .select("*, entity:entities(*)").eq("case_id", caseId);
+      return jr({ links: data ?? [] });
+    }
+    if (op === "link_case") {
+      requireWrite();
+      const caseId = String(body.case_id ?? "");
+      const entityId = String(body.entity_id ?? "");
+      const linkRole = String(body.link_role ?? "subject");
+      if (!caseId || !entityId) return jr({ error: "case_id + entity_id required" }, 400);
+      const { data, error } = await aml.from("entity_case_links")
+        .upsert({ case_id: caseId, entity_id: entityId, link_role: linkRole, notes: body.notes ?? null, created_by: userId },
+          { onConflict: "case_id,entity_id,link_role" })
+        .select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      const { data: ent } = await aml.from("entities").select("legal_name").eq("id", entityId).maybeSingle();
+      await appendCaseEvent(admin, caseId, "system", `Entity linked (${linkRole}): ${ent?.legal_name ?? entityId}`,
+        { entity_id: entityId, link_role: linkRole }, userId, userLabel);
+      return jr({ link: data });
+    }
+    if (op === "unlink_case") {
+      requireWrite();
+      const id = String(body.link_id ?? "");
+      if (!id) return jr({ error: "link_id required" }, 400);
+      const { data: existing } = await aml.from("entity_case_links").select("*").eq("id", id).maybeSingle();
+      const { error } = await aml.from("entity_case_links").delete().eq("id", id);
+      if (error) return jr({ error: error.message }, 400);
+      if (existing?.case_id) {
+        await appendCaseEvent(admin, existing.case_id, "system", `Entity unlinked`,
+          { link_id: id, entity_id: existing.entity_id }, userId, userLabel);
+      }
+      return jr({ ok: true });
+    }
+
+    // ── INSIGHTS ─────────────────────────────────────────────
+    if (op === "ownership_summary") {
+      const eid = String(body.entity_id ?? "");
+      if (!eid) return jr({ error: "entity_id required" }, 400);
+      const { data: owners } = await aml.from("beneficial_owners").select("*").eq("entity_id", eid);
+      const list = owners ?? [];
+      const total = list.reduce((s: number, o: any) => s + Number(o.ownership_percent || 0), 0);
+      const ubo = list.filter((o: any) => Number(o.ownership_percent || 0) >= 25 || o.is_ubo);
+      const pep = list.filter((o: any) => o.is_pep);
+      const sanctioned = list.filter((o: any) => o.is_sanctioned);
+      const unverified = list.filter((o: any) => o.verification_state !== "verified" && o.verification_state !== "waived");
+      return jr({
+        summary: {
+          total_owners: list.length,
+          total_ownership_percent: Number(total.toFixed(3)),
+          ubo_count: ubo.length,
+          pep_count: pep.length,
+          sanctioned_count: sanctioned.length,
+          unverified_count: unverified.length,
+          missing_ownership_percent: Math.max(0, 100 - total),
+        },
+      });
+    }
+
+    return jr({ error: `Unknown op: ${op}` }, 400);
+  } catch (e: any) {
+    if (e instanceof Response) return e;
+    console.error("aml-entities error", e);
+    return jr({ error: e?.message ?? "Unhandled error" }, 500);
+  }
+});
