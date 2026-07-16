@@ -203,7 +203,10 @@ export function DashboardSidebar() {
     if (path === '/commercial') {
       return currentPath === '/commercial' || currentPath.startsWith('/commercial/') || currentPath === '/industrial' || currentPath.startsWith('/industrial/');
     }
-
+    // AML overview must not swallow highlight from every nested /admin/aml/* route.
+    if (path === '/admin/aml') {
+      return currentPath === '/admin/aml';
+    }
     return currentPath === path;
   };
 
