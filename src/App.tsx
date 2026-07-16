@@ -264,6 +264,7 @@ const App = () => (
                           <Route path="property-insights" element={<PortalPropertyInsights />} />
                           <Route path="booking" element={<PortalBooking />} />
                           <Route path="appointments" element={<PortalAppointments />} />
+                          <Route path="aml" element={<PortalAml />} />
                         </Route>
 
                         {/* Finance Portal Routes - single provider wrapping all /finance/* */}
