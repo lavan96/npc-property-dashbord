@@ -369,10 +369,10 @@ const App = () => (
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
                 <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
                 <Route path="admin/agent-quality" element={<AgentQuality />} />
-                <Route path="admin/aml/cases" element={<AmlGuard capability="aml.view"><AmlCases /></AmlGuard>} />
                 <Route path="admin/aml" element={<AmlLayout />}>
                   <Route index element={<AmlGuard capability="aml.view"><AmlOverview /></AmlGuard>} />
                   <Route path="intake" element={<AmlGuard capability="aml.view"><AmlIntakeQueue /></AmlGuard>} />
+                  <Route path="cases" element={<AmlGuard capability="aml.view"><AmlCases /></AmlGuard>} />
                   <Route path="verification" element={<AmlGuard capability="aml.view"><AmlVerification /></AmlGuard>} />
                   <Route path="screening" element={<AmlGuard capability="aml.view"><AmlScreening /></AmlGuard>} />
                   <Route path="risk" element={<AmlGuard capability="aml.view"><AmlRisk /></AmlGuard>} />
