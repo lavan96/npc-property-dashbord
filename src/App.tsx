@@ -369,7 +369,20 @@ const App = () => (
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
                 <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
                 <Route path="admin/agent-quality" element={<AgentQuality />} />
-                <Route path="admin/aml/cases" element={<AmlCases />} />
+                <Route path="admin/aml/cases" element={<AmlGuard capability="aml.view"><AmlCases /></AmlGuard>} />
+                <Route path="admin/aml" element={<AmlLayout />}>
+                  <Route index element={<AmlGuard capability="aml.view"><AmlOverview /></AmlGuard>} />
+                  <Route path="intake" element={<AmlGuard capability="aml.view"><AmlIntakeQueue /></AmlGuard>} />
+                  <Route path="verification" element={<AmlGuard capability="aml.view"><AmlVerification /></AmlGuard>} />
+                  <Route path="screening" element={<AmlGuard capability="aml.view"><AmlScreening /></AmlGuard>} />
+                  <Route path="risk" element={<AmlGuard capability="aml.view"><AmlRisk /></AmlGuard>} />
+                  <Route path="counterparty" element={<AmlGuard capability="aml.view"><AmlCounterparty /></AmlGuard>} />
+                  <Route path="monitoring" element={<AmlGuard capability="aml.view"><AmlMonitoring /></AmlGuard>} />
+                  <Route path="investigations" element={<AmlGuard capability="aml.investigate"><AmlInvestigations /></AmlGuard>} />
+                  <Route path="austrac" element={<AmlGuard capability="aml.report"><AmlAustracReporting /></AmlGuard>} />
+                  <Route path="governance" element={<AmlGuard capability="aml.view"><AmlGovernance /></AmlGuard>} />
+                  <Route path="configuration" element={<AmlGuard capability="aml.configure"><AmlConfiguration /></AmlGuard>} />
+                </Route>
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
