@@ -1175,6 +1175,7 @@ export default function ReportQA() {
 
     const restoredMessages = normaliseStoredMessages(storedMessages);
     if (restoredMessages.length >= expectedMinimumMessages) {
+      if (conversationIdRef.current !== targetConversationId) return false;
       setMessages(restoredMessages);
       setTotalMessageCount(totalMsgCount || restoredMessages.length);
       setHasOlderMessages(false);
