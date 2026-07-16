@@ -82,6 +82,7 @@ import AmlCases from "./pages/aml/AmlCases";
 import AmlOverview from "./pages/aml/AmlOverview";
 import {
   AmlIntakeQueue, AmlVerification, AmlScreening, AmlRisk, AmlCounterparty,
+  AmlFinance,
   AmlMonitoring, AmlInvestigations, AmlAustracReporting, AmlGovernance, AmlConfiguration,
 } from "./pages/aml/AmlShellPages";
 import { AmlLayout } from "@/components/aml/AmlLayout";
