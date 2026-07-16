@@ -1,0 +1,293 @@
+/**
+ * Phase 10 — AUSTRAC Reporting & Submissions Hub.
+ *
+ * POST { op, ...args }
+ * Reads: any AML role. Draft writes: analyst/reviewer/mlro. Sign-off/submission/receipt: mlro only.
+ *
+ * Ops:
+ *   list_reports, get_report, upsert_report, delete_report,
+ *   list_versions, create_version,
+ *   submit_start (mlro), submit_record (mlro), record_receipt (mlro),
+ *   mlro_signoff, mlro_reject, withdraw_report,
+ *   export_bundle, summary
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jr = (d: unknown, s = 200) =>
+  new Response(JSON.stringify(d), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+async function sha256Hex(input: string) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function appendCaseEvent(
+  admin: any, caseId: string | null, category: string, summary: string,
+  payload: any, actorId: string | null, actorLabel: string | null,
+) {
+  if (!caseId) return;
+  const { data: prev } = await admin.schema("aml").from("case_events")
+    .select("row_hash").eq("case_id", caseId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const prevHash = prev?.row_hash ?? null;
+  const now = new Date().toISOString();
+  const rowHash = await sha256Hex(JSON.stringify({ case_id: caseId, category, summary, payload, actor_id: actorId, actor_label: actorLabel, prev_hash: prevHash, created_at: now }));
+  await admin.schema("aml").from("case_events").insert({
+    case_id: caseId, category, summary, payload,
+    actor_id: actorId, actor_label: actorLabel,
+    prev_hash: prevHash, row_hash: rowHash, created_at: now,
+  });
+}
+
+async function appendVersion(admin: any, reportId: string, snapshot: any, narrative: string | null, note: string | null, actorId: string | null, actorLabel: string | null) {
+  const aml = admin.schema("aml");
+  const { data: latest } = await aml.from("report_versions")
+    .select("version, content_hash").eq("report_id", reportId)
+    .order("version", { ascending: false }).limit(1).maybeSingle();
+  const nextVersion = (latest?.version ?? 0) + 1;
+  const prevHash = latest?.content_hash ?? null;
+  const contentHash = await sha256Hex(JSON.stringify({ reportId, nextVersion, snapshot, narrative, prevHash }));
+  const { data, error } = await aml.from("report_versions").insert({
+    report_id: reportId, version: nextVersion, snapshot, narrative, change_note: note,
+    author_id: actorId, author_label: actorLabel, content_hash: contentHash, prev_hash: prevHash,
+  }).select("*").single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(url, service);
+    const aml = admin.schema("aml");
+
+    const auth = req.headers.get("Authorization") ?? "";
+    if (!auth.startsWith("Bearer ")) return jr({ error: "Unauthorized" }, 401);
+    const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
+    const { data: userData, error: uErr } = await userClient.auth.getUser();
+    if (uErr || !userData?.user) return jr({ error: "Invalid session" }, 401);
+    const userId = userData.user.id;
+    const userLabel = userData.user.email ?? null;
+
+    const { data: hasAny } = await admin.rpc("has_any_aml_role", { _user_id: userId });
+    if (!hasAny) return jr({ error: "AML role required" }, 403);
+    const { data: roleRows } = await aml.from("role_assignments").select("role").eq("user_id", userId).is("revoked_at", null);
+    const roles = new Set<string>((roleRows ?? []).map((r: any) => r.role));
+    const canWrite = roles.has("analyst") || roles.has("reviewer") || roles.has("mlro");
+    const isMlro = roles.has("mlro");
+    const requireWrite = () => { if (!canWrite) throw new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
+    const requireMlro = () => { if (!isMlro) throw new Response(JSON.stringify({ error: "MLRO role required" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
+
+    const body = await req.json().catch(() => ({}));
+    const op = String(body?.op ?? "");
+
+    // ── LIST / GET ────────────────────────────────
+    if (op === "list_reports") {
+      let q = aml.from("reports").select("*").order("created_at", { ascending: false }).limit(Number(body.limit ?? 200));
+      if (body.status) q = q.eq("status", String(body.status));
+      if (body.kind) q = q.eq("kind", String(body.kind));
+      if (body.case_id) q = q.eq("case_id", String(body.case_id));
+      const { data, error } = await q;
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ reports: data ?? [] });
+    }
+    if (op === "get_report") {
+      const id = String(body.id ?? "");
+      const [{ data: report }, { data: versions }, { data: submissions }] = await Promise.all([
+        aml.from("reports").select("*").eq("id", id).maybeSingle(),
+        aml.from("report_versions").select("*").eq("report_id", id).order("version", { ascending: false }),
+        aml.from("report_submissions").select("*, receipts:report_receipts(*)").eq("report_id", id).order("submitted_at", { ascending: false }),
+      ]);
+      return jr({ report, versions: versions ?? [], submissions: submissions ?? [] });
+    }
+
+    // ── DRAFT WRITES ─────────────────────────────
+    if (op === "upsert_report") {
+      requireWrite();
+      const r = body.report ?? {};
+      if (!r.kind || !r.title) return jr({ error: "kind and title required" }, 400);
+      const row: any = {
+        ...r,
+        drafted_by: r.id ? r.drafted_by : userId,
+      };
+      // Never allow client to short-circuit MLRO fields on upsert.
+      delete row.mlro_signed_by; delete row.mlro_signed_at;
+      delete row.submitted_at; delete row.submitted_by; delete row.acknowledged_at;
+      const q = r.id
+        ? aml.from("reports").update(row).eq("id", r.id).select("*").single()
+        : aml.from("reports").insert(row).select("*").single();
+      const { data, error } = await q;
+      if (error) return jr({ error: error.message }, 400);
+      await appendVersion(admin, data.id, { title: data.title, narrative: data.narrative, payload: data.payload, kind: data.kind, reporting_period_start: data.reporting_period_start, reporting_period_end: data.reporting_period_end }, data.narrative ?? null, body.change_note ?? (r.id ? "Draft updated" : "Draft created"), userId, userLabel);
+      await appendCaseEvent(admin, data.case_id, "system", `AUSTRAC ${data.kind.toUpperCase()} ${r.id ? "updated" : "drafted"}: ${data.title}`, { report_id: data.id }, userId, userLabel);
+      return jr({ report: data });
+    }
+
+    if (op === "delete_report") {
+      requireWrite();
+      const { data: existing } = await aml.from("reports").select("id, status, case_id, kind, title").eq("id", String(body.id)).maybeSingle();
+      if (!existing) return jr({ error: "Not found" }, 404);
+      if (["submitted", "acknowledged"].includes(existing.status)) return jr({ error: "Cannot delete a submitted or acknowledged report" }, 400);
+      const { error } = await aml.from("reports").delete().eq("id", existing.id);
+      if (error) return jr({ error: error.message }, 400);
+      await appendCaseEvent(admin, existing.case_id, "system", `AUSTRAC ${existing.kind.toUpperCase()} draft deleted: ${existing.title}`, { report_id: existing.id }, userId, userLabel);
+      return jr({ ok: true });
+    }
+
+    // ── VERSIONS ─────────────────────────────────
+    if (op === "list_versions") {
+      const { data, error } = await aml.from("report_versions").select("*").eq("report_id", String(body.report_id)).order("version", { ascending: false });
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ versions: data ?? [] });
+    }
+    if (op === "create_version") {
+      requireWrite();
+      const { data: report } = await aml.from("reports").select("*").eq("id", String(body.report_id)).maybeSingle();
+      if (!report) return jr({ error: "Report not found" }, 404);
+      const v = await appendVersion(admin, report.id, body.snapshot ?? { title: report.title, narrative: report.narrative, payload: report.payload }, body.narrative ?? report.narrative ?? null, body.change_note ?? null, userId, userLabel);
+      return jr({ version: v });
+    }
+
+    // ── MLRO SIGN-OFF ────────────────────────────
+    if (op === "mlro_signoff") {
+      requireMlro();
+      const { data: report } = await aml.from("reports").select("*").eq("id", String(body.id)).maybeSingle();
+      if (!report) return jr({ error: "Report not found" }, 404);
+      if (!["draft", "in_review", "awaiting_mlro"].includes(report.status)) return jr({ error: `Cannot sign off from ${report.status}` }, 400);
+      const { data, error } = await aml.from("reports").update({
+        status: "approved",
+        mlro_signed_by: userId,
+        mlro_signed_at: new Date().toISOString(),
+      }).eq("id", report.id).select("*").single();
+      if (error) return jr({ error: error.message }, 400);
+      await appendVersion(admin, data.id, { snapshot: "mlro_signoff", title: data.title, narrative: data.narrative, payload: data.payload }, data.narrative ?? null, body.note ?? "MLRO sign-off", userId, userLabel);
+      await appendCaseEvent(admin, data.case_id, "mlro_decision", `MLRO signed off ${data.kind.toUpperCase()} report`, { report_id: data.id }, userId, userLabel);
+      return jr({ report: data });
+    }
+    if (op === "mlro_reject") {
+      requireMlro();
+      const { data, error } = await aml.from("reports").update({
+        status: "draft",
+        mlro_signed_by: null,
+        mlro_signed_at: null,
+        metadata: { last_reject_reason: body.reason ?? null, last_reject_at: new Date().toISOString() },
+      }).eq("id", String(body.id)).select("*").single();
+      if (error) return jr({ error: error.message }, 400);
+      await appendCaseEvent(admin, data.case_id, "mlro_decision", `MLRO rejected ${data.kind.toUpperCase()} report`, { report_id: data.id, reason: body.reason ?? null }, userId, userLabel);
+      return jr({ report: data });
+    }
+    if (op === "withdraw_report") {
+      requireMlro();
+      const { data, error } = await aml.from("reports").update({ status: "withdrawn" }).eq("id", String(body.id)).select("*").single();
+      if (error) return jr({ error: error.message }, 400);
+      await appendCaseEvent(admin, data.case_id, "system", `AUSTRAC ${data.kind.toUpperCase()} withdrawn`, { report_id: data.id, reason: body.reason ?? null }, userId, userLabel);
+      return jr({ report: data });
+    }
+
+    // ── SUBMISSIONS ──────────────────────────────
+    if (op === "submit_record") {
+      requireMlro();
+      const { data: report } = await aml.from("reports").select("*").eq("id", String(body.report_id)).maybeSingle();
+      if (!report) return jr({ error: "Report not found" }, 404);
+      if (report.status !== "approved") return jr({ error: "Report must be MLRO-approved before recording a submission" }, 400);
+      const { data: latestVersion } = await aml.from("report_versions").select("version, content_hash").eq("report_id", report.id).order("version", { ascending: false }).limit(1).maybeSingle();
+      const now = new Date().toISOString();
+      const { data: submission, error: subErr } = await aml.from("report_submissions").insert({
+        report_id: report.id,
+        version: latestVersion?.version ?? 1,
+        channel: body.channel ?? "austrac_online",
+        status: body.status ?? "submitted",
+        external_reference: body.external_reference ?? null,
+        submitted_by: userId,
+        submitted_at: now,
+        response_payload: body.response_payload ?? {},
+        export_bundle_path: body.export_bundle_path ?? null,
+        content_hash: latestVersion?.content_hash ?? null,
+        notes: body.notes ?? null,
+      }).select("*").single();
+      if (subErr) return jr({ error: subErr.message }, 400);
+      await aml.from("reports").update({
+        status: "submitted",
+        submitted_at: now,
+        submitted_by: userId,
+      }).eq("id", report.id);
+      await appendCaseEvent(admin, report.case_id, "system", `AUSTRAC ${report.kind.toUpperCase()} submitted via ${submission.channel}`, { report_id: report.id, submission_id: submission.id, external_reference: submission.external_reference }, userId, userLabel);
+      return jr({ submission });
+    }
+
+    if (op === "record_receipt") {
+      requireMlro();
+      const { data: submission } = await aml.from("report_submissions").select("*, report:reports(id, case_id, kind, title)").eq("id", String(body.submission_id)).maybeSingle();
+      if (!submission) return jr({ error: "Submission not found" }, 404);
+      if (!body.receipt_reference) return jr({ error: "receipt_reference required" }, 400);
+      const now = new Date().toISOString();
+      const { data: receipt, error: rErr } = await aml.from("report_receipts").insert({
+        submission_id: submission.id,
+        receipt_reference: String(body.receipt_reference),
+        received_at: body.received_at ?? now,
+        status: body.status ?? "acknowledged",
+        receipt_payload: body.receipt_payload ?? {},
+        captured_by: userId,
+        notes: body.notes ?? null,
+      }).select("*").single();
+      if (rErr) return jr({ error: rErr.message }, 400);
+      const newSubStatus = body.status === "rejected" ? "rejected" : "acknowledged";
+      await aml.from("report_submissions").update({ status: newSubStatus }).eq("id", submission.id);
+      const newReportStatus = body.status === "rejected" ? "rejected" : "acknowledged";
+      const updates: any = { status: newReportStatus };
+      if (newReportStatus === "acknowledged") updates.acknowledged_at = now;
+      await aml.from("reports").update(updates).eq("id", submission.report_id);
+      const rep = (submission as any).report;
+      await appendCaseEvent(admin, rep?.case_id ?? null, "system", `AUSTRAC ${rep?.kind?.toUpperCase() ?? ""} receipt captured: ${receipt.receipt_reference}`, { submission_id: submission.id, status: newSubStatus }, userId, userLabel);
+      return jr({ receipt });
+    }
+
+    // ── EXPORT ───────────────────────────────────
+    if (op === "export_bundle") {
+      // Read-only: returns a signed JSON bundle suitable for archiving alongside the AUSTRAC submission.
+      const { data: report } = await aml.from("reports").select("*").eq("id", String(body.id)).maybeSingle();
+      if (!report) return jr({ error: "Report not found" }, 404);
+      const { data: versions } = await aml.from("report_versions").select("*").eq("report_id", report.id).order("version");
+      const { data: submissions } = await aml.from("report_submissions").select("*, receipts:report_receipts(*)").eq("report_id", report.id).order("submitted_at");
+      const bundle = {
+        report, versions: versions ?? [], submissions: submissions ?? [],
+        exported_at: new Date().toISOString(), exported_by: userLabel ?? userId,
+      };
+      const contentHash = await sha256Hex(JSON.stringify(bundle));
+      return jr({ bundle, content_hash: contentHash });
+    }
+
+    // ── SUMMARY ──────────────────────────────────
+    if (op === "summary") {
+      const [draft, awaiting, approved, submitted, ackd, rejected] = await Promise.all([
+        aml.from("reports").select("id", { count: "exact", head: true }).eq("status", "draft"),
+        aml.from("reports").select("id", { count: "exact", head: true }).in("status", ["in_review", "awaiting_mlro"]),
+        aml.from("reports").select("id", { count: "exact", head: true }).eq("status", "approved"),
+        aml.from("reports").select("id", { count: "exact", head: true }).eq("status", "submitted"),
+        aml.from("reports").select("id", { count: "exact", head: true }).eq("status", "acknowledged"),
+        aml.from("reports").select("id", { count: "exact", head: true }).eq("status", "rejected"),
+      ]);
+      return jr({
+        draft: draft.count ?? 0,
+        awaiting_mlro: awaiting.count ?? 0,
+        approved: approved.count ?? 0,
+        submitted: submitted.count ?? 0,
+        acknowledged: ackd.count ?? 0,
+        rejected: rejected.count ?? 0,
+      });
+    }
+
+    return jr({ error: `Unknown op: ${op}` }, 400);
+  } catch (e) {
+    if (e instanceof Response) return e;
+    console.error("aml-reporting error", e);
+    return jr({ error: (e as Error).message ?? "internal error" }, 500);
+  }
+});
