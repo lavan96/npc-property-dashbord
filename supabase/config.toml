@@ -33,6 +33,10 @@ verify_jwt = true
 [functions.aml-records]
 verify_jwt = true
 
+[functions.aml-tenant]
+verify_jwt = true
+
+
 
 
 
