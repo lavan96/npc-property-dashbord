@@ -1284,6 +1284,11 @@ export default function ReportQA() {
         return;
       }
     }
+    const turnConversationId = activeConversationId;
+    abortActiveStream('new-message');
+    const streamController = new AbortController();
+    streamAbortReasonRef.current = null;
+    activeStreamRef.current = { conversationId: turnConversationId, controller: streamController };
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -1349,6 +1354,7 @@ export default function ReportQA() {
           totalMessageCount: totalMessages,
           agentMode: effectiveAgentMode,
         }),
+        signal: streamController.signal,
       });
 
       if (!response.ok) {
@@ -1441,7 +1447,9 @@ export default function ReportQA() {
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullContent += content;
-              setStreamingContent(fullContent);
+              if (conversationIdRef.current === turnConversationId) {
+                setStreamingContent(fullContent);
+              }
             }
           } catch {
             // Re-buffer partial JSON
@@ -1467,12 +1475,15 @@ export default function ReportQA() {
         aiFollowups: streamMeta.followups,
       };
 
+      if (conversationIdRef.current !== turnConversationId) return;
+
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
       setStreamingToolInvocations([]);
       const expectedPersistedMessages = Math.max(messages.length + (retryContent ? 1 : 2), 2);
       setTimeout(() => {
-        refreshConversationMessagesFromSupabase(activeConversationId!, expectedPersistedMessages).catch((refreshError) => {
+        if (conversationIdRef.current !== turnConversationId) return;
+        refreshConversationMessagesFromSupabase(turnConversationId, expectedPersistedMessages).catch((refreshError) => {
           console.warn('[ReportQA] Failed to verify persisted conversation after send:', refreshError);
         });
       }, 350);
@@ -1481,7 +1492,7 @@ export default function ReportQA() {
       logActivityDirect({
         actionType: 'qa_question_asked',
         entityType: 'qa_conversation',
-        entityId: activeConversationId,
+        entityId: turnConversationId,
         metadata: { question_length: messageContent.length }
       });
 
@@ -1489,6 +1500,9 @@ export default function ReportQA() {
         setTimeout(() => loadSavedConversations(), 1000);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return;
+      }
       console.error('Chat error:', error);
       setStreamingContent('');
       setFailedMessage({ content: messageContent, audioUrl: audioUrl || undefined });
@@ -1498,7 +1512,12 @@ export default function ReportQA() {
         variant: 'destructive',
       });
     } finally {
-      setIsProcessing(false);
+      if (activeStreamRef.current?.controller === streamController) {
+        activeStreamRef.current = null;
+      }
+      if (conversationIdRef.current === turnConversationId) {
+        setIsProcessing(false);
+      }
     }
   };
 
