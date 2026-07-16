@@ -1,0 +1,723 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Loader2, ShieldCheck, CheckCircle2, Clock, AlertTriangle, Upload, FileText, ArrowRight, ArrowLeft, Send } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+import {
+  amlPortalApi, uploadAmlDocument, type AmlPortalOverview, type AmlSection,
+} from '@/lib/aml/amlPortalApi';
+
+type StepKey = 'consent' | 'personal_details' | 'purchasing_structure' | 'purchase_profile' | 'funding' | 'documents' | 'review';
+const STEPS: { key: StepKey; label: string; section?: AmlSection }[] = [
+  { key: 'consent', label: 'Consent' },
+  { key: 'personal_details', label: 'Personal details', section: 'personal_details' },
+  { key: 'purchasing_structure', label: 'Purchasing structure', section: 'purchasing_structure' },
+  { key: 'purchase_profile', label: 'Purchase profile', section: 'purchase_profile' },
+  { key: 'funding', label: 'Source of funds', section: 'funding' },
+  { key: 'documents', label: 'Documents' },
+  { key: 'review', label: 'Review & submit' },
+];
+
+const CONSENT_VERSION = '1.0';
+
+export default function PortalAml() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<AmlPortalOverview | null>(null);
+  const [stepIdx, setStepIdx] = useState(0);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await amlPortalApi.overview();
+      setData(res);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed to load AML onboarding');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const caseObj = data?.case ?? null;
+  const step = STEPS[stepIdx];
+
+  const progressPct = useMemo(() => {
+    if (!data?.sections) return 0;
+    const doneSections = data.sections.filter(s => ['submitted', 'accepted', 'complete'].includes(s.status)).length;
+    const totalSections = data.sections.length || 1;
+    const reqPct = data.requirement_progress?.total
+      ? data.requirement_progress.completed / data.requirement_progress.total
+      : 0;
+    return Math.round(((doneSections / totalSections) * 0.6 + reqPct * 0.4) * 100);
+  }, [data]);
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6 p-4 md:p-6">
+      <div>
+        <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <ShieldCheck className="h-6 w-6 text-brand-500" /> Identity & Compliance
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Complete your AML/CTF onboarding so your advisor can proceed with your purchase.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-96" />
+        </div>
+      ) : !caseObj ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <ShieldCheck className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              {data?.message ?? 'Your advisor hasn’t opened an AML onboarding case for you yet. You’ll be notified when it’s ready.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card className="border-brand-500/30 bg-brand-500/5">
+            <CardContent className="py-4 flex flex-wrap items-center gap-4">
+              <div className="flex-1 min-w-[220px]">
+                <div className="text-xs text-muted-foreground">Case reference</div>
+                <div className="font-medium">{caseObj.reference}</div>
+              </div>
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-xs text-muted-foreground">Status</div>
+                <Badge variant={caseObj.status_tone === 'positive' ? 'default' : 'outline'} className="mt-1">
+                  {caseObj.status_label}
+                </Badge>
+              </div>
+              <div className="flex-[2] min-w-[240px]">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>Overall progress</span><span>{progressPct}%</span>
+                </div>
+                <Progress value={progressPct} className="h-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Stepper steps={STEPS} currentIdx={stepIdx} onSelect={setStepIdx} sections={data?.sections ?? []} />
+
+          <div className="min-h-[300px]">
+            {step.key === 'consent' && <ConsentStep caseId={caseObj.id} onDone={() => setStepIdx(1)} />}
+            {step.section && (
+              <QuestionnaireStep
+                key={step.key}
+                caseId={caseObj.id}
+                section={step.section}
+                title={step.label}
+                onSaved={load}
+                onNext={() => setStepIdx(i => Math.min(STEPS.length - 1, i + 1))}
+                onBack={() => setStepIdx(i => Math.max(0, i - 1))}
+              />
+            )}
+            {step.key === 'documents' && (
+              <DocumentsStep
+                caseId={caseObj.id}
+                requirements={data?.requirements ?? []}
+                onChange={load}
+                onNext={() => setStepIdx(i => i + 1)}
+                onBack={() => setStepIdx(i => i - 1)}
+              />
+            )}
+            {step.key === 'review' && (
+              <ReviewStep
+                overview={data}
+                caseId={caseObj.id}
+                onBack={() => setStepIdx(i => i - 1)}
+                onSubmitted={load}
+              />
+            )}
+          </div>
+
+          {(data?.open_requests?.length ?? 0) > 0 && (
+            <OpenRequestsCard requests={data!.open_requests!} onDone={load} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────  Stepper  ──────────────────────── */
+
+function Stepper({
+  steps, currentIdx, onSelect, sections,
+}: {
+  steps: typeof STEPS; currentIdx: number; onSelect: (i: number) => void;
+  sections: { section: AmlSection; status: string }[];
+}) {
+  const statusFor = (s?: AmlSection) => sections.find(x => x.section === s)?.status;
+  return (
+    <ol className="flex flex-wrap gap-2">
+      {steps.map((s, i) => {
+        const st = statusFor(s.section);
+        const done = st === 'submitted' || st === 'accepted' || st === 'complete';
+        const active = i === currentIdx;
+        return (
+          <li key={s.key}>
+            <button
+              type="button"
+              onClick={() => onSelect(i)}
+              className={cn(
+                'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition',
+                active ? 'border-brand-500 bg-brand-500/10 text-foreground' : 'border-border/60 text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <span className={cn(
+                'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold',
+                done ? 'bg-emerald-500 text-white' : active ? 'bg-brand-500 text-white' : 'bg-muted',
+              )}>
+                {done ? <CheckCircle2 className="h-3 w-3" /> : i + 1}
+              </span>
+              {s.label}
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/* ─────────────────────────  Consent  ──────────────────────── */
+
+function ConsentStep({ caseId, onDone }: { caseId: string; onDone: () => void }) {
+  const [checked, setChecked] = useState({ identity: false, aml: false, privacy: false });
+  const [saving, setSaving] = useState(false);
+  const allChecked = checked.identity && checked.aml && checked.privacy;
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await Promise.all([
+        amlPortalApi.recordConsent(caseId, 'identity_verification', CONSENT_VERSION, checked),
+        amlPortalApi.recordConsent(caseId, 'aml_ctf_program', CONSENT_VERSION, checked),
+        amlPortalApi.recordConsent(caseId, 'privacy_notice', CONSENT_VERSION, checked),
+      ]);
+      toast.success('Consents recorded');
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed to record consent');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Consents & disclosures</CardTitle>
+        <CardDescription>Please read and confirm each item before continuing.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {[
+          { key: 'identity' as const, title: 'Identity verification', body: 'You consent to your identity being verified electronically or via certified documents in line with the AUSTRAC AML/CTF Act 2006 and Rules.' },
+          { key: 'aml' as const, title: 'AML/CTF program', body: 'You acknowledge that additional questions and documents may be requested to satisfy customer due diligence and ongoing monitoring obligations.' },
+          { key: 'privacy' as const, title: 'Privacy notice', body: 'You consent to the collection, use and disclosure of your personal information for AML/CTF and related regulatory purposes, in accordance with our Privacy Policy.' },
+        ].map(item => (
+          <label key={item.key} className="flex items-start gap-3 rounded-md border p-3 cursor-pointer">
+            <Checkbox
+              checked={checked[item.key]}
+              onCheckedChange={(v) => setChecked(prev => ({ ...prev, [item.key]: !!v }))}
+              className="mt-1"
+            />
+            <div>
+              <div className="text-sm font-medium">{item.title}</div>
+              <p className="text-xs text-muted-foreground mt-1">{item.body}</p>
+            </div>
+          </label>
+        ))}
+        <div className="flex justify-end">
+          <Button onClick={submit} disabled={!allChecked || saving}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            I confirm — continue <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─────────────────────  Questionnaire  ────────────────────── */
+
+function QuestionnaireStep({
+  caseId, section, title, onSaved, onNext, onBack,
+}: {
+  caseId: string; section: AmlSection; title: string;
+  onSaved: () => void; onNext: () => void; onBack: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, any>>({});
+  const [status, setStatus] = useState<string>('not_started');
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    amlPortalApi.getQuestionnaire(caseId, section)
+      .then(r => {
+        if (!alive) return;
+        setForm(r.response?.payload ?? {});
+        setStatus(r.response?.status ?? 'not_started');
+      })
+      .catch((e) => toast.error(e?.message ?? 'Failed to load'))
+      .finally(() => alive && setLoading(false));
+    return () => { alive = false; };
+  }, [caseId, section]);
+
+  const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const save = async (submit: boolean) => {
+    setSaving(true);
+    try {
+      await amlPortalApi.saveQuestionnaire(caseId, section, form, submit);
+      toast.success(submit ? 'Section submitted' : 'Draft saved');
+      setStatus(submit ? 'submitted' : 'draft');
+      onSaved();
+      if (submit) onNext();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>{title}</span>
+          <Badge variant="outline" className="capitalize">{status.replace(/_/g, ' ')}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loading ? <Skeleton className="h-40" /> : (
+          <>
+            {section === 'personal_details' && <PersonalDetailsForm value={form} set={set} />}
+            {section === 'purchasing_structure' && <PurchasingStructureForm value={form} set={set} />}
+            {section === 'purchase_profile' && <PurchaseProfileForm value={form} set={set} />}
+            {section === 'funding' && <FundingForm value={form} set={set} />}
+
+            <Separator />
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => save(false)} disabled={saving}>
+                  Save draft
+                </Button>
+                <Button onClick={() => save(true)} disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Submit section <ArrowRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─────────────────  Section-specific forms  ────────────────── */
+
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}{required && <span className="text-destructive"> *</span>}</Label>
+      {children}
+    </div>
+  );
+}
+
+function PersonalDetailsForm({ value, set }: { value: any; set: (k: string, v: any) => void }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <Field label="Legal full name" required>
+        <Input value={value.full_name ?? ''} onChange={e => set('full_name', e.target.value)} />
+      </Field>
+      <Field label="Date of birth" required>
+        <Input type="date" value={value.dob ?? ''} onChange={e => set('dob', e.target.value)} />
+      </Field>
+      <Field label="Country of citizenship" required>
+        <Input value={value.citizenship ?? ''} onChange={e => set('citizenship', e.target.value)} />
+      </Field>
+      <Field label="Country of tax residency" required>
+        <Input value={value.tax_residency ?? ''} onChange={e => set('tax_residency', e.target.value)} />
+      </Field>
+      <Field label="Residential address" required>
+        <Textarea rows={2} value={value.address ?? ''} onChange={e => set('address', e.target.value)} />
+      </Field>
+      <Field label="Occupation & employer" required>
+        <Textarea rows={2} value={value.occupation ?? ''} onChange={e => set('occupation', e.target.value)} />
+      </Field>
+      <div className="md:col-span-2 grid md:grid-cols-2 gap-4">
+        <Field label="Are you a Politically Exposed Person (PEP)?" required>
+          <RadioGroup value={value.pep ?? ''} onValueChange={v => set('pep', v)} className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
+          </RadioGroup>
+        </Field>
+        <Field label="Any adverse media or sanctions concerns?" required>
+          <RadioGroup value={value.adverse ?? ''} onValueChange={v => set('adverse', v)} className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
+            <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
+          </RadioGroup>
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+function PurchasingStructureForm({ value, set }: { value: any; set: (k: string, v: any) => void }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <Field label="Purchasing entity type" required>
+        <RadioGroup value={value.entity_type ?? ''} onValueChange={v => set('entity_type', v)} className="grid grid-cols-2 gap-2">
+          {['Individual', 'Joint', 'Company', 'Trust', 'SMSF', 'Partnership'].map(t => (
+            <label key={t} className="flex items-center gap-2 text-sm border rounded-md p-2 cursor-pointer">
+              <RadioGroupItem value={t} /> {t}
+            </label>
+          ))}
+        </RadioGroup>
+      </Field>
+      <Field label="Entity legal name (if not individual)">
+        <Input value={value.entity_name ?? ''} onChange={e => set('entity_name', e.target.value)} />
+      </Field>
+      <Field label="ABN / ACN (if applicable)">
+        <Input value={value.abn_acn ?? ''} onChange={e => set('abn_acn', e.target.value)} />
+      </Field>
+      <Field label="Trustee / Director names">
+        <Textarea rows={2} value={value.controllers ?? ''} onChange={e => set('controllers', e.target.value)} />
+      </Field>
+      <Field label="Beneficial owners (>25% control)">
+        <Textarea rows={3} value={value.beneficial_owners ?? ''} onChange={e => set('beneficial_owners', e.target.value)} />
+      </Field>
+      <Field label="Registered address">
+        <Textarea rows={2} value={value.registered_address ?? ''} onChange={e => set('registered_address', e.target.value)} />
+      </Field>
+    </div>
+  );
+}
+
+function PurchaseProfileForm({ value, set }: { value: any; set: (k: string, v: any) => void }) {
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <Field label="Purpose of purchase" required>
+        <RadioGroup value={value.purpose ?? ''} onValueChange={v => set('purpose', v)} className="grid grid-cols-2 gap-2">
+          {['Owner-occupier', 'Investment', 'Business use', 'Development'].map(t => (
+            <label key={t} className="flex items-center gap-2 text-sm border rounded-md p-2 cursor-pointer">
+              <RadioGroupItem value={t} /> {t}
+            </label>
+          ))}
+        </RadioGroup>
+      </Field>
+      <Field label="Target price range (AUD)" required>
+        <Input value={value.price_range ?? ''} onChange={e => set('price_range', e.target.value)} placeholder="e.g. 750,000 – 900,000" />
+      </Field>
+      <Field label="Target location(s)">
+        <Textarea rows={2} value={value.locations ?? ''} onChange={e => set('locations', e.target.value)} />
+      </Field>
+      <Field label="Property type(s) of interest">
+        <Input value={value.property_types ?? ''} onChange={e => set('property_types', e.target.value)} placeholder="House, unit, townhouse…" />
+      </Field>
+      <Field label="Expected settlement timeframe">
+        <Input value={value.timeframe ?? ''} onChange={e => set('timeframe', e.target.value)} placeholder="e.g. 60–90 days" />
+      </Field>
+      <Field label="Is any part of this purchase for a third party?" required>
+        <RadioGroup value={value.third_party ?? ''} onValueChange={v => set('third_party', v)} className="flex gap-4">
+          <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
+          <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
+        </RadioGroup>
+      </Field>
+    </div>
+  );
+}
+
+function FundingForm({ value, set }: { value: any; set: (k: string, v: any) => void }) {
+  const sources: string[] = value.sources ?? [];
+  const toggle = (s: string) => {
+    const next = sources.includes(s) ? sources.filter(x => x !== s) : [...sources, s];
+    set('sources', next);
+  };
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label className="text-xs">Source(s) of funds <span className="text-destructive">*</span></Label>
+        <div className="grid md:grid-cols-3 gap-2 mt-2">
+          {['Salary savings', 'Business income', 'Sale of asset', 'Inheritance', 'Gift', 'Investment returns', 'Superannuation', 'Loan / mortgage', 'Other'].map(s => (
+            <label key={s} className="flex items-center gap-2 text-sm border rounded-md p-2 cursor-pointer">
+              <Checkbox checked={sources.includes(s)} onCheckedChange={() => toggle(s)} /> {s}
+            </label>
+          ))}
+        </div>
+      </div>
+      <Field label="Estimated deposit amount (AUD)" required>
+        <Input value={value.deposit ?? ''} onChange={e => set('deposit', e.target.value)} />
+      </Field>
+      <Field label="Describe how these funds were accumulated" required>
+        <Textarea rows={4} value={value.narrative ?? ''} onChange={e => set('narrative', e.target.value)} />
+      </Field>
+      <Field label="Financial institution(s) holding the funds">
+        <Input value={value.institutions ?? ''} onChange={e => set('institutions', e.target.value)} />
+      </Field>
+      <Field label="Any funds sourced from overseas?" required>
+        <RadioGroup value={value.overseas ?? ''} onValueChange={v => set('overseas', v)} className="flex gap-4">
+          <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="no" /> No</label>
+          <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="yes" /> Yes</label>
+        </RadioGroup>
+      </Field>
+    </div>
+  );
+}
+
+/* ─────────────────────────  Documents  ──────────────────────── */
+
+function DocumentsStep({
+  caseId, requirements, onChange, onNext, onBack,
+}: {
+  caseId: string; requirements: any[]; onChange: () => void;
+  onNext: () => void; onBack: () => void;
+}) {
+  const inputRef = useRef<Record<string, HTMLInputElement | null>>({});
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  const handleUpload = async (reqId: string | null, file: File | undefined) => {
+    if (!file) return;
+    setUploading(reqId ?? 'freeform');
+    try {
+      await uploadAmlDocument(caseId, file, reqId);
+      toast.success('Uploaded');
+      onChange();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Upload failed');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const missing = requirements.filter(r => r.required && !['uploaded', 'accepted'].includes(r.status));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Documents</CardTitle>
+        <CardDescription>Upload the items your advisor has requested. Accepted formats: PDF, JPG, PNG (≤ 20 MB).</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {requirements.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No document requirements have been set yet.</p>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {requirements.map(r => {
+              const done = ['uploaded', 'accepted'].includes(r.status);
+              const rejected = r.status === 'rejected';
+              return (
+                <li key={r.id} className="py-3 flex items-start gap-3">
+                  <div className={cn(
+                    'h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+                    done ? 'bg-emerald-500/15 text-emerald-500' :
+                    rejected ? 'bg-destructive/15 text-destructive' : 'bg-muted text-muted-foreground',
+                  )}>
+                    {done ? <CheckCircle2 className="h-4 w-4" /> : rejected ? <AlertTriangle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">{r.label}</p>
+                      {r.required && <Badge variant="outline" className="text-[10px]">Required</Badge>}
+                      <Badge variant="outline" className="text-[10px] capitalize">{r.status.replace(/_/g, ' ')}</Badge>
+                    </div>
+                    {r.description && <p className="text-xs text-muted-foreground mt-0.5">{r.description}</p>}
+                  </div>
+                  <input
+                    ref={el => (inputRef.current[r.id] = el)}
+                    type="file"
+                    accept="application/pdf,image/*"
+                    className="hidden"
+                    onChange={e => handleUpload(r.id, e.target.files?.[0])}
+                  />
+                  <Button
+                    size="sm" variant={done ? 'outline' : 'default'}
+                    onClick={() => inputRef.current[r.id]?.click()}
+                    disabled={uploading === r.id}
+                  >
+                    {uploading === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-1" /> {done ? 'Replace' : 'Upload'}</>}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <Separator />
+        <div>
+          <Label className="text-xs">Upload additional document</Label>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              ref={el => (inputRef.current['freeform'] = el)}
+              type="file"
+              accept="application/pdf,image/*"
+              className="hidden"
+              onChange={e => handleUpload(null, e.target.files?.[0])}
+            />
+            <Button variant="outline" onClick={() => inputRef.current['freeform']?.click()} disabled={uploading === 'freeform'}>
+              {uploading === 'freeform' ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-4 w-4 mr-1" /> Choose file</>}
+            </Button>
+          </div>
+        </div>
+
+        {missing.length > 0 && (
+          <Alert>
+            <Clock className="h-4 w-4" />
+            <AlertTitle>{missing.length} required document{missing.length === 1 ? '' : 's'} still outstanding</AlertTitle>
+            <AlertDescription>You can still continue and submit later once uploads are complete.</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+          <Button onClick={onNext}>Continue <ArrowRight className="h-4 w-4 ml-1" /></Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─────────────────────────  Review  ──────────────────────── */
+
+function ReviewStep({
+  overview, caseId, onBack, onSubmitted,
+}: { overview: AmlPortalOverview | null; caseId: string; onBack: () => void; onSubmitted: () => void }) {
+  const [submitting, setSubmitting] = useState(false);
+  const sections = overview?.sections ?? [];
+  const reqs = overview?.requirements ?? [];
+  const missingSections = sections.filter(s => !['submitted', 'accepted', 'complete'].includes(s.status));
+  const missingReqs = reqs.filter(r => r.required && !['uploaded', 'accepted'].includes(r.status));
+  const canSubmit = missingSections.length === 0 && missingReqs.length === 0;
+
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      await amlPortalApi.submitForReview(caseId);
+      toast.success('Submitted for review — your advisor has been notified.');
+      onSubmitted();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Review & submit</CardTitle>
+        <CardDescription>Confirm everything is complete, then submit your onboarding pack for review.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-3">
+          {sections.map(s => (
+            <div key={s.section} className="flex items-center justify-between border rounded-md px-3 py-2">
+              <span className="text-sm capitalize">{s.section.replace(/_/g, ' ')}</span>
+              <Badge variant="outline" className="capitalize">{s.status.replace(/_/g, ' ')}</Badge>
+            </div>
+          ))}
+        </div>
+
+        {(missingSections.length > 0 || missingReqs.length > 0) && (
+          <Alert variant="default">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Not quite ready</AlertTitle>
+            <AlertDescription>
+              {missingSections.length > 0 && <div>{missingSections.length} section(s) not yet submitted.</div>}
+              {missingReqs.length > 0 && <div>{missingReqs.length} required document(s) missing.</div>}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <div className="flex justify-between">
+          <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+          <Button onClick={submit} disabled={!canSubmit || submitting}>
+            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Send className="h-4 w-4 mr-1" /> Submit for review
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ────────────────────  Open information requests  ─────────────────── */
+
+function OpenRequestsCard({ requests, onDone }: { requests: any[]; onDone: () => void }) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [text, setText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const respond = async (id: string) => {
+    if (!text.trim()) return;
+    setSaving(true);
+    try {
+      await amlPortalApi.respondRequest(id, { response: text.trim() });
+      toast.success('Response sent');
+      setActiveId(null); setText('');
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Information requests from your advisor</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {requests.map(r => (
+          <div key={r.id} className="rounded-md border p-3 bg-background/40">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">{r.subject ?? 'Additional information required'}</p>
+              <Badge variant="outline" className="capitalize">{r.status}</Badge>
+            </div>
+            {r.message && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{r.message}</p>}
+            {activeId === r.id ? (
+              <div className="mt-2 space-y-2">
+                <Textarea rows={3} value={text} onChange={e => setText(e.target.value)} placeholder="Your response…" />
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="outline" onClick={() => { setActiveId(null); setText(''); }}>Cancel</Button>
+                  <Button size="sm" onClick={() => respond(r.id)} disabled={saving || !text.trim()}>
+                    {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Send
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              r.status === 'open' && (
+                <div className="mt-2 flex justify-end">
+                  <Button size="sm" variant="outline" onClick={() => setActiveId(r.id)}>Respond</Button>
+                </div>
+              )
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
