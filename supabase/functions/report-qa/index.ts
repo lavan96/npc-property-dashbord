@@ -2082,7 +2082,6 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
         // Prepend a metadata SSE event so the client can render paragraph-level
         // citations and the comparison-mode badge without waiting for the answer.
         const structuredCitations = buildStructuredCitations(retrievedChunksForCitations);
-        const streamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
         const metaPayload = {
           _meta: {
             stream_id: streamId,
@@ -2180,6 +2179,7 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
                   streamId,
                   fallbackAssistantText: '⚠️ Response completed but text could not be captured. Please retry.',
                   source: 'chat-stream',
+                  persistUser: false,
                 });
               } catch (persistErr) {
                 console.error('[report-qa] Failed to persist stream messages:', persistErr);
