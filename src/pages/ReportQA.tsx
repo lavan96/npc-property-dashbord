@@ -1441,6 +1441,12 @@ export default function ReportQA() {
       setMessages(prev => [...prev, assistantMessage]);
       setStreamingContent('');
       setStreamingToolInvocations([]);
+      const expectedPersistedMessages = Math.max(messages.length + (retryContent ? 1 : 2), 2);
+      setTimeout(() => {
+        refreshConversationMessagesFromSupabase(activeConversationId!, expectedPersistedMessages).catch((refreshError) => {
+          console.warn('[ReportQA] Failed to verify persisted conversation after send:', refreshError);
+        });
+      }, 350);
 
       // Log question asked
       logActivityDirect({
