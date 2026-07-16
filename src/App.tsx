@@ -85,6 +85,7 @@ import {
   AmlFinance, AmlTransactions,
   AmlMonitoring, AmlInvestigations, AmlAustracReporting, AmlRecords, AmlGovernance, AmlConfiguration,
 } from "./pages/aml/AmlShellPages";
+import AmlLaunchOps from "./pages/aml/AmlLaunchOps";
 import { AmlLayout } from "@/components/aml/AmlLayout";
 import { AmlGuard } from "@/components/aml/AmlGuard";
 import AgentMemoryManager from "./pages/agent/MemoryManager";
@@ -387,6 +388,7 @@ const App = () => (
                   <Route path="austrac" element={<AmlGuard capability="aml.report"><AmlAustracReporting /></AmlGuard>} />
                   <Route path="records" element={<AmlGuard capability="aml.view"><AmlRecords /></AmlGuard>} />
                   <Route path="governance" element={<AmlGuard capability="aml.view"><AmlGovernance /></AmlGuard>} />
+                  <Route path="launch-ops" element={<AmlGuard capability="aml.view"><AmlLaunchOps /></AmlGuard>} />
                   <Route path="configuration" element={<AmlGuard capability="aml.configure"><AmlConfiguration /></AmlGuard>} />
                 </Route>
                 <Route path="agent/memories" element={<AgentMemoryManager />} />

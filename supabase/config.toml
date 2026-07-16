@@ -48,6 +48,10 @@ verify_jwt = true
 [functions.aml-resilience]
 verify_jwt = true
 
+[functions.aml-launch-ops]
+verify_jwt = true
+
+
 
 
 
