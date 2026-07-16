@@ -10,23 +10,8 @@ export const AmlIntakeQueue = () => (
   />
 );
 
-export const AmlVerification = () => (
-  <AmlShellPage
-    title="Identity Verification"
-    description="IDV runs, document integrity checks, and provider evidence bundles."
-    icon={ShieldCheck}
-    phaseLabel="Wires in Phase 4 (IDV, PEP & Sanctions Integrations)"
-  />
-);
-
-export const AmlScreening = () => (
-  <AmlShellPage
-    title="PEP & Sanctions Screening"
-    description="PEP, sanctions, adverse-media hits and analyst dispositions."
-    icon={Search}
-    phaseLabel="Wires in Phase 4 (IDV, PEP & Sanctions Integrations)"
-  />
-);
+export { default as AmlVerification } from "./AmlVerification";
+export { default as AmlScreening } from "./AmlScreening";
 
 export const AmlRisk = () => (
   <AmlShellPage
