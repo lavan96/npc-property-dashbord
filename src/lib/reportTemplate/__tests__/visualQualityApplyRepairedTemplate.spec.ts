@@ -43,6 +43,8 @@ const repairSummary: VisualRepairOrchestrationSummary = {
   patchesRejected: 0,
   requiresFallback: false,
   requiresManualReview: false,
+  qualityCoverage: 'full',
+  expectationStrategy: 'docling_source',
   problemCount: 0,
   problems: [],
 };

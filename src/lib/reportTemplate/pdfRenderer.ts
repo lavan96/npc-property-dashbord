@@ -20,6 +20,7 @@ import {
 } from './bindingResolver';
 import { getBlockRenderer, type BlockRenderContext } from './blocks';
 import { sortBlocksForPaint, sortOverlaysForPaint } from './paintOrder';
+import { resolvePageOutputPolicy, resolvePageRenderPlan } from './rendering/pdfImportPagePolicy';
 
 export interface RenderOptions {
   /** Sample / live data the template binds against. */
@@ -122,19 +123,25 @@ function drawPage(doc: jsPDF, page: Page, ctxBase: ResolveContext) {
     _drawOverlay: (overlay, c) => drawOverlay(c.doc, overlay, c),
   };
 
+  // C5: raster-only pages export the source raster as their final output and
+  // must NOT also draw native blocks/overlays (no double render).
+  const pdfPagePolicy = resolvePageOutputPolicy(page as unknown as Page);
+  const pdfRenderNativeBlocks = resolvePageRenderPlan(pdfPagePolicy).renderNativeBlocks;
   // Blocks
-  for (const block of sortBlocksForPaint(page.blocks)) {
-    if (!evalConditional(block.conditional, ctxBase)) continue;
-    const renderer = getBlockRenderer(block.type);
-    if (renderer) {
-      renderer(block, blockCtx);
-    } else if (block.type !== 'free') {
-      console.warn(`[pdfRenderer] No renderer for block type "${block.type}"`);
-    }
-    // Overlays sit on top of the block
-    for (const overlay of sortOverlaysForPaint(block.overlays)) {
-      if (!evalConditional(overlay.conditional, ctxBase)) continue;
-      drawOverlay(doc, overlay, ctxBase);
+  if (pdfRenderNativeBlocks) {
+    for (const block of sortBlocksForPaint(page.blocks)) {
+      if (!evalConditional(block.conditional, ctxBase)) continue;
+      const renderer = getBlockRenderer(block.type);
+      if (renderer) {
+        renderer(block, blockCtx);
+      } else if (block.type !== 'free') {
+        console.warn(`[pdfRenderer] No renderer for block type "${block.type}"`);
+      }
+      // Overlays sit on top of the block
+      for (const overlay of sortOverlaysForPaint(block.overlays)) {
+        if (!evalConditional(overlay.conditional, ctxBase)) continue;
+        drawOverlay(doc, overlay, ctxBase);
+      }
     }
   }
 }

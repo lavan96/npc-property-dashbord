@@ -23,7 +23,12 @@ import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconcil
 import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
+import {
+  buildVisualSourceExpectationBundle,
+  pageNumberFromDoclingId,
+} from '@/lib/reportTemplate/ingestion/visualQuality';
 import { runImportQualityGate } from './importQualityGate';
+import { applyPagePolicyToPage } from '@/lib/reportTemplate/rendering/pdfImportPagePolicy';
 import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
 import { fontLookupKey, resolveSourceFontFamily, lookupEmbeddedFamily } from './fontResolver';
 import { recommendFidelityMode } from './recommendFidelityMode';
@@ -713,6 +718,16 @@ export async function extractPdfViaDocling(
     const doclingExpectations = buildDoclingExpectations(doclingDoc);
     let cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
 
+    // C3: package the immutable source-derived expectations so the quality gate
+    // scores text coverage / layout drift / missing elements against the SOURCE
+    // Docling document, not the candidate CDIR's own self-expectations.
+    const sourceExpectationBundle = buildVisualSourceExpectationBundle({
+      source: 'docling-document',
+      expectedText: doclingExpectations.expectedText,
+      expectedBounds: doclingExpectations.expectedBounds,
+      expectedPageNumbers: cdir.pages.map((page, index) => pageNumberFromDoclingId(page.id) ?? index + 1),
+    });
+
     // Phase 7 — quality-gated finalization. Diff the reconstructed template
     // against the source page rasters, run the deterministic repair loop on
     // weak pages, and decide a recommended final mode BEFORE finalizing. The
@@ -730,6 +745,7 @@ export async function extractPdfViaDocling(
         cdir,
         requestedMode: effectiveMode,
         rastersByPage: rasters,
+        sourceExpectations: sourceExpectationBundle,
         maxPages: options.qualityGateMaxPages,
       });
       qualityGateSummary = gate.summary as unknown as Record<string, unknown>;
@@ -745,15 +761,18 @@ export async function extractPdfViaDocling(
         pageCount: gate.summary.pageCount,
       };
 
-      // Stage the repaired template only when repair strictly improved the
-      // score. Preserve the plan-applied page backgrounds (underlay flags,
-      // source rasters), page sizes, embedded font faces, and pdfImport meta —
-      // the CDIR→template round-trip does not carry those.
-      const improved = gate.summary.ran
-        && gate.summary.patchesApplied > 0
-        && (gate.summary.scoreDelta ?? 0) > 0
+      // C6.3: stage whenever the gate changed the template (deterministic repair
+      // AND/OR per-page output-policy decisions). Preserve page size always;
+      // merge embedded font faces + import metadata. For pages the gate DECIDED
+      // (they carry a pdf-page-output-policy), keep the gate's policy and restore
+      // the source raster from the original (the CDIR round-trip drops
+      // backgrounds), then reconcile the background flags with the policy so a
+      // raster-only page actually paints its raster. Untouched pages restore the
+      // original background as before, so gate decisions are never clobbered.
+      const shouldStage = gate.summary.ran
+        && gate.summary.templateChanged
         && gate.template !== template;
-      if (improved) {
+      if (shouldStage) {
         const originalPagesById = new Map(template.pages.map((page) => [page.id, page]));
         const embeddedFaces: any[] = (template.tokens as any)?.fontFaces ?? [];
         const mergedTokens: any = { ...(gate.template.tokens ?? {}) };
@@ -770,7 +789,20 @@ export async function extractPdfViaDocling(
           meta: { ...(gate.template.meta ?? {}), ...(template.meta ?? {}) },
           pages: gate.template.pages.map((page) => {
             const orig = originalPagesById.get(page.id);
-            return orig ? { ...page, background: orig.background, size: orig.size } : page;
+            if (!orig) return page;
+            const policy = (page.meta as any)?.pdfImport;
+            if (policy) {
+              return applyPagePolicyToPage(
+                {
+                  ...page,
+                  size: orig.size,
+                  background: { ...((orig.background as any) ?? {}) },
+                  meta: { ...((orig.meta as any) ?? {}), ...((page.meta as any) ?? {}) },
+                } as typeof page,
+                policy,
+              );
+            }
+            return { ...page, background: orig.background, size: orig.size };
           }),
         } as typeof template;
         const candidateValidation = validateReconstructedSchema(candidate);

@@ -14,9 +14,19 @@ import {
   type RunImportReviewVisualQualityPipelineOptions,
   type RunImportReviewVisualQualityPipelineResult,
 } from '../importReviewPipeline';
-import type { VisualImportFinalMode } from '../schema';
+import type { VisualImportFinalMode, VisualImportQualityReport } from '../schema';
+import { runVisualDiff, type VisualDiffInput } from '../diff';
+import {
+  isSourceFidelityUsable,
+  resolveQualityCoverage,
+  sourceExpectationBundleToExpectationsLike,
+  type VisualQualityCoverage,
+  type VisualSourceExpectationBundle,
+} from '../sourceExpectations';
 import {
   buildRepairLoopBridgeInput,
+  generatedRastersToRenderedPageRasters,
+  sourceRenderRastersToVisualDiffSourceRasters,
   type RepairLoopBridgeInput,
 } from './repairBridge';
 import {
@@ -45,6 +55,9 @@ export interface VisualRepairOrchestrationSummary {
   patchesRejected: number;
   requiresFallback: boolean;
   requiresManualReview: boolean;
+  /** C3: whether the headline score used full source expectations, was partial, or image-only. */
+  qualityCoverage: VisualQualityCoverage;
+  expectationStrategy: RepairLoopBridgeInput['expectationStrategy'];
   problemCount: number;
   problems: string[];
 }
@@ -58,6 +71,10 @@ export interface RunVisualRepairOrchestrationPipelineOptions {
   persistVisualQa?: boolean;
   maxRasterDim?: number;
   maxRepairPasses?: number;
+  /** C3: immutable source-derived expectations. When usable, the headline score + repair loop compare against these. */
+  sourceExpectations?: VisualSourceExpectationBundle | null;
+  /** Injectable authoritative scorer (tests). Defaults to `runVisualDiff`. */
+  runVisualDiffImpl?: (input: VisualDiffInput) => Promise<VisualImportQualityReport>;
   captureOptions?: Partial<Omit<CaptureGeneratedRenderOptions, 'importId' | 'template'>>;
   captureGeneratedRasters?: (options: CaptureGeneratedRenderOptions) => Promise<GeneratedRenderPageRaster[]>;
   loadSourceRasters?: (
@@ -82,6 +99,9 @@ export interface VisualRepairOrchestrationPipelineResult {
   generatedRasters: GeneratedRenderPageRaster[];
   sourceRasters: SourceRenderPageRaster[];
   visualQa: RunImportReviewVisualQualityPipelineResult;
+  /** C3: authoritative source-scored report (equals the image-first report when no source expectations). */
+  headlineReport: VisualImportQualityReport;
+  qualityCoverage: VisualQualityCoverage;
   bridge: RepairLoopBridgeInput;
   repair: DeterministicVisualRepairResult;
   draft: DeterministicVisualRepairResult['draft'];
@@ -115,6 +135,8 @@ async function resolveSourceRasters(
 function buildSummary(options: {
   importId: string;
   templateId: string | null;
+  headlineReport: VisualImportQualityReport;
+  qualityCoverage: VisualQualityCoverage;
   visualQa: RunImportReviewVisualQualityPipelineResult;
   bridge: RepairLoopBridgeInput;
   repair: DeterministicVisualRepairResult;
@@ -125,13 +147,17 @@ function buildSummary(options: {
     ...(options.repair.errorMessage ? [`repair_error:${options.repair.errorMessage}`] : []),
   ];
 
+  // C3.5: a partial-coverage headline (source expectations expected but a page
+  // is missing) must not be treated as a clean full-metric pass.
+  const coverageForcesReview = options.qualityCoverage === 'partial';
+
   return {
     version: VISUAL_REPAIR_ORCHESTRATION_PIPELINE_VERSION,
     importId: options.importId,
     templateId: options.templateId,
-    visualQaScore: options.visualQa.visualQa.report.overallScore,
+    visualQaScore: options.headlineReport.overallScore,
     finalScore: options.repair.finalReport.overallScore,
-    scoreDelta: options.repair.finalReport.overallScore - options.visualQa.visualQa.report.overallScore,
+    scoreDelta: options.repair.finalReport.overallScore - options.headlineReport.overallScore,
     visualQaPersisted: options.visualQa.visualQa.summary.persisted,
     repairStatus: options.repair.status,
     canRunRepairLoop: options.bridge.canRunRepairLoop,
@@ -141,7 +167,11 @@ function buildSummary(options: {
     patchesAccepted: options.repair.summary.patchesAccepted,
     patchesRejected: options.repair.summary.patchesRejected,
     requiresFallback: options.bridge.eligibility.requiresFallback,
-    requiresManualReview: options.bridge.eligibility.requiresManualReview || options.repair.finalReport.manualReviewRequired,
+    requiresManualReview: options.bridge.eligibility.requiresManualReview
+      || options.repair.finalReport.manualReviewRequired
+      || coverageForcesReview,
+    qualityCoverage: options.qualityCoverage,
+    expectationStrategy: options.bridge.expectationStrategy,
     problemCount: problems.length,
     problems,
   };
@@ -176,13 +206,34 @@ export async function runVisualRepairOrchestrationPipeline(
     draft: visualQa.draft,
   };
 
+  // C3.5/C3.6: when source expectations are usable, the AUTHORITATIVE headline
+  // report comes from runVisualDiff scored against the immutable source — not the
+  // image-first renderDiffPersistence report, whose text/layout/missing metrics
+  // are neutral placeholders. renderDiffPersistence still owns image pairing and
+  // persistence (source/generated/diff rasters).
+  const qualityCoverage = resolveQualityCoverage(options.sourceExpectations);
+  let headlineReport = visualQa.visualQa.report;
+  if (isSourceFidelityUsable(options.sourceExpectations)) {
+    const scorer = options.runVisualDiffImpl ?? runVisualDiff;
+    headlineReport = await scorer({
+      importId,
+      templateId,
+      cdir: repairLoaded.draft.cdir,
+      expectations: sourceExpectationBundleToExpectationsLike(options.sourceExpectations),
+      renderedRasters: generatedRastersToRenderedPageRasters(generatedRasters),
+      sourceRasters: sourceRenderRastersToVisualDiffSourceRasters(sourceRasters, repairLoaded.draft.cdir),
+      finalMode,
+    });
+  }
+
   const bridge = buildRepairLoopBridgeInput({
     loaded: repairLoaded,
-    visualReport: visualQa.visualQa.report,
+    visualReport: headlineReport,
     generatedRasters,
     sourceRasters,
     finalMode,
     maxPasses: options.maxRepairPasses,
+    sourceExpectations: options.sourceExpectations,
   });
 
   const repairRunner = options.runDeterministicRepairImpl ?? runDeterministicVisualRepair;
@@ -196,6 +247,8 @@ export async function runVisualRepairOrchestrationPipeline(
   const summary = buildSummary({
     importId,
     templateId,
+    headlineReport,
+    qualityCoverage,
     visualQa,
     bridge,
     repair,
@@ -209,6 +262,8 @@ export async function runVisualRepairOrchestrationPipeline(
     generatedRasters,
     sourceRasters,
     visualQa,
+    headlineReport,
+    qualityCoverage,
     bridge,
     repair,
     draft: repair.draft,

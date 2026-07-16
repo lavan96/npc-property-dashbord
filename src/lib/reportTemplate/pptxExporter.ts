@@ -5,10 +5,11 @@
  * background only for the cover page in this v1.
  */
 import PptxGenJS from 'pptxgenjs';
-import { parseTemplate, type ReportTemplate } from './templateSchema';
+import { parseTemplate, type ReportTemplate, type Page } from './templateSchema';
 import {
   resolveBindable, resolveBindableNumber, resolveBindableColor, type ResolveContext,
 } from './bindingResolver';
+import { resolvePageOutputPolicy, resolvePageRenderPlan } from './rendering/pdfImportPagePolicy';
 
 interface PptxOptions {
   data?: Record<string, any>;
@@ -49,7 +50,10 @@ export async function exportTemplateAsPptxBlob(
         } as any);
       } catch { /* ignore */ }
     }
-    for (const block of page.blocks ?? []) {
+    // C5: raster-only pages export the source raster as the slide and must NOT
+    // also add native overlays (no double render).
+    const pptxRenderNative = resolvePageRenderPlan(resolvePageOutputPolicy(page as unknown as Page)).renderNativeBlocks;
+    for (const block of (pptxRenderNative ? (page.blocks ?? []) : [])) {
       for (const ov of block.overlays ?? []) {
         const x = ov.x * PT_TO_IN;
         const y = ov.y * PT_TO_IN;

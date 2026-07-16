@@ -123,18 +123,37 @@ describe('runImportQualityGate', () => {
     expect(res.manualReviewRequired).toBe(false);
   });
 
-  it('skips when the page count exceeds the gate limit', async () => {
-    const pageCount = DEFAULT_QUALITY_GATE_MAX_PAGES + 5;
+  it('scores a large document in bounded batches instead of skipping (C4)', async () => {
+    const pageCount = DEFAULT_QUALITY_GATE_MAX_PAGES + 5; // 45
+    const runOrchestrationImpl = vi.fn(async (opts: any) => {
+      const batchPages: number[] = opts.captureOptions?.pageNumbers ?? [];
+      return makeOrchestrationResult({
+        template: opts.loaded.draft.template,
+        visualQaScore: 0.9,
+        finalScore: 0.9,
+        totalApplied: 0,
+        passesAttempted: 1,
+        pages: batchPages.map((n) => ({ pageNumber: n, overallScore: 0.9, recommendedAction: 'accept', warnings: [] })),
+      });
+    });
     const res = await runImportQualityGate({
       importId: 'imp-big',
       template: makeTemplate(pageCount),
       cdir: makeCdir(pageCount),
       requestedMode: 'hybrid',
       rastersByPage: makeRasters(pageCount),
+      batchSize: 10,
+      runOrchestrationImpl,
       ...baseInjectables,
     });
-    expect(res.summary.ran).toBe(false);
-    expect(res.summary.skippedReason).toBe('page_count_exceeds_gate_limit');
+    expect(res.summary.ran).toBe(true);
+    expect(res.summary.skippedReason).toBeUndefined();
+    expect(res.summary.coverage).toBe('complete');
+    expect(res.summary.pagesScored).toBe(pageCount);
+    expect(res.summary.pagesUnscored).toEqual([]);
+    expect(res.summary.perPage).toHaveLength(pageCount);
+    // ceil(45 / 10) = 5 bounded batches, not one 45-page capture.
+    expect(runOrchestrationImpl).toHaveBeenCalledTimes(5);
   });
 
   it('runs the orchestration and reports the verdict (healthy score keeps mode)', async () => {
@@ -166,8 +185,12 @@ describe('runImportQualityGate', () => {
     expect(res.summary.finalScore).toBe(0.94);
     expect(res.recommendedFinalMode).toBe('hybrid');
     expect(res.manualReviewRequired).toBe(false);
-    expect(res.template).toBe(repaired);
     expect(res.summary.perPage).toHaveLength(2);
+    // C6: healthy pages get an applied native output policy (not a fallback).
+    expect(res.summary.pagesNative).toBe(2);
+    expect(res.summary.pageDecisions['docling-page-1']?.outputStrategy).toBe('native');
+    expect((res.template.pages[0].meta as { pdfImport?: { outputStrategy: string } })?.pdfImport?.outputStrategy).toBe('native');
+    expect(res.summary.templateChanged).toBe(true);
   });
 
   it('flags manual review and recommends pixel fallback on a weak final score', async () => {
@@ -197,7 +220,7 @@ describe('runImportQualityGate', () => {
     expect(res.summary.warningCount).toBe(1);
   });
 
-  it('is fail-open: an orchestration error returns the original template unchanged', async () => {
+  it('is fail-open: a failing batch keeps the original template and requires review (C4)', async () => {
     const original = makeTemplate(2);
     const runOrchestrationImpl = vi.fn(async () => {
       throw new Error('html2canvas exploded');
@@ -211,10 +234,13 @@ describe('runImportQualityGate', () => {
       runOrchestrationImpl,
       ...baseInjectables,
     });
+    // No batch completed -> not passed, not bricked: original template, review.
     expect(res.summary.ran).toBe(false);
-    expect(res.summary.skippedReason).toBe('gate_error');
+    expect(res.summary.skippedReason).toBe('visual_qa_no_batches_completed');
+    expect(res.summary.coverage).toBe('none');
     expect(res.summary.error).toContain('html2canvas exploded');
     expect(res.template).toBe(original);
     expect(res.recommendedFinalMode).toBe('semantic');
+    expect(res.manualReviewRequired).toBe(true);
   });
 });
