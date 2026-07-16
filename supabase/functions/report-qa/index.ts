@@ -1873,6 +1873,20 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
       
       if (streamingEnabled) {
         console.log(`[report-qa] Streaming mode enabled, provider: ${modelProvider}, agentMode: ${agentMode}`);
+        const streamId = (crypto as any).randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+        if (conversationId) {
+          await persistReportQATurn(supabase, {
+            conversationId,
+            userId,
+            question,
+            assistantText: '',
+            persistAssistant: false,
+            streamId,
+            fallbackAssistantText: '',
+            source: 'chat-stream-user-eager',
+          });
+        }
 
         // -----------------------------------------------------------------
         // AGENT MODE: multi-turn tool-calling loop
