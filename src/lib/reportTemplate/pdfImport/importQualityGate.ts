@@ -27,6 +27,8 @@ import {
   type PageContextRenderArtifactManifest,
   type SourceRenderPageRaster,
   type VisualImportFinalMode,
+  type VisualQualityCoverage,
+  type VisualSourceExpectationBundle,
   type RunVisualRepairOrchestrationPipelineOptions,
   type VisualRepairOrchestrationPipelineResult,
 } from '../ingestion/visualQuality';
@@ -63,6 +65,8 @@ export interface ImportQualityGateSummary {
   repairPassesApplied: number;
   patchesApplied: number;
   manualReviewRequired: boolean;
+  /** C3: whether the score compared against full source expectations, partial, or image-only. */
+  qualityCoverage: VisualQualityCoverage;
   pageCount: number;
   pagesNeedingReview: number;
   perPage: ImportQualityGatePageVerdict[];
@@ -90,6 +94,8 @@ export interface RunImportQualityGateOptions {
   maxRepairPasses?: number;
   maxRasterDim?: number;
   maxPages?: number;
+  /** C3: immutable source-derived expectations built from the source Docling document. */
+  sourceExpectations?: VisualSourceExpectationBundle | null;
   /** Injectable (tests / server): data-URL → ImageData. */
   imageUrlToImageDataImpl?: (url: string, opts?: { maxPixelDim?: number }) => Promise<ImageData>;
   /** Injectable (tests): the visual-repair orchestration. */
@@ -138,6 +144,7 @@ function skippedSummary(
     repairPassesApplied: 0,
     patchesApplied: 0,
     manualReviewRequired: false,
+    qualityCoverage: 'image-only',
     pageCount: options.cdir?.pages?.length ?? 0,
     pagesNeedingReview: 0,
     perPage: [],
@@ -273,6 +280,7 @@ export async function runImportQualityGate(
       persistVisualQa: false,
       maxRasterDim,
       maxRepairPasses: options.maxRepairPasses ?? 2,
+      sourceExpectations: options.sourceExpectations ?? null,
       captureOptions: { maxPages },
     });
 
@@ -311,6 +319,7 @@ export async function runImportQualityGate(
       repairPassesApplied: summaryData.passesAttempted ?? 0,
       patchesApplied: summaryData.totalApplied ?? 0,
       manualReviewRequired,
+      qualityCoverage: summaryData.qualityCoverage,
       pageCount,
       pagesNeedingReview,
       perPage,

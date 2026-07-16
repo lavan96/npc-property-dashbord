@@ -18,10 +18,21 @@ import {
   evaluateVisualRepairEligibility,
   type VisualRepairEligibility,
 } from './repairEligibility';
+import {
+  isSourceFidelityUsable,
+  resolveQualityCoverage,
+  sourceExpectationBundleToExpectationsLike,
+  type VisualQualityCoverage,
+  type VisualSourceExpectationBundle,
+} from '../sourceExpectations';
 
 export const REPAIR_LOOP_BRIDGE_VERSION = 'repair-loop-bridge-v1';
 
-export type RepairExpectationStrategy = 'cdir_self_baseline';
+// `docling_source` — expectations come from the immutable source (authoritative).
+// `cdir_self_baseline` — expectations derived from the candidate CDIR; a fallback
+// used only when a source bundle is unavailable. It is NOT source-fidelity and
+// must not drive a headline score presented as full-coverage.
+export type RepairExpectationStrategy = 'cdir_self_baseline' | 'docling_source';
 
 export interface BuildRepairLoopBridgeOptions {
   loaded: LoadedImportReviewForVisualQuality;
@@ -30,6 +41,8 @@ export interface BuildRepairLoopBridgeOptions {
   sourceRasters?: SourceRenderPageRaster[] | null;
   finalMode?: VisualImportFinalMode;
   maxPasses?: number;
+  /** C3: immutable source-derived expectations. When usable, they replace the CDIR-self baseline. */
+  sourceExpectations?: VisualSourceExpectationBundle | null;
 }
 
 export interface RepairLoopBridgeInput {
@@ -37,6 +50,7 @@ export interface RepairLoopBridgeInput {
   importId: string;
   templateId: string | null;
   expectationStrategy: RepairExpectationStrategy;
+  expectationCoverage: VisualQualityCoverage;
   cdir: CdirDocument;
   expectations: DoclingExpectationsLike;
   renderedRasters: RenderedPageRaster[];
@@ -193,7 +207,15 @@ export function buildRepairLoopBridgeInput(
 
   const classified = classifyVisualQualityRepairIssues(options.visualReport);
   const eligibility = evaluateVisualRepairEligibility(classified);
-  const expectations = buildCdirSelfExpectations(cdir);
+  // C3.4: prefer immutable source-derived expectations. The CDIR-self baseline
+  // is only a fallback (and is not source fidelity) — never let a self-consistent
+  // but source-wrong CDIR pass by scoring against itself.
+  const useSource = isSourceFidelityUsable(options.sourceExpectations);
+  const expectationStrategy: RepairExpectationStrategy = useSource ? 'docling_source' : 'cdir_self_baseline';
+  const expectationCoverage = resolveQualityCoverage(options.sourceExpectations);
+  const expectations = useSource
+    ? sourceExpectationBundleToExpectationsLike(options.sourceExpectations)
+    : buildCdirSelfExpectations(cdir);
   const renderedRasters = generatedRastersToRenderedPageRasters(options.generatedRasters);
   const sourceDiffRasters = sourceRenderRastersToVisualDiffSourceRasters(options.sourceRasters, cdir);
 
@@ -244,7 +266,8 @@ export function buildRepairLoopBridgeInput(
     version: REPAIR_LOOP_BRIDGE_VERSION,
     importId,
     templateId,
-    expectationStrategy: 'cdir_self_baseline',
+    expectationStrategy,
+    expectationCoverage,
     cdir,
     expectations,
     renderedRasters,

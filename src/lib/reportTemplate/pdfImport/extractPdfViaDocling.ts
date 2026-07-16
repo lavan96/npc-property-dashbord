@@ -23,6 +23,10 @@ import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconcil
 import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
+import {
+  buildVisualSourceExpectationBundle,
+  pageNumberFromDoclingId,
+} from '@/lib/reportTemplate/ingestion/visualQuality';
 import { runImportQualityGate } from './importQualityGate';
 import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
 import { fontLookupKey, resolveSourceFontFamily, lookupEmbeddedFamily } from './fontResolver';
@@ -713,6 +717,16 @@ export async function extractPdfViaDocling(
     const doclingExpectations = buildDoclingExpectations(doclingDoc);
     let cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
 
+    // C3: package the immutable source-derived expectations so the quality gate
+    // scores text coverage / layout drift / missing elements against the SOURCE
+    // Docling document, not the candidate CDIR's own self-expectations.
+    const sourceExpectationBundle = buildVisualSourceExpectationBundle({
+      source: 'docling-document',
+      expectedText: doclingExpectations.expectedText,
+      expectedBounds: doclingExpectations.expectedBounds,
+      expectedPageNumbers: cdir.pages.map((page, index) => pageNumberFromDoclingId(page.id) ?? index + 1),
+    });
+
     // Phase 7 — quality-gated finalization. Diff the reconstructed template
     // against the source page rasters, run the deterministic repair loop on
     // weak pages, and decide a recommended final mode BEFORE finalizing. The
@@ -730,6 +744,7 @@ export async function extractPdfViaDocling(
         cdir,
         requestedMode: effectiveMode,
         rastersByPage: rasters,
+        sourceExpectations: sourceExpectationBundle,
         maxPages: options.qualityGateMaxPages,
       });
       qualityGateSummary = gate.summary as unknown as Record<string, unknown>;

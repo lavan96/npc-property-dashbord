@@ -190,6 +190,21 @@ export {
 } from './repair';
 
 export {
+  VISUAL_SOURCE_EXPECTATIONS_VERSION,
+  buildVisualSourceExpectationBundle,
+  isSourceFidelityUsable,
+  resolveQualityCoverage,
+  sourceExpectationBundleToExpectationsLike,
+  loadPerPageSourceExpectations,
+  pageNumberFromDoclingId,
+  type VisualSourceExpectationBundle,
+  type VisualSourceExpectationSource,
+  type VisualQualityCoverage,
+  type PerPageSourceArtifactResult,
+  type PerPageSourceArtifactFetcher,
+} from './sourceExpectations';
+
+export {
   DETERMINISTIC_REPAIR_RUNNER_VERSION,
   runDeterministicVisualRepair,
   type DeterministicRepairSkipReason,
