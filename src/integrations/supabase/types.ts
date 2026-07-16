@@ -20147,6 +20147,14 @@ export type Database = {
         }
         Returns: number
       }
+      has_aml_role: {
+        Args: {
+          _role: "analyst" | "reviewer" | "mlro" | "auditor"
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_any_aml_role: { Args: { _user_id: string }; Returns: boolean }
       has_module_access: {
         Args: { _module_key: string; _user_id: string }
         Returns: boolean
