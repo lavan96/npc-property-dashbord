@@ -78,6 +78,7 @@ import PdfGoldenRegression from "./pages/admin/PdfGoldenRegression";
 import MarketQAQuality from "./pages/admin/MarketQAQuality";
 import ReclassifyPropertyAdmin from "./pages/admin/ReclassifyPropertyAdmin";
 import AgentQuality from "./pages/admin/AgentQuality";
+import AmlCases from "./pages/aml/AmlCases";
 import AgentMemoryManager from "./pages/agent/MemoryManager";
 import AgentInsights from "./pages/agent/AgentInsights";
 import AgentPlans from "./pages/agent/AgentPlans";
@@ -361,6 +362,7 @@ const App = () => (
                 <Route path="admin/bc-segment-engine" element={<BcSegmentEngineAdmin />} />
                 <Route path="admin/reclassify-property" element={<ReclassifyPropertyAdmin />} />
                 <Route path="admin/agent-quality" element={<AgentQuality />} />
+                <Route path="admin/aml/cases" element={<AmlCases />} />
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
