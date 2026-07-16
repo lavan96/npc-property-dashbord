@@ -1,0 +1,415 @@
+/**
+ * Phase 5 — AML Risk Engine, Mandatory Holds, Decisions & Purchase-Ready Gate.
+ *
+ * Ops (single POST endpoint, {op, ...args}):
+ *   Config:     list_factors, upsert_factor, list_triggers, upsert_trigger
+ *   Assess:     evaluate, list_assessments, get_assessment
+ *   Overrides:  request_override, resolve_override, list_overrides
+ *   Decisions:  decide, list_decisions, latest_decision
+ *   Approvals:  list_approvals, resolve_approval
+ *   Conditions: list_conditions, upsert_condition, resolve_condition
+ *   Gate:       gate_status  (feature-flag-guarded soft check)
+ *
+ * Read: any AML role. Write assessments/overrides/conditions: analyst/reviewer/mlro.
+ * Approvals + decisions: reviewer/mlro. Configuration writes: mlro only.
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const jr = (data: unknown, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+async function sha256Hex(input: string) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+async function appendCaseEvent(
+  admin: any, caseId: string, category: string, summary: string,
+  payload: any, actorId: string | null, actorLabel: string | null,
+) {
+  const { data: prev } = await admin.schema("aml").from("case_events")
+    .select("row_hash").eq("case_id", caseId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const prevHash = prev?.row_hash ?? null;
+  const now = new Date().toISOString();
+  const rowHash = await sha256Hex(JSON.stringify({
+    case_id: caseId, category, summary, payload, actor_id: actorId, actor_label: actorLabel,
+    prev_hash: prevHash, created_at: now,
+  }));
+  await admin.schema("aml").from("case_events").insert({
+    case_id: caseId, category, summary, payload, actor_id: actorId, actor_label: actorLabel,
+    prev_hash: prevHash, row_hash: rowHash, created_at: now,
+  });
+}
+
+type Factor = { key: string; label: string; category: string; weight: number; scoring: Record<string, number>; active: boolean };
+type Trigger = { key: string; label: string; severity: "block" | "hold"; rule: Record<string, any>; active: boolean };
+
+function pickScore(scoring: Record<string, number>, value: unknown): number {
+  if (value == null) return 0;
+  const key = String(value).toLowerCase();
+  if (typeof scoring[key] === "number") return scoring[key];
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function ratingFor(score: number): "low" | "medium" | "high" | "prohibited" {
+  if (score >= 80) return "prohibited";
+  if (score >= 60) return "high";
+  if (score >= 30) return "medium";
+  return "low";
+}
+
+function evaluateFactors(factors: Factor[], inputs: Record<string, any>) {
+  const completion: any[] = []; const verification: any[] = []; const mltf: any[] = [];
+  let cW = 0, cS = 0, vW = 0, vS = 0, mW = 0, mS = 0;
+  for (const f of factors) {
+    if (!f.active) continue;
+    const raw = inputs[f.key];
+    const score = pickScore(f.scoring, raw);
+    const weighted = score * (f.weight || 1);
+    const entry = { key: f.key, label: f.label, input: raw ?? null, score, weight: f.weight, weighted };
+    if (f.category === "completion") { completion.push(entry); cW += f.weight; cS += weighted; }
+    else if (f.category === "verification") { verification.push(entry); vW += f.weight; vS += weighted; }
+    else { mltf.push(entry); mW += f.weight; mS += weighted; }
+  }
+  const norm = (s: number, w: number) => (w > 0 ? Math.min(100, Math.max(0, s / w)) : 0);
+  return {
+    completion_score: norm(cS, cW),
+    verification_score: norm(vS, vW),
+    mltf_score: norm(mS, mW),
+    factor_breakdown: [...mltf, ...completion, ...verification],
+  };
+}
+
+function evaluateTriggers(triggers: Trigger[], inputs: Record<string, any>) {
+  const holds: any[] = [];
+  for (const t of triggers) {
+    if (!t.active) continue;
+    const rule = t.rule ?? {};
+    let match = true;
+    for (const [k, expected] of Object.entries(rule)) {
+      const actual = inputs[k];
+      if (expected && typeof expected === "object" && !Array.isArray(expected)) {
+        for (const [sk, sv] of Object.entries(expected as any)) {
+          const inner = actual && typeof actual === "object" ? (actual as any)[sk] : undefined;
+          if (inner !== sv) { match = false; break; }
+        }
+      } else if (String(actual ?? "").toLowerCase() !== String(expected).toLowerCase()) {
+        match = false;
+      }
+      if (!match) break;
+    }
+    if (match) holds.push({ key: t.key, label: t.label, severity: t.severity });
+  }
+  return holds;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const auth = req.headers.get("Authorization") ?? "";
+    if (!auth.startsWith("Bearer ")) return jr({ error: "Unauthorized" }, 401);
+
+    const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
+    const { data: userData, error: uErr } = await userClient.auth.getUser();
+    if (uErr || !userData?.user) return jr({ error: "Invalid session" }, 401);
+    const userId = userData.user.id;
+    const userLabel = userData.user.email ?? null;
+
+    const admin = createClient(url, service);
+    const { data: hasAny } = await admin.rpc("has_any_aml_role", { _user_id: userId });
+    if (!hasAny) return jr({ error: "AML role required" }, 403);
+
+    const { data: roleRows } = await admin.schema("aml").from("role_assignments")
+      .select("role").eq("user_id", userId).is("revoked_at", null);
+    const roles = new Set<string>((roleRows ?? []).map((r: any) => r.role));
+    const canWrite = roles.has("analyst") || roles.has("reviewer") || roles.has("mlro");
+    const canReview = roles.has("reviewer") || roles.has("mlro");
+    const isMlro = roles.has("mlro");
+
+    const body = await req.json().catch(() => ({}));
+    const op = String(body?.op ?? "");
+
+    // ─── Configuration ─────────────────────────────────────────────
+    if (op === "list_factors") {
+      const { data } = await admin.schema("aml").from("risk_factors").select("*").order("category").order("label");
+      return jr({ factors: data ?? [] });
+    }
+    if (op === "list_triggers") {
+      const { data } = await admin.schema("aml").from("mandatory_triggers").select("*").order("severity").order("label");
+      return jr({ triggers: data ?? [] });
+    }
+    if (op === "upsert_factor") {
+      if (!isMlro) return jr({ error: "MLRO required" }, 403);
+      const patch = body.factor ?? {};
+      const { data, error } = await admin.schema("aml").from("risk_factors")
+        .upsert({ ...patch, created_by: patch.id ? undefined : userId }, { onConflict: "key" })
+        .select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ factor: data });
+    }
+    if (op === "upsert_trigger") {
+      if (!isMlro) return jr({ error: "MLRO required" }, 403);
+      const patch = body.trigger ?? {};
+      const { data, error } = await admin.schema("aml").from("mandatory_triggers")
+        .upsert({ ...patch, created_by: patch.id ? undefined : userId }, { onConflict: "key" })
+        .select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ trigger: data });
+    }
+
+    // ─── Assessments ───────────────────────────────────────────────
+    if (op === "evaluate") {
+      if (!canWrite) return jr({ error: "Insufficient permissions" }, 403);
+      const caseId = String(body.case_id ?? "");
+      const inputs = (body.inputs ?? {}) as Record<string, any>;
+      if (!caseId) return jr({ error: "case_id required" }, 400);
+
+      const [{ data: fs }, { data: ts }] = await Promise.all([
+        admin.schema("aml").from("risk_factors").select("*").eq("active", true),
+        admin.schema("aml").from("mandatory_triggers").select("*").eq("active", true),
+      ]);
+
+      const scored = evaluateFactors((fs ?? []) as Factor[], inputs);
+      const holds = evaluateTriggers((ts ?? []) as Trigger[], inputs);
+      const blocking = holds.some((h) => h.severity === "block");
+      const rating = blocking ? "prohibited" : ratingFor(scored.mltf_score);
+
+      const { data: ass, error } = await admin.schema("aml").from("risk_assessments").insert({
+        case_id: caseId,
+        completion_score: scored.completion_score,
+        verification_score: scored.verification_score,
+        mltf_score: scored.mltf_score,
+        risk_rating: rating,
+        triggered_holds: holds,
+        factor_breakdown: scored.factor_breakdown,
+        inputs,
+        computed_by: userId,
+      }).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+
+      // reflect on case
+      await admin.schema("aml").from("cases").update({
+        risk_rating: rating,
+        risk_score: Math.round(scored.mltf_score),
+      }).eq("id", caseId);
+
+      await appendCaseEvent(admin, caseId, "risk_rescored",
+        `Risk assessment computed — ${rating.toUpperCase()} (${Math.round(scored.mltf_score)})`,
+        { assessment_id: ass?.id, holds, scores: scored }, userId, userLabel);
+
+      return jr({ assessment: ass });
+    }
+
+    if (op === "list_assessments") {
+      const caseId = String(body.case_id ?? "");
+      if (!caseId) return jr({ error: "case_id required" }, 400);
+      const { data } = await admin.schema("aml").from("risk_assessments")
+        .select("*").eq("case_id", caseId).order("created_at", { ascending: false }).limit(50);
+      return jr({ assessments: data ?? [] });
+    }
+
+    if (op === "get_assessment") {
+      const id = String(body.assessment_id ?? "");
+      const { data } = await admin.schema("aml").from("risk_assessments").select("*").eq("id", id).maybeSingle();
+      return jr({ assessment: data });
+    }
+
+    // ─── Overrides ─────────────────────────────────────────────────
+    if (op === "request_override") {
+      if (!canWrite) return jr({ error: "Insufficient permissions" }, 403);
+      const { case_id, assessment_id, requested_reason, requested_rating } = body;
+      if (!case_id || !requested_reason) return jr({ error: "case_id and requested_reason required" }, 400);
+      const { data, error } = await admin.schema("aml").from("risk_overrides").insert({
+        case_id, assessment_id: assessment_id ?? null, requested_by: userId,
+        requested_reason, requested_rating: requested_rating ?? null, status: "pending",
+      }).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      await appendCaseEvent(admin, case_id, "edd_note", `Risk override requested`, { override_id: data?.id, requested_rating }, userId, userLabel);
+      return jr({ override: data });
+    }
+
+    if (op === "resolve_override") {
+      if (!canReview) return jr({ error: "Reviewer/MLRO required" }, 403);
+      const { override_id, status, reviewer_note } = body;
+      if (!override_id || !["approved", "rejected"].includes(status)) return jr({ error: "invalid" }, 400);
+      const { data, error } = await admin.schema("aml").from("risk_overrides").update({
+        status, reviewer_id: userId, reviewer_note: reviewer_note ?? null, decided_at: new Date().toISOString(),
+      }).eq("id", override_id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) {
+        if (status === "approved" && data.requested_rating) {
+          await admin.schema("aml").from("cases").update({ risk_rating: data.requested_rating }).eq("id", data.case_id);
+        }
+        await appendCaseEvent(admin, data.case_id, "mlro_decision",
+          `Risk override ${status}`, { override_id, reviewer_note }, userId, userLabel);
+      }
+      return jr({ override: data });
+    }
+
+    if (op === "list_overrides") {
+      const caseId = body.case_id ? String(body.case_id) : null;
+      let q = admin.schema("aml").from("risk_overrides").select("*").order("created_at", { ascending: false }).limit(200);
+      if (caseId) q = q.eq("case_id", caseId);
+      if (body.status) q = q.eq("status", body.status);
+      const { data } = await q;
+      return jr({ overrides: data ?? [] });
+    }
+
+    // ─── Decisions ─────────────────────────────────────────────────
+    if (op === "decide") {
+      if (!canReview) return jr({ error: "Reviewer/MLRO required" }, 403);
+      const { case_id, assessment_id, outcome, rationale } = body;
+      if (!case_id || !outcome) return jr({ error: "case_id and outcome required" }, 400);
+      const [{ data: caseRow }, { data: ass }, { data: conds }, { data: overs }] = await Promise.all([
+        admin.schema("aml").from("cases").select("*").eq("id", case_id).maybeSingle(),
+        assessment_id
+          ? admin.schema("aml").from("risk_assessments").select("*").eq("id", assessment_id).maybeSingle()
+          : admin.schema("aml").from("risk_assessments").select("*").eq("case_id", case_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        admin.schema("aml").from("case_conditions").select("*").eq("case_id", case_id).eq("status", "open"),
+        admin.schema("aml").from("risk_overrides").select("*").eq("case_id", case_id).eq("status", "approved"),
+      ]);
+
+      const snapshot = {
+        version: 1, decided_at: new Date().toISOString(), decided_by: userId,
+        outcome, rationale: rationale ?? null,
+        case: caseRow, assessment: ass, open_conditions: conds ?? [], approved_overrides: overs ?? [],
+      };
+      const snapshot_hash = await sha256Hex(JSON.stringify(snapshot));
+
+      const { data: dec, error } = await admin.schema("aml").from("decisions").insert({
+        case_id, assessment_id: ass?.id ?? null, outcome, rationale: rationale ?? null,
+        snapshot, snapshot_hash, decided_by: userId,
+      }).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+
+      // Reflect on case status
+      let toStatus: string | null = null;
+      if (outcome === "cleared") toStatus = "cleared";
+      else if (outcome === "blocked") toStatus = "blocked";
+      else if (outcome === "escalated") toStatus = "escalated_mlro";
+      if (toStatus) await admin.schema("aml").from("cases").update({ status: toStatus }).eq("id", case_id);
+
+      await appendCaseEvent(admin, case_id, "mlro_decision", `Decision recorded: ${outcome}`,
+        { decision_id: dec?.id, snapshot_hash }, userId, userLabel);
+      return jr({ decision: dec });
+    }
+
+    if (op === "list_decisions") {
+      const caseId = String(body.case_id ?? "");
+      const { data } = await admin.schema("aml").from("decisions")
+        .select("*").eq("case_id", caseId).order("decided_at", { ascending: false });
+      return jr({ decisions: data ?? [] });
+    }
+
+    if (op === "latest_decision") {
+      const caseId = String(body.case_id ?? "");
+      const { data } = await admin.schema("aml").from("decisions")
+        .select("*").eq("case_id", caseId).order("decided_at", { ascending: false }).limit(1).maybeSingle();
+      return jr({ decision: data });
+    }
+
+    // ─── Approvals (senior authority sign-off queue) ───────────────
+    if (op === "list_approvals") {
+      let q = admin.schema("aml").from("approvals").select("*").order("requested_at", { ascending: false }).limit(200);
+      if (body.case_id) q = q.eq("case_id", body.case_id);
+      if (body.status) q = q.eq("status", body.status);
+      const { data } = await q;
+      return jr({ approvals: data ?? [] });
+    }
+    if (op === "resolve_approval") {
+      if (!canReview) return jr({ error: "Reviewer/MLRO required" }, 403);
+      const { approval_id, status, note } = body;
+      if (!approval_id || !["approved", "rejected"].includes(status)) return jr({ error: "invalid" }, 400);
+      const { data, error } = await admin.schema("aml").from("approvals").update({
+        status, approver_id: userId, note: note ?? null, resolved_at: new Date().toISOString(),
+      }).eq("id", approval_id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendCaseEvent(admin, data.case_id, "mlro_decision", `Approval ${status}`, { approval_id, note }, userId, userLabel);
+      return jr({ approval: data });
+    }
+
+    // ─── Conditions ────────────────────────────────────────────────
+    if (op === "list_conditions") {
+      const caseId = String(body.case_id ?? "");
+      if (!caseId) return jr({ error: "case_id required" }, 400);
+      const { data } = await admin.schema("aml").from("case_conditions")
+        .select("*").eq("case_id", caseId).order("created_at", { ascending: false });
+      return jr({ conditions: data ?? [] });
+    }
+    if (op === "upsert_condition") {
+      if (!canWrite) return jr({ error: "Insufficient permissions" }, 403);
+      const patch = body.condition ?? {};
+      const row = { ...patch, created_by: patch.id ? undefined : userId };
+      const { data, error } = await admin.schema("aml").from("case_conditions")
+        .upsert(row).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendCaseEvent(admin, data.case_id, "edd_note",
+        `Case condition ${patch.id ? "updated" : "added"}: ${data.label}`, { condition_id: data.id }, userId, userLabel);
+      return jr({ condition: data });
+    }
+    if (op === "resolve_condition") {
+      if (!canWrite) return jr({ error: "Insufficient permissions" }, 403);
+      const { condition_id, status } = body;
+      const { data, error } = await admin.schema("aml").from("case_conditions").update({
+        status: status ?? "resolved", resolved_by: userId, resolved_at: new Date().toISOString(),
+      }).eq("id", condition_id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendCaseEvent(admin, data.case_id, "edd_note", `Condition ${data.status}: ${data.label}`, { condition_id }, userId, userLabel);
+      return jr({ condition: data });
+    }
+
+    // ─── Purchase-Ready Gate (soft, flag-guarded) ──────────────────
+    if (op === "gate_status") {
+      const caseId = body.case_id ? String(body.case_id) : null;
+      const purchaseFileId = body.purchase_file_id ? String(body.purchase_file_id) : null;
+      const { data: flag } = await admin.from("feature_flags").select("value").eq("key", "aml_purchase_ready_gate").maybeSingle();
+      const enabled = Boolean((flag?.value as any)?.enabled);
+
+      let effectiveCaseId = caseId;
+      if (!effectiveCaseId && purchaseFileId) {
+        const { data: c } = await admin.schema("aml").from("cases")
+          .select("id").eq("purchase_file_id", purchaseFileId).order("opened_at", { ascending: false }).limit(1).maybeSingle();
+        effectiveCaseId = c?.id ?? null;
+      }
+      if (!effectiveCaseId) return jr({ enabled, gate: "no_case", purchase_ready: !enabled, reasons: enabled ? ["no_aml_case"] : [] });
+
+      const [{ data: dec }, { data: cond }, { data: ass }] = await Promise.all([
+        admin.schema("aml").from("decisions").select("*").eq("case_id", effectiveCaseId).order("decided_at", { ascending: false }).limit(1).maybeSingle(),
+        admin.schema("aml").from("case_conditions").select("*").eq("case_id", effectiveCaseId).eq("status", "open"),
+        admin.schema("aml").from("risk_assessments").select("*").eq("case_id", effectiveCaseId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+
+      const reasons: string[] = [];
+      if (!dec) reasons.push("no_decision");
+      else if (dec.outcome !== "cleared") reasons.push(`decision_${dec.outcome}`);
+      if ((cond ?? []).length > 0) reasons.push(`${cond!.length}_open_conditions`);
+      const holds = ((ass?.triggered_holds ?? []) as any[]).filter((h) => h?.severity === "block");
+      if (holds.length > 0) reasons.push(`${holds.length}_blocking_holds`);
+
+      const purchase_ready = reasons.length === 0;
+      // If gate flag disabled we still return the diagnostic but purchase_ready defaults to true.
+      return jr({
+        enabled,
+        purchase_ready: enabled ? purchase_ready : true,
+        diagnostic: { purchase_ready, reasons, latest_decision: dec, open_conditions: cond ?? [], latest_assessment: ass },
+      });
+    }
+
+    return jr({ error: `Unknown op: ${op}` }, 400);
+  } catch (e) {
+    console.error("aml-risk error", e);
+    return jr({ error: String((e as Error)?.message ?? e) }, 500);
+  }
+});

@@ -12,6 +12,9 @@ verify_jwt = true
 [functions.aml-provider-webhook]
 verify_jwt = false
 
+[functions.aml-risk]
+verify_jwt = true
+
 
 
 

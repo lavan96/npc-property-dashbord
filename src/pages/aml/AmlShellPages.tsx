@@ -13,14 +13,7 @@ export const AmlIntakeQueue = () => (
 export { default as AmlVerification } from "./AmlVerification";
 export { default as AmlScreening } from "./AmlScreening";
 
-export const AmlRisk = () => (
-  <AmlShellPage
-    title="Risk Engine"
-    description="Rule-based and AI-advised risk scores, mandatory holds and purchase-ready gates."
-    icon={Gauge}
-    phaseLabel="Wires in Phase 5 (Risk Engine & Purchase-Ready Gate)"
-  />
-);
+export { default as AmlRisk } from "./AmlRisk";
 
 export const AmlCounterparty = () => (
   <AmlShellPage
@@ -40,14 +33,7 @@ export const AmlMonitoring = () => (
   />
 );
 
-export const AmlInvestigations = () => (
-  <AmlShellPage
-    title="Investigations"
-    description="Analyst and reviewer workspace for escalated cases and EDD workflow."
-    icon={FileWarning}
-    phaseLabel="Wires in Phases 5 & 9"
-  />
-);
+export { default as AmlInvestigations } from "./AmlInvestigations";
 
 export const AmlAustracReporting = () => (
   <AmlShellPage
