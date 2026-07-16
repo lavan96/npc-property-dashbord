@@ -1885,17 +1885,23 @@ export default function ReportQA() {
   };
 
   const clearAll = () => {
+    abortActiveStream('clear-all');
+    conversationLoadRequestRef.current += 1;
     setUploadedReports([]);
     setMessages([]);
     setActiveConversationId(null);
+    setIsProcessing(false);
   };
 
   function handleNewChat() {
+    abortActiveStream('new-chat');
+    conversationLoadRequestRef.current += 1;
     setUploadedReports([]);
     setMessages([]);
     setActiveConversationId(null);
     setTotalMessageCount(0);
     setHasOlderMessages(false);
+    setIsProcessing(false);
     toast({
       title: 'New chat started',
       description: 'Upload reports or start chatting',
