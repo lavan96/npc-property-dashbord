@@ -1116,6 +1116,51 @@ export default function ReportQA() {
     }
   };
 
+  const refreshConversationMessagesFromSupabase = async (targetConversationId: string, expectedMinimumMessages = 0) => {
+    const pageSize = 500;
+    const { data, error } = await invokeSecureFunction('report-qa', {
+      action: 'load-conversation',
+      conversationId: targetConversationId,
+      limit: pageSize,
+      offset: 0,
+    });
+
+    if (error) throw error;
+    const totalMsgCount = data?.totalMessages || data?.messages?.length || 0;
+    let storedMessages = Array.isArray(data?.messages) ? data.messages : [];
+
+    if (totalMsgCount > storedMessages.length) {
+      const restoredPages: any[] = [...storedMessages];
+      for (let offset = storedMessages.length; offset < totalMsgCount; offset += pageSize) {
+        const { data: pageData, error: pageError } = await invokeSecureFunction('report-qa', {
+          action: 'load-conversation',
+          conversationId: targetConversationId,
+          limit: Math.min(pageSize, totalMsgCount - offset),
+          offset,
+        });
+        if (pageError) throw pageError;
+        if (Array.isArray(pageData?.messages)) restoredPages.push(...pageData.messages);
+      }
+      storedMessages = restoredPages;
+    }
+
+    const restoredMessages = normaliseStoredMessages(storedMessages);
+    if (restoredMessages.length >= expectedMinimumMessages) {
+      setMessages(restoredMessages);
+      setTotalMessageCount(totalMsgCount || restoredMessages.length);
+      setHasOlderMessages(false);
+      return true;
+    }
+
+    console.warn('[ReportQA] Persistence verification returned fewer messages than expected; preserving local transcript.', {
+      conversationId: targetConversationId,
+      expectedMinimumMessages,
+      restored: restoredMessages.length,
+      totalMsgCount,
+    });
+    return false;
+  };
+
   const loadOlderMessages = async () => {
     if (!conversationId || isLoadingOlder || !hasOlderMessages) return;
 
