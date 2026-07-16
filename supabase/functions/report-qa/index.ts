@@ -1002,6 +1002,9 @@ async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs)
   const assistantTextRaw = String(args.assistantText ?? '').trim();
   const assistantText = sanitizeForPostgres(assistantTextRaw || args.fallbackAssistantText);
   const nowIso = new Date().toISOString();
+  const sentBy = typeof args.userId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(args.userId)
+    ? args.userId
+    : null;
   const safeToolInvocations = Array.isArray(args.toolInvocations) ? args.toolInvocations : [];
   const safeCitations = Array.isArray(args.citations) && args.citations.length > 0 ? args.citations : null;
 
@@ -1019,7 +1022,7 @@ async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs)
     conversation_id: conversationId,
     role: 'user',
     content: questionText,
-    sent_by: args.userId || null,
+    sent_by: sentBy,
     stream_id: args.streamId || null,
   });
   if (userInsert.error) {
@@ -1048,15 +1051,6 @@ async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs)
     .eq('id', conversationId);
   if (convUpdate.error) {
     console.error('[report-qa] Conversation timestamp update failed:', convUpdate.error);
-  }
-}
-
-function waitUntilIfAvailable(promise: Promise<unknown>): void {
-  try {
-    const runtime = (globalThis as any).EdgeRuntime;
-    if (runtime?.waitUntil) runtime.waitUntil(promise);
-  } catch {
-    // Ignore outside Supabase Edge Runtime.
   }
 }
 
