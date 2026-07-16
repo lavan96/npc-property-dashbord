@@ -901,7 +901,7 @@ export default function ReportQA() {
       if (error) throw error;
 
       const newConversationId = data.conversation.id;
-      setConversationId(newConversationId);
+      setActiveConversationId(newConversationId);
       setMessages([]);
       loadSavedConversations();
 
@@ -1068,7 +1068,7 @@ export default function ReportQA() {
         .reverse()
         .find((message) => message.role === 'assistant' && message.modelProvider)?.modelProvider;
 
-      setConversationId(conv.id);
+      setActiveConversationId(conv.id);
       setTotalMessageCount(totalMsgCount);
       setHasOlderMessages(false);
       setInputMessage('');
@@ -1855,13 +1855,13 @@ export default function ReportQA() {
   const clearAll = () => {
     setUploadedReports([]);
     setMessages([]);
-    setConversationId(null);
+    setActiveConversationId(null);
   };
 
   function handleNewChat() {
     setUploadedReports([]);
     setMessages([]);
-    setConversationId(null);
+    setActiveConversationId(null);
     setTotalMessageCount(0);
     setHasOlderMessages(false);
     toast({
