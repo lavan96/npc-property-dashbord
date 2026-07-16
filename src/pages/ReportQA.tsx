@@ -269,7 +269,6 @@ export default function ReportQA() {
   const [conversationId, setConversationIdState] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
   const activeStreamRef = useRef<{ conversationId: string; controller: AbortController } | null>(null);
-  const streamAbortReasonRef = useRef<string | null>(null);
   const conversationLoadRequestRef = useRef(0);
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -310,7 +309,7 @@ export default function ReportQA() {
   const abortActiveStream = useCallback((reason: string) => {
     const active = activeStreamRef.current;
     if (!active || active.controller.signal.aborted) return;
-    streamAbortReasonRef.current = reason;
+    console.info(`[ReportQA] Aborting active stream: ${reason}`);
     active.controller.abort();
   }, []);
 
@@ -1026,6 +1025,7 @@ export default function ReportQA() {
     if (restoringConversationId) return;
 
     abortActiveStream('switch-conversation');
+    setIsProcessing(false);
     const loadRequestId = ++conversationLoadRequestRef.current;
     setRestoringConversationId(conv.id);
     setConversationRestoreError(null);
@@ -1287,7 +1287,6 @@ export default function ReportQA() {
     const turnConversationId = activeConversationId;
     abortActiveStream('new-message');
     const streamController = new AbortController();
-    streamAbortReasonRef.current = null;
     activeStreamRef.current = { conversationId: turnConversationId, controller: streamController };
 
     const userMessage: ChatMessage = {
