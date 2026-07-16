@@ -1,0 +1,450 @@
+import { useEffect, useMemo, useState } from "react";
+import { FileText, Loader2, PlusCircle, RefreshCw, ShieldCheck, Send, Download, CheckCircle2, XCircle, History } from "lucide-react";
+import { toast } from "sonner";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useAmlAccess } from "@/hooks/useAmlAccess";
+import {
+  amlReportingApi,
+  type AmlReport, type AmlReportKind, type AmlReportStatus,
+  type AmlReportSubmission, type AmlReportVersion, type AmlReportingSummary,
+  type AmlSubmissionChannel,
+} from "@/lib/aml/amlReportingApi";
+
+const KIND_LABEL: Record<AmlReportKind, string> = {
+  smr: "Suspicious Matter Report",
+  ttr: "Threshold Transaction Report",
+  ifti: "International Funds Transfer Instruction",
+  compliance: "Compliance Report",
+  annual: "Annual Compliance Report",
+};
+const STATUS_TONE: Record<string, string> = {
+  draft: "bg-muted text-muted-foreground",
+  in_review: "bg-primary/15 text-primary",
+  awaiting_mlro: "bg-warning/15 text-warning",
+  approved: "bg-success/15 text-success",
+  submitted: "bg-primary text-primary-foreground",
+  acknowledged: "bg-success text-success-foreground",
+  rejected: "bg-destructive/15 text-destructive",
+  withdrawn: "bg-muted text-muted-foreground",
+};
+
+function fmt(d: string | null | undefined) { return d ? new Date(d).toLocaleString() : "—"; }
+
+export default function AmlAustracReporting() {
+  const { canWrite, isMlro, hasAnyRole, loading: accessLoading } = useAmlAccess();
+
+  const [summary, setSummary] = useState<AmlReportingSummary | null>(null);
+  const [reports, setReports] = useState<AmlReport[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [kindFilter, setKindFilter] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedVersions, setSelectedVersions] = useState<AmlReportVersion[]>([]);
+  const [selectedSubs, setSelectedSubs] = useState<AmlReportSubmission[]>([]);
+  const [selectedReport, setSelectedReport] = useState<AmlReport | null>(null);
+
+  const [openDraft, setOpenDraft] = useState(false);
+  const [draft, setDraft] = useState<Partial<AmlReport>>({ kind: "smr", title: "", narrative: "" });
+  const [saving, setSaving] = useState(false);
+
+  const [openSubmit, setOpenSubmit] = useState(false);
+  const [submitChannel, setSubmitChannel] = useState<AmlSubmissionChannel>("austrac_online");
+  const [submitRef, setSubmitRef] = useState("");
+  const [submitNotes, setSubmitNotes] = useState("");
+
+  const [openReceipt, setOpenReceipt] = useState<AmlReportSubmission | null>(null);
+  const [receiptRef, setReceiptRef] = useState("");
+  const [receiptStatus, setReceiptStatus] = useState("acknowledged");
+  const [receiptNotes, setReceiptNotes] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [sum, list] = await Promise.all([
+        amlReportingApi.summary(),
+        amlReportingApi.listReports({
+          status: statusFilter === "all" ? undefined : statusFilter,
+          kind: kindFilter === "all" ? undefined : kindFilter,
+        }),
+      ]);
+      setSummary(sum); setReports(list);
+    } catch (e: any) { toast.error(e?.message ?? "Failed to load AUSTRAC reports"); }
+    finally { setLoading(false); }
+  };
+
+  const loadDetail = async (id: string) => {
+    try {
+      const r = await amlReportingApi.getReport(id);
+      setSelectedReport(r.report ?? null);
+      setSelectedVersions(r.versions);
+      setSelectedSubs(r.submissions);
+    } catch (e: any) { toast.error(e?.message ?? "Failed to load report detail"); }
+  };
+
+  useEffect(() => { if (hasAnyRole) load(); /* eslint-disable-next-line */ }, [statusFilter, kindFilter, hasAnyRole]);
+  useEffect(() => { if (selectedId) loadDetail(selectedId); else { setSelectedReport(null); setSelectedVersions([]); setSelectedSubs([]); } }, [selectedId]);
+
+  const startNew = () => { setDraft({ kind: "smr", title: "", narrative: "" }); setOpenDraft(true); };
+  const editExisting = (r: AmlReport) => { setDraft({ ...r }); setOpenDraft(true); };
+
+  const saveDraft = async () => {
+    if (!draft.kind || !draft.title) { toast.error("Kind and title are required"); return; }
+    setSaving(true);
+    try {
+      const saved = await amlReportingApi.upsertReport(draft);
+      toast.success("Draft saved");
+      setOpenDraft(false); setSelectedId(saved.id); await load();
+    } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
+    finally { setSaving(false); }
+  };
+
+  const removeReport = async (r: AmlReport) => {
+    if (!confirm(`Delete draft "${r.title}"? This cannot be undone.`)) return;
+    try { await amlReportingApi.deleteReport(r.id); toast.success("Draft deleted"); if (selectedId === r.id) setSelectedId(null); await load(); }
+    catch (e: any) { toast.error(e?.message ?? "Delete failed"); }
+  };
+
+  const signoff = async (r: AmlReport) => {
+    if (!isMlro) return;
+    try { await amlReportingApi.mlroSignoff(r.id); toast.success("MLRO sign-off recorded"); await load(); if (selectedId === r.id) await loadDetail(r.id); }
+    catch (e: any) { toast.error(e?.message ?? "Sign-off failed"); }
+  };
+  const reject = async (r: AmlReport) => {
+    if (!isMlro) return;
+    const reason = prompt("Reason for rejection?"); if (!reason) return;
+    try { await amlReportingApi.mlroReject(r.id, reason); toast.success("Report returned to draft"); await load(); if (selectedId === r.id) await loadDetail(r.id); }
+    catch (e: any) { toast.error(e?.message ?? "Reject failed"); }
+  };
+  const withdraw = async (r: AmlReport) => {
+    if (!isMlro) return;
+    const reason = prompt("Withdrawal reason?") ?? "";
+    try { await amlReportingApi.withdrawReport(r.id, reason); toast.success("Report withdrawn"); await load(); if (selectedId === r.id) await loadDetail(r.id); }
+    catch (e: any) { toast.error(e?.message ?? "Withdraw failed"); }
+  };
+
+  const openSubmitFor = (r: AmlReport) => {
+    setSelectedId(r.id); setSubmitChannel("austrac_online"); setSubmitRef(""); setSubmitNotes(""); setOpenSubmit(true);
+  };
+  const submitNow = async () => {
+    if (!selectedId) return;
+    try {
+      await amlReportingApi.submitRecord({
+        report_id: selectedId, channel: submitChannel,
+        external_reference: submitRef || undefined, notes: submitNotes || undefined,
+      });
+      toast.success("Submission recorded");
+      setOpenSubmit(false); await load(); await loadDetail(selectedId);
+    } catch (e: any) { toast.error(e?.message ?? "Submission failed"); }
+  };
+
+  const saveReceipt = async () => {
+    if (!openReceipt) return;
+    if (!receiptRef) { toast.error("Receipt reference required"); return; }
+    try {
+      await amlReportingApi.recordReceipt({
+        submission_id: openReceipt.id,
+        receipt_reference: receiptRef,
+        status: receiptStatus as any,
+        notes: receiptNotes || undefined,
+      });
+      toast.success("Receipt captured");
+      setOpenReceipt(null); setReceiptRef(""); setReceiptNotes("");
+      if (selectedId) await loadDetail(selectedId); await load();
+    } catch (e: any) { toast.error(e?.message ?? "Receipt failed"); }
+  };
+
+  const exportBundle = async (r: AmlReport) => {
+    try {
+      const { bundle, content_hash } = await amlReportingApi.exportBundle(r.id);
+      const blob = new Blob([JSON.stringify({ ...bundle, content_hash }, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `austrac-${r.kind}-${r.id}.json`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Bundle exported");
+    } catch (e: any) { toast.error(e?.message ?? "Export failed"); }
+  };
+
+  const tiles = useMemo(() => summary ? [
+    { label: "Drafts", value: summary.draft },
+    { label: "Awaiting MLRO", value: summary.awaiting_mlro },
+    { label: "Approved", value: summary.approved },
+    { label: "Submitted", value: summary.submitted },
+    { label: "Acknowledged", value: summary.acknowledged },
+    { label: "Rejected", value: summary.rejected },
+  ] : [], [summary]);
+
+  if (accessLoading) return <div className="p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (!hasAnyRole) return <div className="p-6 text-muted-foreground">You do not have any AML role.</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold flex items-center gap-2"><FileText className="h-6 w-6 text-primary" /> AUSTRAC Reporting Hub</h1>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Draft SMR, TTR, IFTI and compliance reports, capture MLRO sign-off, record submissions and receipts.
+            Nothing auto-submits — human confirmation is required at every step.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={load} disabled={loading}><RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh</Button>
+          {canWrite && <Button onClick={startNew}><PlusCircle className="h-4 w-4 mr-2" /> New Draft</Button>}
+        </div>
+      </div>
+
+      {tiles.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {tiles.map((t) => (
+            <Card key={t.label}><CardContent className="p-4">
+              <div className="text-xs uppercase text-muted-foreground">{t.label}</div>
+              <div className="text-2xl font-semibold">{t.value}</div>
+            </CardContent></Card>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle>Reports</CardTitle>
+              <div className="flex gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    {["draft","in_review","awaiting_mlro","approved","submitted","acknowledged","rejected","withdrawn"].map(s => (
+                      <SelectItem key={s} value={s}>{s.replace(/_/g," ")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={kindFilter} onValueChange={setKindFilter}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All kinds</SelectItem>
+                    {Object.entries(KIND_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{k.toUpperCase()} — {l.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <CardDescription>Filter, review, and act on AUSTRAC drafts and submissions.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kind</TableHead><TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead><TableHead>Updated</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reports.map((r) => (
+                  <TableRow key={r.id} className={selectedId === r.id ? "bg-muted/40" : ""} onClick={() => setSelectedId(r.id)}>
+                    <TableCell><Badge variant="outline">{r.kind.toUpperCase()}</Badge></TableCell>
+                    <TableCell className="font-medium">{r.title}</TableCell>
+                    <TableCell><Badge className={STATUS_TONE[r.status] ?? ""}>{r.status.replace(/_/g," ")}</Badge></TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{fmt(r.updated_at)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1 flex-wrap">
+                        {canWrite && ["draft","in_review"].includes(r.status) && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); editExisting(r); }}>Edit</Button>
+                        )}
+                        {isMlro && ["draft","in_review","awaiting_mlro"].includes(r.status) && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); signoff(r); }}><ShieldCheck className="h-4 w-4 mr-1" /> Sign-off</Button>
+                        )}
+                        {isMlro && r.status === "approved" && (
+                          <Button size="sm" onClick={(e) => { e.stopPropagation(); openSubmitFor(r); }}><Send className="h-4 w-4 mr-1" /> Submit</Button>
+                        )}
+                        {isMlro && ["approved","in_review","awaiting_mlro"].includes(r.status) && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); reject(r); }}><XCircle className="h-4 w-4 mr-1" /> Reject</Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); exportBundle(r); }}><Download className="h-4 w-4 mr-1" /> Bundle</Button>
+                        {canWrite && r.status === "draft" && (
+                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); removeReport(r); }} className="text-destructive">Delete</Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!reports.length && !loading && (
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No reports match these filters.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Detail</CardTitle>
+            <CardDescription>{selectedReport ? selectedReport.title : "Select a report to view versions and submissions."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!selectedReport && <div className="text-sm text-muted-foreground">Nothing selected.</div>}
+            {selectedReport && (
+              <Tabs defaultValue="meta">
+                <TabsList className="grid grid-cols-3">
+                  <TabsTrigger value="meta">Meta</TabsTrigger>
+                  <TabsTrigger value="versions">Versions</TabsTrigger>
+                  <TabsTrigger value="subs">Submissions</TabsTrigger>
+                </TabsList>
+                <TabsContent value="meta" className="space-y-2 text-sm">
+                  <div><span className="text-muted-foreground">Kind:</span> <Badge variant="outline">{selectedReport.kind.toUpperCase()}</Badge></div>
+                  <div><span className="text-muted-foreground">Status:</span> <Badge className={STATUS_TONE[selectedReport.status] ?? ""}>{selectedReport.status.replace(/_/g," ")}</Badge></div>
+                  <div><span className="text-muted-foreground">Reference:</span> {selectedReport.reference_code ?? "—"}</div>
+                  <div><span className="text-muted-foreground">MLRO signed:</span> {fmt(selectedReport.mlro_signed_at)}</div>
+                  <div><span className="text-muted-foreground">Submitted:</span> {fmt(selectedReport.submitted_at)}</div>
+                  <div><span className="text-muted-foreground">Acknowledged:</span> {fmt(selectedReport.acknowledged_at)}</div>
+                  {selectedReport.narrative && (
+                    <div className="pt-2">
+                      <div className="text-xs uppercase text-muted-foreground mb-1">Narrative</div>
+                      <div className="whitespace-pre-wrap text-sm">{selectedReport.narrative}</div>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="versions" className="space-y-2">
+                  {selectedVersions.length === 0 && <div className="text-sm text-muted-foreground">No versions.</div>}
+                  {selectedVersions.map((v) => (
+                    <div key={v.id} className="border rounded-md p-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">v{v.version} · {v.change_note ?? "—"}</div>
+                        <History className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                      <div className="text-muted-foreground">{fmt(v.created_at)} · {v.author_label ?? "system"}</div>
+                      {v.content_hash && <div className="font-mono text-[10px] break-all mt-1">{v.content_hash.slice(0, 32)}…</div>}
+                    </div>
+                  ))}
+                </TabsContent>
+                <TabsContent value="subs" className="space-y-2">
+                  {selectedSubs.length === 0 && <div className="text-sm text-muted-foreground">No submissions.</div>}
+                  {selectedSubs.map((s) => (
+                    <div key={s.id} className="border rounded-md p-2 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">{s.channel.replace(/_/g," ")} · v{s.version}</div>
+                        <Badge className={STATUS_TONE[s.status] ?? ""}>{s.status}</Badge>
+                      </div>
+                      <div className="text-muted-foreground">{fmt(s.submitted_at)}</div>
+                      {s.external_reference && <div>Ref: <span className="font-mono">{s.external_reference}</span></div>}
+                      {(s.receipts ?? []).map((rec) => (
+                        <div key={rec.id} className="pl-2 border-l ml-1 mt-1">
+                          <div className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-success" /> {rec.receipt_reference}</div>
+                          <div className="text-muted-foreground">{fmt(rec.received_at)} · {rec.status}</div>
+                        </div>
+                      ))}
+                      {isMlro && (
+                        <div className="pt-1">
+                          <Button size="sm" variant="ghost" onClick={() => { setOpenReceipt(s); setReceiptRef(""); setReceiptStatus("acknowledged"); setReceiptNotes(""); }}>
+                            Capture receipt
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </TabsContent>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Draft dialog */}
+      <Dialog open={openDraft} onOpenChange={setOpenDraft}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{draft.id ? "Edit report draft" : "New AUSTRAC report draft"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Kind</Label>
+                <Select value={String(draft.kind ?? "smr")} onValueChange={(v) => setDraft((d) => ({ ...d, kind: v as AmlReportKind }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{Object.entries(KIND_LABEL).map(([k, l]) => <SelectItem key={k} value={k}>{k.toUpperCase()} — {l}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Reference code</Label>
+                <Input value={draft.reference_code ?? ""} onChange={(e) => setDraft((d) => ({ ...d, reference_code: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Title</Label>
+              <Input value={draft.title ?? ""} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Narrative</Label>
+              <Textarea rows={6} value={draft.narrative ?? ""} onChange={(e) => setDraft((d) => ({ ...d, narrative: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Period start</Label>
+                <Input type="datetime-local" value={draft.reporting_period_start ? String(draft.reporting_period_start).slice(0, 16) : ""} onChange={(e) => setDraft((d) => ({ ...d, reporting_period_start: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+              </div>
+              <div>
+                <Label>Period end</Label>
+                <Input type="datetime-local" value={draft.reporting_period_end ? String(draft.reporting_period_end).slice(0, 16) : ""} onChange={(e) => setDraft((d) => ({ ...d, reporting_period_end: e.target.value ? new Date(e.target.value).toISOString() : null }))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpenDraft(false)}>Cancel</Button>
+            <Button onClick={saveDraft} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save draft</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit dialog */}
+      <Dialog open={openSubmit} onOpenChange={setOpenSubmit}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Record AUSTRAC submission</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Channel</Label>
+              <Select value={submitChannel} onValueChange={(v) => setSubmitChannel(v as AmlSubmissionChannel)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["austrac_online","manual_upload","api","email","other"].map(c => <SelectItem key={c} value={c}>{c.replace(/_/g," ")}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>External reference</Label><Input value={submitRef} onChange={(e) => setSubmitRef(e.target.value)} placeholder="AUSTRAC lodgement id" /></div>
+            <div><Label>Notes</Label><Textarea rows={3} value={submitNotes} onChange={(e) => setSubmitNotes(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpenSubmit(false)}>Cancel</Button>
+            <Button onClick={submitNow}><Send className="h-4 w-4 mr-2" /> Record submission</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt dialog */}
+      <Dialog open={!!openReceipt} onOpenChange={(o) => !o && setOpenReceipt(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Capture AUSTRAC receipt</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Receipt reference</Label><Input value={receiptRef} onChange={(e) => setReceiptRef(e.target.value)} /></div>
+            <div>
+              <Label>Status</Label>
+              <Select value={receiptStatus} onValueChange={setReceiptStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["acknowledged","queried","rejected","withdrawn","other"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Notes</Label><Textarea rows={3} value={receiptNotes} onChange={(e) => setReceiptNotes(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpenReceipt(null)}>Cancel</Button>
+            <Button onClick={saveReceipt}><CheckCircle2 className="h-4 w-4 mr-2" /> Save receipt</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
