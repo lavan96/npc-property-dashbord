@@ -89,11 +89,15 @@ async function dispatchChunk(admin: Admin, jobId: string, chunk: ChunkRow): Prom
   }
   const { data: job } = await admin
     .from('pdf_import_jobs')
-    .select('mode, request_payload')
+    .select('mode, request_payload, plan_payload')
     .eq('id', jobId)
     .maybeSingle();
-  const mode = (job as any)?.mode ?? 'semantic';
   const rp = ((job as any)?.request_payload ?? {}) as Record<string, unknown>;
+  // C1.6: redispatch on the job's persisted effective mode + lane, not the raw
+  // requested mode with a dropped lane.
+  const plan = ((job as any)?.plan_payload ?? {}) as Record<string, unknown>;
+  const mode = String(plan.dispatch_effective_mode ?? (job as any)?.mode ?? 'semantic');
+  const selectedLane = String(plan.selected_lane ?? plan.recommended_lane ?? 'unplanned');
   await admin.from('pdf_import_chunks').update({
     status: 'dispatched',
     attempts: (chunk.attempts ?? 0) + 1,
@@ -110,9 +114,10 @@ async function dispatchChunk(admin: Admin, jobId: string, chunk: ChunkRow): Prom
     page_end: chunk.page_end,
     url: signedUrl,
     mode,
+    extractor_lane: selectedLane,
     callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`,
     callback_token: CALLBACK_TOKEN,
-    enable_picture_description: rp.description_tier !== 'off',
+    enable_picture_description: rp.description_tier !== 'off' && plan.requires_picture_description === true,
     include_doctags: true,
     include_markdown: rp.include_markdown !== false,
     redact_pii: Boolean(rp.redact_pii),

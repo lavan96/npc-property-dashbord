@@ -19,6 +19,15 @@ import {
   createTokenAuthCorsHeaders,
   createUnauthorizedResponse,
 } from '../_shared/auth.ts';
+import {
+  normalizePlanV2,
+  PDF_PLAN_CONTRACT_VERSION,
+  type PdfParsePlanV2,
+} from '../_shared/pdfParsePlanV2.pure.ts';
+import {
+  buildCacheContractFingerprintInput,
+  PDF_CACHE_CONTRACT_VERSION,
+} from '../_shared/pdfCacheContract.pure.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -35,6 +44,14 @@ const TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
 const CACHE_SAFETY_VERSION = 'parse-cache-safety-v1';
 const PHASE3_ENGINE_MARKER = 'phase3-raster-manifest';
 const MAX_SIDECAR_ATTEMPTS = 3;
+
+// C1 policy versions folded into the cache-contract fingerprint. LANE_POLICY_VERSION
+// mirrors the sidecar's LANE_ENFORCEMENT_VERSION; bump both together when lane
+// behavior changes so stale-policy artifacts are never reused.
+const LANE_POLICY_VERSION = 'extractor-lane-policy-v1';
+const REDACTION_POLICY_VERSION = 'redaction-policy-v1';
+const PARSE_PROVIDER = 'docling';
+const DEFAULT_SERVICE_CLASS = 'default';
 
 // Wave G chunked thresholds. <=20 pages → monolithic /parse callback.
 // 21–60 → 10-page chunks. >60 → 5-page chunks. OCR-heavy halves the size.
@@ -241,6 +258,43 @@ async function sha256Text(text: string): Promise<string> {
   return sha256Hex(new TextEncoder().encode(text));
 }
 
+// Requested raster DPI is a deterministic function of the requested mode; used
+// both for the parse request and for the cache fingerprint.
+function requestedRasterDpi(mode: string): number {
+  return (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
+}
+
+// pdf-cache-contract-v2 fingerprint. Computed pre-plan from request-level policy
+// inputs (all known before /plan) so the fast cache path is preserved while the
+// security invariant — redacted requests never reuse unredacted results — holds.
+async function computeCacheFingerprint(
+  hash: string,
+  requestedMode: string,
+  requestPayload: Record<string, unknown>,
+): Promise<string> {
+  const canonical = buildCacheContractFingerprintInput({
+    contractVersion: PDF_CACHE_CONTRACT_VERSION,
+    sourceHash: hash,
+    requestedMode,
+    allowModeOverride: requestPayload?.allow_mode_override !== false,
+    redactPii: Boolean(requestPayload?.redact_pii),
+    redactionPolicyVersion: REDACTION_POLICY_VERSION,
+    descriptionTier: typeof requestPayload?.description_tier === 'string'
+      ? (requestPayload.description_tier as string)
+      : 'on',
+    includeMarkdown: requestPayload?.include_markdown !== false,
+    includeDoctags: true,
+    rasterFormat: 'png',
+    rasterDpi: requestedRasterDpi(requestedMode),
+    engineVersion: ENGINE_VERSION_FAMILY,
+    artifactContractVersion: ARTIFACT_CONTRACT_VERSION,
+    lanePolicyVersion: LANE_POLICY_VERSION,
+    provider: PARSE_PROVIDER,
+    serviceClass: DEFAULT_SERVICE_CLASS,
+  });
+  return sha256Text(canonical);
+}
+
 async function resolveSignedSourceUrl(
   admin: Admin,
   body: Record<string, unknown>,
@@ -297,14 +351,18 @@ async function fetchAndHash(signedUrl: string): Promise<{ hash: string; size: nu
 
 async function findCachedJob(
   admin: Admin,
-  hash: string,
+  fingerprint: string,
   mode: string,
 ): Promise<{ id: string; result_payload: Record<string, unknown> | null; page_count: number | null; engine_version: string | null } | null> {
+  // pdf-cache-contract-v2: reuse requires an EXACT fingerprint match. The
+  // fingerprint encodes redaction policy, lane, DPI, description tier and
+  // engine/artifact versions, so a non-redacted result can never satisfy a
+  // redacted request. Legacy jobs (null fingerprint) never match — safe.
+  if (!fingerprint) return null;
   const { data } = await admin
     .from('pdf_import_jobs')
-    .select('id, result_payload, page_count, engine_version, diagnostics_path')
-    .eq('source_file_hash', hash)
-    .eq('mode', mode)
+    .select('id, result_payload, page_count, engine_version, diagnostics_path, cache_contract_fingerprint')
+    .eq('cache_contract_fingerprint', fingerprint)
     .eq('engine', 'docling')
     .eq('status', 'succeeded')
     .order('finished_at', { ascending: false })
@@ -409,73 +467,198 @@ async function copyDiagnostic(
   return uploadDiagnostic(admin, destJobId, destName, bytes, contentType);
 }
 
+// Per-page artifact keys reproduced on a cache hit. OCR/vectors are copied when
+// present (forward-compatible with pdf-page-artifact-contract-v2 / C2).
+const PER_PAGE_ARTIFACT_KEYS = [
+  'raster_path',
+  'docling_path',
+  'blocks_path',
+  'ocr_path',
+  'tables_path',
+  'pictures_path',
+  'vectors_path',
+  'summary_path',
+] as const;
+
+// Strip an optional bucket prefix and the leading job-id segment, yielding the
+// artifact's sub-path (e.g. `pages/page-001/docling.json`) so it can be re-homed
+// under a new job prefix.
+function artifactSubpath(path: unknown): string | null {
+  if (typeof path !== 'string' || !path) return null;
+  const bare = path.startsWith(`${DIAGNOSTICS_BUCKET}/`) ? path.slice(DIAGNOSTICS_BUCKET.length + 1) : path;
+  const segs = bare.split('/').filter(Boolean);
+  if (segs.length < 2) return null;
+  return segs.slice(1).join('/');
+}
+
+function contentTypeForPath(path: string): string {
+  const p = path.toLowerCase();
+  if (p.endsWith('.json')) return 'application/json';
+  if (p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'image/jpeg';
+  if (p.endsWith('.png')) return 'image/png';
+  if (p.endsWith('.md')) return 'text/markdown';
+  return 'application/octet-stream';
+}
+
+// Copy a cached artifact into the new job's prefix, preserving its relative
+// sub-path. Returns the new path, or null if the source could not be copied.
+async function rehomeArtifact(admin: Admin, srcPath: unknown, newJobId: string): Promise<string | null> {
+  const sub = artifactSubpath(srcPath);
+  if (!sub) return null;
+  return copyDiagnostic(admin, srcPath as string, newJobId, sub, contentTypeForPath(sub));
+}
+
+// Reproduce the full per-page artifact tree + parent pages-manifest under the new
+// job so a cache hit satisfies the same artifact contract as a fresh parse.
+// Returns null when the cached job cannot be faithfully reproduced (caller then
+// falls through to a fresh parse rather than serving an incomplete result).
+async function reproducePerPageTree(
+  admin: Admin,
+  cached: { id: string; result_payload: Record<string, unknown> | null },
+  newJobId: string,
+): Promise<{ perPageManifestPath: string; perPageManifestVersion: string | null } | null> {
+  const result = (cached.result_payload ?? {}) as Record<string, unknown>;
+  const sourceManifestPath = typeof result.per_page_docling_manifest_path === 'string' && result.per_page_docling_manifest_path
+    ? result.per_page_docling_manifest_path
+    : `${cached.id}/pages-manifest.json`;
+
+  const raw = await downloadDiagnostic(admin, sourceManifestPath);
+  if (!raw) return null;
+  let manifest: any;
+  try {
+    manifest = JSON.parse(new TextDecoder().decode(raw));
+  } catch {
+    return null;
+  }
+  const pages = Array.isArray(manifest?.pages) ? manifest.pages : null;
+  if (!pages || pages.length === 0) return null;
+
+  const rewrittenPages: any[] = [];
+  for (const page of pages) {
+    if (!page || typeof page !== 'object') return null;
+    const rewritten: Record<string, unknown> = { ...page };
+    for (const key of PER_PAGE_ARTIFACT_KEYS) {
+      const src = (page as Record<string, unknown>)[key];
+      if (typeof src !== 'string' || !src) continue;
+      const copied = await rehomeArtifact(admin, src, newJobId);
+      if (!copied) return null; // a referenced artifact could not be reproduced
+      rewritten[key] = copied;
+    }
+    rewrittenPages.push(rewritten);
+  }
+
+  const rewrittenManifest = { ...manifest, pages: rewrittenPages, cache_source_job_id: cached.id };
+  const newManifestPath = await uploadDiagnostic(
+    admin,
+    newJobId,
+    'pages-manifest.json',
+    JSON.stringify(rewrittenManifest),
+    'application/json',
+  );
+  if (!newManifestPath) return null;
+  return {
+    perPageManifestPath: newManifestPath,
+    perPageManifestVersion: typeof manifest?.version === 'string' ? manifest.version : null,
+  };
+}
+
+// Serve a job from a policy-safe cache hit. Reproduces the complete artifact
+// contract (top-level + per-page tree). Returns true on a fully-reproduced hit;
+// false means the caller must fall through to a fresh parse.
 async function serveFromCache(
   admin: Admin,
   jobId: string,
   cached: { id: string; result_payload: Record<string, unknown> | null; page_count: number | null; engine_version: string | null },
   mode: string,
   startedAt: number,
-) {
-  await setStage(admin, jobId, 'cache_hit');
-  const result = (cached.result_payload ?? {}) as Record<string, unknown>;
-  const doclingSrc = (result.docling_path as string) ?? '';
-  const rasterSrc = (result.rasters_path as string) ?? '';
-  const manifestSrc = (result.rasters_manifest_path as string) ?? '';
-  const pageRasterSrcs = Array.isArray(result.page_raster_paths)
-    ? (result.page_raster_paths as unknown[]).filter((v): v is string => typeof v === 'string')
-    : [];
+): Promise<boolean> {
+  try {
+    await setStage(admin, jobId, 'cache_hit');
+    const result = (cached.result_payload ?? {}) as Record<string, unknown>;
+    const doclingSrc = (result.docling_path as string) ?? '';
+    const rasterSrc = (result.rasters_path as string) ?? '';
+    const manifestSrc = (result.rasters_manifest_path as string) ?? '';
+    const pageRasterSrcs = Array.isArray(result.page_raster_paths)
+      ? (result.page_raster_paths as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [];
 
-  const doclingPath = doclingSrc ? await copyDiagnostic(admin, doclingSrc, jobId, 'docling.json') : null;
-  const rasterPath = rasterSrc ? await copyDiagnostic(admin, rasterSrc, jobId, 'rasters.json') : null;
-  const manifestPath = manifestSrc ? await copyDiagnostic(admin, manifestSrc, jobId, 'rasters-manifest.json') : null;
+    const doclingPath = doclingSrc ? await copyDiagnostic(admin, doclingSrc, jobId, 'docling.json') : null;
+    // A cache hit that cannot reproduce its primary Docling artifact is unusable.
+    if (doclingSrc && !doclingPath) return false;
 
-  const pageRasterPaths: string[] = [];
-  for (const src of pageRasterSrcs) {
-    const filename = src.split('/').pop() || `page-${pageRasterPaths.length + 1}.png`;
-    const contentType = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')
-      ? 'image/jpeg'
-      : 'image/png';
-    const copied = await copyDiagnostic(admin, src, jobId, `pages/${filename}`, contentType);
-    if (copied) pageRasterPaths.push(copied);
-  }
+    const rasterPath = rasterSrc ? await copyDiagnostic(admin, rasterSrc, jobId, 'rasters.json') : null;
+    const manifestPath = manifestSrc ? await copyDiagnostic(admin, manifestSrc, jobId, 'rasters-manifest.json') : null;
 
-  const finishedAt = Date.now();
-  const pageCount = cached.page_count ?? null;
-  await updateJob(admin, jobId, {
-    status: 'succeeded',
-    stage: 'parsed',
-    cache_hit: true,
-    cache_source_job_id: cached.id,
-    engine_version: cached.engine_version ?? 'docling',
-    page_count: pageCount,
-    pages_total: pageCount,
-    pages_completed: pageCount,
-    finished_at: new Date(finishedAt).toISOString(),
-    duration_ms: finishedAt - startedAt,
-    diagnostics_path: doclingPath,
-    result_payload: {
-      docling_path: doclingPath,
-      rasters_path: rasterPath,
-      legacy_rasters_path: rasterPath,
-      rasters_manifest_path: manifestPath,
-      page_raster_paths: pageRasterPaths,
-      artifact_contract_version: ARTIFACT_CONTRACT_VERSION,
-      docling_page_rebase_version: result.docling_page_rebase_version ?? null,
-      chunk_merge_validation_version: result.chunk_merge_validation_version ?? null,
-      merge_validation_path: result.merge_validation_path ?? null,
-      merge_validation: result.merge_validation ?? null,
-      terminal_state_version: result.terminal_state_version ?? null,
-      lane_enforcement_version: result.lane_enforcement_version ?? null,
-      extractor_lane: result.extractor_lane ?? null,
-      effective_mode: result.effective_mode ?? mode,
-      lane_policy: result.lane_policy ?? null,
-      cache_safety_version: CACHE_SAFETY_VERSION,
-      page_count: pageCount,
-      mode,
+    const pageRasterPaths: string[] = [];
+    for (const src of pageRasterSrcs) {
+      const filename = src.split('/').pop() || `page-${pageRasterPaths.length + 1}.png`;
+      const copied = await copyDiagnostic(admin, src, jobId, `pages/${filename}`, contentTypeForPath(filename));
+      if (copied) pageRasterPaths.push(copied);
+    }
+    // Rasters are contractually required for raster-bearing modes.
+    if (modeRequiresRaster(mode) && pageRasterSrcs.length > 0 && pageRasterPaths.length < pageRasterSrcs.length) {
+      return false;
+    }
+
+    // Reproduce the per-page artifact tree so persisted review / diagnostics work
+    // for a cached job exactly as for a fresh one.
+    const perPage = await reproducePerPageTree(admin, cached, jobId);
+    if (!perPage) return false;
+
+    // Top-level text artifacts, best-effort (present only for some engines).
+    const outlinePath = result.outline_path ? await rehomeArtifact(admin, result.outline_path, jobId) : null;
+    const markdownPath = result.markdown_path ? await rehomeArtifact(admin, result.markdown_path, jobId) : null;
+    const doctagsPath = result.doctags_path ? await rehomeArtifact(admin, result.doctags_path, jobId) : null;
+    const mergeValidationPath = result.merge_validation_path ? await rehomeArtifact(admin, result.merge_validation_path, jobId) : null;
+
+    const finishedAt = Date.now();
+    const pageCount = cached.page_count ?? null;
+    await updateJob(admin, jobId, {
+      status: 'succeeded',
+      stage: 'parsed',
       cache_hit: true,
       cache_source_job_id: cached.id,
-    },
-  });
+      engine_version: cached.engine_version ?? 'docling',
+      page_count: pageCount,
+      pages_total: pageCount,
+      pages_completed: pageCount,
+      finished_at: new Date(finishedAt).toISOString(),
+      duration_ms: finishedAt - startedAt,
+      diagnostics_path: doclingPath,
+      result_payload: {
+        docling_path: doclingPath,
+        rasters_path: rasterPath,
+        legacy_rasters_path: rasterPath,
+        rasters_manifest_path: manifestPath,
+        page_raster_paths: pageRasterPaths,
+        per_page_docling_manifest_path: perPage.perPageManifestPath,
+        per_page_docling_artifact_version: perPage.perPageManifestVersion,
+        outline_path: outlinePath,
+        markdown_path: markdownPath,
+        doctags_path: doctagsPath,
+        artifact_contract_version: ARTIFACT_CONTRACT_VERSION,
+        docling_page_rebase_version: result.docling_page_rebase_version ?? null,
+        chunk_merge_validation_version: result.chunk_merge_validation_version ?? null,
+        merge_validation_path: mergeValidationPath ?? result.merge_validation_path ?? null,
+        merge_validation: result.merge_validation ?? null,
+        terminal_state_version: result.terminal_state_version ?? null,
+        lane_enforcement_version: result.lane_enforcement_version ?? null,
+        extractor_lane: result.extractor_lane ?? null,
+        effective_mode: result.effective_mode ?? mode,
+        lane_policy: result.lane_policy ?? null,
+        cache_safety_version: CACHE_SAFETY_VERSION,
+        cache_contract_version: PDF_CACHE_CONTRACT_VERSION,
+        page_count: pageCount,
+        mode,
+        cache_hit: true,
+        cache_source_job_id: cached.id,
+      },
+    });
+    return true;
+  } catch (e) {
+    console.warn('[pdf-parse-dispatch] serveFromCache failed; will fall through to fresh parse', { jobId, cached: cached.id, error: String((e as Error)?.message ?? e) });
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -488,15 +671,19 @@ interface SourceDescriptor {
   url?: string;
 }
 
-interface PlanResult {
-  page_count: number;
-  scanned_page_ratio: number;
-  ocr_hint: boolean;
-  byte_size: number;
-}
-
-async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanResult | null> {
+// Call the sidecar /plan route. The request now forwards the requested mode and
+// chunking hints (previously only { url } was sent, silently dropping them). The
+// raw body is returned untyped; runJob validates it via normalizePlanV2.
+async function callSidecarPlan(
+  signedUrl: string,
+  jobId: string,
+  requestedMode: string,
+  requestPayload: Record<string, unknown>,
+): Promise<unknown | null> {
   try {
+    const maxChunkPages = typeof requestPayload?.max_chunk_pages === 'number' && Number.isFinite(requestPayload.max_chunk_pages)
+      ? requestPayload.max_chunk_pages
+      : null;
     const res = await fetch(`${PARSE_URL.replace(/\/$/, '')}/plan`, {
       method: 'POST',
       headers: {
@@ -504,13 +691,18 @@ async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanRe
         Authorization: `Bearer ${PARSE_TOKEN}`,
         'X-Request-Id': jobId,
       },
-      body: JSON.stringify({ url: signedUrl }),
+      body: JSON.stringify({
+        url: signedUrl,
+        mode: requestedMode,
+        max_chunk_pages: maxChunkPages,
+        force_chunking: requestPayload?.force_chunked === true,
+      }),
     });
     if (!res.ok) {
       console.warn('[pdf-parse-dispatch] /plan returned', res.status);
       return null;
     }
-    return await res.json() as PlanResult;
+    return await res.json();
   } catch (e) {
     console.warn('[pdf-parse-dispatch] /plan exception', e);
     return null;
@@ -656,57 +848,78 @@ async function runJob(
   let bytesIn: number | null = null;
   let chunkedRan = false;
   try {
-    // ---- Phase C: hash + cache lookup --------------------------------------
+    // ---- Phase C: hash + policy-safe cache lookup --------------------------
     await setStage(admin, jobId, 'hashing');
-    const hashed = knownSource?.hash
-      ? { hash: knownSource.hash, size: Number(knownSource.size ?? 0) || 0 }
-      : await fetchAndHash(signedUrl);
-    if (hashed) {
-      await updateJob(admin, jobId, {
-        source_file_hash: hashed.hash,
-        source_file_size_bytes: hashed.size,
-        bytes_in: hashed.size,
-      });
-      bytesIn = hashed.size;
-      const cached = await findCachedJob(admin, hashed.hash, mode);
-      if (cached) {
-        console.log('[pdf-parse-dispatch] cache hit', { jobId, source: cached.id, hash: hashed.hash });
-        await serveFromCache(admin, jobId, cached, mode, startedAt);
-        return;
-      }
-    }
 
+    // request_payload carries the policy inputs (redaction, description tier,
+    // markdown) that partition the cache fingerprint, so it is loaded BEFORE the
+    // cache lookup so a redacted request can never reuse an unredacted result.
     const requestPayload = ((await admin
       .from('pdf_import_jobs')
       .select('request_payload')
       .eq('id', jobId)
       .maybeSingle()).data?.request_payload ?? {}) as Record<string, unknown>;
 
-    // ---- Phase 2B: planning lane contract ---------------------------------
+    const hashed = knownSource?.hash
+      ? { hash: knownSource.hash, size: Number(knownSource.size ?? 0) || 0 }
+      : await fetchAndHash(signedUrl);
+    if (hashed) {
+      const cacheFingerprint = await computeCacheFingerprint(hashed.hash, mode, requestPayload);
+      await updateJob(admin, jobId, {
+        source_file_hash: hashed.hash,
+        source_file_size_bytes: hashed.size,
+        bytes_in: hashed.size,
+        cache_contract_fingerprint: cacheFingerprint,
+        service_class: DEFAULT_SERVICE_CLASS,
+      });
+      bytesIn = hashed.size;
+      const cached = await findCachedJob(admin, cacheFingerprint, mode);
+      if (cached) {
+        console.log('[pdf-parse-dispatch] cache candidate', { jobId, source: cached.id, fingerprint: cacheFingerprint });
+        const served = await serveFromCache(admin, jobId, cached, mode, startedAt);
+        if (served) return;
+        // Reproduction incomplete — fall through to a fresh parse rather than
+        // serving a partial artifact set.
+        console.warn('[pdf-parse-dispatch] cache reproduction incomplete; parsing fresh', { jobId, source: cached.id });
+      }
+    } else {
+      await updateJob(admin, jobId, { service_class: DEFAULT_SERVICE_CLASS });
+    }
+
+    // ---- Phase 2B: planning lane contract (pdf-plan-contract-v2) -----------
     await setStage(admin, jobId, 'planning');
-    const plan = await callSidecarPlan(signedUrl, jobId, mode, requestPayload);
+    const planRaw = await callSidecarPlan(signedUrl, jobId, mode, requestPayload);
+    const normalized = normalizePlanV2(planRaw);
+    const plan: PdfParsePlanV2 | null = normalized.ok ? normalized.plan : null;
+    const planFallbackReason = normalized.ok
+      ? null
+      : (planRaw == null ? 'plan_unavailable' : normalized.reason);
+    if (!normalized.ok && planRaw != null) {
+      console.warn('[pdf-parse-dispatch] /plan rejected by validator; conservative fallback', { jobId, reason: normalized.reason, problems: normalized.problems });
+    }
 
     const allowModeOverride = requestPayload?.allow_mode_override !== false;
-    const plannedModeRaw = typeof plan?.recommended_mode === 'string' ? plan.recommended_mode : null;
+    // recommended_mode is canonical 'pixel-perfect'; map to DB form 'pixel_perfect'.
+    const plannedModeRaw = plan?.recommended_mode ?? null;
     const plannedMode = plannedModeRaw === 'pixel-perfect' ? 'pixel_perfect' : plannedModeRaw;
     const effectiveMode = allowModeOverride && plannedMode ? plannedMode : mode;
 
-    const selectedLane = typeof plan?.recommended_lane === 'string' ? plan.recommended_lane : 'unplanned';
-    const chunkSizeRaw = Number(plan?.recommended_chunk_size ?? 0);
-    const selectedChunkSize = Number.isFinite(chunkSizeRaw) && chunkSizeRaw > 0
-      ? Math.max(1, Math.min(50, Math.floor(chunkSizeRaw)))
-      : null;
+    const selectedLane = plan?.recommended_lane ?? 'unplanned';
+    const selectedChunkSize = plan?.recommended_chunk_size ?? null;
 
     const planRecord: Record<string, unknown> = {
       ...(plan ?? {}),
+      contract_version: PDF_PLAN_CONTRACT_VERSION,
+      plan_fallback_reason: planFallbackReason,
       source,
       selected_lane: selectedLane,
       requested_mode: mode,
       dispatch_effective_mode: effectiveMode,
       dispatch_selected_chunk_size: selectedChunkSize,
       dispatch_allow_mode_override: allowModeOverride,
+      service_class: DEFAULT_SERVICE_CLASS,
     };
-    await updateJob(admin, jobId, { plan_payload: planRecord });
+    await updateJob(admin, jobId, { plan_payload: planRecord, service_class: DEFAULT_SERVICE_CLASS });
 
     const forceChunked = requestPayload?.force_chunked === true;
     const planRequestsChunking = Boolean(plan && selectedChunkSize && selectedChunkSize < plan.page_count);
@@ -890,7 +1103,11 @@ async function recoverStuckJobs(admin: Admin): Promise<{ requeued: number; faile
       }
       continue;
     }
-    const mode = (job as any)?.mode ?? 'semantic';
+    // C1.6: redispatch on the job's persisted effective mode + lane, not the raw
+    // requested mode / a hard-coded 'unplanned' lane.
+    const plan = ((job as any)?.plan_payload ?? {}) as Record<string, unknown>;
+    const mode = String(plan.dispatch_effective_mode ?? (job as any)?.mode ?? 'semantic');
+    const selectedLane = String(plan.selected_lane ?? plan.recommended_lane ?? 'unplanned');
     const requestPayload = ((job as any)?.request_payload ?? {}) as Record<string, unknown>;
     for (const c of chunks) {
       if ((c.attempts ?? 0) >= (c.max_attempts ?? 3)) {
@@ -902,7 +1119,7 @@ async function recoverStuckJobs(admin: Admin): Promise<{ requeued: number; faile
         results.push({ job_id: jobId, action: 'fatal_max_attempts' });
         continue;
       }
-      const ok = await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, 'unplanned', requestPayload);
+      const ok = await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, selectedLane, requestPayload);
       results.push({ job_id: jobId, action: ok ? 'redispatched' : 'redispatch_failed' });
       if (ok) requeued++;
       else failed++;
@@ -997,9 +1214,18 @@ Deno.serve(async (req) => {
       // DB CHECK uses 'pixel_perfect' (underscore); UI/API may pass 'pixel-perfect'.
       const mode = rawMode === 'pixel-perfect' ? 'pixel_perfect' : rawMode;
       const sourceFilePath = await sourceFingerprint(body);
+      // Idempotency must partition on the same policy inputs as the cache
+      // fingerprint, otherwise a redacted request could replay an in-flight
+      // NON-redacted job (or vice versa).
+      const idempotencyPolicy = [
+        `redact=${Boolean(body.redact_pii) ? 1 : 0}`,
+        `desc=${typeof body.description_tier === 'string' ? body.description_tier : 'on'}`,
+        `md=${body.include_markdown === false ? 0 : 1}`,
+        `override=${body.allow_mode_override !== false ? 1 : 0}`,
+      ].join(':');
       const idempotencyKey = typeof body.idempotency_key === 'string' && body.idempotency_key
         ? body.idempotency_key
-        : await sha256Text(`${sourceFilePath}:${mode}:${ENGINE_VERSION_FAMILY}:${ARTIFACT_CONTRACT_VERSION}`);
+        : await sha256Text(`${sourceFilePath}:${mode}:${ENGINE_VERSION_FAMILY}:${ARTIFACT_CONTRACT_VERSION}:${idempotencyPolicy}`);
       const existing = await findIdempotentJob(admin, userId as string | null, idempotencyKey, mode);
       if (existing) {
         return json({
@@ -1020,6 +1246,8 @@ Deno.serve(async (req) => {
         .insert({
           user_id: userId,
           template_id: body.template_id ?? null,
+          template_import_id: typeof body.template_import_id === 'string' ? body.template_import_id : null,
+          service_class: DEFAULT_SERVICE_CLASS,
           source_file_path: sourceFilePath,
           source_file_name: body.source_file_name ?? null,
           source_file_size_bytes: body.source_file_size_bytes ?? null,

@@ -578,6 +578,9 @@ export async function extractPdfViaDocling(
       'pdf-parse-dispatch',
       {
         operation: 'start',
+        // C1.3: correlate the parse job to its template import so diagnostics and
+        // review can trace job -> import -> template without meta-JSON archaeology.
+        template_import_id: importId,
         mode: modeToWire(mode),
         source_path: uploaded.source_path,
         source_bucket: uploaded.source_bucket,
