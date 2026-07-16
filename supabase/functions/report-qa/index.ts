@@ -990,6 +990,8 @@ type ReportQAPersistTurnArgs = {
   streamId?: string | null;
   fallbackAssistantText: string;
   source: string;
+  persistUser?: boolean;
+  persistAssistant?: boolean;
 };
 
 async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs): Promise<void> {
@@ -1018,31 +1020,35 @@ async function persistReportQATurn(supabase: any, args: ReportQAPersistTurnArgs)
     streamId: args.streamId || null,
   });
 
-  const userInsert = await supabase.from('report_qa_messages').insert({
-    conversation_id: conversationId,
-    role: 'user',
-    content: questionText,
-    sent_by: sentBy,
-    stream_id: args.streamId || null,
-  });
-  if (userInsert.error) {
-    console.error('[report-qa] User message persist failed:', userInsert.error);
+  if (args.persistUser !== false) {
+    const userInsert = await supabase.from('report_qa_messages').insert({
+      conversation_id: conversationId,
+      role: 'user',
+      content: questionText,
+      sent_by: sentBy,
+      stream_id: args.streamId || null,
+    });
+    if (userInsert.error) {
+      console.error('[report-qa] User message persist failed:', userInsert.error);
+    }
   }
 
-  const assistantInsert = await supabase.from('report_qa_messages').insert({
-    conversation_id: conversationId,
-    role: 'assistant',
-    content: assistantText,
-    model_provider: args.modelProvider || null,
-    citations: safeCitations,
-    comparison_mode: Boolean(args.comparisonMode),
-    prompt_version: args.promptVersion || PROMPT_VERSION,
-    model_version: args.modelVersion || null,
-    tool_invocations: safeToolInvocations,
-    stream_id: args.streamId || null,
-  });
-  if (assistantInsert.error) {
-    console.error('[report-qa] Assistant message persist failed:', assistantInsert.error);
+  if (args.persistAssistant !== false) {
+    const assistantInsert = await supabase.from('report_qa_messages').insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: assistantText,
+      model_provider: args.modelProvider || null,
+      citations: safeCitations,
+      comparison_mode: Boolean(args.comparisonMode),
+      prompt_version: args.promptVersion || PROMPT_VERSION,
+      model_version: args.modelVersion || null,
+      tool_invocations: safeToolInvocations,
+      stream_id: args.streamId || null,
+    });
+    if (assistantInsert.error) {
+      console.error('[report-qa] Assistant message persist failed:', assistantInsert.error);
+    }
   }
 
   const convUpdate = await supabase
