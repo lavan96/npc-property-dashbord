@@ -25,14 +25,7 @@ export { default as AmlMonitoring } from "./AmlMonitoring";
 
 export { default as AmlInvestigations } from "./AmlInvestigations";
 
-export const AmlAustracReporting = () => (
-  <AmlShellPage
-    title="AUSTRAC Reporting"
-    description="SMR, TTR and IFTI drafting, MLRO sign-off, and lodgement history."
-    icon={FileText}
-    phaseLabel="Wires in Phase 10 (AUSTRAC Reporting Hub)"
-  />
-);
+export { default as AmlAustracReporting } from "./AmlAustracReporting";
 
 export const AmlGovernance = () => (
   <AmlShellPage
