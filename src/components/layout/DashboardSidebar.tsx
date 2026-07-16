@@ -258,7 +258,7 @@ export function DashboardSidebar() {
     if (aml.loading || !aml.flagEnabled || !aml.hasAnyRole) return null;
     const items = amlNavItems
       .filter((item) => hasAmlCapability(aml.roles, item.capability))
-      .map(({ capability, ...rest }) => rest);
+      .map(({ capability, ...rest }) => ({ ...rest, moduleKey: '__aml__' }));
     if (items.length === 0) return null;
     return { title: 'AML/CTF Compliance', items };
   })();
