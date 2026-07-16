@@ -375,6 +375,8 @@ export function DashboardSidebar() {
         <nav className="dashboard-sidebar-nav" aria-label="Dashboard navigation">
           {groupedNavItems.map((group) => renderGroup(group))}
 
+          {amlGroupedItems && renderGroup(amlGroupedItems)}
+
           {groupedAdminItems.items.length > 0 && (
             <div className="dashboard-sidebar-admin-divider">
               {renderGroup(groupedAdminItems, { administration: true })}
