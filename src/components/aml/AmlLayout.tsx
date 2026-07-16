@@ -26,6 +26,7 @@ const TABS: AmlTab[] = [
   { label: "Monitoring", to: "/admin/aml/monitoring", capability: "aml.view" },
   { label: "Investigations", to: "/admin/aml/investigations", capability: "aml.investigate", restrictedNote: "Analyst+" },
   { label: "AUSTRAC Reporting", to: "/admin/aml/austrac", capability: "aml.report", restrictedNote: "MLRO" },
+  { label: "Records & Privacy", to: "/admin/aml/records", capability: "aml.view" },
   { label: "Governance", to: "/admin/aml/governance", capability: "aml.view" },
   { label: "Configuration", to: "/admin/aml/configuration", capability: "aml.configure", restrictedNote: "MLRO" },
 ];
