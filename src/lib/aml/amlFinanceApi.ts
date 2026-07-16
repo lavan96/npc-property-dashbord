@@ -1,0 +1,107 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export type AmlFinanceSource = "finance_portal" | "client_portal" | "manual_entry" | "ingested_doc";
+export type AmlDiscrepancySeverity = "info" | "low" | "medium" | "high" | "critical";
+export type AmlDiscrepancyStatus = "open" | "under_review" | "resolved" | "waived" | "escalated";
+
+export interface AmlFinanceComparison {
+  id: string;
+  case_id: string;
+  purchase_file_id: string | null;
+  source: AmlFinanceSource;
+  captured_at: string;
+  captured_by: string | null;
+  purchase_price: number | null;
+  loan_amount: number | null;
+  lender: string | null;
+  lvr: number | null;
+  borrower_contribution: number | null;
+  refi_equity: number | null;
+  gift_amount: number | null;
+  gift_source: string | null;
+  smsf_lrba: boolean;
+  smsf_details: Record<string, any>;
+  loan_purpose: string | null;
+  funding_notes: string | null;
+  raw_payload: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlFinanceDiscrepancy {
+  id: string;
+  case_id: string;
+  comparison_id: string | null;
+  kind: string;
+  severity: AmlDiscrepancySeverity;
+  status: AmlDiscrepancyStatus;
+  detected_by: string;
+  expected_value: any;
+  observed_value: any;
+  summary: string;
+  detail: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  resolution_note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlEvidenceReference {
+  id: string;
+  case_id: string;
+  comparison_id: string | null;
+  reference_type: string;
+  reference_id: string | null;
+  external_url: string | null;
+  label: string;
+  detail: string | null;
+  metadata: Record<string, any>;
+  added_by: string | null;
+  created_at: string;
+}
+
+export interface AmlLimitedStatus {
+  status: string;
+  risk_rating: string | null;
+  updated_at: string | null;
+  open_finance_discrepancies?: number;
+}
+
+async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke("aml-finance", { body: payload });
+  if (error) throw error;
+  if ((data as any)?.error) throw new Error((data as any).error);
+  return data as T;
+}
+
+export const amlFinanceApi = {
+  listComparisons: (case_id: string) =>
+    invoke<{ comparisons: AmlFinanceComparison[] }>({ op: "list_comparisons", case_id }),
+  upsertComparison: (comparison: Partial<AmlFinanceComparison> & { case_id: string }) =>
+    invoke<{ comparison: AmlFinanceComparison; discrepancies_created: number }>({ op: "upsert_comparison", comparison }),
+  deleteComparison: (id: string) => invoke<{ ok: true }>({ op: "delete_comparison", id }),
+  importFromPurchaseFile: (case_id: string, purchase_file_id: string) =>
+    invoke<{ comparison: AmlFinanceComparison; discrepancies_created: number }>({
+      op: "import_from_purchase_file", case_id, purchase_file_id,
+    }),
+
+  listDiscrepancies: (params: { case_id?: string; status?: AmlDiscrepancyStatus; severity?: AmlDiscrepancySeverity } = {}) =>
+    invoke<{ discrepancies: AmlFinanceDiscrepancy[] }>({ op: "list_discrepancies", ...params }),
+  upsertDiscrepancy: (discrepancy: Partial<AmlFinanceDiscrepancy> & { case_id: string; kind: string; summary: string }) =>
+    invoke<{ discrepancy: AmlFinanceDiscrepancy }>({ op: "upsert_discrepancy", discrepancy }),
+  resolveDiscrepancy: (id: string, status: AmlDiscrepancyStatus, resolution_note?: string) =>
+    invoke<{ discrepancy: AmlFinanceDiscrepancy }>({ op: "resolve_discrepancy", id, status, resolution_note }),
+  deleteDiscrepancy: (id: string) => invoke<{ ok: true }>({ op: "delete_discrepancy", id }),
+  recomputeDiscrepancies: (comparison_id: string) =>
+    invoke<{ discrepancies_created: number }>({ op: "recompute_discrepancies", comparison_id }),
+
+  listEvidence: (case_id: string) =>
+    invoke<{ evidence: AmlEvidenceReference[] }>({ op: "list_evidence", case_id }),
+  addEvidence: (evidence: Partial<AmlEvidenceReference> & { case_id: string; reference_type: string; label: string }) =>
+    invoke<{ evidence: AmlEvidenceReference }>({ op: "add_evidence", evidence }),
+  deleteEvidence: (id: string) => invoke<{ ok: true }>({ op: "delete_evidence", id }),
+
+  limitedStatus: (params: { purchase_file_id?: string; client_id?: string }) =>
+    invoke<AmlLimitedStatus>({ op: "limited_status", ...params }),
+};

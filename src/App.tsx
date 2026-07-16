@@ -82,6 +82,7 @@ import AmlCases from "./pages/aml/AmlCases";
 import AmlOverview from "./pages/aml/AmlOverview";
 import {
   AmlIntakeQueue, AmlVerification, AmlScreening, AmlRisk, AmlCounterparty,
+  AmlFinance,
   AmlMonitoring, AmlInvestigations, AmlAustracReporting, AmlGovernance, AmlConfiguration,
 } from "./pages/aml/AmlShellPages";
 import { AmlLayout } from "@/components/aml/AmlLayout";
@@ -379,6 +380,7 @@ const App = () => (
                   <Route path="screening" element={<AmlGuard capability="aml.view"><AmlScreening /></AmlGuard>} />
                   <Route path="risk" element={<AmlGuard capability="aml.view"><AmlRisk /></AmlGuard>} />
                   <Route path="counterparty" element={<AmlGuard capability="aml.view"><AmlCounterparty /></AmlGuard>} />
+                  <Route path="finance" element={<AmlGuard capability="aml.investigate"><AmlFinance /></AmlGuard>} />
                   <Route path="monitoring" element={<AmlGuard capability="aml.view"><AmlMonitoring /></AmlGuard>} />
                   <Route path="investigations" element={<AmlGuard capability="aml.investigate"><AmlInvestigations /></AmlGuard>} />
                   <Route path="austrac" element={<AmlGuard capability="aml.report"><AmlAustracReporting /></AmlGuard>} />
