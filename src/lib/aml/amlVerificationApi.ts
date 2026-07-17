@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type IdvStatus = "pending" | "in_progress" | "verified" | "failed" | "expired" | "manual_review" | "cancelled";
 export type ScreeningStatus = "pending" | "in_progress" | "clear" | "matched" | "review" | "failed" | "cancelled";
@@ -28,10 +28,7 @@ export interface ScreeningMatch {
 }
 
 async function invoke<T = any>(payload: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-verification", { body: payload });
-  if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-verification", payload);
 }
 
 export const amlVerificationApi = {
