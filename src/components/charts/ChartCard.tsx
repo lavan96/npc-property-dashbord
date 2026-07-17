@@ -125,6 +125,16 @@ export function renderChartImage(chart: ChartData, variant: 'card' | 'expanded' 
   if (chart.image_data.startsWith('data:image/svg+xml;base64,')) {
     try {
       let svgContent = atob(chart.image_data.replace('data:image/svg+xml;base64,', ''));
+      // Legacy safeguard: older records were rendered before scatter/area/radar
+      // support existed and baked "Unsupported chart type" into their SVG.
+      if (/Unsupported chart type/i.test(svgContent)) {
+        return (
+          <ChartImageErrorState
+            title={`Legacy ${chart.chart_type} chart`}
+            helper="This chart was rendered before live support was added. Regenerate the report to render it as an interactive chart."
+          />
+        );
+      }
       if (svgContent.includes('<svg') && svgContent.includes('</svg>')) {
         svgContent = svgContent.replace(/<svg[^>]*>/, (match) => {
           const widthMatch = match.match(/width=["'](\d+)["']/);
