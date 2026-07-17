@@ -1,14 +1,18 @@
 /**
- * Phase 8 — Property Transactions, Counterparty CDD & Settlement Gate.
+ * Phase 8 + 9 — Property Transactions, Counterparty CDD, Obligations & Settlement Gate.
  *
  * Ops:
  *   Transactions:     list_transactions, get_transaction, upsert_transaction, delete_transaction, append_event, list_events
  *   Parties:          list_parties, upsert_party, delete_party
  *   Counterparty:     list_cp_cases, upsert_cp_case, delete_cp_case,
  *                     list_cp_requests, upsert_cp_request, resolve_cp_request,
- *                     list_cp_attempts, add_cp_attempt
+ *                     list_cp_attempts, add_cp_attempt,
+ *                     counterparty_cdd_summary
+ *   Obligations:      list_obligations, evaluate_obligations,
+ *                     acknowledge_obligation, waive_obligation, link_obligation_report
  *   Gate:             settlement_gate_status (returns { gate_enabled, blocked, reasons[] } — auth only)
  */
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "../_shared/auth.ts";
 
@@ -80,6 +84,12 @@ async function evaluateSettlementGate(admin: any, aml: any, pfId: string) {
     .lte("due_date", today);
   if ((reqCount ?? 0) > 0) reasons.push(`overdue_counterparty_requests:${reqCount}`);
 
+  // Phase 9 — pending / acknowledged reportable obligations must not remain unresolved at settlement.
+  const { count: oblCount } = await aml.from("transaction_obligations")
+    .select("id", { count: "exact", head: true })
+    .eq("case_id", c.id).in("status", ["pending", "acknowledged"]);
+  if ((oblCount ?? 0) > 0) reasons.push(`unresolved_reportable_obligations:${oblCount}`);
+
   return {
     gate_enabled: enabled,
     blocked: enabled && reasons.length > 0,
@@ -90,8 +100,111 @@ async function evaluateSettlementGate(admin: any, aml: any, pfId: string) {
   };
 }
 
+
+// ─── PHASE 9 — Obligation evaluation (TTR / IFTI / SMR / structuring) ───
+// AUSTRAC thresholds:
+//   TTR:  physical currency component >= AUD 10,000
+//   IFTI: international funds transfer instruction (any amount)
+//   SMR:  case rated high/prohibited, manual flag, or structuring pattern
+//   Structuring: >= 3 sub-threshold cash tx (>= AUD 9,000 & < 10,000) same case within 24h
+const TTR_THRESHOLD = 10000;
+const STRUCTURING_LOW = 9000;
+const STRUCTURING_WINDOW_HOURS = 24;
+const STRUCTURING_MIN_COUNT = 3;
+
+function pickCashAmount(tx: any): number {
+  const md = tx?.metadata ?? {};
+  const candidates = [
+    md.cash_component, md.cash_amount, md.physical_currency_amount,
+    md.deposit_method === "cash" ? tx?.deposit_amount : null,
+  ].filter((v: any) => typeof v === "number" && isFinite(v));
+  return candidates.length ? Math.max(...candidates) : 0;
+}
+
+function detectInternational(tx: any): { international: boolean; origin?: string; dest?: string } {
+  const md = tx?.metadata ?? {};
+  const origin = (md.origin_country || md.source_country || "").toString().toUpperCase();
+  const dest = (md.dest_country || md.destination_country || "").toString().toUpperCase();
+  if (md.is_international === true || md.ifti === true) return { international: true, origin, dest };
+  if ((origin && origin !== "AU") || (dest && dest !== "AU")) return { international: true, origin, dest };
+  return { international: false };
+}
+
+async function upsertObligation(
+  aml: any, caseId: string, transactionId: string, kind: string,
+  reason: string, observed: number | null, threshold: number | null, detail: Record<string, any>,
+) {
+  const { data: existing } = await aml.from("transaction_obligations")
+    .select("id, status")
+    .eq("transaction_id", transactionId).eq("kind", kind).maybeSingle();
+  if (existing) {
+    // Never reopen a report_created / waived obligation; refresh pending ones.
+    if (existing.status === "pending") {
+      await aml.from("transaction_obligations").update({
+        trigger_reason: reason, observed_amount: observed, threshold_amount: threshold, detail,
+      }).eq("id", existing.id);
+    }
+    return { created: false, obligation_id: existing.id };
+  }
+  const { data: inserted } = await aml.from("transaction_obligations").insert({
+    case_id: caseId, transaction_id: transactionId, kind,
+    trigger_reason: reason, observed_amount: observed, threshold_amount: threshold, detail,
+  }).select("id").maybeSingle();
+  return { created: true, obligation_id: inserted?.id ?? null };
+}
+
+async function evaluateObligations(admin: any, aml: any, tx: any): Promise<{ created: number; obligation_ids: string[] }> {
+  const created: string[] = [];
+  let createdCount = 0;
+  const record = async (kind: string, reason: string, obs: number | null, threshold: number | null, detail: Record<string, any>) => {
+    const r = await upsertObligation(aml, tx.case_id, tx.id, kind, reason, obs, threshold, detail);
+    if (r.created && r.obligation_id) { createdCount++; created.push(r.obligation_id); }
+  };
+
+  const cash = pickCashAmount(tx);
+  if (cash >= TTR_THRESHOLD) {
+    await record("ttr", `cash_component_${cash}_gte_10000`, cash, TTR_THRESHOLD,
+      { currency: tx.currency ?? "AUD", source_field: "metadata.cash_component|deposit(cash)" });
+  }
+
+  const intl = detectInternational(tx);
+  if (intl.international) {
+    await record("ifti", `international_transfer:${intl.origin || "?"}→${intl.dest || "?"}`,
+      null, null, { origin_country: intl.origin, dest_country: intl.dest });
+  }
+
+  // SMR: case risk_rating or manual flag
+  const { data: caseRow } = await aml.from("cases").select("risk_rating, status").eq("id", tx.case_id).maybeSingle();
+  const risk = caseRow?.risk_rating ?? null;
+  if (risk === "high" || risk === "prohibited" || tx?.metadata?.smr_flag === true) {
+    await record("smr_candidate", risk ? `case_risk:${risk}` : "manual_smr_flag",
+      null, null, { case_status: caseRow?.status ?? null, risk_rating: risk });
+  }
+
+  // Structuring: check other cash tx in same case within window
+  if (cash >= STRUCTURING_LOW && cash < TTR_THRESHOLD) {
+    const since = new Date(Date.now() - STRUCTURING_WINDOW_HOURS * 3600 * 1000).toISOString();
+    const { data: peers } = await aml.from("transactions")
+      .select("id, deposit_amount, metadata, created_at")
+      .eq("case_id", tx.case_id).gte("created_at", since);
+    const hits = (peers ?? []).filter((p: any) => {
+      const a = pickCashAmount(p);
+      return a >= STRUCTURING_LOW && a < TTR_THRESHOLD;
+    });
+    if (hits.length >= STRUCTURING_MIN_COUNT) {
+      await record("structuring_suspected",
+        `structuring_pattern:${hits.length}_sub_threshold_${STRUCTURING_WINDOW_HOURS}h`,
+        cash, TTR_THRESHOLD,
+        { window_hours: STRUCTURING_WINDOW_HOURS, matched_tx_ids: hits.map((h: any) => h.id) });
+    }
+  }
+
+  return { created: createdCount, obligation_ids: created };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
 
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
@@ -180,7 +293,23 @@ Deno.serve(async (req) => {
           `Settlement date changed from ${existing?.settlement_date} to ${tx.settlement_date}`,
           { from: existing?.settlement_date, to: tx.settlement_date }, userId, userLabel);
       }
-      return jr({ transaction: tx });
+
+      // Phase 9 — automatic obligation evaluation
+      let obligationResult = { created: 0, obligation_ids: [] as string[] };
+      try {
+        obligationResult = await evaluateObligations(admin, aml, tx);
+        if (obligationResult.created > 0) {
+          await appendTxEvent(aml, tx.id, tx.case_id, "obligation_triggered",
+            `${obligationResult.created} new reportable obligation(s) detected`,
+            { obligation_ids: obligationResult.obligation_ids }, userId, userLabel);
+        }
+      } catch (e) {
+        // Never block a save because obligation evaluation failed; log to event chain.
+        await appendTxEvent(aml, tx.id, tx.case_id, "obligation_eval_error",
+          "Obligation evaluation failed", { error: String((e as any)?.message ?? e) }, userId, userLabel);
+      }
+
+      return jr({ transaction: tx, obligations_created: obligationResult.created });
     }
     if (op === "delete_transaction") {
       requireWrite();
@@ -316,6 +445,98 @@ Deno.serve(async (req) => {
         .insert({ ...p, actor_id: userId }).select("*").maybeSingle();
       if (error) return jr({ error: error.message }, 400);
       return jr({ attempt: data });
+    }
+
+    // ── PHASE 9 — OBLIGATIONS (TTR / IFTI / SMR / structuring) ──
+    if (op === "list_obligations") {
+      const caseId = body.case_id ? String(body.case_id) : null;
+      const txId = body.transaction_id ? String(body.transaction_id) : null;
+      if (!caseId && !txId) return jr({ error: "case_id or transaction_id required" }, 400);
+      let q = aml.from("transaction_obligations").select("*").order("created_at", { ascending: false });
+      if (txId) q = q.eq("transaction_id", txId); else q = q.eq("case_id", caseId!);
+      const { data, error } = await q;
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ obligations: data ?? [] });
+    }
+
+    if (op === "evaluate_obligations") {
+      requireWrite();
+      const txId = String(body.transaction_id ?? "");
+      if (!txId) return jr({ error: "transaction_id required" }, 400);
+      const { data: tx } = await aml.from("transactions").select("*").eq("id", txId).maybeSingle();
+      if (!tx) return jr({ error: "transaction not found" }, 404);
+      const result = await evaluateObligations(admin, aml, tx);
+      if (result.created > 0) {
+        await appendTxEvent(aml, tx.id, tx.case_id, "obligation_reevaluated",
+          `${result.created} obligation(s) detected on re-evaluation`,
+          { obligation_ids: result.obligation_ids }, userId, userLabel);
+      }
+      return jr(result);
+    }
+
+    if (op === "acknowledge_obligation") {
+      requireWrite();
+      const id = String(body.id ?? "");
+      const { data, error } = await aml.from("transaction_obligations")
+        .update({ status: "acknowledged", acknowledged_by: userId, acknowledged_at: new Date().toISOString() })
+        .eq("id", id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendTxEvent(aml, data.transaction_id, data.case_id, "obligation_acknowledged",
+        `Obligation ${data.kind} acknowledged`, { obligation_id: data.id }, userId, userLabel);
+      return jr({ obligation: data });
+    }
+
+    if (op === "waive_obligation") {
+      requireWrite();
+      const id = String(body.id ?? "");
+      const reason = String(body.reason ?? "").trim();
+      if (!reason) return jr({ error: "reason required" }, 400);
+      const { data, error } = await aml.from("transaction_obligations")
+        .update({ status: "waived", waived_by: userId, waived_at: new Date().toISOString(), waive_reason: reason })
+        .eq("id", id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendTxEvent(aml, data.transaction_id, data.case_id, "obligation_waived",
+        `Obligation ${data.kind} waived: ${reason}`, { obligation_id: data.id, reason }, userId, userLabel);
+      return jr({ obligation: data });
+    }
+
+    if (op === "link_obligation_report") {
+      requireWrite();
+      const id = String(body.id ?? "");
+      const reportId = body.report_id ? String(body.report_id) : null;
+      const { data, error } = await aml.from("transaction_obligations")
+        .update({ status: "report_created", linked_report_id: reportId })
+        .eq("id", id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendTxEvent(aml, data.transaction_id, data.case_id, "obligation_reported",
+        `Obligation ${data.kind} linked to AUSTRAC report`, { obligation_id: data.id, report_id: reportId },
+        userId, userLabel);
+      return jr({ obligation: data });
+    }
+
+    // Counterparty CDD roll-up summary (per case).
+    if (op === "counterparty_cdd_summary") {
+      const caseId = String(body.case_id ?? "");
+      if (!caseId) return jr({ error: "case_id required" }, 400);
+      const today = new Date().toISOString().slice(0, 10);
+      const [cpAll, cpOpen, reqOpen, reqOverdue] = await Promise.all([
+        aml.from("counterparty_cases").select("id", { count: "exact", head: true }).eq("case_id", caseId),
+        aml.from("counterparty_cases").select("id", { count: "exact", head: true }).eq("case_id", caseId)
+          .in("status", ["open", "in_progress", "awaiting_info", "escalated"]),
+        aml.from("counterparty_requests").select("id", { count: "exact", head: true }).eq("case_id", caseId)
+          .in("status", ["pending", "sent", "awaiting_response"]),
+        aml.from("counterparty_requests").select("id", { count: "exact", head: true }).eq("case_id", caseId)
+          .in("status", ["pending", "sent", "awaiting_response"]).lte("due_date", today),
+      ]);
+      return jr({
+        summary: {
+          counterparty_cases_total: cpAll.count ?? 0,
+          counterparty_cases_open: cpOpen.count ?? 0,
+          requests_open: reqOpen.count ?? 0,
+          requests_overdue: reqOverdue.count ?? 0,
+          all_cleared: (cpOpen.count ?? 0) === 0 && (reqOpen.count ?? 0) === 0,
+        },
+      });
     }
 
     return jr({ error: `Unknown op: ${op}` }, 400);

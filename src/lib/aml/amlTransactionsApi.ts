@@ -110,6 +110,37 @@ export interface AmlSettlementGateStatus {
   risk_rating?: string | null;
 }
 
+export type AmlObligationKind = "ttr" | "ifti" | "smr_candidate" | "structuring_suspected";
+export type AmlObligationStatus = "pending" | "acknowledged" | "report_created" | "waived";
+
+export interface AmlTransactionObligation {
+  id: string;
+  case_id: string;
+  transaction_id: string;
+  kind: AmlObligationKind;
+  status: AmlObligationStatus;
+  reason: string;
+  observed_amount: number | null;
+  threshold_amount: number | null;
+  detail: Record<string, any>;
+  linked_report_id: string | null;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+  waived_by: string | null;
+  waived_at: string | null;
+  waive_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmlCounterpartyCddSummary {
+  counterparty_cases_total: number;
+  counterparty_cases_open: number;
+  requests_open: number;
+  requests_overdue: number;
+  all_cleared: boolean;
+}
+
 async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
   return invokeAmlFunction<T>("aml-transactions", payload);
 }
@@ -118,7 +149,7 @@ export const amlTransactionsApi = {
   listTransactions: (case_id: string) =>
     invoke<{ transactions: AmlTransaction[] }>({ op: "list_transactions", case_id }),
   upsertTransaction: (transaction: Partial<AmlTransaction> & { case_id: string }) =>
-    invoke<{ transaction: AmlTransaction }>({ op: "upsert_transaction", transaction }),
+    invoke<{ transaction: AmlTransaction; obligations_created?: number }>({ op: "upsert_transaction", transaction }),
   deleteTransaction: (id: string) => invoke<{ ok: true }>({ op: "delete_transaction", id }),
   listEvents: (transaction_id: string) =>
     invoke<{ events: AmlTransactionEvent[] }>({ op: "list_events", transaction_id }),
@@ -151,4 +182,18 @@ export const amlTransactionsApi = {
 
   settlementGateStatus: (purchase_file_id: string) =>
     invoke<AmlSettlementGateStatus>({ op: "settlement_gate_status", purchase_file_id }),
+
+  // Phase 9 — obligations register
+  listObligations: (params: { case_id?: string; transaction_id?: string }) =>
+    invoke<{ obligations: AmlTransactionObligation[] }>({ op: "list_obligations", ...params }),
+  evaluateObligations: (transaction_id: string) =>
+    invoke<{ created: number; obligation_ids: string[] }>({ op: "evaluate_obligations", transaction_id }),
+  acknowledgeObligation: (id: string) =>
+    invoke<{ obligation: AmlTransactionObligation }>({ op: "acknowledge_obligation", id }),
+  waiveObligation: (id: string, reason: string) =>
+    invoke<{ obligation: AmlTransactionObligation }>({ op: "waive_obligation", id, reason }),
+  linkObligationReport: (id: string, report_id: string | null) =>
+    invoke<{ obligation: AmlTransactionObligation }>({ op: "link_obligation_report", id, report_id }),
+  counterpartyCddSummary: (case_id: string) =>
+    invoke<{ summary: AmlCounterpartyCddSummary }>({ op: "counterparty_cdd_summary", case_id }),
 };

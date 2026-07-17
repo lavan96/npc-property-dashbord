@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileWarning, Plus, RefreshCw, Trash2, ShieldAlert, ShieldCheck, ScrollText } from "lucide-react";
+import { FileWarning, Plus, RefreshCw, Trash2, ShieldAlert, ShieldCheck, ScrollText, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import {
   type AmlTransaction, type AmlTransactionKind, type AmlTransactionStatus,
   type AmlTransactionParty, type AmlPartyType, type AmlTransactionEvent,
   type AmlCounterpartyCase, type AmlCounterpartyRequest, type AmlCpRequestStatus,
+  type AmlTransactionObligation, type AmlObligationKind,
 } from "@/lib/aml/amlTransactionsApi";
 
 const TX_KINDS: AmlTransactionKind[] = ["purchase", "sale", "refinance", "off_the_plan", "auction", "private_treaty", "other"];
@@ -50,6 +51,8 @@ export default function AmlTransactions() {
   const [cpCases, setCpCases] = useState<AmlCounterpartyCase[]>([]);
   const [cpRequests, setCpRequests] = useState<AmlCounterpartyRequest[]>([]);
   const [gate, setGate] = useState<Awaited<ReturnType<typeof amlTransactionsApi.settlementGateStatus>> | null>(null);
+  const [obligations, setObligations] = useState<AmlTransactionObligation[]>([]);
+  const [reevaluating, setReevaluating] = useState(false);
   const [txDialogOpen, setTxDialogOpen] = useState(false);
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
   const [cpDialogOpen, setCpDialogOpen] = useState(false);
@@ -85,19 +88,40 @@ export default function AmlTransactions() {
   useEffect(() => { loadTransactions(); /* eslint-disable-next-line */ }, [caseId]);
 
   useEffect(() => {
-    if (!selectedTx) { setParties([]); setEvents([]); setGate(null); return; }
+    if (!selectedTx) { setParties([]); setEvents([]); setGate(null); setObligations([]); return; }
     (async () => {
-      const [{ parties: p }, { events: e }] = await Promise.all([
+      const [{ parties: p }, { events: e }, obl] = await Promise.all([
         amlTransactionsApi.listParties(selectedTx.id),
         amlTransactionsApi.listEvents(selectedTx.id),
+        amlTransactionsApi.listObligations({ transaction_id: selectedTx.id }).catch(() => ({ obligations: [] as AmlTransactionObligation[] })),
       ]);
-      setParties(p); setEvents(e);
+      setParties(p); setEvents(e); setObligations(obl.obligations ?? []);
       if (selectedTx.purchase_file_id) {
         try { setGate(await amlTransactionsApi.settlementGateStatus(selectedTx.purchase_file_id)); }
         catch { setGate(null); }
       } else setGate(null);
     })();
   }, [selectedTx?.id]);
+
+  const reloadObligations = async () => {
+    if (!selectedTx) return;
+    const { obligations: o } = await amlTransactionsApi.listObligations({ transaction_id: selectedTx.id });
+    setObligations(o);
+    if (selectedTx.purchase_file_id) {
+      try { setGate(await amlTransactionsApi.settlementGateStatus(selectedTx.purchase_file_id)); } catch {}
+    }
+  };
+
+  const runEvaluate = async () => {
+    if (!selectedTx) return;
+    setReevaluating(true);
+    try {
+      const r = await amlTransactionsApi.evaluateObligations(selectedTx.id);
+      toast.success(r.created > 0 ? `${r.created} new obligation(s) detected` : "No new obligations detected");
+      await reloadObligations();
+    } catch (e: any) { toast.error(e?.message ?? "Evaluation failed"); }
+    finally { setReevaluating(false); }
+  };
 
   const currentCase = useMemo(() => cases.find((c) => c.id === caseId) ?? null, [cases, caseId]);
 
@@ -235,6 +259,14 @@ export default function AmlTransactions() {
               <TabsList>
                 <TabsTrigger value="parties">Parties</TabsTrigger>
                 <TabsTrigger value="counterparty">Counterparty CDD</TabsTrigger>
+                <TabsTrigger value="obligations">
+                  Obligations
+                  {obligations.filter((o) => o.status === "pending").length > 0 && (
+                    <Badge variant="outline" className="ml-2 border-destructive/40 text-destructive">
+                      {obligations.filter((o) => o.status === "pending").length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="events">Timeline</TabsTrigger>
               </TabsList>
             </div>
@@ -326,6 +358,94 @@ export default function AmlTransactions() {
                               </li>
                             ))}
                           </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="obligations" className="space-y-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-primary" />
+                      AUSTRAC reportable obligations ({obligations.length})
+                    </CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Automatically evaluated on every save. TTR ≥ AUD 10k cash · IFTI international · SMR high-risk / manual · structuring pattern.
+                    </p>
+                  </div>
+                  {canWrite && (
+                    <Button size="sm" variant="outline" disabled={reevaluating} onClick={runEvaluate}>
+                      <RefreshCw className={`mr-1 h-3 w-3 ${reevaluating ? "animate-spin" : ""}`} /> Re-evaluate
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {obligations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No reportable obligations detected for this transaction.</p>
+                  ) : obligations.map((o) => {
+                    const kindLabel: Record<AmlObligationKind, string> = {
+                      ttr: "TTR (Threshold Transaction Report)",
+                      ifti: "IFTI (International Funds Transfer Instruction)",
+                      smr_candidate: "SMR candidate (Suspicious Matter)",
+                      structuring_suspected: "Structuring pattern suspected",
+                    };
+                    const statusTone: Record<string, string> = {
+                      pending: "border-destructive/40 text-destructive",
+                      acknowledged: "border-yellow-500/40 text-yellow-500",
+                      report_created: "border-success/40 text-success",
+                      waived: "border-muted-foreground/40 text-muted-foreground",
+                    };
+                    return (
+                      <div key={o.id} className="rounded-md border p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">{kindLabel[o.kind] ?? o.kind}</p>
+                          <Badge variant="outline" className={`capitalize ${statusTone[o.status] ?? ""}`}>
+                            {o.status.replace(/_/g, " ")}
+                          </Badge>
+                          {o.observed_amount != null && (
+                            <span className="text-xs text-muted-foreground">
+                              Observed: AUD {o.observed_amount.toLocaleString()}
+                              {o.threshold_amount != null && ` / threshold AUD ${o.threshold_amount.toLocaleString()}`}
+                            </span>
+                          )}
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {new Date(o.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Reason: {o.reason.replace(/_/g, " ")}</p>
+                        {o.waive_reason && <p className="mt-1 text-xs text-muted-foreground">Waived: {o.waive_reason}</p>}
+                        {canWrite && o.status === "pending" && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              await amlTransactionsApi.acknowledgeObligation(o.id);
+                              toast.success("Obligation acknowledged");
+                              reloadObligations();
+                            }}>
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Acknowledge
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              const reason = window.prompt("Reason for waiving this obligation (required):");
+                              if (!reason?.trim()) return;
+                              await amlTransactionsApi.waiveObligation(o.id, reason.trim());
+                              toast.success("Obligation waived");
+                              reloadObligations();
+                            }}>
+                              Waive
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              const reportId = window.prompt("AUSTRAC report reference (optional):") ?? null;
+                              await amlTransactionsApi.linkObligationReport(o.id, reportId);
+                              toast.success("Linked to report");
+                              reloadObligations();
+                            }}>
+                              <FileText className="mr-1 h-3 w-3" /> Link report
+                            </Button>
+                          </div>
                         )}
                       </div>
                     );
