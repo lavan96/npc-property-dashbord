@@ -1349,7 +1349,7 @@ export default function Conversations() {
                             : "",
                           conv.unread_count > 0 &&
                             !isActive &&
-                            "border-brand-200/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.085),rgba(255,255,255,0.026)_60%,rgba(255,255,255,0.018))]",
+                            "border-brand-200/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(255,255,255,0.03)_58%,rgba(245,158,11,0.06))] shadow-[inset_3px_0_0_rgba(251,191,36,0.9),0_0_0_1px_rgba(251,191,36,0.10),0_16px_34px_rgba(245,158,11,0.10)] before:opacity-100",
                         )}
                         onClick={() => handleSelectConversation(conv)}
                         onKeyDown={(e) => {
@@ -1388,16 +1388,32 @@ export default function Conversations() {
                           <div className="flex items-start justify-between gap-3">
                             <span
                               className={cn(
-                                "min-w-0 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-foreground dark:text-foreground transition-colors group-hover:text-white",
+                                "flex min-w-0 items-center gap-2 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-foreground dark:text-foreground transition-colors group-hover:text-white",
                                 conv.unread_count > 0
                                   ? "font-bold"
                                   : "font-semibold",
                               )}
                               title={conv.client_name || "Unknown contact"}
                             >
-                              {conv.client_name}
+                              {conv.unread_count > 0 && (
+                                <span
+                                  aria-hidden
+                                  className="relative flex h-2 w-2 shrink-0"
+                                >
+                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-300 opacity-70" />
+                                  <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-300 shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
+                                </span>
+                              )}
+                              <span className="min-w-0 truncate">{conv.client_name}</span>
                             </span>
-                            <span className="shrink-0 rounded-full border border-border dark:border-white/[0.07] bg-background/20 dark:bg-black/20 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-muted-foreground transition-colors group-hover:border-brand-200/20 group-hover:text-brand-100/80">
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+                                conv.unread_count > 0
+                                  ? "border-brand-200/40 bg-brand-300/10 text-brand-100"
+                                  : "border-border dark:border-white/[0.07] bg-background/20 dark:bg-black/20 text-muted-foreground dark:text-muted-foreground group-hover:border-brand-200/20 group-hover:text-brand-100/80",
+                              )}
+                            >
                               {formatConversationDate(conv.last_message_date)}
                             </span>
                           </div>
@@ -1426,9 +1442,15 @@ export default function Conversations() {
                               </span>
                             </p>
                             {conv.unread_count > 0 && (
-                              <Badge className="h-6 min-w-[24px] shrink-0 rounded-full bg-brand-300 px-2 text-[10px] font-bold text-black shadow-[0_0_18px_rgba(251,191,36,0.28)]">
-                                {conv.unread_count}
-                              </Badge>
+                              <span
+                                className="relative flex shrink-0 items-center"
+                                aria-label={`${conv.unread_count} unread`}
+                              >
+                                <span className="absolute inset-0 -m-0.5 rounded-full bg-brand-300/40 blur-[6px] animate-pulse" aria-hidden />
+                                <Badge className="relative h-6 min-w-[26px] justify-center rounded-full border border-brand-200/50 bg-gradient-to-br from-brand-200 via-brand-300 to-brand-400 px-2 text-[10px] font-extrabold leading-none text-black tabular-nums shadow-[0_0_18px_rgba(251,191,36,0.55),inset_0_1px_0_rgba(255,255,255,0.55)]">
+                                  {conv.unread_count > 99 ? "99+" : conv.unread_count}
+                                </Badge>
+                              </span>
                             )}
                           </div>
                         </div>
