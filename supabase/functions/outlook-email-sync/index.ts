@@ -458,8 +458,19 @@ Deno.serve(async (req) => {
       let skippedCount = 0;
       
       for (const email of emails) {
+        // Detect self-sent emails: when the mailbox owner is the sender
+        // (e.g. an outbound message from CRM / GHL that also lands back in the
+        // inbox as a delivery copy). Reclassify these as 'sent' so they appear
+        // in the Sent tab of Email Copilot instead of polluting the inbox.
+        const senderAddress = (email.from?.emailAddress?.address || '').toLowerCase();
+        const mailboxAddress = (targetMailbox || '').toLowerCase();
+        const effectiveFolder: 'inbox' | 'sent' =
+          folder === 'inbox' && senderAddress && senderAddress === mailboxAddress
+            ? 'sent'
+            : folder;
+
         // For sent emails, use sentDateTime if available, otherwise fall back to receivedDateTime
-        const emailDate = folder === 'sent' 
+        const emailDate = effectiveFolder === 'sent'
           ? (email as any).sentDateTime || email.receivedDateTime
           : email.receivedDateTime;
 
