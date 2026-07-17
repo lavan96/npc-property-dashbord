@@ -10,13 +10,17 @@
  *     capabilities; write actions gated by `canWrite`.
  *   - No new data model — reuses existing amlVerificationApi / amlRiskApi.
  */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, ShieldCheck, ScanSearch, Gauge, ClipboardList, Play } from "lucide-react";
+import {
+  Loader2, ShieldCheck, ScanSearch, Gauge, ClipboardList, Play,
+  Network, Wallet, ExternalLink, AlertTriangle,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   amlVerificationApi, type IdentityCheck, type ScreeningCheck,
@@ -24,7 +28,9 @@ import {
 import {
   amlRiskApi, type AmlRiskAssessment, type AmlCaseCondition, type AmlDecision,
 } from "@/lib/aml/amlRiskApi";
+import { amlFinanceApi, type AmlFinanceComparison, type AmlFinanceDiscrepancy } from "@/lib/aml/amlFinanceApi";
 import type { AmlCase, AmlCaseEvent } from "@/lib/aml/amlCasesApi";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
 
 interface Props {
   caseRow: AmlCase;
