@@ -70,6 +70,7 @@ import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import BcSegmentEngineAdmin from "./pages/admin/BcSegmentEngineAdmin";
 import AmlV3Cutover from "./pages/admin/AmlV3Cutover";
+import AmlIntegrationHealth from "./pages/admin/AmlIntegrationHealth";
 import PdfImportDiagnostics from "./pages/admin/PdfImportDiagnostics";
 import PdfImportMonitoring from "./pages/admin/PdfImportMonitoring";
 import PdfImportRetention from "./pages/admin/PdfImportRetention";
@@ -395,6 +396,7 @@ const App = () => (
                   <Route path="configuration" element={<AmlGuard capability="aml.configure"><AmlConfiguration /></AmlGuard>} />
                 </Route>
                 <Route path="admin/aml-v3-cutover" element={<AmlV3Cutover />} />
+                <Route path="admin/aml-integration-health" element={<AmlIntegrationHealth />} />
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
