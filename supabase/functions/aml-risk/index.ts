@@ -170,6 +170,15 @@ Deno.serve(async (req) => {
       const inputs = (body.inputs ?? {}) as Record<string, any>;
       if (!caseId) return jr({ error: "case_id required" }, 400);
 
+      // Resolve tenant policy for this case
+      const { data: caseRow } = await admin.schema("aml").from("cases")
+        .select("id, tenant_id, status").eq("id", caseId).maybeSingle();
+      const tenantId = (caseRow?.tenant_id as string) || "default";
+      const { data: tenant } = await admin.schema("aml").from("tenant_settings")
+        .select("risk_program_version, straight_through_config").eq("tenant_id", tenantId).maybeSingle();
+      const programVersion = (tenant?.risk_program_version as string) || "v1";
+      const stConfig = (tenant?.straight_through_config as any) || { enabled: false };
+
       const [{ data: fs }, { data: ts }] = await Promise.all([
         admin.schema("aml").from("risk_factors").select("*").eq("active", true),
         admin.schema("aml").from("mandatory_triggers").select("*").eq("active", true),
@@ -179,6 +188,32 @@ Deno.serve(async (req) => {
       const holds = evaluateTriggers((ts ?? []) as Trigger[], inputs);
       const blocking = holds.some((h) => h.severity === "block");
       const rating = blocking ? "prohibited" : ratingFor(scored.mltf_score);
+
+      // Explainability: top ± contributors + trigger reasons
+      const sortedFactors = [...scored.factor_breakdown].sort((a, b) => Math.abs(b.weighted) - Math.abs(a.weighted));
+      const explanation = {
+        top_positive: sortedFactors.filter((f) => f.weighted > 0).slice(0, 5),
+        top_neutral_missing: sortedFactors.filter((f) => f.input == null).slice(0, 5),
+        trigger_reasons: holds.map((h) => ({ key: h.key, label: h.label, severity: h.severity })),
+        rating_band: rating,
+        thresholds: { medium: 30, high: 60, prohibited: 80 },
+      };
+
+      // Policy provenance hash — captures the active factor+trigger set at eval time
+      const policySnapshotHash = await sha256Hex(JSON.stringify({
+        program_version: programVersion,
+        factors: (fs ?? []).map((f: any) => ({ k: f.key, w: f.weight, s: f.scoring, a: f.active })).sort((a, b) => a.k.localeCompare(b.k)),
+        triggers: (ts ?? []).map((t: any) => ({ k: t.key, s: t.severity, r: t.rule, a: t.active })).sort((a, b) => a.k.localeCompare(b.k)),
+      }));
+
+      // Straight-through eligibility
+      const stEnabled = Boolean(stConfig?.enabled);
+      const stEligible = stEnabled
+        && rating === "low"
+        && holds.length === 0
+        && scored.mltf_score <= (Number(stConfig?.max_mltf_score) || 25)
+        && scored.completion_score >= (Number(stConfig?.require_completion_score) || 70)
+        && scored.verification_score >= (Number(stConfig?.require_verification_score) || 70);
 
       const { data: ass, error } = await admin.schema("aml").from("risk_assessments").insert({
         case_id: caseId,
@@ -190,6 +225,10 @@ Deno.serve(async (req) => {
         factor_breakdown: scored.factor_breakdown,
         inputs,
         computed_by: userId,
+        program_version: programVersion,
+        policy_snapshot_hash: policySnapshotHash,
+        explanation,
+        straight_through: stEligible,
       }).select("*").maybeSingle();
       if (error) return jr({ error: error.message }, 400);
 
@@ -200,11 +239,36 @@ Deno.serve(async (req) => {
       }).eq("id", caseId);
 
       await appendCaseEvent(admin, caseId, "risk_rescored",
-        `Risk assessment computed — ${rating.toUpperCase()} (${Math.round(scored.mltf_score)})`,
-        { assessment_id: ass?.id, holds, scores: scored }, userId, userLabel);
+        `Risk assessment computed — ${rating.toUpperCase()} (${Math.round(scored.mltf_score)}) [policy ${programVersion}]`,
+        { assessment_id: ass?.id, holds, scores: scored, program_version: programVersion, policy_snapshot_hash: policySnapshotHash },
+        userId, userLabel);
 
-      return jr({ assessment: ass });
+      // Straight-through auto-decision (low risk, clean, tenant-enabled)
+      let auto_decision: any = null;
+      if (stEligible) {
+        const snapshot = {
+          version: 1, decided_at: new Date().toISOString(), decided_by: userId,
+          outcome: "cleared", rationale: `Straight-through auto-clearance under policy ${programVersion}`,
+          case: caseRow, assessment: ass, open_conditions: [], approved_overrides: [],
+          straight_through: true, straight_through_config: stConfig,
+        };
+        const snapshot_hash = await sha256Hex(JSON.stringify(snapshot));
+        const { data: dec } = await admin.schema("aml").from("decisions").insert({
+          case_id: caseId, assessment_id: ass?.id ?? null, outcome: "cleared",
+          rationale: `Straight-through auto-clearance (policy ${programVersion}) — low MLTF, no holds, thresholds met.`,
+          snapshot, snapshot_hash, decided_by: userId,
+          program_version: programVersion, is_straight_through: true,
+        }).select("*").maybeSingle();
+        auto_decision = dec;
+        await admin.schema("aml").from("cases").update({ status: "cleared" }).eq("id", caseId);
+        await appendCaseEvent(admin, caseId, "mlro_decision",
+          `Straight-through auto-cleared (policy ${programVersion})`,
+          { decision_id: dec?.id, snapshot_hash, straight_through: true }, userId, userLabel);
+      }
+
+      return jr({ assessment: ass, auto_decision, program_version: programVersion, straight_through: stEligible });
     }
+
 
     if (op === "list_assessments") {
       const caseId = String(body.case_id ?? "");
