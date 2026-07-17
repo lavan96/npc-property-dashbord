@@ -87,13 +87,14 @@ export default function AmlLaunchOps() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [s, sc, rk, hi] = await Promise.all([
-        callOp("summary"), callOp("list_scenarios"), callOp("list_risks"), callOp("rollout_history"),
+      const [s, sc, rk, hi, ce] = await Promise.all([
+        callOp("summary"), callOp("list_scenarios"), callOp("list_risks"), callOp("rollout_history"), callOp("list_certifications"),
       ]);
       setSummary(s);
       setScenarios(sc.scenarios ?? []);
       setRisks(rk.risks ?? []);
       setHistory(hi.history ?? []);
+      setCertifications(ce.certifications ?? []);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
