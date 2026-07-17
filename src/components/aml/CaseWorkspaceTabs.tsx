@@ -39,12 +39,20 @@ interface Props {
   canWrite: boolean;
   canInvestigate: boolean;
   onChanged: () => void;
+  initialTab?: string;
 }
 
-export function CaseWorkspaceTabs({ caseRow, events, canWrite, canInvestigate, onChanged }: Props) {
+const KNOWN_TABS = new Set([
+  "overview", "verification", "screening", "risk",
+  "ownership", "finance", "timeline", "audit",
+]);
+
+export function CaseWorkspaceTabs({ caseRow, events, canWrite, canInvestigate, onChanged, initialTab }: Props) {
   const { caseWorkspace: v3Case } = useAmlV3Flags();
+  const safeInitial = initialTab && KNOWN_TABS.has(initialTab) ? initialTab : "overview";
   return (
-    <Tabs defaultValue="overview" className="w-full">
+    <Tabs defaultValue={safeInitial} className="w-full">
+
       <TabsList className="w-full justify-start overflow-x-auto">
         <TabsTrigger value="overview">
           <ClipboardList className="h-3.5 w-3.5 mr-1.5" /> Overview

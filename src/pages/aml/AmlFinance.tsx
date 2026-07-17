@@ -21,6 +21,8 @@ import {
   type AmlDiscrepancyStatus,
 } from "@/lib/aml/amlFinanceApi";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { LegacyAliasBanner } from "@/components/aml/LegacyAliasBanner";
+
 
 const SEVERITY_TONE: Record<string, string> = {
   info: "bg-muted text-muted-foreground",
@@ -164,7 +166,9 @@ export default function AmlFinance() {
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-4 px-6 py-6">
+      <LegacyAliasBanner label="Funding & Finance" tabHint="finance" routePath="/admin/aml/finance" />
       <div className="flex flex-wrap items-center justify-between gap-3">
+
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Landmark className="h-5 w-5" />

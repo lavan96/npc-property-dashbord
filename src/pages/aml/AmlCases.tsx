@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Loader2, ShieldAlert, Plus, RefreshCw, ShieldCheck } from "lucide-react";
+
 import { ActivateClientDialog } from "@/components/aml/ActivateClientDialog";
 import { CaseWorkspaceTabs } from "@/components/aml/CaseWorkspaceTabs";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
@@ -60,6 +62,25 @@ export default function AmlCasesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [initialTab, setInitialTab] = useState<string | undefined>(undefined);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Phase 12 · deep-link support from legacy alias banner: /admin/aml/cases?open=<id>&tab=<hint>
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    const tab = searchParams.get("tab") ?? undefined;
+    if (openId) {
+      setActiveId(openId);
+      setInitialTab(tab);
+      // Clear query so refresh doesn't reopen sheet unexpectedly.
+      const next = new URLSearchParams(searchParams);
+      next.delete("open");
+      next.delete("tab");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const load = async () => {
     setLoading(true);
@@ -209,11 +230,13 @@ export default function AmlCasesPage() {
 
       <CaseDetailSheet
         caseId={activeId}
-        onClose={() => setActiveId(null)}
+        initialTab={initialTab}
+        onClose={() => { setActiveId(null); setInitialTab(undefined); }}
         onChanged={load}
         canWrite={access.canWrite}
         canInvestigate={access.canWrite}
       />
+
     </div>
   );
 }
@@ -309,8 +332,9 @@ function CreateCaseDialog({
 }
 
 function CaseDetailSheet({
-  caseId, onClose, onChanged, canWrite, canInvestigate,
-}: { caseId: string | null; onClose: () => void; onChanged: () => void; canWrite: boolean; canInvestigate: boolean }) {
+  caseId, onClose, onChanged, canWrite, canInvestigate, initialTab,
+}: { caseId: string | null; onClose: () => void; onChanged: () => void; canWrite: boolean; canInvestigate: boolean; initialTab?: string }) {
+
   const [caseRow, setCaseRow] = useState<AmlCase | null>(null);
   const [events, setEvents] = useState<AmlCaseEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -388,8 +412,10 @@ function CaseDetailSheet({
                 events={events}
                 canWrite={canWrite}
                 canInvestigate={canInvestigate}
+                initialTab={initialTab}
                 onChanged={() => { void load(caseRow.id); onChanged(); }}
               />
+
             </div>
           )}
         </ScrollArea>
