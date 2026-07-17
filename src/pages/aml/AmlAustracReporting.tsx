@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { RegulatoryAssuranceHeader } from "@/components/aml/RegulatoryAssuranceHeader";
 import {
   amlReportingApi,
   type AmlReport, type AmlReportKind, type AmlReportStatus,
