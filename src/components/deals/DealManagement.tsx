@@ -400,13 +400,13 @@ function DealManageRow({
         </TableCell>
 
         {/* Risk (inline edit) */}
-        <TableCell className="hidden lg:table-cell w-[120px]">
+        <TableCell className="hidden lg:table-cell min-w-[160px]">
           <Select
             key={`${deal.id}-risk`}
             defaultValue={deal.risk_status}
             onValueChange={(v) => handleUpdateField('risk_status', v)}
           >
-            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-background/60 dark:bg-background/60 text-[10px] shadow-inner focus:ring-brand-300/40', riskCfg?.color)}>
+            <SelectTrigger className={cn('h-8 w-full min-w-[140px] rounded-xl border bg-background/60 dark:bg-background/60 text-[10px] shadow-inner focus:ring-brand-300/40', riskCfg?.color)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-brand-200/15 bg-background dark:bg-background">
