@@ -228,6 +228,123 @@ Deno.serve(async (req) => {
         return jsonResponse({ case: created });
       }
 
+      case 'activate_client': {
+        // Phase 3 — Hybrid Activation Engine (Model A/B).
+        //
+        // Cases can only be opened for a real active client after a
+        // **human-confirmed** activation event (AGENTS.md §2). Marketing
+        // leads / imports never reach this path.
+        //
+        // Model A: designated-service activation — allowed whenever an AML
+        //          role holder confirms the trigger.
+        // Model B: pre-service / earlier activation — REQUIRES tenant-level
+        //          `aml_activation_program.legal_approval === true` and a
+        //          non-empty `program_version` string. Otherwise 409.
+        if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
+
+        const clientId = String(body.client_id ?? '').trim();
+        const displayName = String(body.subject_display_name ?? '').trim();
+        const model = String(body.activation_model ?? '').toUpperCase();
+        const event = String(body.activation_event ?? '').trim();
+        const reason = String(body.reason ?? '').trim();
+        const confirmed = Boolean(body.human_confirmed);
+
+        if (!clientId) return jsonResponse({ error: 'client_id is required' }, 400);
+        if (!/^[0-9a-f-]{36}$/i.test(clientId)) {
+          return jsonResponse({ error: 'client_id must be a UUID' }, 400);
+        }
+        if (!displayName) return jsonResponse({ error: 'subject_display_name is required' }, 400);
+        if (!['A', 'B'].includes(model)) {
+          return jsonResponse({ error: 'activation_model must be "A" or "B"' }, 400);
+        }
+        if (event.length < 3) return jsonResponse({ error: 'activation_event is required' }, 400);
+        if (reason.length < 10) {
+          return jsonResponse({ error: 'reason must be at least 10 characters' }, 400);
+        }
+        if (!confirmed) {
+          return jsonResponse({ error: 'Human confirmation is required to open an AML case' }, 400);
+        }
+
+        // Verify the client exists and is not soft-deleted.
+        const { data: client, error: clientErr } = await admin
+          .from('clients')
+          .select('id, name, status, deleted_at')
+          .eq('id', clientId)
+          .maybeSingle();
+        if (clientErr) throw clientErr;
+        if (!client) return jsonResponse({ error: 'Client not found' }, 404);
+        if ((client as any).deleted_at) {
+          return jsonResponse({ error: 'Client is archived; cannot activate for AML' }, 409);
+        }
+
+        // Duplicate-open guard: one open case per client at a time.
+        const { data: existing } = await admin
+          .schema('aml').from('cases')
+          .select('id, case_reference, status')
+          .eq('client_id', clientId)
+          .not('status', 'in', '("cleared","closed","blocked")')
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          return jsonResponse({
+            error: 'An open AML case already exists for this client',
+            case: existing,
+          }, 409);
+        }
+
+        // Model B guardrail: legal approval + program version.
+        let programVersion: string | null = null;
+        if (model === 'B') {
+          const { data: settings } = await admin
+            .schema('aml').from('tenant_settings')
+            .select('metadata')
+            .maybeSingle();
+          const program = ((settings as any)?.metadata ?? {})?.aml_activation_program ?? {};
+          if (program?.legal_approval !== true || !String(program?.program_version ?? '').trim()) {
+            return jsonResponse({
+              error:
+                'Model B activation is disabled. An MLRO must record legal approval and a program version in Configuration before Model B can be used.',
+              code: 'model_b_not_approved',
+            }, 409);
+          }
+          programVersion = String(program.program_version).trim();
+        }
+
+        const activation = {
+          model,
+          event,
+          reason,
+          program_version: programVersion,
+          human_confirmed: true,
+          activated_by: userId,
+          activated_by_email: userEmail,
+          activated_at: new Date().toISOString(),
+        };
+
+        const ref = await generateCaseReference(admin);
+        const { data: created, error: createErr } = await admin
+          .schema('aml').from('cases').insert({
+            case_reference: ref,
+            subject_display_name: displayName,
+            subject_type: body.subject_type && ['individual', 'entity', 'trust'].includes(body.subject_type)
+              ? body.subject_type : 'individual',
+            client_id: clientId,
+            purchase_file_id: body.purchase_file_id ?? null,
+            risk_rating: null,
+            assigned_analyst_id: userId,
+            created_by: userId,
+            metadata: { activation },
+          }).select('*').single();
+        if (createErr) throw createErr;
+
+        await appendEvent(admin, created.id, 'case_created',
+          `Case ${ref} activated (Model ${model}) for ${displayName}`,
+          { activation, client_id: clientId },
+          userId, userEmail);
+
+        return jsonResponse({ case: created, activation });
+      }
+
       case 'update': {
         if (!canWrite) return jsonResponse({ error: 'Write role required' }, 403);
         if (!body.case_id) return jsonResponse({ error: 'case_id is required' }, 400);

@@ -62,6 +62,26 @@ export const amlCasesApi = {
     client_id?: string; purchase_file_id?: string; risk_rating?: AmlRiskRating; notes?: string;
   }) => invoke<{ case: AmlCase }>({ op: "create", ...params }),
 
+  /**
+   * Phase 3 — Hybrid Activation Engine.
+   *
+   * Opens a case for a **real active client** after a human-confirmed
+   * activation event. Model B additionally requires tenant-level legal
+   * approval + a program version (enforced server-side).
+   */
+  activateClient: (params: {
+    client_id: string;
+    subject_display_name: string;
+    subject_type?: "individual" | "entity" | "trust";
+    activation_model: "A" | "B";
+    activation_event: string;
+    reason: string;
+    human_confirmed: true;
+    purchase_file_id?: string;
+  }) => invoke<{ case: AmlCase; activation: Record<string, any> }>({
+    op: "activate_client", ...params,
+  }),
+
   update: (case_id: string, patch: Partial<AmlCase>) =>
     invoke<{ case: AmlCase }>({ op: "update", case_id, patch }),
 

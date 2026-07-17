@@ -61,15 +61,54 @@ export interface AmlTenantSummary {
   locked_terminology_keys: string[];
 }
 
+export interface AmlActivationProgram {
+  legal_approval: boolean;
+  program_version: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  notes: string | null;
+}
+
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
   return invokeAmlFunction<T>("aml-tenant", { op, ...args });
 }
+
 
 export const amlTenantApi = {
   summary: () => invoke<AmlTenantSummary>("summary"),
   getSettings: () => invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings),
   updateSettings: (patch: Partial<AmlTenantSettings>) =>
     invoke<{ settings: AmlTenantSettings }>("update_tenant_settings", { patch }).then((r) => r.settings),
+
+  /**
+   * Phase 3 — Activation program (Model B gate).
+   * Stored under `tenant_settings.metadata.aml_activation_program`.
+   * Model B activation is BLOCKED unless `legal_approval === true` and
+   * `program_version` is a non-empty string. Enforced server-side too.
+   */
+  getActivationProgram: async () => {
+    const s = await invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings);
+    const p = (s?.metadata as any)?.aml_activation_program ?? {};
+    return {
+      legal_approval: Boolean(p?.legal_approval),
+      program_version: String(p?.program_version ?? ""),
+      approved_by: p?.approved_by ?? null,
+      approved_at: p?.approved_at ?? null,
+      notes: p?.notes ?? null,
+    } as AmlActivationProgram;
+  },
+  updateActivationProgram: async (patch: Partial<AmlActivationProgram>) => {
+    const current = await invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings);
+    const nextProgram = {
+      ...((current?.metadata as any)?.aml_activation_program ?? {}),
+      ...patch,
+    };
+    const nextMeta = { ...(current?.metadata ?? {}), aml_activation_program: nextProgram };
+    return invoke<{ settings: AmlTenantSettings }>(
+      "update_tenant_settings",
+      { patch: { metadata: nextMeta } },
+    ).then((r) => r.settings);
+  },
 
   listPlans: () => invoke<{ plans: AmlPlanTier[] }>("list_plans").then((r) => r.plans),
   upsertPlan: (plan: Partial<AmlPlanTier>) =>
