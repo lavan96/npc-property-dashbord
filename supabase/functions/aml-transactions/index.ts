@@ -94,8 +94,110 @@ async function evaluateSettlementGate(admin: any, aml: any, pfId: string) {
   };
 }
 
+// ─── PHASE 9 — Obligation evaluation (TTR / IFTI / SMR / structuring) ───
+// AUSTRAC thresholds:
+//   TTR:  physical currency component >= AUD 10,000
+//   IFTI: international funds transfer instruction (any amount)
+//   SMR:  case rated high/prohibited, manual flag, or structuring pattern
+//   Structuring: >= 3 sub-threshold cash tx (>= AUD 9,000 & < 10,000) same case within 24h
+const TTR_THRESHOLD = 10000;
+const STRUCTURING_LOW = 9000;
+const STRUCTURING_WINDOW_HOURS = 24;
+const STRUCTURING_MIN_COUNT = 3;
+
+function pickCashAmount(tx: any): number {
+  const md = tx?.metadata ?? {};
+  const candidates = [
+    md.cash_component, md.cash_amount, md.physical_currency_amount,
+    md.deposit_method === "cash" ? tx?.deposit_amount : null,
+  ].filter((v: any) => typeof v === "number" && isFinite(v));
+  return candidates.length ? Math.max(...candidates) : 0;
+}
+
+function detectInternational(tx: any): { international: boolean; origin?: string; dest?: string } {
+  const md = tx?.metadata ?? {};
+  const origin = (md.origin_country || md.source_country || "").toString().toUpperCase();
+  const dest = (md.dest_country || md.destination_country || "").toString().toUpperCase();
+  if (md.is_international === true || md.ifti === true) return { international: true, origin, dest };
+  if ((origin && origin !== "AU") || (dest && dest !== "AU")) return { international: true, origin, dest };
+  return { international: false };
+}
+
+async function upsertObligation(
+  aml: any, caseId: string, transactionId: string, kind: string,
+  reason: string, observed: number | null, threshold: number | null, detail: Record<string, any>,
+) {
+  const { data: existing } = await aml.from("transaction_obligations")
+    .select("id, status")
+    .eq("transaction_id", transactionId).eq("kind", kind).maybeSingle();
+  if (existing) {
+    // Never reopen a report_created / waived obligation; refresh pending ones.
+    if (existing.status === "pending") {
+      await aml.from("transaction_obligations").update({
+        trigger_reason: reason, observed_amount: observed, threshold_amount: threshold, detail,
+      }).eq("id", existing.id);
+    }
+    return { created: false, obligation_id: existing.id };
+  }
+  const { data: inserted } = await aml.from("transaction_obligations").insert({
+    case_id: caseId, transaction_id: transactionId, kind,
+    trigger_reason: reason, observed_amount: observed, threshold_amount: threshold, detail,
+  }).select("id").maybeSingle();
+  return { created: true, obligation_id: inserted?.id ?? null };
+}
+
+async function evaluateObligations(admin: any, aml: any, tx: any): Promise<{ created: number; obligation_ids: string[] }> {
+  const created: string[] = [];
+  let createdCount = 0;
+  const record = async (kind: string, reason: string, obs: number | null, threshold: number | null, detail: Record<string, any>) => {
+    const r = await upsertObligation(aml, tx.case_id, tx.id, kind, reason, obs, threshold, detail);
+    if (r.created && r.obligation_id) { createdCount++; created.push(r.obligation_id); }
+  };
+
+  const cash = pickCashAmount(tx);
+  if (cash >= TTR_THRESHOLD) {
+    await record("ttr", `cash_component_${cash}_gte_10000`, cash, TTR_THRESHOLD,
+      { currency: tx.currency ?? "AUD", source_field: "metadata.cash_component|deposit(cash)" });
+  }
+
+  const intl = detectInternational(tx);
+  if (intl.international) {
+    await record("ifti", `international_transfer:${intl.origin || "?"}→${intl.dest || "?"}`,
+      null, null, { origin_country: intl.origin, dest_country: intl.dest });
+  }
+
+  // SMR: case risk_rating or manual flag
+  const { data: caseRow } = await aml.from("cases").select("risk_rating, status").eq("id", tx.case_id).maybeSingle();
+  const risk = caseRow?.risk_rating ?? null;
+  if (risk === "high" || risk === "prohibited" || tx?.metadata?.smr_flag === true) {
+    await record("smr_candidate", risk ? `case_risk:${risk}` : "manual_smr_flag",
+      null, null, { case_status: caseRow?.status ?? null, risk_rating: risk });
+  }
+
+  // Structuring: check other cash tx in same case within window
+  if (cash >= STRUCTURING_LOW && cash < TTR_THRESHOLD) {
+    const since = new Date(Date.now() - STRUCTURING_WINDOW_HOURS * 3600 * 1000).toISOString();
+    const { data: peers } = await aml.from("transactions")
+      .select("id, deposit_amount, metadata, created_at")
+      .eq("case_id", tx.case_id).gte("created_at", since);
+    const hits = (peers ?? []).filter((p: any) => {
+      const a = pickCashAmount(p);
+      return a >= STRUCTURING_LOW && a < TTR_THRESHOLD;
+    });
+    if (hits.length >= STRUCTURING_MIN_COUNT) {
+      await record("structuring_suspected",
+        `structuring_pattern:${hits.length}_sub_threshold_${STRUCTURING_WINDOW_HOURS}h`,
+        cash, TTR_THRESHOLD,
+        { window_hours: STRUCTURING_WINDOW_HOURS, matched_tx_ids: hits.map((h: any) => h.id) });
+    }
+  }
+
+  return { created: createdCount, obligation_ids: created };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
 
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
