@@ -333,7 +333,7 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
     : 'neutral';
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded}>
+    <>
       <TableRow className={cn(
         'group border-b border-border/60 transition-colors hover:bg-muted/35',
         info.status === 'active_critical' && 'bg-destructive/[0.035] hover:bg-destructive/[0.06]',
@@ -342,11 +342,9 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
       )}>
         {/* Expand toggle */}
         <TableCell className="w-8 px-2">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 hover:border-border hover:bg-background">
-              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
-          </CollapsibleTrigger>
+          <Button variant="ghost" size="sm" onClick={() => setExpanded(v => !v)} className="h-7 w-7 rounded-full border border-transparent p-0 hover:border-border hover:bg-background">
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
         </TableCell>
 
         {/* Client */}
