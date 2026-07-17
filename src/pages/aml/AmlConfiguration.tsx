@@ -173,14 +173,23 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
       let termino: Record<string, string> = {};
       try { termino = terminologyText.trim() ? JSON.parse(terminologyText) : {}; }
       catch { toast.error("Terminology overrides must be valid JSON"); setSaving(false); return; }
-      await amlTenantApi.updateSettings({
+      const result = await amlTenantApi.updateSettings({
         display_name: displayName, contact_email: contactEmail || null,
         mlro_contact_name: mlroName || null, mlro_contact_email: mlroEmail || null,
         support_url: supportUrl || null, timezone, locale,
         disposal_grace_days: Number(disposalGrace) || 0,
         terminology_overrides: termino,
       });
-      toast.success("Branding & terminology saved");
+      const rejected = result?.rejected_terminology_keys ?? [];
+      if (rejected.length > 0) {
+        toast.warning(
+          `Locked regulatory terms were refused: ${rejected.join(", ")}`,
+          { description: "These control names cannot be renamed and were dropped from your overrides." },
+        );
+      } else {
+        toast.success("Branding & terminology saved");
+      }
+      await refreshAmlTerminology();
       onSaved();
     } catch (e: any) {
       toast.error(e.message ?? "Save failed");
