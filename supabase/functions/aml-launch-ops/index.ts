@@ -92,11 +92,28 @@ Deno.serve(async (req) => {
         if (op === "advance_rollout" && toIdx <= fromIdx) return jr({ error: "advance must move forward" }, 400);
         if (op === "rollback_rollout" && toIdx >= fromIdx) return jr({ error: "rollback must move backward" }, 400);
 
-        // For advance to broad_production, require latest release gate is pass.
+        // For advance to broad_production, require latest release gate is pass
+        // AND zero open risks with critical impact (rollout playbook §Preconditions).
         if (op === "advance_rollout" && to === "broad_production") {
           const { data: gate } = await aml.from("release_gates").select("status,id")
             .order("ran_at", { ascending: false }).limit(1).maybeSingle();
           if (!gate || gate.status !== "pass") return jr({ error: "Latest release gate must be PASS to reach broad_production" }, 400);
+          const { data: critOpen } = await aml.from("risk_register")
+            .select("id,code,title").eq("tenant_id", TENANT).eq("status", "open").eq("impact", "critical");
+          if ((critOpen ?? []).length > 0) {
+            return jr({
+              error: `Cannot advance to broad_production while ${critOpen!.length} open critical risk(s) remain: ${critOpen!.map((r: any) => r.code).join(", ")}`,
+              blocking_risks: critOpen,
+            }, 400);
+          }
+          const { data: failedScen } = await aml.from("acceptance_scenarios")
+            .select("code,title,last_status").eq("tenant_id", TENANT).in("last_status", ["failed", "blocked"]);
+          if ((failedScen ?? []).length > 0) {
+            return jr({
+              error: `Cannot advance to broad_production while ${failedScen!.length} acceptance scenario(s) are failing or blocked: ${failedScen!.map((r: any) => r.code).join(", ")}`,
+              failing_scenarios: failedScen,
+            }, 400);
+          }
         }
 
         const { error: upErr } = await aml.from("tenant_settings")
