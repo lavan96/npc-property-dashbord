@@ -207,9 +207,10 @@ export function DashboardSidebar() {
     if (path === '/commercial') {
       return currentPath === '/commercial' || currentPath.startsWith('/commercial/') || currentPath === '/industrial' || currentPath.startsWith('/industrial/');
     }
-    // AML overview must not swallow highlight from every nested /admin/aml/* route.
+    // AML/CTF Compliance is a single sidebar entry — keep it active for every
+    // nested /admin/aml/* surface since they all render inside the same page.
     if (path === '/admin/aml') {
-      return currentPath === '/admin/aml';
+      return currentPath === '/admin/aml' || currentPath.startsWith('/admin/aml/');
     }
     return currentPath === path;
   };
