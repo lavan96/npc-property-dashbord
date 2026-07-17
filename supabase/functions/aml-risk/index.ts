@@ -339,9 +339,14 @@ Deno.serve(async (req) => {
         admin.schema("aml").from("risk_overrides").select("*").eq("case_id", case_id).eq("status", "approved"),
       ]);
 
+      const tenantId = (caseRow?.tenant_id as string) || "default";
+      const { data: tenant } = await admin.schema("aml").from("tenant_settings")
+        .select("risk_program_version").eq("tenant_id", tenantId).maybeSingle();
+      const programVersion = (tenant?.risk_program_version as string) || (ass?.program_version as string) || "v1";
+
       const snapshot = {
         version: 1, decided_at: new Date().toISOString(), decided_by: userId,
-        outcome, rationale: rationale ?? null,
+        outcome, rationale: rationale ?? null, program_version: programVersion,
         case: caseRow, assessment: ass, open_conditions: conds ?? [], approved_overrides: overs ?? [],
       };
       const snapshot_hash = await sha256Hex(JSON.stringify(snapshot));
@@ -349,6 +354,7 @@ Deno.serve(async (req) => {
       const { data: dec, error } = await admin.schema("aml").from("decisions").insert({
         case_id, assessment_id: ass?.id ?? null, outcome, rationale: rationale ?? null,
         snapshot, snapshot_hash, decided_by: userId,
+        program_version: programVersion, is_straight_through: false,
       }).select("*").maybeSingle();
       if (error) return jr({ error: error.message }, 400);
 
@@ -359,10 +365,51 @@ Deno.serve(async (req) => {
       else if (outcome === "escalated") toStatus = "escalated_mlro";
       if (toStatus) await admin.schema("aml").from("cases").update({ status: toStatus }).eq("id", case_id);
 
-      await appendCaseEvent(admin, case_id, "mlro_decision", `Decision recorded: ${outcome}`,
-        { decision_id: dec?.id, snapshot_hash }, userId, userLabel);
+      await appendCaseEvent(admin, case_id, "mlro_decision",
+        `Decision recorded: ${outcome} [policy ${programVersion}]`,
+        { decision_id: dec?.id, snapshot_hash, program_version: programVersion }, userId, userLabel);
       return jr({ decision: dec });
     }
+
+    if (op === "policy_snapshot") {
+      const tenantId = String(body.tenant_id ?? "default");
+      const [{ data: tenant }, { data: fs }, { data: ts }] = await Promise.all([
+        admin.schema("aml").from("tenant_settings")
+          .select("risk_program_version, straight_through_config").eq("tenant_id", tenantId).maybeSingle(),
+        admin.schema("aml").from("risk_factors").select("*").eq("active", true).order("category").order("label"),
+        admin.schema("aml").from("mandatory_triggers").select("*").eq("active", true).order("severity").order("label"),
+      ]);
+      const programVersion = (tenant?.risk_program_version as string) || "v1";
+      const snapshotHash = await sha256Hex(JSON.stringify({
+        program_version: programVersion,
+        factors: (fs ?? []).map((f: any) => ({ k: f.key, w: f.weight, s: f.scoring, a: f.active })).sort((a, b) => a.k.localeCompare(b.k)),
+        triggers: (ts ?? []).map((t: any) => ({ k: t.key, s: t.severity, r: t.rule, a: t.active })).sort((a, b) => a.k.localeCompare(b.k)),
+      }));
+      return jr({
+        program_version: programVersion,
+        straight_through_config: tenant?.straight_through_config ?? { enabled: false },
+        policy_snapshot_hash: snapshotHash,
+        factors: fs ?? [],
+        triggers: ts ?? [],
+        tenant_id: tenantId,
+      });
+    }
+
+    if (op === "update_risk_policy") {
+      if (!isMlro) return jr({ error: "MLRO required" }, 403);
+      const tenantId = String(body.tenant_id ?? "default");
+      const patch: Record<string, any> = {};
+      if (typeof body.risk_program_version === "string") patch.risk_program_version = body.risk_program_version;
+      if (body.straight_through_config && typeof body.straight_through_config === "object") {
+        patch.straight_through_config = body.straight_through_config;
+      }
+      if (Object.keys(patch).length === 0) return jr({ error: "Nothing to update" }, 400);
+      const { data, error } = await admin.schema("aml").from("tenant_settings")
+        .update(patch).eq("tenant_id", tenantId).select("tenant_id, risk_program_version, straight_through_config").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ tenant: data });
+    }
+
 
     if (op === "list_decisions") {
       const caseId = String(body.case_id ?? "");
