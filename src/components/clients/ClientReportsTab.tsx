@@ -430,6 +430,24 @@ export function ClientReportsTab({
     }
   };
 
+  // Legacy rows accidentally stored the entire `secureStorageUpload` response
+  // object (JSON-stringified) as `file_path`. Normalize before passing to storage.
+  const normalizeStoragePath = (raw: string): string => {
+    if (!raw) return raw;
+    const trimmed = raw.trim();
+    if (!trimmed.startsWith('{')) return trimmed;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.path === 'string' && parsed.path) return parsed.path;
+        if (typeof parsed.fullPath === 'string' && parsed.fullPath) {
+          return parsed.fullPath.replace(/^client-files\//, '');
+        }
+      }
+    } catch {}
+    return trimmed;
+  };
+
   const handleDownloadFile = async (fileUrl: string, fileName: string) => {
     try {
       const result = await secureStorageDownload('client-files', fileUrl);
