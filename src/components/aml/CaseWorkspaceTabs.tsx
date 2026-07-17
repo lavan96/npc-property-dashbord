@@ -255,8 +255,12 @@ function RiskTab({ caseId, canWrite, onChanged }: { caseId: string; canWrite: bo
   const evaluate = async () => {
     setBusy(true);
     try {
-      await amlRiskApi.evaluate(caseId, {});
-      toast({ title: "Risk re-evaluated" });
+      const res = await amlRiskApi.evaluate(caseId, {});
+      if (res.auto_decision) {
+        toast({ title: "Auto-cleared", description: `Straight-through under policy ${res.program_version}.` });
+      } else {
+        toast({ title: "Risk re-evaluated", description: `Policy ${res.program_version}` });
+      }
       await load(); onChanged();
     } catch (e: any) { toast({ title: "Evaluate failed", description: e.message, variant: "destructive" }); }
     finally { setBusy(false); }
@@ -268,7 +272,19 @@ function RiskTab({ caseId, canWrite, onChanged }: { caseId: string; canWrite: bo
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm">Latest risk assessment</CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-sm">Latest risk assessment</CardTitle>
+            {latest?.program_version && (
+              <Badge variant="outline" className="border-primary/40 text-primary text-[10px] uppercase">
+                Policy {latest.program_version}
+              </Badge>
+            )}
+            {latest?.straight_through && (
+              <Badge variant="outline" className="border-success/40 text-success text-[10px] uppercase">
+                Auto-cleared
+              </Badge>
+            )}
+          </div>
           {canWrite && (
             <Button size="sm" variant="outline" onClick={evaluate} disabled={busy}>
               {busy ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null} Re-evaluate
@@ -284,6 +300,9 @@ function RiskTab({ caseId, canWrite, onChanged }: { caseId: string; canWrite: bo
               <Row k="Verification score" v={String(latest.verification_score)} />
               <Row k="Completion score" v={String(latest.completion_score)} />
               <Row k="Computed" v={new Date(latest.created_at).toLocaleString()} />
+              {latest.policy_snapshot_hash && (
+                <Row k="Policy hash" v={<span className="font-mono text-[11px]">{latest.policy_snapshot_hash.slice(0, 12)}…</span>} />
+              )}
               {latest.triggered_holds?.length > 0 && (
                 <div className="pt-2">
                   <div className="text-xs font-semibold text-muted-foreground uppercase">Triggered holds</div>
@@ -299,9 +318,38 @@ function RiskTab({ caseId, canWrite, onChanged }: { caseId: string; canWrite: bo
                   </ul>
                 </div>
               )}
+              {latest.explanation && (latest.explanation.top_positive?.length || latest.explanation.top_neutral_missing?.length) ? (
+                <div className="pt-2 border-t border-border/50">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase">Why this rating</div>
+                  {latest.explanation.top_positive && latest.explanation.top_positive.length > 0 && (
+                    <div className="mt-1">
+                      <div className="text-[11px] text-muted-foreground">Top contributors</div>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {latest.explanation.top_positive.map((f) => (
+                          <li key={f.key} className="text-xs flex justify-between gap-4">
+                            <span className="truncate">{f.label}</span>
+                            <span className="font-mono text-muted-foreground">+{Math.round(f.weighted)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {latest.explanation.top_neutral_missing && latest.explanation.top_neutral_missing.length > 0 && (
+                    <div className="mt-2">
+                      <div className="text-[11px] text-muted-foreground">Missing inputs (scored 0)</div>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {latest.explanation.top_neutral_missing.slice(0, 3).map((f) => (
+                          <li key={f.key} className="text-xs text-muted-foreground truncate">• {f.label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </>}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-sm">Open conditions</CardTitle></CardHeader>
