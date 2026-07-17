@@ -13,21 +13,33 @@ import { cn } from "@/lib/utils";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 import { hasAmlCapability, type AmlCapability } from "@/lib/aml/permissions";
 import { useAmlTerminology } from "@/lib/aml/useAmlTerminology";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
 
 /**
- * Phase 1 — Five-Workspace Navigation Shell.
+ * AML shell navigation.
  *
- * Replaces the previous 16-tab horizontal-scroll sub-nav with the five
- * role-adaptive workspaces defined in the Version 2 Implementation Report:
+ * Ships two navigation configurations:
  *
- *   Compliance Home · Customer Compliance · Transaction Compliance ·
- *   Regulatory & Assurance · Platform Administration
+ *  - **Legacy (V2, default)** — the five-workspace shell delivered in V2, kept
+ *    byte-identical for tenants who have not yet enabled the V3 nav flag.
+ *  - **V3** — activated by `feature_flags.aml_v3_nav = true`. Applies
+ *    Directives 2, 3, 4, 7 and 8 from the Version 3 report:
+ *      · Directive 2 — Customer Compliance is limited to Cases + My Queue.
+ *        Verification, Screening, Risk, Structures and Finance handoff move
+ *        inside the case workspace (built in Phase 4/6). Legacy URLs remain
+ *        live via aliases in `src/App.tsx`.
+ *      · Directive 3 — "Structures" is renamed "Ownership & Control" in the
+ *        (transaction) counterparty entry.
+ *      · Directive 4 — "Finance handoff" is renamed "Funding & Finance"
+ *        wherever the legacy label still surfaces.
+ *      · Directive 7 — "Platform Administration" is renamed
+ *        "Organisation Settings".
+ *      · Directive 8 — the tenant-facing Plans & Entitlements surface is
+ *        withdrawn from workspace navigation.
  *
- * Legacy `/admin/aml/*` routes remain wired in `src/App.tsx` and continue to
- * resolve unchanged — this shell simply groups them beneath the appropriate
- * workspace and exposes a workspace-local secondary nav. `AmlGuard` performs
- * the server-side permission check on every underlying route, so the shell
- * only decides visibility of the top-level entries.
+ * Server-side permission checks continue to run inside each route via
+ * `AmlGuard`; this shell only decides what appears in the primary and
+ * secondary nav.
  */
 
 interface SecondaryEntry {
@@ -51,7 +63,7 @@ interface Workspace {
   secondary?: SecondaryEntry[];
 }
 
-const WORKSPACES: Workspace[] = [
+const LEGACY_WORKSPACES: Workspace[] = [
   {
     key: "home",
     label: "Compliance Home",
@@ -81,8 +93,8 @@ const WORKSPACES: Workspace[] = [
       { label: "Verification", to: "/admin/aml/verification", capability: "aml.view" },
       { label: "Screening", to: "/admin/aml/screening", capability: "aml.view" },
       { label: "Risk", to: "/admin/aml/risk", capability: "aml.view" },
-      { label: "Structures", to: "/admin/aml/counterparty", capability: "aml.view" },
-      { label: "Finance handoff", to: "/admin/aml/finance", capability: "aml.investigate" },
+      { label: "Ownership & Control", to: "/admin/aml/counterparty", capability: "aml.view" },
+      { label: "Funding & Finance", to: "/admin/aml/finance", capability: "aml.investigate" },
     ],
   },
   {
@@ -119,14 +131,105 @@ const WORKSPACES: Workspace[] = [
   },
   {
     key: "admin",
-    label: "Platform Administration",
+    label: "Organisation Settings",
     icon: Settings2,
     paths: ["/admin/aml/launch-ops", "/admin/aml/configuration"],
     defaultPath: "/admin/aml/launch-ops",
     minCapability: "aml.view",
     secondary: [
-      { label: "Launch Ops", to: "/admin/aml/launch-ops", capability: "aml.view" },
+      { label: "Launch Operations", to: "/admin/aml/launch-ops", capability: "aml.view" },
       { label: "Configuration", to: "/admin/aml/configuration", capability: "aml.configure" },
+    ],
+  },
+];
+
+/**
+ * V3 nav (Directives 2, 3, 4, 7, 8).
+ *
+ * Structural changes vs legacy:
+ *  - Customer Compliance: only Cases + My Queue. Verification / Screening /
+ *    Risk / Ownership & Control / Funding & Finance are surfaced inside the
+ *    case workspace (Phase 4/6) — their legacy routes remain reachable.
+ *  - Transaction Compliance: gains Counterparty Due (formerly "Structures").
+ *  - Organisation Settings: Governance & Contacts sits first (Directive 14
+ *    contact register lands here in Phase 1); Configuration and Launch
+ *    Operations follow. Plans & Entitlements is withdrawn (Directive 8).
+ */
+const V3_WORKSPACES: Workspace[] = [
+  {
+    key: "home",
+    label: "Compliance Home",
+    icon: Home,
+    paths: ["/admin/aml"],
+    defaultPath: "/admin/aml",
+    minCapability: "aml.view",
+  },
+  {
+    key: "customer",
+    label: "Customer Compliance",
+    icon: Users,
+    paths: [
+      "/admin/aml/cases",
+      "/admin/aml/intake",
+      // Legacy aliases stay part of this workspace for URL matching only.
+      "/admin/aml/verification",
+      "/admin/aml/screening",
+      "/admin/aml/risk",
+      "/admin/aml/finance",
+    ],
+    defaultPath: "/admin/aml/cases",
+    minCapability: "aml.view",
+    secondary: [
+      { label: "Cases", to: "/admin/aml/cases", capability: "aml.view" },
+      { label: "My Queue", to: "/admin/aml/intake", capability: "aml.view" },
+    ],
+  },
+  {
+    key: "transactions",
+    label: "Transaction Compliance",
+    icon: Coins,
+    paths: ["/admin/aml/transactions", "/admin/aml/counterparty"],
+    defaultPath: "/admin/aml/transactions",
+    minCapability: "aml.investigate",
+    secondary: [
+      { label: "Transactions", to: "/admin/aml/transactions", capability: "aml.investigate" },
+      { label: "Counterparty Due", to: "/admin/aml/counterparty", capability: "aml.view" },
+    ],
+  },
+  {
+    key: "regulatory",
+    label: "Regulatory & Assurance",
+    icon: Gavel,
+    paths: [
+      "/admin/aml/monitoring",
+      "/admin/aml/investigations",
+      "/admin/aml/austrac",
+      "/admin/aml/records",
+    ],
+    defaultPath: "/admin/aml/monitoring",
+    minCapability: "aml.view",
+    secondary: [
+      { label: "Monitoring", to: "/admin/aml/monitoring", capability: "aml.view" },
+      { label: "Investigations", to: "/admin/aml/investigations", capability: "aml.investigate" },
+      { label: "AUSTRAC Hub", to: "/admin/aml/austrac", capability: "aml.report" },
+      { label: "Records & Retention", to: "/admin/aml/records", capability: "aml.view" },
+    ],
+  },
+  {
+    key: "admin",
+    label: "Organisation Settings",
+    icon: Settings2,
+    paths: [
+      "/admin/aml/governance",
+      "/admin/aml/configuration",
+      "/admin/aml/launch-ops",
+    ],
+    defaultPath: "/admin/aml/governance",
+    minCapability: "aml.view",
+    secondary: [
+      { label: "Governance & Contacts", to: "/admin/aml/governance", capability: "aml.view" },
+      { label: "Configuration", to: "/admin/aml/configuration", capability: "aml.configure" },
+      { label: "Launch Operations", to: "/admin/aml/launch-ops", capability: "aml.view" },
     ],
   },
 ];
@@ -143,8 +246,11 @@ function pathMatchesWorkspace(pathname: string, workspace: Workspace): boolean {
 export function AmlLayout() {
   const { roles, loading } = useAmlAccess();
   const { t } = useAmlTerminology();
+  const { v3Nav } = useAmlV3Flags();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const WORKSPACES = v3Nav ? V3_WORKSPACES : LEGACY_WORKSPACES;
 
   // Only show workspaces the user has *any* legitimate reason to enter.
   // Server-side permission enforcement continues to happen inside each route
@@ -157,7 +263,7 @@ export function AmlLayout() {
       // Show the workspace if at least one secondary entry is permitted.
       return w.secondary.some((s) => hasAmlCapability(roles, s.capability));
     });
-  }, [roles, loading]);
+  }, [roles, loading, WORKSPACES]);
 
   const activeWorkspace =
     visibleWorkspaces.find((w) => pathMatchesWorkspace(location.pathname, w)) ??
