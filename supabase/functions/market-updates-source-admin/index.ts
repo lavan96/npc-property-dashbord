@@ -3,11 +3,12 @@
 // Roles allowed: 'admin' | 'superadmin'. Bypass via x-cron-secret for ops.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyAuth } from "../_shared/auth.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-cron-secret",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret, x-session-token, x-command-centre-session-token",
 };
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), {
@@ -17,6 +18,21 @@ const json = (b: unknown, status = 200) =>
 
 const CRON_SECRET = Deno.env.get("MARKET_INGESTION_CRON_SECRET");
 
+async function isAdminOrSuperadmin(sb: any, userId: string): Promise<boolean> {
+  if (!userId || userId === "service_role") return true;
+  const { data: roleRows } = await sb
+    .from("user_roles").select("role").eq("user_id", userId);
+  const roles = (roleRows ?? []).map((r: any) => r.role);
+  if (roles.includes("admin") || roles.includes("superadmin") || roles.includes("super_admin")) return true;
+  const { data: cu } = await sb
+    .from("custom_users").select("role_display, is_active").eq("id", userId).maybeSingle();
+  if (cu?.is_active) {
+    const r = String(cu.role_display ?? "").toLowerCase();
+    if (r === "super_admin" || r === "superadmin" || r === "admin") return true;
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
@@ -25,24 +41,15 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // AuthZ: cron secret OR admin/superadmin role
   const cron = req.headers.get("x-cron-secret");
   let authorized = Boolean(cron && CRON_SECRET && cron === CRON_SECRET);
   let actorId: string | null = null;
 
   if (!authorized) {
-    const authHeader = req.headers.get("authorization") ?? "";
-    const jwt = authHeader.replace(/^Bearer\s+/i, "");
-    if (!jwt) return json({ error: "unauthorized" }, 401);
-    const { data: userData, error: userErr } = await sb.auth.getUser(jwt);
-    if (userErr || !userData.user) return json({ error: "unauthorized" }, 401);
-    actorId = userData.user.id;
-    const { data: roleRows } = await sb
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", actorId);
-    const roles = (roleRows ?? []).map((r: any) => r.role);
-    authorized = roles.includes("admin") || roles.includes("superadmin");
+    const auth = await verifyAuth(sb, req.headers, {});
+    if (auth.error || !auth.userId) return json({ error: "unauthorized" }, 401);
+    actorId = auth.userId;
+    authorized = await isAdminOrSuperadmin(sb, actorId!);
     if (!authorized) return json({ error: "forbidden" }, 403);
   }
 
