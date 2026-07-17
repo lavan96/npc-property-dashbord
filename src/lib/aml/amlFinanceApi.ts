@@ -101,4 +101,30 @@ export const amlFinanceApi = {
 
   limitedStatus: (params: { purchase_file_id?: string; client_id?: string }) =>
     invoke<AmlLimitedStatus>({ op: "limited_status", ...params }),
+
+  // Phase 8 — cross-portal handoff + duplicate doc-ref scanning
+  duplicateDocumentRefs: (case_id?: string) =>
+    invoke<{ duplicates: Array<{ reference_id: string; reference_type: string; label: string; case_count: number; client_count: number; case_ids: string[] }>; discrepancies_created: number }>({ op: "duplicate_document_refs", case_id }),
+
+  redeemCaseHandoff: (token: string) =>
+    invoke<{ snapshot: AmlHandoffSnapshot }>({ op: "redeem_case_handoff", token }),
 };
+
+export interface AmlHandoffSnapshot {
+  status: string;
+  risk_rating: string | null;
+  updated_at: string | null;
+  created_at: string | null;
+  open_discrepancies: Array<{ kind: string; severity: string; status: string }>;
+  evidence_summary: Array<{ label: string; reference_type: string }>;
+  finance_comparison: null | {
+    captured_at: string;
+    source: string;
+    purchase_price: number | null;
+    loan_amount: number | null;
+    lender: string | null;
+    lvr: number | null;
+  };
+  readonly: true;
+  tipping_off_notice: string;
+}
