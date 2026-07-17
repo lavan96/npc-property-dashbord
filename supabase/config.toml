@@ -1,7 +1,7 @@
 project_id = "dduzbchuswwbefdunfct"
 
 [functions.aml-cases]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-access]
 verify_jwt = false
@@ -10,49 +10,49 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.aml-verification]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-provider-webhook]
 verify_jwt = false
 
 [functions.aml-risk]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-entities]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-finance]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-transactions]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-monitoring]
 verify_jwt = false
 
 [functions.aml-reporting]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-records]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-tenant]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-step-up]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-ai-guardrail]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-release-gate]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-resilience]
-verify_jwt = true
+verify_jwt = false
 
 [functions.aml-launch-ops]
-verify_jwt = true
+verify_jwt = false
 
 
 
