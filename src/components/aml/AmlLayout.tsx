@@ -246,8 +246,11 @@ function pathMatchesWorkspace(pathname: string, workspace: Workspace): boolean {
 export function AmlLayout() {
   const { roles, loading } = useAmlAccess();
   const { t } = useAmlTerminology();
+  const { v3Nav } = useAmlV3Flags();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const WORKSPACES = v3Nav ? V3_WORKSPACES : LEGACY_WORKSPACES;
 
   // Only show workspaces the user has *any* legitimate reason to enter.
   // Server-side permission enforcement continues to happen inside each route
@@ -260,7 +263,7 @@ export function AmlLayout() {
       // Show the workspace if at least one secondary entry is permitted.
       return w.secondary.some((s) => hasAmlCapability(roles, s.capability));
     });
-  }, [roles, loading]);
+  }, [roles, loading, WORKSPACES]);
 
   const activeWorkspace =
     visibleWorkspaces.find((w) => pathMatchesWorkspace(location.pathname, w)) ??
