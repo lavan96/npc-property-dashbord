@@ -60,7 +60,7 @@ import { DocumentsTab } from '@/components/documents/DocumentsTab';
 
 
 const detailShellClass = cn(
-  'relative max-h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden rounded-[1.75rem] border border-brand-200/20',
+  'relative rounded-[1.75rem] border border-brand-200/20',
   'bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.94))]',
   'p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] sm:p-5'
 );
