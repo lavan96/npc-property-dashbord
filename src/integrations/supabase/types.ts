@@ -19912,7 +19912,7 @@ export type Database = {
       admin_set_aml_roles_for_user: {
         Args: { _granted_by: string; _roles: string[]; _target_user_id: string }
         Returns: {
-          role: string
+          role_name: string
         }[]
       }
       append_migration_upload_chunk: {
@@ -20047,7 +20047,7 @@ export type Database = {
       get_aml_roles_for_users: {
         Args: { _user_ids: string[] }
         Returns: {
-          role: string
+          role_name: string
           user_id: string
         }[]
       }

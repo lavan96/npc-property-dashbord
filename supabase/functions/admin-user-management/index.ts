@@ -630,7 +630,7 @@ Deno.serve(async (req: Request) => {
           const rolesByUser = new Map<string, string[]>();
           for (const row of amlRoleRows ?? []) {
             const current = rolesByUser.get(row.user_id) ?? [];
-            current.push(row.role);
+            current.push(row.role_name ?? row.role);
             rolesByUser.set(row.user_id, current);
           }
           usersWithAmlRoles = (users ?? []).map((entry: any) => ({
@@ -860,7 +860,7 @@ Deno.serve(async (req: Request) => {
 
       console.log(`AML roles updated for user ${user_id} by ${adminUser.username}`);
       return new Response(
-        JSON.stringify({ success: true, message: 'AML roles updated', aml_roles: (updatedRoles ?? []).map((row: any) => row.role) }),
+        JSON.stringify({ success: true, message: 'AML roles updated', aml_roles: (updatedRoles ?? []).map((row: any) => row.role_name ?? row.role) }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
