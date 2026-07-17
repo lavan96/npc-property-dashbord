@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 interface Permission {
   module_key: string;
@@ -46,72 +46,28 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    setLoading(true);
+
     try {
       console.log('[Permissions] Fetching permissions for user:', user.username, 'isSuperadmin:', isSuperadmin);
-      
-      // If superadmin, they have access to everything
-      if (isSuperadmin) {
-        // Fetch all modules for superadmin
-        const { data: modules, error: modulesError } = await supabase
-          .from('dashboard_modules')
-          .select('module_key, module_name')
-          .eq('is_active', true);
 
-        if (modulesError) {
-          console.error('[Permissions] Error fetching modules for superadmin:', modulesError);
-        }
+      const { data, error } = await invokeSecureFunction<{
+        success: boolean;
+        permissions: Permission[];
+        error?: string;
+      }>('admin-user-management', { action: 'get_my_permissions' });
 
-        if (!modulesError && modules) {
-          console.log('[Permissions] Superadmin granted access to', modules.length, 'modules');
-          setPermissions(modules.map(m => ({
-            module_key: m.module_key,
-            module_name: m.module_name,
-            can_view: true,
-            can_edit: true,
-            can_delete: true,
-          })));
-        }
+      if (error || !data?.success) {
+        console.error('[Permissions] Secure permission lookup failed:', error || data?.error);
+        setPermissions([]);
+      } else if (Array.isArray(data.permissions)) {
+        setPermissions(data.permissions.filter((p) => p.module_key && p.can_view));
       } else {
-        // Fetch specific permissions for non-superadmin users
-        console.log('[Permissions] Fetching specific permissions for user ID:', user.id);
-        
-        const { data: userPermissions, error: permError } = await supabase
-          .from('user_permissions')
-          .select(`
-            can_view,
-            can_edit,
-            can_delete,
-            dashboard_modules(module_key, module_name)
-          `)
-          .eq('user_id', user.id);
-
-        if (permError) {
-          console.error('[Permissions] Error fetching user permissions:', permError);
-        } else {
-          console.log('[Permissions] Raw permissions data:', userPermissions);
-          
-          if (userPermissions && userPermissions.length > 0) {
-            const mappedPermissions = userPermissions
-              .filter(p => p.can_view) // Only include permissions where can_view is true
-              .map(p => ({
-                module_key: (p.dashboard_modules as any)?.module_key || '',
-                module_name: (p.dashboard_modules as any)?.module_name || '',
-                can_view: p.can_view,
-                can_edit: p.can_edit,
-                can_delete: p.can_delete,
-              }))
-              .filter(p => p.module_key);
-            
-            console.log('[Permissions] Mapped permissions:', mappedPermissions.length, 'modules accessible');
-            setPermissions(mappedPermissions);
-          } else {
-            console.log('[Permissions] No permissions found for user');
-            setPermissions([]);
-          }
-        }
+        setPermissions([]);
       }
     } catch (error) {
       console.error('[Permissions] Error in fetchPermissions:', error);
+      setPermissions([]);
     } finally {
       setLoading(false);
     }
@@ -127,6 +83,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   }, [authLoading, user?.id, isSuperadmin, fetchPermissions]);
 
   const hasModuleAccess = useCallback((moduleKey: string): boolean => {
+    if (moduleKey === '__always__') return true;
+    if (moduleKey === '__superadmin_only__') return isSuperadmin;
     if (isSuperadmin) return true;
     const perm = permissions.find(p => p.module_key === moduleKey);
     return perm?.can_view || false;

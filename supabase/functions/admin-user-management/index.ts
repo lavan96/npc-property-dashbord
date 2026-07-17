@@ -12,7 +12,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 interface RequestBody {
   action: 'list_users' | 'get_user' | 'create_user' | 'update_user' | 'delete_user' | 
           'assign_role' | 'remove_role' | 'update_permissions' | 'send_invite' |
-          'list_modules' | 'get_user_permissions' | 'promote_to_superadmin' | 'demote_from_superadmin' |
+          'list_modules' | 'get_user_permissions' | 'get_my_permissions' | 'set_aml_roles' | 'promote_to_superadmin' | 'demote_from_superadmin' |
           'accept_invite' | 'verify_invite' | 'update_mailbox' | 'get_own_profile' |
           'update_own_mailbox' | 'update_own_signature' | 'create_subadmin' | 'update_own_credentials' |
           'reset_user_password' | 'purge_user' | 'force_logout';
@@ -22,6 +22,7 @@ interface RequestBody {
   session_token: string;
   user_id?: string;
   role?: 'superadmin' | 'admin' | 'user';
+  aml_roles?: Array<'analyst' | 'reviewer' | 'mlro' | 'auditor'>;
   permissions?: Array<{ module_key: string; can_view: boolean; can_edit: boolean; can_delete: boolean }>;
   invite_data?: {
     email: string;
@@ -44,6 +45,8 @@ interface RequestBody {
   restore?: boolean;
   idempotency_key?: string;
 }
+
+const AML_ROLES = new Set(['analyst', 'reviewer', 'mlro', 'auditor']);
 
 // Helper to verify authentication and check if user is superadmin
 async function verifySuperadmin(supabase: any, headers: Headers, body: any) {
@@ -289,6 +292,99 @@ Deno.serve(async (req: Request) => {
     };
 
     // Actions that require authentication but NOT superadmin
+    if (action === 'get_my_permissions') {
+      const authResult = await verifyAuth(supabase, req.headers, body);
+      if (authResult.error || !authResult.userId) {
+        return new Response(
+          JSON.stringify({ success: false, error: authResult.error || 'Authentication required' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: currentUser } = await supabase
+        .from('custom_users')
+        .select('id, role, is_active')
+        .eq('id', authResult.userId)
+        .maybeSingle();
+
+      if (!currentUser?.is_active) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Inactive or missing user' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: roleRows } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authResult.userId);
+
+      const roleList = (roleRows ?? []).map((row: any) => row.role);
+      const isCurrentSuperadmin = currentUser.role === 'super_admin' || roleList.includes('superadmin');
+
+      if (isCurrentSuperadmin) {
+        const { data: modules, error: modulesError } = await supabase
+          .from('dashboard_modules')
+          .select('module_key, module_name')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+
+        if (modulesError) {
+          return new Response(
+            JSON.stringify({ success: false, error: modulesError.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            permissions: (modules ?? []).map((module: any) => ({
+              module_key: module.module_key,
+              module_name: module.module_name,
+              can_view: true,
+              can_edit: true,
+              can_delete: true,
+            })),
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: permissions, error: permissionsError } = await supabase
+        .from('user_permissions')
+        .select(`
+          can_view,
+          can_edit,
+          can_delete,
+          dashboard_modules(module_key, module_name)
+        `)
+        .eq('user_id', authResult.userId);
+
+      if (permissionsError) {
+        return new Response(
+          JSON.stringify({ success: false, error: permissionsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          permissions: (permissions ?? [])
+            .map((permission: any) => ({
+              module_key: permission.dashboard_modules?.module_key || '',
+              module_name: permission.dashboard_modules?.module_name || '',
+              can_view: Boolean(permission.can_view),
+              can_edit: Boolean(permission.can_edit),
+              can_delete: Boolean(permission.can_delete),
+            }))
+            .filter((permission: any) => permission.module_key),
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'get_own_profile') {
       const { error: sessionError, user: currentUser } = await verifySession(session_token);
       if (sessionError || !currentUser) {
@@ -514,8 +610,32 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      const userIds = (users ?? []).map((entry: any) => entry.id).filter(Boolean);
+      let usersWithAmlRoles = users ?? [];
+
+      if (userIds.length > 0) {
+        const { data: amlRoleRows, error: amlRoleError } = await supabase.rpc('get_aml_roles_for_users', {
+          _user_ids: userIds,
+        });
+
+        if (amlRoleError) {
+          console.warn('Failed to load AML roles for users:', amlRoleError.message);
+        } else {
+          const rolesByUser = new Map<string, string[]>();
+          for (const row of amlRoleRows ?? []) {
+            const current = rolesByUser.get(row.user_id) ?? [];
+            current.push(row.role);
+            rolesByUser.set(row.user_id, current);
+          }
+          usersWithAmlRoles = (users ?? []).map((entry: any) => ({
+            ...entry,
+            aml_roles: rolesByUser.get(entry.id) ?? [],
+          }));
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: true, users }),
+        JSON.stringify({ success: true, users: usersWithAmlRoles }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -697,6 +817,44 @@ Deno.serve(async (req: Request) => {
       console.log(`Role ${role} removed from user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Role removed' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'set_aml_roles') {
+      const { user_id, aml_roles } = body;
+      if (!user_id || !Array.isArray(aml_roles)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User ID and AML roles are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const dedupedRoles = [...new Set(aml_roles.map((role) => String(role).toLowerCase()))];
+      const invalidRole = dedupedRoles.find((role) => !AML_ROLES.has(role));
+      if (invalidRole) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Invalid AML role: ${invalidRole}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: updatedRoles, error } = await supabase.rpc('admin_set_aml_roles_for_user', {
+        _target_user_id: user_id,
+        _roles: dedupedRoles,
+        _granted_by: adminUser.id,
+      });
+
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`AML roles updated for user ${user_id} by ${adminUser.username}`);
+      return new Response(
+        JSON.stringify({ success: true, message: 'AML roles updated', aml_roles: (updatedRoles ?? []).map((row: any) => row.role) }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

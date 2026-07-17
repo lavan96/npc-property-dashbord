@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Users, Mail, Plus, Key, AlertCircle, UserPlus } from 'lucide-react';
+import { Users, Mail, Plus, Key, AlertCircle, UserPlus, ShieldCheck } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -34,7 +34,17 @@ interface User {
   deleted_at: string | null;
   user_roles: Array<{ role: string }>;
   personal_mailbox: string | null;
+  aml_roles?: AmlRole[];
 }
+
+type AmlRole = 'analyst' | 'reviewer' | 'mlro' | 'auditor';
+
+const AML_ROLE_OPTIONS: Array<{ value: AmlRole; label: string; description: string }> = [
+  { value: 'analyst', label: 'Analyst', description: 'Can view AML surfaces and work investigations.' },
+  { value: 'reviewer', label: 'Reviewer', description: 'Can review and progress AML investigation work.' },
+  { value: 'mlro', label: 'MLRO', description: 'Full AML access, including AUSTRAC reporting and configuration.' },
+  { value: 'auditor', label: 'Auditor', description: 'Read-only AML/CTF access for audit review.' },
+];
 
 interface Module {
   id: string;
@@ -101,6 +111,12 @@ export default function UserManagement() {
   const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
   const [cloneSourceUserId, setCloneSourceUserId] = useState('');
 
+  // AML role assignment state
+  const [amlRoleDialogOpen, setAmlRoleDialogOpen] = useState(false);
+  const [editingAmlUserId, setEditingAmlUserId] = useState<string | null>(null);
+  const [editingAmlRoles, setEditingAmlRoles] = useState<AmlRole[]>([]);
+  const [savingAmlRoles, setSavingAmlRoles] = useState(false);
+
   useEffect(() => {
     if (isSuperadmin) {
       fetchUsers();
@@ -111,7 +127,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       const { data, error } = await invokeSecureFunction('admin-user-management', { action: 'list_users' });
-      if (data?.success) setUsers(data.users);
+      if (data?.success) setUsers(data.users ?? []);
       else toast.error(data?.error || error?.message || 'Failed to fetch users');
     } catch { toast.error('Failed to fetch users'); }
     finally { setLoading(false); }
@@ -326,6 +342,57 @@ export default function UserManagement() {
     setEditingMailboxUserId(userId);
     setEditingMailboxValue(currentMailbox || '');
     setMailboxDialogOpen(true);
+  };
+
+  const openAmlRoleDialog = (userId: string) => {
+    const targetUser = users.find((entry) => entry.id === userId);
+    setEditingAmlUserId(userId);
+    setEditingAmlRoles(targetUser?.aml_roles ?? []);
+    setAmlRoleDialogOpen(true);
+  };
+
+  const toggleAmlRole = (role: AmlRole, checked: boolean) => {
+    setEditingAmlRoles((current) => {
+      if (checked) return current.includes(role) ? current : [...current, role];
+      return current.filter((entry) => entry !== role);
+    });
+  };
+
+  const handleSaveAmlRoles = async () => {
+    if (!editingAmlUserId) return;
+    const targetUser = users.find((entry) => entry.id === editingAmlUserId);
+    setSavingAmlRoles(true);
+    try {
+      const { data, error } = await invokeSecureFunction('admin-user-management', {
+        action: 'set_aml_roles',
+        user_id: editingAmlUserId,
+        aml_roles: editingAmlRoles,
+      });
+
+      if (data?.success) {
+        const nextRoles = (data.aml_roles ?? editingAmlRoles) as AmlRole[];
+        setUsers((current) => current.map((entry) => (
+          entry.id === editingAmlUserId ? { ...entry, aml_roles: nextRoles } : entry
+        )));
+        toast.success('AML roles updated');
+        logActivityDirect({
+          actionType: 'user_permissions_changed',
+          entityType: 'user',
+          entityId: editingAmlUserId,
+          entityName: targetUser?.username,
+          metadata: { action: 'aml_roles_updated', aml_roles: nextRoles },
+        });
+        setAmlRoleDialogOpen(false);
+        await fetchUsers();
+      } else {
+        toast.error(data?.error || error?.message || 'Failed to update AML roles');
+      }
+    } catch (err) {
+      console.error('[UserManagement] Failed to update AML roles:', err);
+      toast.error('Failed to update AML roles');
+    } finally {
+      setSavingAmlRoles(false);
+    }
   };
 
   const handleSaveMailbox = async () => {
@@ -583,7 +650,7 @@ export default function UserManagement() {
               </div>
               <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/60">
                 {[0, 1, 2, 3].map((row) => (
-                  <div key={row} className="grid min-w-[980px] grid-cols-[48px_220px_150px_220px_150px_160px_130px_260px] items-center gap-0 border-b border-border/50 px-5 py-4 last:border-b-0">
+                  <div key={row} className="grid min-w-[1120px] grid-cols-[48px_220px_150px_170px_220px_150px_160px_130px_280px] items-center gap-0 border-b border-border/50 px-5 py-4 last:border-b-0">
                     <div className="h-4 w-4 animate-pulse rounded bg-muted motion-reduce:animate-none" />
                     <div className="space-y-2">
                       <div className="h-4 w-36 animate-pulse rounded bg-muted motion-reduce:animate-none" />
@@ -616,7 +683,7 @@ export default function UserManagement() {
               </div>
             </div>
           ) : (
-            <Table className="min-w-[980px]" aria-label="All users">
+            <Table className="min-w-[1120px]" aria-label="All users">
               <TableHeader>
                 <TableRow className="border-border/70 bg-muted/45 hover:bg-muted/45 dark:border-white/10">
                   <TableHead className="w-12 pl-5">
@@ -628,11 +695,12 @@ export default function UserManagement() {
                   </TableHead>
                   <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">User</TableHead>
                   <TableHead className="min-w-[150px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Role</TableHead>
+                  <TableHead className="min-w-[170px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">AML Roles</TableHead>
                   <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Mailbox</TableHead>
                   <TableHead className="min-w-[150px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Status</TableHead>
                   <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Last Login</TableHead>
                   <TableHead className="min-w-[130px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Created</TableHead>
-                  <TableHead className="min-w-[260px] pr-5 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Actions</TableHead>
+                  <TableHead className="min-w-[280px] pr-5 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -649,6 +717,7 @@ export default function UserManagement() {
                     onDelete={handleDeleteUser}
                     onEditMailbox={openMailboxDialog}
                     onClonePermissions={(userId) => { setCloneSourceUserId(userId); setCloneDialogOpen(true); }}
+                    onManageAmlRoles={openAmlRoleDialog}
                     onForceLogout={handleForceLogout}
                     selected={selectedUserIds.has(u.id)}
                     onToggleSelect={toggleSelectUser}
@@ -704,6 +773,42 @@ export default function UserManagement() {
         users={users}
         onSuccess={fetchUsers}
       />
+
+      {/* AML Role Assignment Dialog */}
+      <Dialog open={amlRoleDialogOpen} onOpenChange={setAmlRoleDialogOpen}>
+        <DialogContent className="max-w-xl border-primary/15 bg-card/95 p-0 shadow-2xl shadow-primary/10">
+          <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Assign AML Roles
+            </DialogTitle>
+            <DialogDescription>
+              Select the AML/CTF roles for {users.find((entry) => entry.id === editingAmlUserId)?.username || 'this user'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 p-6">
+            {AML_ROLE_OPTIONS.map((role) => (
+              <label key={role.value} className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5">
+                <Checkbox
+                  checked={editingAmlRoles.includes(role.value)}
+                  onCheckedChange={(checked) => toggleAmlRole(role.value, checked === true)}
+                  aria-label={`Toggle ${role.label} AML role`}
+                />
+                <span className="min-w-0 space-y-1">
+                  <span className="block text-sm font-semibold text-foreground">{role.label}</span>
+                  <span className="block text-xs leading-5 text-muted-foreground">{role.description}</span>
+                </span>
+              </label>
+            ))}
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setAmlRoleDialogOpen(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleSaveAmlRoles} disabled={savingAmlRoles} className="flex-1">
+                {savingAmlRoles ? 'Saving...' : 'Save AML Roles'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Mailbox Dialog */}
       <Dialog open={mailboxDialogOpen} onOpenChange={setMailboxDialogOpen}>
