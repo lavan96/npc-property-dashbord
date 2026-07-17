@@ -454,7 +454,7 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
                       <Input
                         type="number"
                         min="0"
-                        value={formData.monthly_repayment ?? ''}
+                        value={formData.monthly_repayment || ''}
                         onChange={(e) => {
                           const raw = e.target.value;
                           updateField('monthly_repayment', raw === '' ? 0 : (parseFloat(raw) || 0));
