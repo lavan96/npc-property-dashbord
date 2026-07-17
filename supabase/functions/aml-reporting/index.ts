@@ -13,6 +13,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "../_shared/auth.ts";
+import { requireStepUpSession } from "../_shared/aml/step-up.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -202,6 +203,11 @@ Deno.serve(async (req) => {
     // ── SUBMISSIONS ──────────────────────────────
     if (op === "submit_record") {
       requireMlro();
+      const stepUpErr = await requireStepUpSession({
+        admin, userId, capability: "aml.report",
+        token: body.step_up_session_token, headers: req.headers,
+      });
+      if (stepUpErr) return stepUpErr;
       const { data: report } = await aml.from("reports").select("*").eq("id", String(body.report_id)).maybeSingle();
       if (!report) return jr({ error: "Report not found" }, 404);
       if (report.status !== "approved") return jr({ error: "Report must be MLRO-approved before recording a submission" }, 400);
