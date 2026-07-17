@@ -78,6 +78,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
     "aml_v3_regulatory_hub",
     "aml_v3_terminology_editor",
     "aml_v3_metrics_relocation",
+    "aml_v3_org_settings",
   ];
   try {
     const { data, error } = await supabase
