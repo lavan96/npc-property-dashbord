@@ -15,6 +15,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "../_shared/auth.ts";
+import { requireStepUpSession } from "../_shared/aml/step-up.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -78,6 +79,18 @@ Deno.serve(async (req) => {
       if (!isMlro(roles)) return jr({ error: "MLRO only" }, 403);
       return null;
     };
+    const CONFIG_WRITE_OPS = new Set([
+      "update_tenant_settings", "upsert_plan",
+      "upsert_provider", "delete_provider", "set_provider_health",
+      "upsert_entitlement_override", "delete_entitlement_override",
+    ]);
+    if (CONFIG_WRITE_OPS.has(op)) {
+      const stepUpErr = await requireStepUpSession({
+        admin, userId, capability: "aml.configure",
+        token: (args as any).step_up_session_token, headers: req.headers,
+      });
+      if (stepUpErr) return stepUpErr;
+    }
 
     switch (op) {
       case "summary": {
