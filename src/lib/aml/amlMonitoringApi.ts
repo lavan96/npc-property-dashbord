@@ -67,6 +67,10 @@ export const amlMonitoringApi = {
   upsertAlert: (alert: Partial<AmlAlert>) => invoke<{ alert: AmlAlert }>({ op: "upsert_alert", alert }),
   resolveAlert: (id: string, status: AmlAlertStatus, resolution_note?: string) =>
     invoke<{ alert: AmlAlert }>({ op: "resolve_alert", id, status, resolution_note }),
+  assignAlert: (id: string, opts: { assigned_to?: string; status?: AmlAlertStatus } = {}) =>
+    invoke<{ alert: AmlAlert }>({ op: "assign_alert", id, ...opts }),
+  runScansAdmin: () =>
+    invoke<{ alerts_created: number; reviews_escalated: number }>({ op: "run_scans_admin" }),
 
   listEdd: (p: { case_id?: string; status?: AmlEddStatus; limit?: number } = {}) =>
     invoke<{ edd_cases: AmlEddCase[] }>({ op: "list_edd", ...p }),
