@@ -311,13 +311,13 @@ function DealExpandedRow({
 // ─── Deal Management Row ───
 function DealManageRow({
   deal,
-  responsiblePersons,
+  teamUsers,
   onDealClick,
   onUpdateDeal,
   onUpdateStage,
 }: {
   deal: DealWithClient;
-  responsiblePersons: string[];
+  teamUsers: TeamUser[];
   onDealClick?: () => void;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
   onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
