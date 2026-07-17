@@ -23,7 +23,9 @@ export interface ChartData {
   generated_reports: {
     id: string;
     title: string;
+    display_title?: string;
     created_at: string;
+    listing_count?: number | null;
   } | null;
 }
 
@@ -229,11 +231,11 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
                     onClick={() => navigate(`/report/${chart.report_id}`)}
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-                    <span className="truncate">{chart.generated_reports.title}</span>
+                    <span className="truncate">{chart.generated_reports.display_title ?? chart.generated_reports.title}</span>
                     <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent><p>View report: {chart.generated_reports.title}</p></TooltipContent>
+                <TooltipContent><p>View report: {chart.generated_reports.display_title ?? chart.generated_reports.title}</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -345,4 +347,3 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
     </Card>
   );
 }
-

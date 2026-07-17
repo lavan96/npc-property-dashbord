@@ -16,6 +16,7 @@ import { ChartFilters } from '@/components/charts/ChartFilters';
 import { ChartStats } from '@/components/charts/ChartStats';
 import { useChartExport } from '@/components/charts/useChartExport';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { buildChartReportOptions, type ChartSourceReport } from '@/lib/chartReportLabels';
 
 const CHARTS_PER_PAGE = 24;
 
@@ -78,7 +79,7 @@ export default function Charts() {
         const { data: reportsResult, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
           table: 'generated_reports',
           reportIds,
-          listOptions: { select: 'id, title, created_at' }
+          listOptions: { select: 'id, title, created_at, listing_count' }
         });
         if (!reportsError && reportsResult?.reports) {
           reportsResult.reports.forEach((r: any) => reportsMap.set(r.id, r));
@@ -113,9 +114,19 @@ export default function Charts() {
         }
       }
 
+      const reportDisplayLabels = new Map(
+        buildChartReportOptions(Array.from(reportsMap.values()))
+          .map(report => [report.id, report.label]),
+      );
+
       const transformed: ChartData[] = chartsData.map((chart: any) => ({
         ...chart,
-        generated_reports: chart.report_id ? reportsMap.get(chart.report_id) || null : null,
+        generated_reports: chart.report_id && reportsMap.has(chart.report_id)
+          ? {
+              ...reportsMap.get(chart.report_id),
+              display_title: reportDisplayLabels.get(chart.report_id),
+            }
+          : null,
         analysis_text: analysisMap.get(chart.id) || null,
       }));
 
@@ -134,12 +145,14 @@ export default function Charts() {
   // Derived data
   const chartTypes = useMemo(() => [...new Set(charts.map(c => c.chart_type))].sort(), [charts]);
   const uniqueReports = useMemo(() => {
-    const map = new Map<string, string>();
-    charts.forEach(c => {
-      if (c.generated_reports) map.set(c.report_id, c.generated_reports.title);
-    });
-    return Array.from(map.entries()).map(([id, title]) => ({ id, title }));
+    return buildChartReportOptions(
+      charts.flatMap(c => c.generated_reports ? [c.generated_reports as ChartSourceReport] : []),
+    ).map(({ id, label }) => ({ id, title: label }));
   }, [charts]);
+  const reportLabels = useMemo(
+    () => new Map(uniqueReports.map(report => [report.id, report.title])),
+    [uniqueReports],
+  );
 
   // Date range cutoff
   const dateCutoff = useMemo(() => {
@@ -164,7 +177,7 @@ export default function Charts() {
       result = result.filter(c =>
         c.title.toLowerCase().includes(q) ||
         c.chart_type.toLowerCase().includes(q) ||
-        c.generated_reports?.title.toLowerCase().includes(q) ||
+        reportLabels.get(c.report_id)?.toLowerCase().includes(q) ||
         c.analysis_text?.toLowerCase().includes(q)
       );
     }
@@ -202,7 +215,7 @@ export default function Charts() {
     }
 
     return result;
-  }, [charts, searchQuery, chartTypeFilter, reportFilter, sortBy, dateCutoff]);
+  }, [charts, searchQuery, chartTypeFilter, reportFilter, sortBy, dateCutoff, reportLabels]);
 
   // Pagination (Enhancement #9)
   const paginatedCharts = useMemo(() => filteredCharts.slice(0, visibleCount), [filteredCharts, visibleCount]);
@@ -221,7 +234,7 @@ export default function Charts() {
       if (c.generated_reports) {
         const key = c.report_id;
         if (!groups.has(key)) {
-          groups.set(key, { reportTitle: c.generated_reports.title, reportId: c.report_id, charts: [] });
+          groups.set(key, { reportTitle: reportLabels.get(key) ?? c.generated_reports.title, reportId: c.report_id, charts: [] });
         }
         groups.get(key)!.charts.push(c);
       } else {
@@ -230,22 +243,11 @@ export default function Charts() {
     });
 
     const result = Array.from(groups.values());
-    // Disambiguate groups whose reports share the same title by appending
-    // a short report-id suffix so users can tell them apart.
-    const titleCounts = result.reduce<Record<string, number>>((acc, g) => {
-      acc[g.reportTitle] = (acc[g.reportTitle] ?? 0) + 1;
-      return acc;
-    }, {});
-    result.forEach(g => {
-      if (titleCounts[g.reportTitle] > 1 && g.reportId && g.reportId !== 'none') {
-        g.reportTitle = `${g.reportTitle} · ${g.reportId.slice(-6)}`;
-      }
-    });
     if (ungrouped.length > 0) {
       result.push({ reportTitle: 'Unlinked Charts', reportId: 'none', charts: ungrouped });
     }
     return result;
-  }, [viewMode, paginatedCharts]);
+  }, [viewMode, paginatedCharts, reportLabels]);
 
   // Selection handlers
   const toggleSelect = useCallback((id: string) => {

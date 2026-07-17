@@ -99,7 +99,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                         onClick={() => { onClose(); navigate(`/report/${chart.report_id}`); }}
                       >
                         <FileText className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{chart.generated_reports.title}</span>
+                        <span className="truncate">{chart.generated_reports.display_title ?? chart.generated_reports.title}</span>
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </button>
                     )}
