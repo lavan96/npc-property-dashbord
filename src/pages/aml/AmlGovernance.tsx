@@ -225,7 +225,17 @@ export default function AmlGovernance() {
           <TabsTrigger value="stepup"><KeyRound className="h-4 w-4 mr-1" /> Step-Up Sessions</TabsTrigger>
           <TabsTrigger value="drills"><LifeBuoy className="h-4 w-4 mr-1" /> Resilience Drills</TabsTrigger>
           <TabsTrigger value="runbooks"><BookOpen className="h-4 w-4 mr-1" /> Runbooks</TabsTrigger>
+          {orgSettingsFlag && (
+            <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1" /> Contacts</TabsTrigger>
+          )}
         </TabsList>
+
+        {orgSettingsFlag && (
+          <TabsContent value="contacts" className="space-y-4">
+            <GovernanceContactsPanel />
+          </TabsContent>
+        )}
+
 
         {/* Release Gate */}
         <TabsContent value="gate" className="space-y-4">
