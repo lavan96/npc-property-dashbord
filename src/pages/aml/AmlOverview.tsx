@@ -96,7 +96,14 @@ const QUEUE_LINKS: QueueLink[] = [
 ];
 
 export default function AmlOverview() {
+  const { complianceHome: v3Home, loading: v3Loading } = useAmlV3Flags();
   const { roles, loading: accessLoading } = useAmlAccess();
+
+  // Phase 3 (V3) — swap to the action-led Compliance Home when the
+  // `aml_v3_compliance_home` feature flag is on. Default false → V2 renders.
+  if (!v3Loading && v3Home) {
+    return <AmlComplianceHomeV3 />;
+  }
 
   const canView = hasAmlCapability(roles, "aml.view");
   const canInvestigate = hasAmlCapability(roles, "aml.investigate");
