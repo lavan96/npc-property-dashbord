@@ -12,6 +12,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "../_shared/auth.ts";
+import { requireStepUpSession } from "../_shared/aml/step-up.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
