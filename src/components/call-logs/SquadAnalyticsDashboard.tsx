@@ -66,6 +66,7 @@ const squadTooltipContentStyle = {
   color: '#f4f4f5',
 };
 const squadTooltipLabelStyle = { color: '#f4f4f5' };
+const squadTooltipItemStyle = { color: '#f4f4f5' };
 
 const getIntentColor = (intent: string, index: number): string => {
   const normalizedIntent = intent.toLowerCase().replace(/\s+/g, '_');
@@ -347,7 +348,7 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={squadTooltipContentStyle} labelStyle={squadTooltipLabelStyle} />
+                    <Tooltip contentStyle={squadTooltipContentStyle} labelStyle={squadTooltipLabelStyle} itemStyle={squadTooltipItemStyle} />
                     <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -390,7 +391,7 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
                       tickLine={{ stroke: 'rgba(255,255,255,0.12)' }}
                       axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
                     />
-                    <Tooltip contentStyle={squadTooltipContentStyle} labelStyle={squadTooltipLabelStyle} />
+                    <Tooltip contentStyle={squadTooltipContentStyle} labelStyle={squadTooltipLabelStyle} itemStyle={squadTooltipItemStyle} />
                     <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
                     <Bar dataKey="Total Calls" fill="#60a5fa" radius={[8, 8, 0, 0]} />
                     <Bar dataKey="Completed" fill="#34d399" radius={[8, 8, 0, 0]} />
