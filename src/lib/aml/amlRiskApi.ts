@@ -86,8 +86,9 @@ export const amlRiskApi = {
   upsertTrigger: (trigger: Partial<AmlMandatoryTrigger>) => invoke<{ trigger: AmlMandatoryTrigger }>({ op: "upsert_trigger", trigger }),
 
   evaluate: (case_id: string, inputs: Record<string, any>) =>
-    invoke<{ assessment: AmlRiskAssessment }>({ op: "evaluate", case_id, inputs }),
+    invoke<{ assessment: AmlRiskAssessment; auto_decision: AmlDecision | null; program_version: string; straight_through: boolean }>({ op: "evaluate", case_id, inputs }),
   listAssessments: (case_id: string) => invoke<{ assessments: AmlRiskAssessment[] }>({ op: "list_assessments", case_id }),
+
 
   requestOverride: (p: { case_id: string; assessment_id?: string; requested_reason: string; requested_rating?: string }) =>
     invoke<{ override: AmlRiskOverride }>({ op: "request_override", ...p }),
