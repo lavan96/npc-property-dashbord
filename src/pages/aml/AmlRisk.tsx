@@ -105,6 +105,7 @@ export default function AmlRisk() {
 
   return (
     <div className="space-y-6">
+      <LegacyAliasBanner label="Risk & Decision" />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <div>
