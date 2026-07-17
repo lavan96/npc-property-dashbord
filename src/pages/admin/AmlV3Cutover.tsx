@@ -321,6 +321,69 @@ export default function AmlV3Cutover() {
           <p>· Superadmin bypass preserved; MLRO-only writes on Governance Contacts.</p>
         </CardContent>
       </Card>
+
+      {/* Phase 12 · Legacy alias local usage panel (this browser only). */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            Legacy alias usage · this browser
+          </CardTitle>
+          <CardDescription>
+            Local-only signal captured by the alias banners on legacy
+            /admin/aml/verification, /screening, /risk and /finance routes.
+            Use it to sanity-check whether operators have adopted the case
+            workspace before flipping <code>aml_v3_nav</code>. Not a tenant-wide
+            rollup — a future phase can promote this to server-side telemetry.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Badge variant="outline" className="gap-1">
+              <Activity className="h-3 w-3 text-muted-foreground" />
+              {legacyTotal} total hit{legacyTotal === 1 ? "" : "s"}
+            </Badge>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={refreshLegacy}>
+                <RefreshCw className="h-3 w-3 mr-1.5" />
+                Refresh
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { clearLegacyAliasHits(); refreshLegacy(); toast.success("Local hits cleared"); }}
+                disabled={legacyTotal === 0}
+              >
+                <Trash2 className="h-3 w-3 mr-1.5" />
+                Clear
+              </Button>
+            </div>
+          </div>
+          {legacyHits.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              No legacy alias visits recorded in this browser yet.
+            </p>
+          ) : (
+            <div className="rounded-md border border-border divide-y divide-border">
+              {legacyHits.map((h) => (
+                <div key={h.path} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground truncate">{h.label}</div>
+                    <code className="text-muted-foreground">{h.path}</code>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-muted-foreground">
+                      last {new Date(h.lastSeen).toLocaleString()}
+                    </span>
+                    <Badge variant="secondary">{h.count}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
