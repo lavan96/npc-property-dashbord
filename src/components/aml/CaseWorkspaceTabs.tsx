@@ -522,8 +522,8 @@ function FundingFinanceTab({ caseId }: { caseId: string }) {
           amlFinanceApi.listDiscrepancies({ case_id: caseId }),
         ]);
         if (!alive) return;
-        setComparisons(c ?? []);
-        setDiscrepancies(d ?? []);
+        setComparisons((c as any)?.comparisons ?? (Array.isArray(c) ? c : []));
+        setDiscrepancies((d as any)?.discrepancies ?? (Array.isArray(d) ? d : []));
       } catch {
         // silent — panel shows empty state
       } finally {
