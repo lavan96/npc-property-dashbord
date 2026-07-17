@@ -10,7 +10,7 @@
  *     capabilities; write actions gated by `canWrite`.
  *   - No new data model — reuses existing amlVerificationApi / amlRiskApi.
  */
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
