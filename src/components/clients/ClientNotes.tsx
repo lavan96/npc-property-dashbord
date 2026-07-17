@@ -195,7 +195,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       }
       const label = visibilityOptions.find(o => o.value === visibility)?.label || 'Note';
       setNewNote('');
-      setVisibility(null);
+      setVisibility('internal_npc');
       setIsAdding(false);
       toast.success(`${label} note saved`);
     },
