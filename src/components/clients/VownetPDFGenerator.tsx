@@ -387,9 +387,13 @@ export function VownetPDFGenerator({
     try {
       const storagePath = `vownet-forms/${clientIdVal}/${fileName}`;
       const file = new File([blob], fileName, { type: 'application/pdf' });
-      const uploadedPath = await secureStorageUpload('client-files', storagePath, file);
+      const uploadResult = await secureStorageUpload('client-files', storagePath, file, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
 
-      if (uploadedPath) {
+      if (uploadResult?.success) {
+        const persistedPath = uploadResult.path || storagePath;
         await invokeSecureFunction('manage-client-data', {
           operation: 'create',
           table: 'client_files',
@@ -397,7 +401,7 @@ export function VownetPDFGenerator({
           data: {
             category: 'vownet',
             file_name: fileName,
-            file_path: uploadedPath,
+            file_path: persistedPath,
             file_type: 'application/pdf',
             file_size: blob.size,
             is_vownet_form: true,
@@ -405,6 +409,8 @@ export function VownetPDFGenerator({
           },
         });
         console.log('✓ Vownet PDF persisted to storage + client_files');
+      } else {
+        console.error('Vownet PDF upload failed:', uploadResult?.error);
       }
     } catch (err) {
       console.error('Failed to persist Vownet PDF:', err);
