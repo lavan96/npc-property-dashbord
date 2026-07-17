@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 import { hasAmlCapability, type AmlCapability } from "@/lib/aml/permissions";
+import { useAmlTerminology } from "@/lib/aml/useAmlTerminology";
 
 /**
  * Phase 1 — Five-Workspace Navigation Shell.
