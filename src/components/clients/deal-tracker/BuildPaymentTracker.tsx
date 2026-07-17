@@ -57,8 +57,12 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val);
   };
 
-  const completedCount = sorted.filter(p => p.paid_to_builder).length;
+  const isStageComplete = (p: BuildProgressPayment) =>
+    p.builder_invoice_received && p.submitted_to_lender && p.funds_released && p.paid_to_builder;
+
+  const completedCount = sorted.filter(isStageComplete).length;
   const progressPercent = sorted.length > 0 ? (completedCount / sorted.length) * 100 : 0;
+
 
   return (
     <div className="space-y-3">
