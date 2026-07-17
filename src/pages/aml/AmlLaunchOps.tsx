@@ -34,11 +34,20 @@ type Risk = {
   mitigation: string | null; next_review_at: string | null;
 };
 type HistoryRow = { id: string; from_stage: string | null; to_stage: string; changed_by_label: string | null; reason: string | null; created_at: string };
+type Readiness = {
+  gate_pass: boolean;
+  gate_status: string;
+  gate_ran_at: string | null;
+  failing_scenarios: string[];
+  open_critical_risks: string[];
+  broad_production_ready: boolean;
+};
 type Summary = {
   rollout: { rollout_stage: Stage; rollout_stage_since?: string; rollout_notes?: string | null };
   scenarios: { total: number; by_status: Record<string, number> };
   risks: { total: number; by_status: Record<string, number> };
   recent_history: HistoryRow[];
+  readiness?: Readiness;
   my_role_is_mlro: boolean;
 };
 
