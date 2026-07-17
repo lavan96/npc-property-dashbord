@@ -278,6 +278,62 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
   );
 }
 
+/* -------------------- terminology live preview -------------------- */
+
+const PREVIEW_SAMPLES = [
+  "Compliance Home", "Customer Compliance", "Transaction Compliance",
+  "Regulatory & Assurance", "Platform Administration",
+  "Register", "Intake Queue", "Verification", "Screening", "Risk",
+  "AUSTRAC Hub", "Records & Privacy", "Governance", "Configuration",
+];
+
+function TerminologyPreview({ jsonText, lockedKeys }: { jsonText: string; lockedKeys: string[] }) {
+  const parsed = useMemo(() => {
+    try { return jsonText.trim() ? JSON.parse(jsonText) as Record<string, string> : {}; }
+    catch { return null; }
+  }, [jsonText]);
+  const lockedSet = useMemo(() => new Set(lockedKeys), [lockedKeys]);
+  if (parsed === null) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+        Invalid JSON — preview unavailable.
+      </div>
+    );
+  }
+  const refused = Object.keys(parsed).filter((k) => lockedSet.has(k));
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-muted-foreground">Live preview</span>
+        {refused.length > 0 && (
+          <Badge variant="outline" className="border-destructive/50 text-destructive text-[10px]">
+            {refused.length} locked key{refused.length === 1 ? "" : "s"} will be refused
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {PREVIEW_SAMPLES.map((label) => {
+          const override = parsed[label];
+          return (
+            <Badge
+              key={label}
+              variant="outline"
+              className={override ? "border-primary/40 text-primary" : "border-border/60 text-muted-foreground"}
+            >
+              {override ?? label}
+            </Badge>
+          );
+        })}
+      </div>
+      {refused.length > 0 && (
+        <div className="text-[11px] text-destructive">
+          Refused: <span className="font-mono">{refused.join(", ")}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* -------------------- plan tab -------------------- */
 
 function PlanPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
