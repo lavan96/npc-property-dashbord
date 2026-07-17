@@ -178,10 +178,16 @@ export default function AmlMonitoring() {
             <p className="text-xs text-muted-foreground">Alerts, EDD, source of funds/wealth, and existing-customer remediation.</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={busy}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Refresh
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          {isMlro && (
+            <Button variant="outline" size="sm" onClick={runScansNow} disabled={busy}>
+              <Sparkles className="mr-2 h-4 w-4" /> Run scans now
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={load} disabled={busy}>
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Refresh
+          </Button>
+        </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         {[
