@@ -333,7 +333,7 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
     : 'neutral';
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded}>
+    <>
       <TableRow className={cn(
         'group border-b border-border/60 transition-colors hover:bg-muted/35',
         info.status === 'active_critical' && 'bg-destructive/[0.035] hover:bg-destructive/[0.06]',
@@ -342,11 +342,9 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
       )}>
         {/* Expand toggle */}
         <TableCell className="w-8 px-2">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 hover:border-border hover:bg-background">
-              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </Button>
-          </CollapsibleTrigger>
+          <Button variant="ghost" size="sm" onClick={() => setExpanded(v => !v)} className="h-7 w-7 rounded-full border border-transparent p-0 hover:border-border hover:bg-background">
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
         </TableCell>
 
         {/* Client */}
@@ -429,9 +427,9 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
       </TableRow>
 
       {/* Expanded detail */}
-      <TableRow className={cn(!expanded && 'hidden')}>
-        <TableCell colSpan={8} className="bg-gradient-to-r from-muted/50 via-background to-muted/30 p-0">
-          <CollapsibleContent>
+      {expanded && (
+        <TableRow>
+          <TableCell colSpan={8} className="bg-gradient-to-r from-muted/50 via-background to-muted/30 p-0">
             <div className="mx-2 my-2 rounded-xl border border-border/70 bg-background/80 px-4 py-3 shadow-sm space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
@@ -480,10 +478,10 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
                 </div>
               )}
             </div>
-          </CollapsibleContent>
-        </TableCell>
-      </TableRow>
-    </Collapsible>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   );
 }
 
