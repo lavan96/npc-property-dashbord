@@ -25,6 +25,12 @@ export interface FinancePortalNotificationInput {
   exclude_portal_user_id?: string;
   /** Override urgency. Defaults to URGENT_EVENTS lookup. */
   urgent?: boolean;
+  /** Portal that produced the event. Command Centre callers must opt in explicitly. */
+  origin_portal?: 'command_center' | 'client_portal' | 'finance_portal' | 'system';
+  related_entity_type?: string;
+  related_entity_id?: string;
+  finance_file_id?: string;
+  correlation_id?: string;
 }
 
 /** Events that bypass quiet hours — must reach broker in real time. */
@@ -132,6 +138,14 @@ export async function notifyFinancePortalAssignees(
         portal_user_id: r.portalUserId,
         client_id: input.client_id,
         notification_type: input.notification_type,
+        origin_portal: input.origin_portal || 'system',
+        target_portal: 'finance_portal',
+        notification_domain: 'finance',
+        command_centre_authorised: true,
+        related_entity_type: input.related_entity_type || null,
+        related_entity_id: input.related_entity_id || null,
+        finance_file_id: input.finance_file_id || null,
+        correlation_id: input.correlation_id || null,
         title: input.title,
         body: input.body || null,
         link_path: input.link_path || null,
