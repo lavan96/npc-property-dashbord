@@ -75,7 +75,9 @@ export default function AmlConfiguration() {
             <Settings2 className="h-6 w-6 text-primary" /> AML Configuration
           </h1>
           <p className="text-sm text-muted-foreground">
-            White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics.
+            {metricsRelocation
+              ? "White-label branding, plan entitlements, and provider selection. Provider cost & failure metrics have moved to the Integration Health workspace."
+              : "White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics."}
           </p>
         </div>
         {!isMlro && (
@@ -87,7 +89,7 @@ export default function AmlConfiguration() {
         )}
       </div>
 
-      <SummaryTiles summary={summary} />
+      <SummaryTiles summary={summary} hideMetrics={metricsRelocation} />
 
       <Tabs defaultValue="branding" className="w-full">
         <TabsList>
