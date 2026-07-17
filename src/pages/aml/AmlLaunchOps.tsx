@@ -537,3 +537,172 @@ function RiskDialog({ onSaved }: { onSaved: () => void }) {
     </Dialog>
   );
 }
+
+function LaunchCertificationPanel({
+  summary, isMlro, certifications, onChanged,
+}: {
+  summary: Summary | null;
+  isMlro: boolean;
+  certifications: any[];
+  onChanged: () => Promise<void> | void;
+}) {
+  const [attestation, setAttestation] = useState("");
+  const [ack, setAck] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [revokeFor, setRevokeFor] = useState<any | null>(null);
+  const [revokeReason, setRevokeReason] = useState("");
+  const readiness = summary?.readiness;
+  const activeCert = certifications.find((c) => c.status === "issued") ?? null;
+  const ready =
+    !!readiness?.broad_production_ready &&
+    (summary?.scenarios.by_status?.not_run ?? 0) === 0 &&
+    (summary?.scenarios.total ?? 0) > 0;
+
+  const certify = async () => {
+    if (!ack || attestation.trim().length < 20) {
+      toast.error("Attestation (≥20 chars) and acknowledgement are required");
+      return;
+    }
+    setBusy(true);
+    try {
+      await callOp("certify_launch", { attestation: attestation.trim() });
+      toast.success("Launch certification issued");
+      setAttestation(""); setAck(false);
+      await onChanged();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const revoke = async () => {
+    if (!revokeFor || revokeReason.trim().length < 5) return;
+    setBusy(true);
+    try {
+      await callOp("revoke_certification", { id: revokeFor.id, reason: revokeReason.trim() });
+      toast.success("Certification revoked");
+      setRevokeFor(null); setRevokeReason("");
+      await onChanged();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5 text-primary" /> Launch certification (AS-13)</CardTitle>
+          <CardDescription>
+            Final MLRO sign-off attesting that AS-01…AS-13 pass, the release gate is green,
+            and the risk register is clear of open critical items. Requires a step-up session.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {activeCert ? (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              <AlertTitle>Active launch certification</AlertTitle>
+              <AlertDescription className="space-y-1">
+                <div>Issued by <span className="font-medium">{activeCert.attested_by_label ?? "—"}</span> on {new Date(activeCert.created_at).toLocaleString()}.</div>
+                <div className="text-xs text-muted-foreground">Stage at certification: {activeCert.rollout_stage ?? "—"} · release gate {activeCert.release_gate_status ?? "—"}.</div>
+                <div className="italic text-xs">"{activeCert.attestation}"</div>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert variant={ready ? "default" : "destructive"}>
+              <AlertTitle>{ready ? "Ready to certify" : "Not ready to certify"}</AlertTitle>
+              <AlertDescription>
+                {ready
+                  ? "All acceptance scenarios have run and passed, the release gate is PASS, and no open critical risks remain."
+                  : "Clear every readiness gate on the Rollout tab (release gate PASS, every scenario run and passing, no open critical risks) before certifying."}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {isMlro && !activeCert && (
+            <div className="space-y-3 border rounded-md p-3">
+              <div>
+                <Label>MLRO attestation</Label>
+                <Textarea
+                  rows={3}
+                  placeholder="I, [name], as MLRO, confirm the AML/CTF programme is fit to enter broad production…"
+                  value={attestation}
+                  onChange={(e) => setAttestation(e.target.value)}
+                />
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <Checkbox checked={ack} onCheckedChange={(v) => setAck(!!v)} className="mt-0.5" />
+                <span>
+                  I acknowledge this certification writes an immutable snapshot of the current release gate,
+                  acceptance scenarios, and risk register to the AML audit chain.
+                </span>
+              </label>
+              <div className="flex justify-end">
+                <Button onClick={certify} disabled={!ready || !ack || busy || attestation.trim().length < 20}>
+                  <Award className="h-4 w-4 mr-1" /> Issue launch certification
+                </Button>
+              </div>
+            </div>
+          )}
+          {!isMlro && (
+            <Alert><AlertTitle>Read-only</AlertTitle>
+              <AlertDescription>Only the MLRO can issue or revoke a launch certification.</AlertDescription></Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Certification history</CardTitle></CardHeader>
+        <CardContent>
+          {certifications.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No launch certifications have been issued yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {certifications.map((c) => (
+                <div key={c.id} className="border rounded-md p-3 space-y-1 text-sm">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      {c.status === "issued"
+                        ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30">issued</Badge>
+                        : <Badge variant="outline" className="bg-muted text-muted-foreground">revoked</Badge>}
+                      <span className="font-medium">{c.attested_by_label ?? "—"}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleString()}</span>
+                    </div>
+                    {isMlro && c.status === "issued" && (
+                      <Button size="sm" variant="outline" onClick={() => setRevokeFor(c)}>
+                        <Ban className="h-4 w-4 mr-1" /> Revoke
+                      </Button>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Stage: {c.rollout_stage ?? "—"} · release gate: {c.release_gate_status ?? "—"} ·
+                    scenarios: {Array.isArray(c.scenario_snapshot) ? c.scenario_snapshot.length : 0} ·
+                    risks: {Array.isArray(c.risk_snapshot) ? c.risk_snapshot.length : 0}
+                  </div>
+                  <div className="italic text-xs">"{c.attestation}"</div>
+                  {c.status === "revoked" && (
+                    <div className="text-xs text-red-500">
+                      Revoked {c.revoked_at ? new Date(c.revoked_at).toLocaleString() : ""} by {c.revoked_by_label ?? "—"} — {c.revoked_reason}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!revokeFor} onOpenChange={(v) => { if (!v) { setRevokeFor(null); setRevokeReason(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Revoke launch certification</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Reason (required, ≥5 chars)</Label>
+            <Textarea rows={3} value={revokeReason} onChange={(e) => setRevokeReason(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeFor(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={revoke} disabled={busy || revokeReason.trim().length < 5}>Revoke</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
