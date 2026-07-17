@@ -309,8 +309,8 @@ function CreateCaseDialog({
 }
 
 function CaseDetailSheet({
-  caseId, onClose, onChanged, canWrite,
-}: { caseId: string | null; onClose: () => void; onChanged: () => void; canWrite: boolean }) {
+  caseId, onClose, onChanged, canWrite, canInvestigate,
+}: { caseId: string | null; onClose: () => void; onChanged: () => void; canWrite: boolean; canInvestigate: boolean }) {
   const [caseRow, setCaseRow] = useState<AmlCase | null>(null);
   const [events, setEvents] = useState<AmlCaseEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -350,7 +350,7 @@ function CaseDetailSheet({
 
   return (
     <Sheet open={!!caseId} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-xl overflow-hidden flex flex-col">
+      <SheetContent className="w-full sm:max-w-2xl overflow-hidden flex flex-col">
         <SheetHeader>
           <SheetTitle>{caseRow?.subject_display_name ?? "Case"}</SheetTitle>
           {caseRow && (
@@ -365,7 +365,7 @@ function CaseDetailSheet({
           {loading || !caseRow ? (
             <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {canWrite && nextOptions.length > 0 && (
                 <Card>
                   <CardHeader><CardTitle className="text-sm">Advance status</CardTitle></CardHeader>
@@ -383,33 +383,13 @@ function CaseDetailSheet({
                 </Card>
               )}
 
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Audit trail (hash-chained)</CardTitle></CardHeader>
-                <CardContent>
-                  {events.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No events yet.</p>
-                  ) : (
-                    <ol className="space-y-3">
-                      {events.map((ev) => (
-                        <li key={ev.id} className="border-l-2 border-border pl-3">
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(ev.created_at).toLocaleString()} · {ev.category}
-                          </div>
-                          <div className="text-sm">{ev.summary}</div>
-                          {ev.actor_label && (
-                            <div className="text-xs text-muted-foreground">by {ev.actor_label}</div>
-                          )}
-                          {ev.row_hash && (
-                            <div className="text-[10px] font-mono text-muted-foreground truncate">
-                              hash {ev.row_hash.slice(0, 16)}…
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </CardContent>
-              </Card>
+              <CaseWorkspaceTabs
+                caseRow={caseRow}
+                events={events}
+                canWrite={canWrite}
+                canInvestigate={canInvestigate}
+                onChanged={() => { void load(caseRow.id); onChanged(); }}
+              />
             </div>
           )}
         </ScrollArea>
