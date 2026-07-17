@@ -98,13 +98,13 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                 <div
                   className={`max-w-[75%] rounded-2xl border px-4 py-2.5 text-sm shadow-sm ${
                     isUser
-                      ? 'rounded-br-md border-info/20 bg-info/15 text-info-foreground'
+                      ? 'rounded-br-md border-primary/30 bg-primary text-primary-foreground'
                       : 'rounded-bl-md border-border dark:border-white/10 bg-white/[0.05] text-foreground dark:text-foreground'
                   }`}
                 >
                   <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{content}</p>
                   {msg.time && (
-                    <p className={`mt-1 text-[10px] ${isUser ? 'text-info-foreground/60' : 'text-muted-foreground dark:text-muted-foreground'}`}>
+                    <p className={`mt-1 text-[10px] ${isUser ? 'text-primary-foreground/70' : 'text-muted-foreground dark:text-muted-foreground'}`}>
                       {formatTime(msg.time)}
                     </p>
                   )}
