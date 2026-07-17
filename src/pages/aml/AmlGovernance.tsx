@@ -64,6 +64,7 @@ function CheckIcon({ status }: { status: string }) {
 
 export default function AmlGovernance() {
   const [tab, setTab] = useState("gate");
+  const { orgSettings: orgSettingsFlag } = useAmlV3Flags();
 
   // Release gate
   const [gates, setGates] = useState<GateRun[]>([]);
