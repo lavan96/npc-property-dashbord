@@ -69,6 +69,7 @@ import ReportEngineInspector from "./pages/admin/ReportEngineInspector";
 import FigmaTemplates from "./pages/admin/FigmaTemplates";
 import PdfImportEngineAdmin from "./pages/admin/PdfImportEngineAdmin";
 import BcSegmentEngineAdmin from "./pages/admin/BcSegmentEngineAdmin";
+import AmlV3Cutover from "./pages/admin/AmlV3Cutover";
 import PdfImportDiagnostics from "./pages/admin/PdfImportDiagnostics";
 import PdfImportMonitoring from "./pages/admin/PdfImportMonitoring";
 import PdfImportRetention from "./pages/admin/PdfImportRetention";
