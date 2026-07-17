@@ -24,6 +24,9 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
   const { loading, flagEnabled, roles, hasAnyRole } = useAmlAccess();
   const location = useLocation();
   const requiresStepUp = AML_STEP_UP_CAPABILITIES.includes(capability);
+  // Phase 13: single canonical store key read by both this guard and
+  // `getStepUpToken()` in `stepUpTokenStore.ts` so privileged edge-fn calls
+  // can attach the same session token the server issued.
   const stepUpKey = `aml_step_up_session:${capability}`;
 
   const [stepUpOpen, setStepUpOpen] = useState(false);
@@ -32,8 +35,8 @@ export function AmlGuard({ capability = "aml.view", children }: AmlGuardProps) {
     try {
       const raw = sessionStorage.getItem(stepUpKey);
       if (!raw) return false;
-      const parsed = JSON.parse(raw) as { expires_at: string };
-      return !!parsed?.expires_at && new Date(parsed.expires_at).getTime() > Date.now();
+      const parsed = JSON.parse(raw) as { expires_at: string; session_token?: string };
+      return !!parsed?.expires_at && !!parsed?.session_token && new Date(parsed.expires_at).getTime() > Date.now();
     } catch {
       return false;
     }
