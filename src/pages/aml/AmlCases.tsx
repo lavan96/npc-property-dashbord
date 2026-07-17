@@ -57,6 +57,7 @@ export default function AmlCasesPage() {
   const [risk, setRisk] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [activateOpen, setActivateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const load = async () => {
