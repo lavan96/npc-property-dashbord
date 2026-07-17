@@ -596,7 +596,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
                   <DealManageRow
                     key={deal.id}
                     deal={deal}
-                    responsiblePersons={responsiblePersons}
+                    teamUsers={teamUsers}
                     onDealClick={() => onDealClick?.(deal)}
                     onUpdateDeal={onUpdateDeal}
                     onUpdateStage={onUpdateStage}
