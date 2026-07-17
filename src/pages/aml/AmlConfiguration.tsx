@@ -267,6 +267,7 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
             onChange={(e) => setTerminologyText(e.target.value)}
             placeholder='{\n  "Customer Case": "Client Matter"\n}'
           />
+          <TerminologyPreview jsonText={terminologyText} lockedKeys={locked} />
         </CardContent>
       </Card>
 
