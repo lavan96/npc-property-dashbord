@@ -24,6 +24,7 @@ import {
 } from "@/lib/aml/amlTenantApi";
 import { refreshAmlTerminology } from "@/lib/aml/useAmlTerminology";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
 
 function fmtMoney(cents: number, currency = "AUD") {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency }).format((cents ?? 0) / 100);
@@ -39,6 +40,7 @@ function healthColor(status: AmlProviderHealth | null): string {
 
 export default function AmlConfiguration() {
   const { isMlro } = useAmlAccess();
+  const { metricsRelocation } = useAmlV3Flags();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<AmlTenantSummary | null>(null);
 
@@ -73,7 +75,9 @@ export default function AmlConfiguration() {
             <Settings2 className="h-6 w-6 text-primary" /> AML Configuration
           </h1>
           <p className="text-sm text-muted-foreground">
-            White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics.
+            {metricsRelocation
+              ? "White-label branding, plan entitlements, and provider selection. Provider cost & failure metrics have moved to the Integration Health workspace."
+              : "White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics."}
           </p>
         </div>
         {!isMlro && (
@@ -85,7 +89,7 @@ export default function AmlConfiguration() {
         )}
       </div>
 
-      <SummaryTiles summary={summary} />
+      <SummaryTiles summary={summary} hideMetrics={metricsRelocation} />
 
       <Tabs defaultValue="branding" className="w-full">
         <TabsList>
@@ -118,7 +122,7 @@ export default function AmlConfiguration() {
 
 /* -------------------- summary tiles -------------------- */
 
-function SummaryTiles({ summary }: { summary: AmlTenantSummary }) {
+function SummaryTiles({ summary, hideMetrics = false }: { summary: AmlTenantSummary; hideMetrics?: boolean }) {
   const activeProviders = summary.providers.filter((p) => p.active).length;
   const failureRate = summary.metrics_30d.calls > 0
     ? (summary.metrics_30d.failures / summary.metrics_30d.calls) * 100 : 0;
@@ -127,11 +131,14 @@ function SummaryTiles({ summary }: { summary: AmlTenantSummary }) {
   const tiles = [
     { label: "Plan", value: plan?.label ?? "—", icon: Package, sub: plan?.description ?? "" },
     { label: "Active providers", value: String(activeProviders), icon: Plug, sub: `${summary.providers.length} total` },
-    { label: "30-day calls", value: summary.metrics_30d.calls.toLocaleString(), icon: Activity, sub: `${failureRate.toFixed(1)}% failure` },
-    { label: "30-day cost", value: fmtMoney(summary.metrics_30d.cost_cents), icon: DollarSign, sub: "across all providers" },
+    ...(hideMetrics ? [] : [
+      { label: "30-day calls", value: summary.metrics_30d.calls.toLocaleString(), icon: Activity, sub: `${failureRate.toFixed(1)}% failure` },
+      { label: "30-day cost", value: fmtMoney(summary.metrics_30d.cost_cents), icon: DollarSign, sub: "across all providers" },
+    ]),
   ];
+  const cols = tiles.length >= 4 ? "md:grid-cols-4" : tiles.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
   return (
-    <div className="grid gap-3 md:grid-cols-4">
+    <div className={`grid gap-3 ${cols}`}>
       {tiles.map((t) => (
         <Card key={t.label} className="border-border/60 bg-card/60">
           <CardContent className="p-4">
@@ -151,6 +158,7 @@ function SummaryTiles({ summary }: { summary: AmlTenantSummary }) {
 /* -------------------- branding tab -------------------- */
 
 function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
+  const { terminologyEditor } = useAmlV3Flags();
   const s = summary.settings;
   const [displayName, setDisplayName] = useState(s?.display_name ?? "");
   const [contactEmail, setContactEmail] = useState(s?.contact_email ?? "");
@@ -259,15 +267,26 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
               </div>
             </AlertDescription>
           </Alert>
-          <Label className="text-xs uppercase text-muted-foreground">JSON map (label → replacement text)</Label>
-          <Textarea
-            className="font-mono text-xs min-h-[160px]"
-            disabled={!canWrite}
-            value={terminologyText}
-            onChange={(e) => setTerminologyText(e.target.value)}
-            placeholder='{\n  "Customer Case": "Client Matter"\n}'
-          />
-          <TerminologyPreview jsonText={terminologyText} lockedKeys={locked} />
+          {terminologyEditor ? (
+            <StructuredTerminologyEditor
+              value={terminologyText}
+              onChange={setTerminologyText}
+              lockedKeys={locked}
+              disabled={!canWrite}
+            />
+          ) : (
+            <>
+              <Label className="text-xs uppercase text-muted-foreground">JSON map (label → replacement text)</Label>
+              <Textarea
+                className="font-mono text-xs min-h-[160px]"
+                disabled={!canWrite}
+                value={terminologyText}
+                onChange={(e) => setTerminologyText(e.target.value)}
+                placeholder={'{\n  "Customer Case": "Client Matter"\n}'}
+              />
+              <TerminologyPreview jsonText={terminologyText} lockedKeys={locked} />
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -333,6 +352,115 @@ function TerminologyPreview({ jsonText, lockedKeys }: { jsonText: string; locked
     </div>
   );
 }
+
+/* -------------------- structured terminology editor (V3 · Directive 11) -------------------- */
+
+/**
+ * Row-based label editor replacing the raw JSON textarea. Keeps `value`
+ * as a JSON string so the surrounding save flow (which already parses
+ * and posts JSON) works unchanged. Locked regulatory terms are shown but
+ * disabled and cannot be added.
+ */
+function StructuredTerminologyEditor({
+  value, onChange, lockedKeys, disabled,
+}: {
+  value: string;
+  onChange: (json: string) => void;
+  lockedKeys: string[];
+  disabled: boolean;
+}) {
+  const parsed = useMemo(() => {
+    try { return value.trim() ? (JSON.parse(value) as Record<string, string>) : {}; }
+    catch { return null; }
+  }, [value]);
+  const lockedSet = useMemo(() => new Set(lockedKeys), [lockedKeys]);
+
+  const rows = useMemo(() => {
+    if (parsed === null) return [] as { key: string; replacement: string }[];
+    return Object.entries(parsed).map(([key, replacement]) => ({ key, replacement }));
+  }, [parsed]);
+
+  const writeRows = (next: { key: string; replacement: string }[]) => {
+    const map: Record<string, string> = {};
+    for (const r of next) {
+      const k = r.key.trim();
+      if (!k || lockedSet.has(k)) continue;
+      map[k] = r.replacement;
+    }
+    onChange(JSON.stringify(map, null, 2));
+  };
+
+  const updateRow = (idx: number, patch: Partial<{ key: string; replacement: string }>) => {
+    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+    writeRows(next);
+  };
+  const removeRow = (idx: number) => writeRows(rows.filter((_, i) => i !== idx));
+  const addRow = () => writeRows([...rows, { key: "", replacement: "" }]);
+
+  if (parsed === null) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+        Existing overrides are not valid JSON. Fix them in the JSON editor before switching to the structured view.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-border/60 divide-y divide-border/60">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 text-[11px] uppercase text-muted-foreground">
+          <span>Original label</span>
+          <span>Your replacement</span>
+          <span className="sr-only">Actions</span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="px-3 py-4 text-xs text-muted-foreground">
+            No overrides yet. Add one to relabel a workspace or nav item.
+          </div>
+        ) : rows.map((row, idx) => {
+          const isLocked = lockedSet.has(row.key.trim());
+          return (
+            <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 items-center">
+              <Input
+                value={row.key}
+                disabled={disabled}
+                placeholder="e.g. Customer Compliance"
+                onChange={(e) => updateRow(idx, { key: e.target.value })}
+                className={isLocked ? "border-destructive/50" : ""}
+              />
+              <Input
+                value={row.replacement}
+                disabled={disabled || isLocked}
+                placeholder="e.g. Client KYC"
+                onChange={(e) => updateRow(idx, { replacement: e.target.value })}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => removeRow(idx)}
+                aria-label="Remove override"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={addRow}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add override
+        </Button>
+        <span className="text-[11px] text-muted-foreground">
+          Locked regulatory terms are refused on save.
+        </span>
+      </div>
+      <TerminologyPreview jsonText={value} lockedKeys={lockedKeys} />
+    </div>
+  );
+}
+
 
 /* -------------------- plan tab -------------------- */
 
