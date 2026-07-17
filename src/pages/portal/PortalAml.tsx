@@ -238,10 +238,11 @@ export default function PortalAml() {
 /* ─────────────────────────  Stepper  ──────────────────────── */
 
 function Stepper({
-  steps, currentIdx, onSelect, sections,
+  steps, currentIdx, onSelect, sections, consented,
 }: {
   steps: typeof STEPS; currentIdx: number; onSelect: (i: number) => void;
   sections: { section: AmlSection; status: string }[];
+  consented: boolean;
 }) {
   const statusFor = (s?: AmlSection) => sections.find(x => x.section === s)?.status;
   return (
@@ -250,14 +251,19 @@ function Stepper({
         const st = statusFor(s.section);
         const done = st === 'submitted' || st === 'accepted' || st === 'complete';
         const active = i === currentIdx;
+        const locked = !consented && i !== 0;
         return (
           <li key={s.key}>
             <button
               type="button"
               onClick={() => onSelect(i)}
+              disabled={locked}
+              aria-disabled={locked}
+              title={locked ? 'Confirm consents to unlock' : undefined}
               className={cn(
                 'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition',
                 active ? 'border-brand-500 bg-brand-500/10 text-foreground' : 'border-border/60 text-muted-foreground hover:text-foreground',
+                locked && 'opacity-50 cursor-not-allowed hover:text-muted-foreground',
               )}
             >
               <span className={cn(
@@ -273,6 +279,7 @@ function Stepper({
       })}
     </ol>
   );
+
 }
 
 /* ─────────────────────────  Consent  ──────────────────────── */
