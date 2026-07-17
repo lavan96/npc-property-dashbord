@@ -18,13 +18,15 @@ export type AmlV3FlagKey =
   | "aml_v3_nav"
   | "aml_v3_start_client_compliance"
   | "aml_v3_compliance_home"
-  | "aml_v3_case_workspace";
+  | "aml_v3_case_workspace"
+  | "aml_v3_regulatory_hub";
 
 export interface AmlV3Flags {
   v3Nav: boolean;
   startClientCompliance: boolean;
   complianceHome: boolean;
   caseWorkspace: boolean;
+  regulatoryHub: boolean;
   loading: boolean;
 }
 
