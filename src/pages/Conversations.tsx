@@ -118,13 +118,15 @@ const channelColors: Record<string, string> = {
     "bg-accent/10 text-accent-foreground border-accent/35 shadow-[0_0_24px_rgba(168,85,247,0.16)]",
 };
 
+// Avatar bubble uses opaque endpoints so the parent row's read/unread tint
+// (gold unread highlight) does not bleed through and shift the bubble color.
 const avatarBackgrounds: Record<string, string> = {
-  sms: "from-info/24 via-info/13 to-card/72 dark:to-background/72",
-  email: "from-accent/24 via-accent/13 to-card/72 dark:to-background/72",
-  whatsapp: "from-success/26 via-success/14 to-card/72 dark:to-background/72",
-  instagram: "from-accent/24 via-accent/13 to-card/72 dark:to-background/72",
-  facebook: "from-accent/24 via-info/13 to-card/72 dark:to-background/72",
-  live_chat: "from-accent/24 via-info/12 to-card/72 dark:to-background/72",
+  sms: "from-info/30 via-info/16 to-card dark:to-background",
+  email: "from-accent/30 via-accent/16 to-card dark:to-background",
+  whatsapp: "from-success/32 via-success/17 to-card dark:to-background",
+  instagram: "from-accent/30 via-accent/16 to-card dark:to-background",
+  facebook: "from-accent/30 via-info/16 to-card dark:to-background",
+  live_chat: "from-accent/30 via-info/15 to-card dark:to-background",
 };
 
 const getContactInitials = (name?: string | null) => {
