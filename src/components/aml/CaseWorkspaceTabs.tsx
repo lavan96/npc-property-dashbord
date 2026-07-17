@@ -98,6 +98,11 @@ export function CaseWorkspaceTabs({ caseRow, events, canWrite, canInvestigate, o
           <FundingFinanceTab caseId={caseRow.id} />
         </TabsContent>
       )}
+      {v3Case && (
+        <TabsContent value="timeline" className="mt-4">
+          <TimelineTab caseId={caseRow.id} events={events} canInvestigate={canInvestigate} />
+        </TabsContent>
+      )}
       <TabsContent value="audit" className="mt-4">
         <AuditTab events={events} />
       </TabsContent>
