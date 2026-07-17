@@ -72,12 +72,39 @@ function normalizeAddressPayload(payload: Record<string, any>) {
   if (out.current_state && !/^[A-Z]{2,3}$/.test(String(out.current_state))) {
     throw new Error('State must be a 2–3 letter Australian state/territory code');
   }
+
+  // Also normalize secondary_* address fields (same rules)
+  if (typeof out.secondary_current_suburb === 'string') out.secondary_current_suburb = out.secondary_current_suburb.trim();
+  if (typeof out.secondary_current_state === 'string') out.secondary_current_state = out.secondary_current_state.trim().toUpperCase();
+  if (typeof out.secondary_current_postcode === 'string') out.secondary_current_postcode = out.secondary_current_postcode.trim();
+  if (typeof out.secondary_country === 'string') out.secondary_country = out.secondary_country.trim() || 'Australia';
+  if (out.secondary_current_postcode && !/^\d{4}$/.test(String(out.secondary_current_postcode))) {
+    throw new Error('Secondary postcode must be 4 digits');
+  }
+  if (out.secondary_current_state && !/^[A-Z]{2,3}$/.test(String(out.secondary_current_state))) {
+    throw new Error('Secondary state must be a 2–3 letter Australian state/territory code');
+  }
+
+  // If "same as primary" flag is set, copy primary address into secondary_* fields server-side
+  // (defensive — the UI already copies, but this guarantees persistence)
+  if (out.secondary_same_address_as_primary === true) {
+    out.secondary_current_address = out.current_address ?? out.secondary_current_address ?? null;
+    out.secondary_current_suburb = out.current_suburb ?? out.secondary_current_suburb ?? null;
+    out.secondary_current_state = out.current_state ?? out.secondary_current_state ?? null;
+    out.secondary_current_postcode = out.current_postcode ?? out.secondary_current_postcode ?? null;
+    out.secondary_country = out.country ?? out.secondary_country ?? 'Australia';
+    out.secondary_living_situation = out.living_situation ?? out.secondary_living_situation ?? null;
+    out.secondary_residential_status = out.residential_status ?? out.secondary_residential_status ?? null;
+  }
   return out;
 }
 
 function hasAddressFields(payload: Record<string, any> | undefined) {
   if (!payload) return false;
-  return ['current_address', 'current_suburb', 'current_state', 'current_postcode', 'country', 'living_situation', 'residential_status', 'address'].some((key) => key in payload);
+  return [
+    'current_address', 'current_suburb', 'current_state', 'current_postcode', 'country', 'living_situation', 'residential_status', 'address',
+    'secondary_current_address', 'secondary_current_suburb', 'secondary_current_state', 'secondary_current_postcode', 'secondary_country', 'secondary_living_situation', 'secondary_residential_status', 'secondary_same_address_as_primary',
+  ].some((key) => key in payload);
 }
 
 async function logAddressSyncEvent(supabase: any, input: { clientId: string; entityId: string; entityTable: string; operation: string; username?: string | null; userId?: string | null; authMethod?: string | null }) {
