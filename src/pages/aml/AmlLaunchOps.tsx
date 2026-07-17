@@ -81,6 +81,7 @@ export default function AmlLaunchOps() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [risks, setRisks] = useState<Risk[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [certifications, setCertifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadAll = async () => {
