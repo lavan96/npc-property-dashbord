@@ -120,15 +120,18 @@ Deno.serve(async (req) => {
       case "update_tenant_settings": {
         const err = mlroRequired(); if (err) return err;
         const patch = (args as any).patch ?? {};
+        let rejected: string[] = [];
         if (patch.terminology_overrides) {
-          patch.terminology_overrides = sanitizeTerminology(patch.terminology_overrides);
+          const { clean, rejected: r } = sanitizeTerminology(patch.terminology_overrides);
+          patch.terminology_overrides = clean;
+          rejected = r;
         }
         // Never allow tenant_id key change through here.
         delete patch.tenant_id;
         const { data, error } = await aml.from("tenant_settings")
           .update(patch).eq("tenant_id", tenantId).select("*").maybeSingle();
         if (error) return jr({ error: error.message }, 400);
-        return jr({ settings: data });
+        return jr({ settings: data, rejected_terminology_keys: rejected });
       }
 
       case "list_plans": {
