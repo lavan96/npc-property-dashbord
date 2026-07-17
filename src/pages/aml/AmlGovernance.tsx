@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "@/lib/aml/invokeAmlFunction";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,44 +86,64 @@ export default function AmlGovernance() {
 
   const loadGates = async () => {
     setGateLoading(true);
-    const { data, error } = await supabase.functions.invoke("aml-release-gate", { body: { op: "list", limit: 25 } });
-    if (!error && !(data as any)?.error) setGates(((data as any).runs ?? []) as GateRun[]);
+    try {
+      const data = await invokeAmlFunction<any>("aml-release-gate", { op: "list", limit: 25 });
+      setGates((data.runs ?? []) as GateRun[]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Unable to load release gates");
+    }
     setGateLoading(false);
   };
   const runGate = async () => {
     setGateBusy(true);
-    const { data, error } = await supabase.functions.invoke("aml-release-gate", { body: { op: "run" } });
-    setGateBusy(false);
-    if (error || (data as any)?.error) return toast.error(`Gate failed: ${error?.message ?? (data as any)?.error}`);
-    toast.success(`Gate ${(data as any).status.toUpperCase()} — ${(data as any).summary}`);
-    void loadGates();
+    try {
+      const data = await invokeAmlFunction<any>("aml-release-gate", { op: "run" });
+      toast.success(`Gate ${data.status.toUpperCase()} — ${data.summary}`);
+      void loadGates();
+    } catch (e: any) {
+      toast.error(`Gate failed: ${e?.message ?? "Unknown error"}`);
+    } finally {
+      setGateBusy(false);
+    }
   };
 
   const loadApprovals = async () => {
     setApprovalsLoading(true);
-    const { data, error } = await supabase.functions.invoke("aml-ai-guardrail", { body: { op: "list" } });
-    if (!error && !(data as any)?.error) setApprovals(((data as any).approvals ?? []) as Approval[]);
+    try {
+      const data = await invokeAmlFunction<any>("aml-ai-guardrail", { op: "list" });
+      setApprovals((data.approvals ?? []) as Approval[]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Unable to load approvals");
+    }
     setApprovalsLoading(false);
   };
   const decide = async (id: string, decision: "approved" | "rejected", reason?: string) => {
-    const { data, error } = await supabase.functions.invoke("aml-ai-guardrail", { body: { op: "decide", id, decision, reason } });
-    if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Failed");
+    try {
+      await invokeAmlFunction<any>("aml-ai-guardrail", { op: "decide", id, decision, reason });
+    } catch (e: any) {
+      return toast.error(e?.message ?? "Failed");
+    }
     toast.success(`Marked ${decision}`);
     void loadApprovals();
   };
 
   const loadDrills = async () => {
     setDrillsLoading(true);
-    const { data, error } = await supabase.functions.invoke("aml-resilience", { body: { op: "list" } });
-    if (!error && !(data as any)?.error) setDrills(((data as any).drills ?? []) as Drill[]);
+    try {
+      const data = await invokeAmlFunction<any>("aml-resilience", { op: "list" });
+      setDrills((data.drills ?? []) as Drill[]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Unable to load drills");
+    }
     setDrillsLoading(false);
   };
   const logDrill = async () => {
     if (!newDrill.title.trim()) return toast.error("Title required");
-    const { data, error } = await supabase.functions.invoke("aml-resilience", {
-      body: { op: "log", ...newDrill },
-    });
-    if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Failed");
+    try {
+      await invokeAmlFunction<any>("aml-resilience", { op: "log", ...newDrill });
+    } catch (e: any) {
+      return toast.error(e?.message ?? "Failed");
+    }
     toast.success("Drill logged");
     setNewDrill({ kind: "backup_restore", title: "", findings: "", status: "completed" });
     void loadDrills();
@@ -131,20 +151,31 @@ export default function AmlGovernance() {
 
   const loadSessions = async () => {
     setSessionsLoading(true);
-    const { data, error } = await supabase.functions.invoke("aml-step-up", { body: { op: "list" } });
-    if (!error && !(data as any)?.error) setSessions(((data as any).sessions ?? []) as StepUpSession[]);
+    try {
+      const data = await invokeAmlFunction<any>("aml-step-up", { op: "list" });
+      setSessions((data.sessions ?? []) as StepUpSession[]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Unable to load step-up sessions");
+    }
     setSessionsLoading(false);
   };
   const revokeSession = async (id: string) => {
-    const { data, error } = await supabase.functions.invoke("aml-step-up", { body: { op: "revoke", session_id: id } });
-    if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Failed");
+    try {
+      await invokeAmlFunction<any>("aml-step-up", { op: "revoke", session_id: id });
+    } catch (e: any) {
+      return toast.error(e?.message ?? "Failed");
+    }
     toast.success("Session revoked");
     void loadSessions();
   };
 
   const loadRunbooks = async () => {
-    const { data, error } = await supabase.functions.invoke("aml-resilience", { body: { op: "runbooks" } });
-    if (!error && !(data as any)?.error) setRunbooks(((data as any).runbooks ?? []) as Runbook[]);
+    try {
+      const data = await invokeAmlFunction<any>("aml-resilience", { op: "runbooks" });
+      setRunbooks((data.runbooks ?? []) as Runbook[]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Unable to load runbooks");
+    }
   };
 
   useEffect(() => {
