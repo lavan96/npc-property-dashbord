@@ -1388,16 +1388,32 @@ export default function Conversations() {
                           <div className="flex items-start justify-between gap-3">
                             <span
                               className={cn(
-                                "min-w-0 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-foreground dark:text-foreground transition-colors group-hover:text-white",
+                                "flex min-w-0 items-center gap-2 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-foreground dark:text-foreground transition-colors group-hover:text-white",
                                 conv.unread_count > 0
                                   ? "font-bold"
                                   : "font-semibold",
                               )}
                               title={conv.client_name || "Unknown contact"}
                             >
-                              {conv.client_name}
+                              {conv.unread_count > 0 && (
+                                <span
+                                  aria-hidden
+                                  className="relative flex h-2 w-2 shrink-0"
+                                >
+                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-300 opacity-70" />
+                                  <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-300 shadow-[0_0_10px_rgba(251,191,36,0.9)]" />
+                                </span>
+                              )}
+                              <span className="min-w-0 truncate">{conv.client_name}</span>
                             </span>
-                            <span className="shrink-0 rounded-full border border-border dark:border-white/[0.07] bg-background/20 dark:bg-black/20 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-muted-foreground transition-colors group-hover:border-brand-200/20 group-hover:text-brand-100/80">
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors",
+                                conv.unread_count > 0
+                                  ? "border-brand-200/40 bg-brand-300/10 text-brand-100"
+                                  : "border-border dark:border-white/[0.07] bg-background/20 dark:bg-black/20 text-muted-foreground dark:text-muted-foreground group-hover:border-brand-200/20 group-hover:text-brand-100/80",
+                              )}
+                            >
                               {formatConversationDate(conv.last_message_date)}
                             </span>
                           </div>
