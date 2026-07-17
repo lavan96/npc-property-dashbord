@@ -48,7 +48,9 @@ const MAX_SIDECAR_ATTEMPTS = 3;
 // C1 policy versions folded into the cache-contract fingerprint. LANE_POLICY_VERSION
 // mirrors the sidecar's LANE_ENFORCEMENT_VERSION; bump both together when lane
 // behavior changes so stale-policy artifacts are never reused.
-const LANE_POLICY_VERSION = 'extractor-lane-policy-v1';
+// G1: bumped to v2 alongside the sidecar's extractor-lane-policy-v2 so cached
+// v1-semantics artifacts are never reused for v2 lane behavior.
+const LANE_POLICY_VERSION = 'extractor-lane-policy-v2';
 const REDACTION_POLICY_VERSION = 'redaction-policy-v1';
 const PARSE_PROVIDER = 'docling';
 const DEFAULT_SERVICE_CLASS = 'default';

@@ -67,6 +67,26 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
+# G1 — Lane Policy V2 (pure, Docling-free; unit-tested in test_lane_policy.py).
+from lane_policy import (
+    LANE_ENFORCEMENT_VERSION,
+    LANE_PROFILES,
+    GlobalCapabilities,
+    ConverterProfile,
+    EffectiveLanePolicy,
+    resolve_execution_policy,
+    describe_lane_defaults,
+    normalize_lane,
+)
+
+# G2 — Sidecar Operational Metrics V1 (pure; unit-tested in test_operational_metrics.py).
+from operational_metrics import (
+    OperationalMetricsAccumulator,
+    operational_metrics_capabilities,
+    SIDECAR_OPERATIONAL_METRICS_VERSION,
+    NOT_APPLICABLE as METRICS_NOT_APPLICABLE,
+)
+
 REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")
 
 
@@ -161,6 +181,41 @@ ACCEL_THREADS = int(os.environ.get("DOCLING_ACCEL_THREADS", os.environ.get("OMP_
 # Wave A: markdown serialisation is now ON by default so downstream consumers always get it.
 INCLUDE_MARKDOWN_DEFAULT = _env_bool("DOCLING_INCLUDE_MARKDOWN_DEFAULT", True)
 
+# G1 — the process-level capability ceilings + configured defaults handed to the
+# pure lane-policy resolver. A lane can never enable a feature disabled here.
+GLOBAL_CAPABILITIES = GlobalCapabilities(
+    ocr=(ENABLE_OCR_FALLBACK or FORCE_FULL_PAGE_OCR),
+    picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+    picture_classification=ENABLE_PICTURE_CLASSIFICATION,
+    formula=ENABLE_FORMULA_ENRICHMENT,
+    code=ENABLE_CODE_ENRICHMENT,
+    fitz=(_FITZ_AVAILABLE and ENABLE_FITZ_LAYERS),
+    force_full_page_ocr_default=(FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK),
+    default_table_mode=TABLE_MODE,
+    images_scale=IMAGES_SCALE,
+    raster_dpi_default=RASTER_DPI,
+)
+
+
+def _resolve_policy(lane, mode, *, enable_picture_description=None, include_doctags=None, include_markdown=None) -> EffectiveLanePolicy:
+    """Single entry point every parse path uses to resolve the effective policy."""
+    return resolve_execution_policy(
+        lane,
+        mode,
+        {
+            "enable_picture_description": enable_picture_description,
+            "include_doctags": include_doctags,
+            "include_markdown": include_markdown,
+        },
+        GLOBAL_CAPABILITIES,
+    )
+
+
+def _normalize_extractor_lane(lane: Optional[str]) -> str:
+    """Backwards-compatible helper: normalized lane string only."""
+    return normalize_lane(lane)[0]
+
+
 app = FastAPI(title="pdf-parse-service", version=ENGINE_VERSION)
 
 
@@ -187,46 +242,43 @@ def _resolve_table_former_mode(mode: Optional[str]) -> Any:
     return getattr(TableFormerMode, "ACCURATE", TableFormerMode.FAST)
 
 
-def _converter_key(*, enable_picture_description: bool, force_full_page_ocr: Optional[bool], table_mode: Optional[str]) -> tuple[bool, bool, str]:
-    effective_force_ocr = bool(force_full_page_ocr if force_full_page_ocr is not None else (FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK))
-    effective_table_mode = (table_mode or TABLE_MODE or "ACCURATE").strip().upper()
-    return (bool(enable_picture_description), effective_force_ocr, effective_table_mode)
-
-
-def _build_converter(
-    *,
-    enable_picture_description: bool,
-    force_full_page_ocr: Optional[bool] = None,
-    table_mode: Optional[str] = None,
-) -> DocumentConverter:
-    effective_force_ocr = bool(force_full_page_ocr if force_full_page_ocr is not None else (FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK))
-    effective_table_mode = (table_mode or TABLE_MODE or "ACCURATE").strip().upper()
-
+def _build_converter(profile: ConverterProfile) -> tuple[DocumentConverter, dict]:
+    """Build a Docling converter for one :class:`ConverterProfile`. Returns the
+    converter plus a ``support`` map recording whether each best-effort
+    ``_safe_set`` actually took effect (so /capabilities never reports a feature
+    active when the Docling build rejected it). G1: every pipeline field is
+    driven by the profile — no unconditional ``pipeline.do_ocr = True``."""
     pipeline = PdfPipelineOptions()
-    pipeline.do_ocr = True
-    pipeline.do_table_structure = True
-    pipeline.table_structure_options.mode = _resolve_table_former_mode(effective_table_mode)
-    pipeline.table_structure_options.do_cell_matching = True
+    pipeline.do_ocr = bool(profile.do_ocr)
+    pipeline.do_table_structure = bool(profile.do_table_structure)
+    if profile.do_table_structure:
+        pipeline.table_structure_options.mode = _resolve_table_former_mode(profile.table_mode)
+        pipeline.table_structure_options.do_cell_matching = True
     pipeline.generate_page_images = False
-    pipeline.generate_picture_images = True
-    _safe_set(pipeline, "images_scale", IMAGES_SCALE)
+    pipeline.generate_picture_images = bool(profile.generate_picture_images)
+    images_scale_supported = _safe_set(pipeline, "images_scale", profile.images_scale)
 
-    if ENABLE_PICTURE_CLASSIFICATION:
-        _safe_set(pipeline, "do_picture_classification", True)
-    if enable_picture_description:
-        _safe_set(pipeline, "do_picture_description", True)
+    support: dict[str, bool] = {
+        "do_ocr": bool(profile.do_ocr),
+        "do_table_structure": bool(profile.do_table_structure),
+        "generate_picture_images": bool(profile.generate_picture_images),
+        "images_scale": images_scale_supported,
+        "picture_classification": _safe_set(pipeline, "do_picture_classification", True) if profile.do_picture_classification else False,
+        "picture_description": _safe_set(pipeline, "do_picture_description", True) if profile.use_picture_description else False,
+        "formula_enrichment": _safe_set(pipeline, "do_formula_enrichment", True) if profile.formula_enrichment else False,
+        "code_enrichment": _safe_set(pipeline, "do_code_enrichment", True) if profile.code_enrichment else False,
+        "force_full_page_ocr": False,
+    }
 
-    formula_supported = _safe_set(pipeline, "do_formula_enrichment", True) if ENABLE_FORMULA_ENRICHMENT else False
-    code_supported = _safe_set(pipeline, "do_code_enrichment", True) if ENABLE_CODE_ENRICHMENT else False
-
-    ocr_opts = getattr(pipeline, "ocr_options", None)
-    if ocr_opts is not None:
-        _safe_set(ocr_opts, "force_full_page_ocr", effective_force_ocr)
-        if OCR_LANGS:
-            _safe_set(ocr_opts, "lang", OCR_LANGS)
-        _safe_set(ocr_opts, "bitmap_area_threshold", BITMAP_AREA_THRESHOLD)
-    else:
-        _safe_set(pipeline, "force_full_page_ocr", effective_force_ocr)
+    if profile.do_ocr:
+        ocr_opts = getattr(pipeline, "ocr_options", None)
+        if ocr_opts is not None:
+            support["force_full_page_ocr"] = _safe_set(ocr_opts, "force_full_page_ocr", bool(profile.force_full_page_ocr))
+            if OCR_LANGS:
+                _safe_set(ocr_opts, "lang", OCR_LANGS)
+            _safe_set(ocr_opts, "bitmap_area_threshold", BITMAP_AREA_THRESHOLD)
+        else:
+            support["force_full_page_ocr"] = _safe_set(pipeline, "force_full_page_ocr", bool(profile.force_full_page_ocr))
 
     try:
         from docling.datamodel.pipeline_options import AcceleratorOptions, AcceleratorDevice  # type: ignore
@@ -249,53 +301,41 @@ def _build_converter(
                 _safe_set(layout_opts, "model", LAYOUT_MODEL)
 
     LOG.info(
-        "Building Docling converter variant picture_description=%s force_full_page_ocr=%s table_mode=%s formula_enrichment_supported=%s code_enrichment_supported=%s",
-        enable_picture_description,
-        effective_force_ocr,
-        effective_table_mode,
-        formula_supported,
-        code_supported,
+        "Building Docling converter variant do_ocr=%s force_full_page_ocr=%s table_mode=%s picture_description=%s formula=%s(supported=%s) code=%s(supported=%s) gen_images=%s",
+        profile.do_ocr,
+        profile.force_full_page_ocr,
+        profile.table_mode,
+        profile.use_picture_description,
+        profile.formula_enrichment,
+        support["formula_enrichment"],
+        profile.code_enrichment,
+        support["code_enrichment"],
+        profile.generate_picture_images,
     )
 
-    return DocumentConverter(
+    converter = DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline)}
     )
+    return converter, support
 
 
-CONVERTER = _build_converter(
-    enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT,
-    force_full_page_ocr=FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
-    table_mode=TABLE_MODE,
-)
-_CONVERTER_VARIANTS: dict[tuple[bool, bool, str], DocumentConverter] = {
-    _converter_key(
-        enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT,
-        force_full_page_ocr=FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
-        table_mode=TABLE_MODE,
-    ): CONVERTER
+# The default (unplanned) profile is prewarmed + used for backwards-compatible
+# behaviour. The cache is keyed by the complete ConverterProfile so two lanes
+# that differ in ANY converter-affecting field never share a converter.
+DEFAULT_POLICY = resolve_execution_policy("unplanned", "semantic", None, GLOBAL_CAPABILITIES)
+DEFAULT_CONVERTER_PROFILE = DEFAULT_POLICY.converter_profile()
+CONVERTER, _DEFAULT_SUPPORT = _build_converter(DEFAULT_CONVERTER_PROFILE)
+_CONVERTER_VARIANTS: dict[ConverterProfile, tuple[DocumentConverter, dict]] = {
+    DEFAULT_CONVERTER_PROFILE: (CONVERTER, _DEFAULT_SUPPORT),
 }
 
 
-def _get_converter(
-    enable_picture_description: bool,
-    *,
-    force_full_page_ocr: Optional[bool] = None,
-    table_mode: Optional[str] = None,
-) -> DocumentConverter:
-    key = _converter_key(
-        enable_picture_description=enable_picture_description,
-        force_full_page_ocr=force_full_page_ocr,
-        table_mode=table_mode,
-    )
-    cached = _CONVERTER_VARIANTS.get(key)
+def _get_converter(profile: ConverterProfile) -> tuple[DocumentConverter, dict]:
+    cached = _CONVERTER_VARIANTS.get(profile)
     if cached is not None:
         return cached
-    built = _build_converter(
-        enable_picture_description=enable_picture_description,
-        force_full_page_ocr=force_full_page_ocr,
-        table_mode=table_mode,
-    )
-    _CONVERTER_VARIANTS[key] = built
+    built = _build_converter(profile)
+    _CONVERTER_VARIANTS[profile] = built
     return built
 
 
@@ -472,6 +512,37 @@ async def _resolve_pdf_bytes(url: Optional[str], pdf_base64: Optional[str]) -> b
     if not data.startswith(b"%PDF"):
         raise SidecarError(400, "invalid_pdf", "Payload is not a PDF.")
     return data
+
+
+async def _resolve_source_timed(metrics: OperationalMetricsAccumulator, url, pdf_base64) -> bytes:
+    """G2: resolve source bytes while recording the correct source phase +
+    bytes_in on the metrics accumulator. URL → source_download_ms (network);
+    base64 → source_resolve_ms (decode/validate, no network). On failure the
+    phase stays un-measured (partial metrics) — never a fabricated timing."""
+    phase = "source_resolve_ms" if pdf_base64 else "source_download_ms"
+    start = metrics.now()
+    data = await _resolve_pdf_bytes(url, pdf_base64)
+    metrics.record_since(phase, start)
+    metrics.set_bytes_in(len(data))
+    return data
+
+
+def _log_operational_metrics(metrics_dict: dict, *, callback_attempt_count=None, callback_attempt_ms=None, error_code=None) -> None:
+    """Structured, PII-safe operational-metrics log line — never tokens, URLs,
+    document text, or raw artifact contents."""
+    t = metrics_dict.get("timings", {}) or {}
+    c = metrics_dict.get("counts", {}) or {}
+    LOG.info(
+        "operational_metrics contract=%s scope=%s status=%s job_id=%s chunk_index=%s lane=%s effective_mode=%s "
+        "elapsed_ms=%s parse_ms=%s raster_ms=%s upload_ms=%s per_page_ms=%s pages=%s callback_attempts=%s completed_callback_attempt_ms=%s error_code=%s",
+        metrics_dict.get("contract_version"), metrics_dict.get("scope"), metrics_dict.get("status"),
+        metrics_dict.get("job_id"), metrics_dict.get("chunk_index"), metrics_dict.get("extractor_lane"),
+        metrics_dict.get("effective_mode"), t.get("sidecar_elapsed_before_callback_ms"),
+        t.get("parse_ms"), t.get("raster_ms"), t.get("artifact_upload_ms"), t.get("per_page_artifact_ms"),
+        c.get("page_count"),
+        callback_attempt_count if callback_attempt_count is not None else metrics_dict.get("callback_attempt_count"),
+        callback_attempt_ms, error_code,
+    )
 
 
 PII_PATTERNS = [
@@ -1009,23 +1080,21 @@ def _extract_fitz_fonts(pdf_bytes: bytes) -> list[dict]:
 def _do_parse(
     pdf_bytes: bytes,
     *,
-    use_description: bool,
-    include_doctags: bool,
-    include_markdown: bool,
+    policy: EffectiveLanePolicy,
     redact_pii: bool,
-    force_full_page_ocr: Optional[bool] = None,
-    table_mode: Optional[str] = None,
 ) -> dict:
-    """Synchronous Docling parse — shared by /parse sync path and async background path."""
+    """Synchronous Docling parse — shared by ALL parse paths (sync /parse, async
+    monolithic /parse, /parse-chunk). Every path resolves an EffectiveLanePolicy
+    and passes it here, so lane behaviour is identical across paths (G1)."""
     from docling.datamodel.base_models import DocumentStream
+
+    use_description = policy.use_picture_description
+    include_doctags = policy.include_doctags
+    include_markdown = policy.include_markdown
 
     t0 = time.monotonic()
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
-    converter = _get_converter(
-        use_description,
-        force_full_page_ocr=force_full_page_ocr,
-        table_mode=table_mode,
-    )
+    converter, converter_support = _get_converter(policy.converter_profile())
     try:
         result = converter.convert(stream)
     except Exception as exc:
@@ -1042,10 +1111,11 @@ def _do_parse(
     pii_redactions = _redact_docling_pii(doc_dict) if redact_pii else 0
 
     # Phase 2: augment with PyMuPDF vector graphics + reconciled span typography.
-    # Non-fatal — any failure leaves the Docling-only document intact.
+    # Non-fatal — any failure leaves the Docling-only document intact. G1: FITZ
+    # layers are now gated by the lane policy (not only the global env flag).
     fitz_vectors = 0
     fitz_fonts = 0
-    if _FITZ_AVAILABLE and ENABLE_FITZ_LAYERS:
+    if _FITZ_AVAILABLE and policy.use_fitz_layers:
         try:
             fitz_layers = _extract_fitz_layers(pdf_bytes)
             if fitz_layers:
@@ -1106,13 +1176,22 @@ def _do_parse(
         "summary": summary,
         "docling_capability_activation_version": DOCLING_CAPABILITY_ACTIVATION_VERSION,
         "parse_options": {
-            "force_full_page_ocr": bool(force_full_page_ocr if force_full_page_ocr is not None else (FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK)),
-            "table_mode": (table_mode or TABLE_MODE or "ACCURATE").strip().upper(),
-            "picture_description": bool(use_description),
+            "lane": policy.lane,
+            "effective_mode": policy.effective_mode,
+            "do_ocr": bool(policy.do_ocr),
+            "force_full_page_ocr": bool(policy.force_full_page_ocr),
+            "do_table_structure": bool(policy.do_table_structure),
+            "table_mode": policy.table_mode,
+            "picture_description": bool(policy.use_picture_description),
+            "picture_classification": bool(policy.do_picture_classification),
+            "formula_enrichment": bool(policy.formula_enrichment),
+            "code_enrichment": bool(policy.code_enrichment),
+            "generate_picture_images": bool(policy.generate_picture_images),
             "ocr_langs": OCR_LANGS,
             "bitmap_area_threshold": BITMAP_AREA_THRESHOLD,
-            "images_scale": IMAGES_SCALE,
-            "fitz_layers": bool(_FITZ_AVAILABLE and ENABLE_FITZ_LAYERS),
+            "images_scale": policy.images_scale,
+            "fitz_layers": bool(_FITZ_AVAILABLE and policy.use_fitz_layers),
+            "converter_support": converter_support,
             "vector_count": fitz_vectors,
             "font_count": fitz_fonts,
         },
@@ -1477,101 +1556,9 @@ def _ocr_ratio(summary: dict, page_count: int) -> float:
     return len(summary.get("ocr_pages") or []) / float(page_count)
 
 
-LANE_ENFORCEMENT_VERSION = "extractor-lane-policy-v1"
-
-LANE_PROFILES: dict[str, dict[str, Any]] = {
-    "unplanned": {
-        "force_mode": None,
-        "force_raster": False,
-        "raster_dpi": None,
-        "use_picture_description": ENABLE_PICTURE_DESCRIPTION_DEFAULT,
-        "include_doctags": True,
-        "include_markdown": True,
-        "force_full_page_ocr": FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
-        "table_mode": TABLE_MODE,
-    },
-    "fast_native": {
-        "force_mode": None,
-        "force_raster": False,
-        "raster_dpi": None,
-        "use_picture_description": False,
-        "include_doctags": False,
-        "include_markdown": False,
-        "force_full_page_ocr": False,
-        "table_mode": "FAST",
-    },
-    "accurate_table": {
-        "force_mode": None,
-        "force_raster": True,
-        "raster_dpi": 144,
-        "use_picture_description": False,
-        "include_doctags": True,
-        "include_markdown": True,
-        "force_full_page_ocr": False,
-        "table_mode": "ACCURATE",
-    },
-    "ocr_scanned": {
-        "force_mode": None,
-        "force_raster": True,
-        "raster_dpi": 144,
-        "use_picture_description": False,
-        "include_doctags": True,
-        "include_markdown": True,
-        "force_full_page_ocr": True,
-        "table_mode": "ACCURATE",
-    },
-    "design_heavy": {
-        "force_mode": None,
-        "force_raster": True,
-        "raster_dpi": 200,
-        "use_picture_description": True,
-        "include_doctags": True,
-        "include_markdown": True,
-        "force_full_page_ocr": FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
-        "table_mode": "ACCURATE",
-    },
-    "pixel_raster_only": {
-        "force_mode": "pixel_perfect",
-        "force_raster": True,
-        "raster_dpi": 200,
-        "use_picture_description": False,
-        "include_doctags": False,
-        "include_markdown": False,
-        "force_full_page_ocr": False,
-        "table_mode": "FAST",
-    },
-}
-
-
-def _normalize_extractor_lane(lane: Optional[str]) -> str:
-    normalized = (lane or "unplanned").strip().lower().replace("-", "_")
-    return normalized if normalized in LANE_PROFILES else "unplanned"
-
-
-def _lane_policy(lane: Optional[str], requested_mode: Optional[str] = None) -> dict[str, Any]:
-    normalized = _normalize_extractor_lane(lane)
-    base = dict(LANE_PROFILES["unplanned"])
-    base.update(LANE_PROFILES.get(normalized, {}))
-    base["lane"] = normalized
-    base["requested_mode"] = (requested_mode or "semantic").lower().replace("-", "_")
-    base["version"] = LANE_ENFORCEMENT_VERSION
-    return base
-
-
-def _resolve_picture_description(explicit: Optional[bool], policy: dict[str, Any]) -> bool:
-    if explicit is not None:
-        return bool(explicit)
-    return bool(policy.get("use_picture_description", ENABLE_PICTURE_DESCRIPTION_DEFAULT))
-
-
-def _resolve_effective_mode(requested_mode: Optional[str], policy: dict[str, Any]) -> str:
-    requested = (requested_mode or "semantic").lower().replace("-", "_")
-    forced = policy.get("force_mode")
-    if forced:
-        return str(forced).lower().replace("-", "_")
-    if policy.get("force_raster") and requested == "semantic":
-        return "hybrid"
-    return requested
+# G1 — LANE_ENFORCEMENT_VERSION, LANE_PROFILES and the lane resolver now live in
+# the pure, unit-tested `lane_policy` module (imported at the top). `_do_parse`
+# and every parse path resolve an EffectiveLanePolicy via `_resolve_policy`.
 
 
 async def _storage_upload(client: httpx.AsyncClient, object_path: str, body: bytes, content_type: str) -> Optional[str]:
@@ -1849,18 +1836,23 @@ async def _upload_picture_assets(client: httpx.AsyncClient, job_id: str, docling
     return total
 
 
-async def _post_callback(client: httpx.AsyncClient, callback_url: str, callback_token: str, job_id: str, payload: dict) -> None:
+async def _post_callback(client: httpx.AsyncClient, callback_url: str, callback_token: str, job_id: str, payload: dict) -> tuple[int, Optional[int]]:
+    """POST the callback. Returns (attempt_count, completed_attempt_ms) so the
+    caller can log the ACTUAL callback-attempt duration AFTER delivery — the
+    payload itself never claims to contain the duration of its own delivery (G2)."""
     headers = {
         "Authorization": f"Bearer {callback_token}",
         "Content-Type": "application/json",
         "X-Request-Id": job_id,
     }
+    started = time.monotonic()
     try:
         resp = await client.post(callback_url, json=payload, headers=headers, timeout=30)
         if resp.status_code >= 300:
             LOG.error("callback POST failed %s: %s", resp.status_code, resp.text[:500])
     except Exception as exc:
         LOG.error("callback POST exception: %s", exc)
+    return 1, int((time.monotonic() - started) * 1000)
 
 
 async def _run_async_job(req: ParseRequest) -> None:
@@ -1872,30 +1864,41 @@ async def _run_async_job(req: ParseRequest) -> None:
     bytes_in = 0
     bytes_out = 0
     cloud_run_ms = 0
+    # G2 — operational metrics accumulator, initialized before source resolution
+    # so a failure at any phase still produces truthful partial metrics.
+    metrics = OperationalMetricsAccumulator(
+        "monolithic",
+        clock=time.monotonic,
+        engine_version=ENGINE_VERSION,
+        lane_enforcement_version=LANE_ENFORCEMENT_VERSION,
+        job_id=job_id,
+        source_input_kind=("base64" if req.pdf_base64 else "url"),
+    )
     try:
-        pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+        pdf_bytes = await _resolve_source_timed(metrics, req.url, req.pdf_base64)
         bytes_in = len(pdf_bytes)
 
-        lane_policy = _lane_policy(req.extractor_lane, req.mode)
-        use_description = _resolve_picture_description(req.enable_picture_description, lane_policy)
-        include_doctags = bool(lane_policy.get("include_doctags", True) and req.include_doctags)
-        include_markdown = bool(lane_policy.get("include_markdown", True) and req.include_markdown)
-
-        parse_result = _do_parse(
-            pdf_bytes,
-            use_description=use_description,
-            force_full_page_ocr=bool(lane_policy.get("force_full_page_ocr", FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK)),
-            table_mode=str(lane_policy.get("table_mode") or TABLE_MODE),
-            include_doctags=include_doctags,
-            include_markdown=include_markdown,
-            redact_pii=req.redact_pii,
+        policy = _resolve_policy(
+            req.extractor_lane, req.mode,
+            enable_picture_description=req.enable_picture_description,
+            include_doctags=req.include_doctags,
+            include_markdown=req.include_markdown,
         )
+        lane_policy = policy.as_dict()
+        metrics.extractor_lane = policy.lane
+        metrics.requested_mode = policy.requested_mode
+        metrics.effective_mode = policy.effective_mode
+        metrics.memory_profile = policy.memory_profile
+
+        parse_start = metrics.now()
+        parse_result = _do_parse(pdf_bytes, policy=policy, redact_pii=req.redact_pii)
+        metrics.record_since("parse_ms", parse_start)
         cloud_run_ms += int(parse_result.get("parsed_ms") or 0)
 
         page_count = int(parse_result.get("page_count") or 0)
         summary = parse_result.get("summary") or {}
-        requested_mode = (req.mode or "semantic").lower().replace("-", "_")
-        effective_mode = _resolve_effective_mode(req.mode, lane_policy)
+        requested_mode = policy.requested_mode
+        effective_mode = policy.effective_mode
         # Auto-promote hybrid → pixel_perfect when OCR ratio > 0.3.
         if (
             effective_mode == "hybrid"
@@ -1905,6 +1908,10 @@ async def _run_async_job(req: ParseRequest) -> None:
             effective_mode = "pixel_perfect"
 
         async with httpx.AsyncClient(timeout=120) as client:
+            # G2: measure total artifact-upload wall time; subtract the raster
+            # compute below so artifact_upload_ms reflects upload, not rasterize.
+            upload_start = metrics.now()
+            raster_wall_ms = 0.0
             doclingDoc = parse_result.get("docling_document") or {}
             if isinstance(doclingDoc, dict) and summary:
                 doclingDoc["summary"] = summary
@@ -1942,9 +1949,12 @@ async def _run_async_job(req: ParseRequest) -> None:
             per_page_docling_page_count = 0
             per_page_docling_validation = {"ok": False, "problems": ["not_generated"]}
             if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
-                dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or RASTER_DPI or (200 if "pixel" in effective_mode else 144))
+                dpi = policy.resolve_raster_dpi(req.raster_dpi, RASTER_DPI)
                 raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
+                raster_start = metrics.now()
                 raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=raster_fmt)
+                raster_wall_ms = (metrics.now() - raster_start) * 1000
+                metrics.record("raster_ms", raster_wall_ms)
                 cloud_run_ms += int(raster_result.get("raster_ms") or 0)
 
                 normalized = {
@@ -1985,7 +1995,12 @@ async def _run_async_job(req: ParseRequest) -> None:
                     body = json.dumps(normalized).encode("utf-8")
                     rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
                     bytes_out += len(body)
+            else:
+                # No raster pass for this mode/page-count — truthfully not_applicable,
+                # never a fabricated 0 (G2).
+                metrics.mark("raster_ms", METRICS_NOT_APPLICABLE)
 
+            per_page_start = metrics.now()
             per_page_payload = _build_per_page_docling_artifacts(
                 doclingDoc,
                 job_id=job_id,
@@ -1998,13 +2013,23 @@ async def _run_async_job(req: ParseRequest) -> None:
                 per_page_payload,
                 source="monolithic-parse",
             )
+            metrics.record_since("per_page_artifact_ms", per_page_start)
             per_page_docling_manifest_path = per_page_artifacts.get("per_page_docling_manifest_path")
             per_page_docling_page_count = int(per_page_artifacts.get("per_page_docling_page_count") or 0)
             per_page_docling_validation = per_page_artifacts.get("per_page_docling_validation") or {"ok": False, "problems": ["missing_validation"]}
             bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
+            # G2: total upload-block wall time minus the raster compute = artifact
+            # upload time; then finalize counts/bytes and build one canonical metrics
+            # object referenced identically at the top level and in result_payload.
+            upload_wall_ms = (metrics.now() - upload_start) * 1000
+            metrics.record("artifact_upload_ms", max(0.0, upload_wall_ms - raster_wall_ms))
+            metrics.set_counts_from_summary(summary, page_count)
+            metrics.set_bytes_out(bytes_out)
+            metrics_dict = metrics.build("succeeded")
+
             duration_ms = int((time.monotonic() - started) * 1000)
-            await _post_callback(client, callback_url, callback_token, job_id, {
+            attempts, attempt_ms = await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "succeeded",
                 "engine_version": parse_result.get("engine_version"),
@@ -2020,6 +2045,7 @@ async def _run_async_job(req: ParseRequest) -> None:
                 "extractor_lane": lane_policy["lane"],
                 "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
                 "lane_policy": lane_policy,
+                "metrics": metrics_dict,
                 "result_payload": {
                     "docling_path": docling_path,
                     "rasters_path": rasters_path,
@@ -2044,28 +2070,42 @@ async def _run_async_job(req: ParseRequest) -> None:
                     "extractor_lane": lane_policy["lane"],
                     "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
                     "lane_policy": lane_policy,
+                    # Same canonical object as the top-level `metrics` field (G2).
+                    "metrics": metrics_dict,
                 },
             })
+            # Log the ACTUAL completed callback-attempt duration after delivery —
+            # a value the payload itself can never truthfully contain.
+            metrics.set_callback_attempt_count(attempts)
+            _log_operational_metrics(metrics_dict, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms)
     except SidecarError as exc:
         LOG.warning("async job failed (sidecar error): %s", exc.message)
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
         async with httpx.AsyncClient(timeout=30) as client:
-            await _post_callback(client, callback_url, callback_token, job_id, {
+            attempts, attempt_ms = await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "failed",
                 "error_code": exc.error_code,
                 "message": exc.message,
                 "retryable": exc.retryable,
+                "metrics": failed_metrics,
             })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code=exc.error_code)
     except Exception as exc:
         LOG.exception("async job unhandled failure")
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
         async with httpx.AsyncClient(timeout=30) as client:
-            await _post_callback(client, callback_url, callback_token, job_id, {
+            attempts, attempt_ms = await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "failed",
                 "error_code": "sidecar_async_unhandled",
                 "message": str(exc)[:500],
                 "retryable": True,
+                "metrics": failed_metrics,
             })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code="sidecar_async_unhandled")
 
 
 def _pkg_version(name: str) -> Optional[str]:
@@ -2076,17 +2116,29 @@ def _pkg_version(name: str) -> Optional[str]:
 
 
 def _docling_capabilities() -> dict[str, Any]:
-    converter_keys = [
-        {
-            "picture_description": key[0],
-            "force_full_page_ocr": key[1],
-            "table_mode": key[2],
-        }
-        for key in _CONVERTER_VARIANTS.keys()
-    ]
+    # G1: expose the full ConverterProfile of each currently-built variant, plus
+    # whether each best-effort Docling option actually took effect (support).
+    converter_variants = []
+    for profile, (_converter, support) in _CONVERTER_VARIANTS.items():
+        entry = profile.as_dict()
+        entry["support"] = support
+        converter_variants.append(entry)
+
+    # Global capability ceilings vs each lane's effective (post-ceiling) policy —
+    # the /capabilities consumer must not read an unavailable feature as active.
+    global_capabilities = {
+        "ocr": GLOBAL_CAPABILITIES.ocr,
+        "picture_description": GLOBAL_CAPABILITIES.picture_description,
+        "picture_classification": GLOBAL_CAPABILITIES.picture_classification,
+        "formula": GLOBAL_CAPABILITIES.formula,
+        "code": GLOBAL_CAPABILITIES.code,
+        "fitz_layers": GLOBAL_CAPABILITIES.fitz,
+    }
+
     return {
         "version": DOCLING_CAPABILITY_ACTIVATION_VERSION,
         "engine_version": ENGINE_VERSION,
+        "lane_policy_version": LANE_ENFORCEMENT_VERSION,
         "packages": {
             "docling": _pkg_version("docling"),
             "docling_core": _pkg_version("docling-core") or _pkg_version("docling_core"),
@@ -2100,33 +2152,39 @@ def _docling_capabilities() -> dict[str, Any]:
             "accelerator_device": ACCEL_DEVICE,
             "accelerator_threads": ACCEL_THREADS,
             "prewarm_on_startup": PREWARM_ON_STARTUP,
+            "prewarm_profile": DEFAULT_POLICY.lane,
         },
+        "global_capabilities": global_capabilities,
         "ocr": {
-            "do_ocr": True,
-            "global_force_full_page_ocr": FORCE_FULL_PAGE_OCR,
+            "global_ocr_enabled": GLOBAL_CAPABILITIES.ocr,
+            "global_force_full_page_ocr_default": FORCE_FULL_PAGE_OCR,
             "global_ocr_fallback": ENABLE_OCR_FALLBACK,
             "lane_aware_ocr": True,
             "ocr_langs": OCR_LANGS,
             "bitmap_area_threshold": BITMAP_AREA_THRESHOLD,
         },
         "tables": {
-            "do_table_structure": True,
             "default_table_mode": TABLE_MODE,
             "cell_matching": True,
             "lane_aware_table_mode": True,
         },
         "pictures": {
-            "picture_classification_enabled": ENABLE_PICTURE_CLASSIFICATION,
-            "picture_description_default": ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+            "picture_classification_capable": GLOBAL_CAPABILITIES.picture_classification,
+            "picture_description_capable": GLOBAL_CAPABILITIES.picture_description,
             "images_scale": IMAGES_SCALE,
         },
         "enrichment": {
-            "formula_configured": ENABLE_FORMULA_ENRICHMENT,
-            "code_configured": ENABLE_CODE_ENRICHMENT,
+            "formula_capable": GLOBAL_CAPABILITIES.formula,
+            "code_capable": GLOBAL_CAPABILITIES.code,
             "support_is_best_effort": True,
         },
-        "converter_variants": converter_keys,
-        "lanes": LANE_PROFILES,
+        "converter_profile_fields": list(ConverterProfile.__annotations__.keys()),
+        "converter_variants": converter_variants,
+        "lanes_effective": describe_lane_defaults(GLOBAL_CAPABILITIES),
+        "lanes_intent": LANE_PROFILES,
+        # G2: self-describing operational-metrics contract (fields, states, and
+        # the callback-timing limitation) so consumers/C11 can validate offline.
+        "operational_metrics": operational_metrics_capabilities(),
     }
 
 
@@ -2178,23 +2236,44 @@ async def parse(req: ParseRequest, background_tasks: BackgroundTasks):
             status_code=202,
         )
 
-    # Legacy synchronous mode (backwards compatible).
-    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
-    lane_policy = _lane_policy(req.extractor_lane, req.mode)
-    use_description = _resolve_picture_description(req.enable_picture_description, lane_policy)
-    include_doctags = bool(lane_policy.get("include_doctags", True) and req.include_doctags)
-    include_markdown = bool(lane_policy.get("include_markdown", True) and req.include_markdown)
-
-    result = _do_parse(
-        pdf_bytes,
-        use_description=use_description,
-        include_doctags=include_doctags,
-        include_markdown=include_markdown,
-        redact_pii=req.redact_pii,
+    # Legacy synchronous mode (backwards compatible). G1: this path now resolves
+    # the SAME EffectiveLanePolicy the async path uses — it no longer silently
+    # drops force_full_page_ocr / table_mode / do_ocr.
+    # G2: synchronous scope — no raster, no artifact upload, no callback; the
+    # metrics ride back inline on the response.
+    metrics = OperationalMetricsAccumulator(
+        "synchronous",
+        clock=time.monotonic,
+        engine_version=ENGINE_VERSION,
+        lane_enforcement_version=LANE_ENFORCEMENT_VERSION,
+        request_id=REQUEST_ID.get(),
+        source_input_kind=("base64" if req.pdf_base64 else "url"),
     )
-    result["extractor_lane"] = lane_policy["lane"]
+    pdf_bytes = await _resolve_source_timed(metrics, req.url, req.pdf_base64)
+    policy = _resolve_policy(
+        req.extractor_lane, req.mode,
+        enable_picture_description=req.enable_picture_description,
+        include_doctags=req.include_doctags,
+        include_markdown=req.include_markdown,
+    )
+    metrics.extractor_lane = policy.lane
+    metrics.requested_mode = policy.requested_mode
+    metrics.effective_mode = policy.effective_mode
+    metrics.memory_profile = policy.memory_profile
+
+    parse_start = metrics.now()
+    result = _do_parse(pdf_bytes, policy=policy, redact_pii=req.redact_pii)
+    metrics.record_since("parse_ms", parse_start)
+    # Phases that structurally do not occur on the synchronous path.
+    for phase in ("raster_ms", "artifact_upload_ms", "per_page_artifact_ms"):
+        metrics.mark(phase, METRICS_NOT_APPLICABLE)
+    metrics.set_counts_from_summary(result.get("summary") or {}, int(result.get("page_count") or 0))
+    metrics_dict = metrics.build("succeeded")
+    result["extractor_lane"] = policy.lane
     result["lane_enforcement_version"] = LANE_ENFORCEMENT_VERSION
-    result["lane_policy"] = lane_policy
+    result["lane_policy"] = policy.as_dict()
+    result["metrics"] = metrics_dict
+    _log_operational_metrics(metrics_dict)
     return result
 
 
@@ -2304,7 +2383,12 @@ async def _post_chunk_callback(
     callback_token: str,
     job_id: str,
     payload: dict,
-) -> None:
+) -> tuple[int, Optional[int]]:
+    """POST the chunk callback with bounded retry. Returns
+    (attempt_count, completed_attempt_ms) so the caller can log the ACTUAL
+    delivery duration after the fact — a value the payload can never contain (G2).
+    completed_attempt_ms is the wall time of the settling attempt (success or
+    permanent 4xx); it is None when every attempt was exhausted without settling."""
     headers = {
         "Authorization": f"Bearer {callback_token}",
         "Content-Type": "application/json",
@@ -2312,18 +2396,23 @@ async def _post_chunk_callback(
     }
     # Retry callback up to 3× on transient failures so a flaky edge bounce
     # doesn't leave the dispatcher waiting on a chunk that already finished.
+    attempts = 0
     for attempt in range(1, 4):
+        attempts = attempt
+        attempt_start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(callback_url, json=payload, headers=headers)
+                attempt_ms = int((time.monotonic() - attempt_start) * 1000)
                 if resp.status_code < 300:
-                    return
+                    return attempts, attempt_ms
                 LOG.error("chunk callback failed %s (attempt %d): %s", resp.status_code, attempt, resp.text[:300])
                 if resp.status_code < 500 and resp.status_code != 429:
-                    return  # 4xx (not 429) is permanent
+                    return attempts, attempt_ms  # 4xx (not 429) is permanent
         except Exception as exc:
             LOG.error("chunk callback exception (attempt %d): %s", attempt, exc)
         await __import__("asyncio").sleep(2 ** attempt)
+    return attempts, None
 
 
 async def _run_chunk_job(req: ChunkRequest) -> None:
@@ -2331,28 +2420,47 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
     artifacts: dict[str, Optional[str]] = {}
     bytes_in = 0
     bytes_out = 0
+    # G2 — chunk-scoped operational metrics; page range + chunk identity carried
+    # so C11 can aggregate per-chunk timings into the parent job downstream.
+    metrics = OperationalMetricsAccumulator(
+        "chunk",
+        clock=time.monotonic,
+        engine_version=ENGINE_VERSION,
+        lane_enforcement_version=LANE_ENFORCEMENT_VERSION,
+        job_id=req.job_id,
+        chunk_id=req.chunk_id,
+        chunk_index=req.chunk_index,
+        page_start=req.page_start,
+        page_end=req.page_end,
+        source_input_kind=("base64" if req.pdf_base64 else "url"),
+    )
     try:
-        pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+        pdf_bytes = await _resolve_source_timed(metrics, req.url, req.pdf_base64)
         bytes_in = len(pdf_bytes)
         chunk_pdf, actual_pages = _extract_page_range(pdf_bytes, req.page_start, req.page_end)
 
-        lane_policy = _lane_policy(req.extractor_lane, req.mode)
-        use_description = _resolve_picture_description(req.enable_picture_description, lane_policy)
-        include_doctags = bool(lane_policy.get("include_doctags", True) and req.include_doctags)
-        include_markdown = bool(lane_policy.get("include_markdown", True) and req.include_markdown)
-
-        parse_result = _do_parse(
-            chunk_pdf,
-            use_description=use_description,
-            force_full_page_ocr=bool(lane_policy.get("force_full_page_ocr", FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK)),
-            table_mode=str(lane_policy.get("table_mode") or TABLE_MODE),
-            include_doctags=include_doctags,
-            include_markdown=include_markdown,
-            redact_pii=req.redact_pii,
+        # G1: chunk behaviour is IDENTICAL to monolithic for the same lane/mode
+        # (only the page range + chunk metadata differ) — same resolver, same policy.
+        policy = _resolve_policy(
+            req.extractor_lane, req.mode,
+            enable_picture_description=req.enable_picture_description,
+            include_doctags=req.include_doctags,
+            include_markdown=req.include_markdown,
         )
+        lane_policy = policy.as_dict()
+        metrics.extractor_lane = policy.lane
+        metrics.requested_mode = policy.requested_mode
+        metrics.effective_mode = policy.effective_mode
+        metrics.memory_profile = policy.memory_profile
+
+        parse_start = metrics.now()
+        parse_result = _do_parse(chunk_pdf, policy=policy, redact_pii=req.redact_pii)
+        metrics.record_since("parse_ms", parse_start)
 
         prefix = f"{req.job_id}/chunks/{req.chunk_index:04d}"
         async with httpx.AsyncClient(timeout=120) as client:
+            upload_start = metrics.now()
+            raster_wall_ms = 0.0
             doclingDoc = parse_result.get("docling_document") or {}
             raster_manifest_payload = None
             picture_bytes = await _upload_picture_assets(client, f"{req.job_id}/chunks/{req.chunk_index:04d}", doclingDoc)
@@ -2378,15 +2486,18 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             bytes_out += len(outline_body)
 
             # Raster the chunk when the mode or lane policy demands page images.
-            mode = _resolve_effective_mode(req.mode, lane_policy)
+            mode = policy.effective_mode
             if mode in {"hybrid", "pixel_perfect", "pixel-perfect"}:
-                # Phase 5: honor the configured RASTER_DPI (DOCLING_RASTER_DPI, default
-                # 300) like the monolithic path — chunked PDFs on lanes without an
-                # explicit raster_dpi previously fell back to 144 and ignored the env.
-                dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or RASTER_DPI or (200 if "pixel" in mode else 144))
+                # G1: same DPI resolution as the monolithic path — explicit request
+                # → lane floor → process default → mode fallback (lane DPI enforced
+                # as a minimum so a weaker dispatcher default can't override it).
+                dpi = policy.resolve_raster_dpi(req.raster_dpi, RASTER_DPI)
                 try:
                     raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
+                    raster_start = metrics.now()
                     raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=raster_fmt)
+                    raster_wall_ms = (metrics.now() - raster_start) * 1000
+                    metrics.record("raster_ms", raster_wall_ms)
                     normalized = {
                         "format": raster_result.get("format"),
                         "dpi": raster_result.get("dpi"),
@@ -2439,7 +2550,11 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                         bytes_out += len(raster_body)
                 except SidecarError as exc:
                     LOG.warning("chunk raster failed (continuing): %s", exc.message)
+                    # Attempted but did not complete — left not_completed, never fake 0.
+            else:
+                metrics.mark("raster_ms", METRICS_NOT_APPLICABLE)
 
+            per_page_start = metrics.now()
             per_page_payload = _build_per_page_docling_artifacts(
                 doclingDoc,
                 job_id=req.job_id,
@@ -2452,14 +2567,22 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                 per_page_payload,
                 source="chunk-parse",
             )
+            metrics.record_since("per_page_artifact_ms", per_page_start)
             artifacts["per_page_docling_artifact_version"] = per_page_artifacts.get("per_page_docling_artifact_version")
             artifacts["per_page_docling_manifest_path"] = per_page_artifacts.get("per_page_docling_manifest_path")
             artifacts["per_page_docling_page_count"] = per_page_artifacts.get("per_page_docling_page_count")
             artifacts["per_page_docling_validation"] = per_page_artifacts.get("per_page_docling_validation")
             bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
+            upload_wall_ms = (metrics.now() - upload_start) * 1000
+            metrics.record("artifact_upload_ms", max(0.0, upload_wall_ms - raster_wall_ms))
+
+        metrics.set_counts_from_summary(parse_result.get("summary") or {}, actual_pages)
+        metrics.set_bytes_out(bytes_out)
+        chunk_metrics = metrics.build("succeeded")
+
         duration_ms = int((time.monotonic() - started) * 1000)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2477,10 +2600,14 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "bytes_in": bytes_in,
             "bytes_out": bytes_out,
             "duration_ms": duration_ms,
+            "metrics": chunk_metrics,
         })
+        _log_operational_metrics(chunk_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms)
     except SidecarError as exc:
         LOG.warning("chunk job %s/%d failed: %s", req.job_id, req.chunk_index, exc.message)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2491,10 +2618,14 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "page_start": req.page_start,
             "page_end": req.page_end,
             "duration_ms": int((time.monotonic() - started) * 1000),
+            "metrics": failed_metrics,
         })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code=exc.error_code)
     except MemoryError as exc:
         LOG.exception("chunk job %s/%d OOM", req.job_id, req.chunk_index)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2504,10 +2635,14 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "retryable": True,
             "page_start": req.page_start,
             "page_end": req.page_end,
+            "metrics": failed_metrics,
         })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code="chunk_oom")
     except Exception as exc:
         LOG.exception("chunk job %s/%d unhandled", req.job_id, req.chunk_index)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2517,7 +2652,9 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "retryable": True,
             "page_start": req.page_start,
             "page_end": req.page_end,
+            "metrics": failed_metrics,
         })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code="chunk_unhandled")
 
 
 def _safe_pdf_text_for_page(page) -> str:
