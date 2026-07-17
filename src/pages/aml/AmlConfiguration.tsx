@@ -353,7 +353,114 @@ function TerminologyPreview({ jsonText, lockedKeys }: { jsonText: string; locked
   );
 }
 
-/* -------------------- plan tab -------------------- */
+/* -------------------- structured terminology editor (V3 · Directive 11) -------------------- */
+
+/**
+ * Row-based label editor replacing the raw JSON textarea. Keeps `value`
+ * as a JSON string so the surrounding save flow (which already parses
+ * and posts JSON) works unchanged. Locked regulatory terms are shown but
+ * disabled and cannot be added.
+ */
+function StructuredTerminologyEditor({
+  value, onChange, lockedKeys, disabled,
+}: {
+  value: string;
+  onChange: (json: string) => void;
+  lockedKeys: string[];
+  disabled: boolean;
+}) {
+  const parsed = useMemo(() => {
+    try { return value.trim() ? (JSON.parse(value) as Record<string, string>) : {}; }
+    catch { return null; }
+  }, [value]);
+  const lockedSet = useMemo(() => new Set(lockedKeys), [lockedKeys]);
+
+  const rows = useMemo(() => {
+    if (parsed === null) return [] as { key: string; replacement: string }[];
+    return Object.entries(parsed).map(([key, replacement]) => ({ key, replacement }));
+  }, [parsed]);
+
+  const writeRows = (next: { key: string; replacement: string }[]) => {
+    const map: Record<string, string> = {};
+    for (const r of next) {
+      const k = r.key.trim();
+      if (!k || lockedSet.has(k)) continue;
+      map[k] = r.replacement;
+    }
+    onChange(JSON.stringify(map, null, 2));
+  };
+
+  const updateRow = (idx: number, patch: Partial<{ key: string; replacement: string }>) => {
+    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+    writeRows(next);
+  };
+  const removeRow = (idx: number) => writeRows(rows.filter((_, i) => i !== idx));
+  const addRow = () => writeRows([...rows, { key: "", replacement: "" }]);
+
+  if (parsed === null) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+        Existing overrides are not valid JSON. Fix them in the JSON editor before switching to the structured view.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-border/60 divide-y divide-border/60">
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 text-[11px] uppercase text-muted-foreground">
+          <span>Original label</span>
+          <span>Your replacement</span>
+          <span className="sr-only">Actions</span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="px-3 py-4 text-xs text-muted-foreground">
+            No overrides yet. Add one to relabel a workspace or nav item.
+          </div>
+        ) : rows.map((row, idx) => {
+          const isLocked = lockedSet.has(row.key.trim());
+          return (
+            <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 px-3 py-2 items-center">
+              <Input
+                value={row.key}
+                disabled={disabled}
+                placeholder="e.g. Customer Compliance"
+                onChange={(e) => updateRow(idx, { key: e.target.value })}
+                className={isLocked ? "border-destructive/50" : ""}
+              />
+              <Input
+                value={row.replacement}
+                disabled={disabled || isLocked}
+                placeholder="e.g. Client KYC"
+                onChange={(e) => updateRow(idx, { replacement: e.target.value })}
+              />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => removeRow(idx)}
+                aria-label="Remove override"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={addRow}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add override
+        </Button>
+        <span className="text-[11px] text-muted-foreground">
+          Locked regulatory terms are refused on save.
+        </span>
+      </div>
+      <TerminologyPreview jsonText={value} lockedKeys={lockedKeys} />
+    </div>
+  );
+}
+
 
 function PlanPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
   const [selected, setSelected] = useState(summary.settings?.plan_tier_key ?? "starter");
