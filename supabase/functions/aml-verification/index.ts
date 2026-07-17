@@ -11,6 +11,7 @@
  * analyst / reviewer / MLRO. Auditor is read-only.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { verifyAuth } from "../_shared/auth.ts";
 import {
   getIdvProvider,
   getScreeningProvider,
@@ -20,7 +21,7 @@ import { reserveTokens, commitTokens, cancelTokens } from "../_shared/missionCon
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -55,19 +56,14 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const authHeader = req.headers.get("Authorization") ?? "";
-    if (!authHeader.startsWith("Bearer ")) return jr({ error: "Unauthorized" }, 401);
-
-    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) return jr({ error: "Invalid session" }, 401);
-    const userId = userData.user.id;
-    const userEmail = userData.user.email ?? null;
-
     const admin = createClient(supabaseUrl, serviceKey);
+
+    const body = await req.json().catch(() => ({}));
+    const auth = await verifyAuth(admin, req.headers, body);
+    if (auth.error || !auth.userId || auth.userId === "service_role") return jr({ error: auth.error || "Authentication required" }, 401);
+    const userId = auth.userId;
+    const userEmail = auth.username ?? null;
 
     const { data: hasAny } = await admin.rpc("has_any_aml_role", { _user_id: userId });
     if (!hasAny) return jr({ error: "AML role required" }, 403);
@@ -77,7 +73,6 @@ Deno.serve(async (req) => {
     const roles = new Set<string>((roleRows ?? []).map((r: any) => r.role));
     const canWrite = roles.has("analyst") || roles.has("reviewer") || roles.has("mlro");
 
-    const body = await req.json().catch(() => ({}));
     const op = String(body?.op ?? "");
     if (!op) return jr({ error: "op required" }, 400);
 
