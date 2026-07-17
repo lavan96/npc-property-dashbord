@@ -51,6 +51,8 @@ export default function AmlTransactions() {
   const [cpCases, setCpCases] = useState<AmlCounterpartyCase[]>([]);
   const [cpRequests, setCpRequests] = useState<AmlCounterpartyRequest[]>([]);
   const [gate, setGate] = useState<Awaited<ReturnType<typeof amlTransactionsApi.settlementGateStatus>> | null>(null);
+  const [obligations, setObligations] = useState<AmlTransactionObligation[]>([]);
+  const [reevaluating, setReevaluating] = useState(false);
   const [txDialogOpen, setTxDialogOpen] = useState(false);
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
   const [cpDialogOpen, setCpDialogOpen] = useState(false);
