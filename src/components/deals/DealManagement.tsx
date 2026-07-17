@@ -400,13 +400,13 @@ function DealManageRow({
         </TableCell>
 
         {/* Risk (inline edit) */}
-        <TableCell className="hidden lg:table-cell w-[120px]">
+        <TableCell className="hidden lg:table-cell min-w-[160px]">
           <Select
             key={`${deal.id}-risk`}
             defaultValue={deal.risk_status}
             onValueChange={(v) => handleUpdateField('risk_status', v)}
           >
-            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-background/60 dark:bg-background/60 text-[10px] shadow-inner focus:ring-brand-300/40', riskCfg?.color)}>
+            <SelectTrigger className={cn('h-8 w-full min-w-[140px] rounded-xl border bg-background/60 dark:bg-background/60 text-[10px] shadow-inner focus:ring-brand-300/40', riskCfg?.color)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-brand-200/15 bg-background dark:bg-background">
@@ -586,7 +586,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden sm:table-cell">Progress</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden md:table-cell">Responsible</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden lg:table-cell">Risk</TableHead>
+                  <TableHead className="min-w-[160px] whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden lg:table-cell">Risk</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden xl:table-cell">Next Action</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground w-20">Actions</TableHead>
                 </TableRow>
