@@ -427,9 +427,9 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
       </TableRow>
 
       {/* Expanded detail */}
-      <TableRow className={cn(!expanded && 'hidden')}>
-        <TableCell colSpan={8} className="bg-gradient-to-r from-muted/50 via-background to-muted/30 p-0">
-          <CollapsibleContent>
+      {expanded && (
+        <TableRow>
+          <TableCell colSpan={8} className="bg-gradient-to-r from-muted/50 via-background to-muted/30 p-0">
             <div className="mx-2 my-2 rounded-xl border border-border/70 bg-background/80 px-4 py-3 shadow-sm space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
@@ -478,10 +478,10 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
                 </div>
               )}
             </div>
-          </CollapsibleContent>
-        </TableCell>
-      </TableRow>
-    </Collapsible>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   );
 }
 
