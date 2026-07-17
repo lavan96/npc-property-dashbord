@@ -299,6 +299,7 @@ const App = () => (
                                 <Route path="insights" element={<FinancePortalInsights />} />
                                 <Route path="reports" element={<FinancePortalReports />} />
                                 <Route path="settings" element={<FinancePortalSettings />} />
+                                <Route path="aml-snapshot/:token" element={<AmlCaseSnapshot />} />
                                 
 
 
