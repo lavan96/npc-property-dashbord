@@ -650,3 +650,103 @@ function FormRow({ label, children }: { label: string; children: React.ReactNode
     </div>
   );
 }
+
+/* -------------------- activation program panel -------------------- */
+
+function ActivationProgramPanel({ canWrite }: { canWrite: boolean }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [legalApproval, setLegalApproval] = useState(false);
+  const [programVersion, setProgramVersion] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const p = await amlTenantApi.getActivationProgram();
+        setLegalApproval(Boolean(p?.legal_approval));
+        setProgramVersion(p?.program_version ?? "");
+        setNotes(p?.notes ?? "");
+      } catch (e: any) { toast.error(e?.message ?? "Failed to load activation program"); }
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  const save = async () => {
+    if (legalApproval && !programVersion.trim()) {
+      toast.error("Program version is required when legal approval is enabled"); return;
+    }
+    setSaving(true);
+    try {
+      await amlTenantApi.updateActivationProgram({
+        legal_approval: legalApproval,
+        program_version: programVersion.trim() || null,
+        notes: notes.trim() || null,
+      });
+      toast.success("Activation program updated");
+    } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <Skeleton className="h-40 w-full" />;
+
+  return (
+    <Card className="border-border/60 bg-card/60">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShieldCheck className="h-4 w-4 text-primary" /> Hybrid Activation Program (Model A / B)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Model B requires legal sign-off</AlertTitle>
+          <AlertDescription>
+            Model A (designated-service activation) is always available. Model B (pre-service /
+            earlier activation) is disabled until the MLRO records legal approval and a program
+            version reference here.
+          </AlertDescription>
+        </Alert>
+
+        <div className="flex items-center justify-between rounded-md border border-border/60 p-3">
+          <div>
+            <div className="text-sm font-medium">Model B legal approval</div>
+            <div className="text-xs text-muted-foreground">
+              Confirms the tenant's legal team has approved the earlier-activation program.
+            </div>
+          </div>
+          <Switch checked={legalApproval} onCheckedChange={setLegalApproval} disabled={!canWrite} />
+        </div>
+
+        <FormRow label="Program version">
+          <Input
+            value={programVersion}
+            onChange={(e) => setProgramVersion(e.target.value)}
+            placeholder="e.g. 2026-Q1-v1"
+            disabled={!canWrite}
+          />
+        </FormRow>
+
+        <FormRow label="Notes (optional)">
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="Reference the approval document, scope, or effective date."
+            disabled={!canWrite}
+          />
+        </FormRow>
+
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={!canWrite || saving}>
+            {saving ? <Loader2Icon /> : null} Save activation program
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Loader2Icon() {
+  return <span className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />;
+}
