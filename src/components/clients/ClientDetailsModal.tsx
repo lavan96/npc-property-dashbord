@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
+import { StartClientComplianceButton } from './StartClientComplianceButton';
 import { ClientTags } from './ClientTags';
 import { ClientReminders } from './ClientReminders';
 import { ClientActivityTimeline } from './ClientActivityTimeline';
@@ -348,6 +349,15 @@ The Team`
           <ClipboardCheck className="h-4 w-4 mr-1.5" />
           <span className={isMobile ? "text-xs" : ""}>Review</span>
         </Button>
+
+        <StartClientComplianceButton
+          clientId={client.id}
+          clientName={`${smartCapitalize(client.primary_first_name || '')} ${smartCapitalize(client.primary_surname || '')}`.trim()}
+          size="sm"
+          compact={isMobile}
+        />
+
+
         
         <Button
           variant="default"
