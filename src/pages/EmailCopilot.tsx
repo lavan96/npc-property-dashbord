@@ -3580,14 +3580,15 @@ export default function EmailCopilot() {
                         // Find the original index for removal
                         const originalIndex = composeAttachments.findIndex(f2 => f2 === file);
                         return (
-                          <div key={index} className="flex items-center justify-between rounded-xl bg-background p-2 text-sm">
-                            <div className="flex items-center gap-2 min-w-0">
+                          <div key={index} className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 overflow-hidden rounded-xl bg-background p-2 text-sm">
+                            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                               <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="truncate">{file.name}</span>
+                              <span className="min-w-0 flex-1 truncate" title={file.name}>{file.name}</span>
                               <span className="text-xs text-muted-foreground flex-shrink-0">
                                 ({formatFileSize(file.size)})
                               </span>
                             </div>
+
                             <Button
                               type="button"
                               variant="ghost"
