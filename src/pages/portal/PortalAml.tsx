@@ -31,10 +31,17 @@ const STEPS: { key: StepKey; label: string; section?: AmlSection }[] = [
 
 const CONSENT_VERSION = '1.0';
 
+const CONSENT_STORAGE_PREFIX = 'aml_portal_consent:';
+const RESUME_STORAGE_PREFIX = 'aml_portal_resume:';
+
+function consentKey(caseId: string) { return `${CONSENT_STORAGE_PREFIX}${caseId}`; }
+function resumeKey(caseId: string) { return `${RESUME_STORAGE_PREFIX}${caseId}`; }
+
 export default function PortalAml() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AmlPortalOverview | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
+  const resumedRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +58,55 @@ export default function PortalAml() {
   useEffect(() => { load(); }, [load]);
 
   const caseObj = data?.case ?? null;
+
+  // Consent wall: consented if locally recorded OR any section has moved past not_started
+  // (server-side gate enforces this; we mirror it in the UI to prevent bypass via stepper clicks).
+  const consented = useMemo(() => {
+    if (!caseObj) return false;
+    try {
+      if (localStorage.getItem(consentKey(caseObj.id)) === '1') return true;
+    } catch { /* ignore */ }
+    return (data?.sections ?? []).some(s => s.status && s.status !== 'not_started');
+  }, [caseObj, data?.sections]);
+
+  // Resume: on first load, jump to the last section the user was on, or the first incomplete step.
+  useEffect(() => {
+    if (!caseObj || resumedRef.current || loading) return;
+    resumedRef.current = true;
+    if (!consented) { setStepIdx(0); return; }
+    let target = 1;
+    try {
+      const saved = localStorage.getItem(resumeKey(caseObj.id));
+      if (saved != null) {
+        const n = Number(saved);
+        if (Number.isFinite(n) && n >= 0 && n < STEPS.length) target = n;
+      } else {
+        const sections = data?.sections ?? [];
+        const firstIncompleteIdx = STEPS.findIndex(s => {
+          if (!s.section) return false;
+          const st = sections.find(x => x.section === s.section)?.status;
+          return !['submitted', 'accepted', 'complete'].includes(st ?? '');
+        });
+        if (firstIncompleteIdx > 0) target = firstIncompleteIdx;
+      }
+    } catch { /* ignore */ }
+    setStepIdx(target);
+  }, [caseObj, consented, data?.sections, loading]);
+
+  // Persist current step for resume
+  useEffect(() => {
+    if (!caseObj) return;
+    try { localStorage.setItem(resumeKey(caseObj.id), String(stepIdx)); } catch { /* ignore */ }
+  }, [caseObj, stepIdx]);
+
+  const safeSetStep = useCallback((i: number) => {
+    if (!consented && i !== 0) {
+      toast.error('Please confirm the consents first.');
+      return;
+    }
+    setStepIdx(i);
+  }, [consented]);
+
   const step = STEPS[stepIdx];
 
   const progressPct = useMemo(() => {
@@ -111,11 +167,36 @@ export default function PortalAml() {
             </CardContent>
           </Card>
 
-          <Stepper steps={STEPS} currentIdx={stepIdx} onSelect={setStepIdx} sections={data?.sections ?? []} />
+          {!consented && (
+            <Alert>
+              <ShieldCheck className="h-4 w-4" />
+              <AlertTitle>Consent required to continue</AlertTitle>
+              <AlertDescription>
+                Please review and confirm the consents below before completing the rest of the onboarding.
+                Your progress is saved automatically as you go.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Stepper
+            steps={STEPS}
+            currentIdx={stepIdx}
+            onSelect={safeSetStep}
+            sections={data?.sections ?? []}
+            consented={consented}
+          />
 
           <div className="min-h-[300px]">
-            {step.key === 'consent' && <ConsentStep caseId={caseObj.id} onDone={() => setStepIdx(1)} />}
-            {step.section && (
+            {step.key === 'consent' && (
+              <ConsentStep
+                caseId={caseObj.id}
+                onDone={() => {
+                  try { localStorage.setItem(consentKey(caseObj.id), '1'); } catch { /* ignore */ }
+                  setStepIdx(1);
+                }}
+              />
+            )}
+            {step.section && consented && (
               <QuestionnaireStep
                 key={step.key}
                 caseId={caseObj.id}
@@ -126,7 +207,7 @@ export default function PortalAml() {
                 onBack={() => setStepIdx(i => Math.max(0, i - 1))}
               />
             )}
-            {step.key === 'documents' && (
+            {step.key === 'documents' && consented && (
               <DocumentsStep
                 caseId={caseObj.id}
                 requirements={data?.requirements ?? []}
@@ -135,7 +216,7 @@ export default function PortalAml() {
                 onBack={() => setStepIdx(i => i - 1)}
               />
             )}
-            {step.key === 'review' && (
+            {step.key === 'review' && consented && (
               <ReviewStep
                 overview={data}
                 caseId={caseObj.id}
