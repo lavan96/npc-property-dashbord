@@ -50,9 +50,18 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
       e.preventDefault();
       onNext();
     } else if (e.key === 'Escape') {
+      if (fullscreen) { setFullscreen(false); return; }
       onClose();
+    } else if ((e.key === '+' || e.key === '=') && !isReadingAnalysis) {
+      e.preventDefault(); setZoom((z) => clampZoom(z + 25));
+    } else if (e.key === '-' && !isReadingAnalysis) {
+      e.preventDefault(); setZoom((z) => clampZoom(z - 25));
+    } else if (e.key === '0' && !isReadingAnalysis) {
+      e.preventDefault(); setZoom(100);
+    } else if ((e.key === 'f' || e.key === 'F') && !isReadingAnalysis) {
+      e.preventDefault(); setFullscreen((v) => !v);
     }
-  }, [chart, hasPrev, hasNext, onPrev, onNext, onClose]);
+  }, [chart, hasPrev, hasNext, onPrev, onNext, onClose, fullscreen]);
 
   useEffect(() => {
     if (chart) {
