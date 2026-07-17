@@ -57,8 +57,12 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(val);
   };
 
-  const completedCount = sorted.filter(p => p.paid_to_builder).length;
+  const isStageComplete = (p: BuildProgressPayment) =>
+    p.builder_invoice_received && p.submitted_to_lender && p.funds_released && p.paid_to_builder;
+
+  const completedCount = sorted.filter(isStageComplete).length;
   const progressPercent = sorted.length > 0 ? (completedCount / sorted.length) * 100 : 0;
+
 
   return (
     <div className="space-y-3">
@@ -81,19 +85,20 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
               <TableHead>Stage</TableHead>
               <TableHead className="text-right">%</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-center">Completed</TableHead>
               <TableHead className="text-center">Invoice Rcvd</TableHead>
               <TableHead className="text-center">Submitted</TableHead>
               <TableHead className="text-center">Funds Released</TableHead>
               <TableHead className="text-center">Paid Builder</TableHead>
+              <TableHead className="text-center">Completed</TableHead>
               <TableHead className="text-center">Commission</TableHead>
+
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.map((p) => {
               const stageAmount = buildPrice ? (buildPrice * p.percentage / 100) : p.amount;
               return (
-                <TableRow key={p.id} className={cn(p.funds_released && 'bg-success/5')}>
+                <TableRow key={p.id} className={cn(isStageComplete(p) && 'bg-success/5')}>
                   <TableCell className="font-mono text-xs">{p.stage_number}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
@@ -106,24 +111,9 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                   <TableCell className="text-right font-mono text-sm">{p.percentage}%</TableCell>
                   <TableCell className="text-right text-sm">{formatCurrency(stageAmount || null)}</TableCell>
 
-                  {/* Completed */}
-                  <TableCell className="text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <Checkbox
-                        checked={p.paid_to_builder}
-                        onCheckedChange={(checked) => onUpdatePayment(p.id, {
-                          paid_to_builder: !!checked,
-                          paid_to_builder_date: checked ? (p.paid_to_builder_date || format(new Date(), 'yyyy-MM-dd')) : null,
-                        })}
-                      />
-                      {p.paid_to_builder && p.paid_to_builder_date && (
-                        <span className="text-[10px] text-success">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
-                      )}
-                    </div>
-                  </TableCell>
-
                   {/* Invoice Received */}
                   <TableCell className="text-center">
+
                     <div className="flex flex-col items-center gap-0.5">
                       <Checkbox
                         checked={p.builder_invoice_received}
@@ -198,8 +188,19 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                     </div>
                   </TableCell>
 
+                  {/* Completed — derived final status */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <Checkbox checked={isStageComplete(p)} disabled aria-readonly />
+                      {isStageComplete(p) && p.paid_to_builder_date && (
+                        <span className="text-[10px] text-success">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
+                      )}
+                    </div>
+                  </TableCell>
+
                   {/* Commission */}
                   <TableCell className="text-center">
+
                     {p.is_commission_trigger ? (
                       <div className="flex flex-col items-center gap-0.5">
                         <Checkbox
