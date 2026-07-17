@@ -118,13 +118,15 @@ const channelColors: Record<string, string> = {
     "bg-accent/10 text-accent-foreground border-accent/35 shadow-[0_0_24px_rgba(168,85,247,0.16)]",
 };
 
+// Avatar bubble uses opaque endpoints so the parent row's read/unread tint
+// (gold unread highlight) does not bleed through and shift the bubble color.
 const avatarBackgrounds: Record<string, string> = {
-  sms: "from-info/24 via-info/13 to-card/72 dark:to-background/72",
-  email: "from-accent/24 via-accent/13 to-card/72 dark:to-background/72",
-  whatsapp: "from-success/26 via-success/14 to-card/72 dark:to-background/72",
-  instagram: "from-accent/24 via-accent/13 to-card/72 dark:to-background/72",
-  facebook: "from-accent/24 via-info/13 to-card/72 dark:to-background/72",
-  live_chat: "from-accent/24 via-info/12 to-card/72 dark:to-background/72",
+  sms: "from-info/30 via-info/16 to-card dark:to-background",
+  email: "from-accent/30 via-accent/16 to-card dark:to-background",
+  whatsapp: "from-success/32 via-success/17 to-card dark:to-background",
+  instagram: "from-accent/30 via-accent/16 to-card dark:to-background",
+  facebook: "from-accent/30 via-info/16 to-card dark:to-background",
+  live_chat: "from-accent/30 via-info/15 to-card dark:to-background",
 };
 
 const getContactInitials = (name?: string | null) => {
@@ -1366,7 +1368,7 @@ export default function Conversations() {
                           className={cn(
                             "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-border dark:ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
                             avatarBackgrounds[normalized] ||
-                              "from-muted0/18 via-muted/12 to-card/72 dark:to-background/72",
+                              "from-muted/30 via-muted/16 to-card dark:to-background",
                           )}
                         >
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">
@@ -1506,7 +1508,7 @@ export default function Conversations() {
                   <div className="relative flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex min-w-0 flex-1 items-start gap-3.5">
                       {!isMobile && (
-                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-muted0/18 via-muted/12 to-card/72 dark:to-background/72')}>
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-muted/30 via-muted/16 to-card dark:to-background')}>
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
                           <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-border/90 bg-background dark:bg-background shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-foreground dark:text-foreground')}>
                             {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3.5 w-3.5" />; })()}
