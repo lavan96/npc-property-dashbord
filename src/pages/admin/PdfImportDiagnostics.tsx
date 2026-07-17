@@ -583,8 +583,8 @@ export default function PdfImportDiagnostics() {
                   <TableHead className="text-right">OCR</TableHead>
                   <TableHead className="text-right">Tables</TableHead>
                   <TableHead className="text-right">Conf.</TableHead>
-                  <TableHead className="text-right">Duration</TableHead>
-                  <TableHead className="text-right">Run ms</TableHead>
+                  <TableHead className="text-right" title="Wall-clock elapsed for the whole job (start → callback). Open a row for the full C11 per-phase timing breakdown.">Elapsed</TableHead>
+                  <TableHead className="text-right" title="Cumulative sidecar CPU work (parse + raster), NOT wall-clock. C11 per-phase timings are in the row detail.">CPU work</TableHead>
                   <TableHead className="text-right">SSIM</TableHead>
                   <TableHead>Quality</TableHead>
                   <TableHead className="text-right">Actions</TableHead>

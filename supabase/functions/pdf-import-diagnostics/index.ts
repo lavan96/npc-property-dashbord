@@ -138,7 +138,9 @@ Deno.serve(async (req) => {
         .select(
           // C8: template_import_id/service_class/source_file_hash/plan_payload feed
           // the diagnostics-v2 correlation + the gate-summary join below.
-          'id,user_id,template_id,template_import_id,service_class,source_file_hash,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,plan_payload,created_at,updated_at',
+          // C11: operational_metrics/cache_hit/cache_source_job_id feed the
+          // sidecar-metrics summary (shaped client-side in pdfImportDiagnosticsV2).
+          'id,user_id,template_id,template_import_id,service_class,source_file_hash,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,plan_payload,operational_metrics,cache_hit,cache_source_job_id,created_at,updated_at',
         )
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -188,7 +190,8 @@ Deno.serve(async (req) => {
 
       const { data: chunkRows } = await admin
         .from('pdf_import_chunks')
-        .select('id,chunk_index,page_start,page_end,status,attempts,error_code,error_text,duration_ms')
+        // C11: operational_metrics carries each chunk's validated invocation envelope.
+        .select('id,chunk_index,page_start,page_end,status,attempts,error_code,error_text,duration_ms,operational_metrics')
         .eq('job_id', jobId)
         .order('chunk_index', { ascending: true });
       const chunks = chunkRows ?? [];

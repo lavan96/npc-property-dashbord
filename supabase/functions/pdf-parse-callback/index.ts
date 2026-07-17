@@ -7,12 +7,18 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createTokenAuthCorsHeaders } from '../_shared/auth.ts';
+import { reconcileMonolithicMetrics } from '../_shared/sidecarOperationalMetricsV1.pure.ts';
+import { buildInvocationEnvelope, buildEdgeObservation, type CallbackOperation } from '../_shared/pdfOperationalMetricsEnvelope.pure.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CALLBACK_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
+const EDGE_FUNCTION_VERSION = Deno.env.get('SUPABASE_FUNCTION_VERSION') ?? null;
 
 Deno.serve(async (req) => {
+  // Monotonic Edge-processing timer (measures body-parse + validation up to the
+  // final DB write; the write boundary is documented, not a second fragile update).
+  const edgeStart = performance.now();
   const cors = createTokenAuthCorsHeaders();
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
     status,
@@ -45,6 +51,35 @@ Deno.serve(async (req) => {
   const startedAt = existing?.started_at ? new Date(existing.started_at).getTime() : Date.now();
   const duration = Date.now() - startedAt;
 
+  // C11 — validate + persist the sidecar operational-metrics envelope. Fail-open:
+  // legacy (no metrics), unknown-version, or malformed-V1 objects are all accepted
+  // and never brick an otherwise-valid callback; only valid_v1 feeds diagnostics.
+  const nestedMetrics =
+    (body as any).result_payload && typeof (body as any).result_payload === 'object'
+      ? (body as any).result_payload.metrics
+      : undefined;
+  const validation = reconcileMonolithicMetrics((body as any).metrics, nestedMetrics);
+  const callbackOperation: CallbackOperation = status === 'failed' ? 'monolithic_failure' : 'monolithic_success';
+  const edge = buildEdgeObservation({
+    callbackReceivedAt: now,
+    edgeProcessingMs: Math.round(performance.now() - edgeStart),
+    operation: callbackOperation,
+    edgeFunctionVersion: EDGE_FUNCTION_VERSION,
+  });
+  const invocationEnvelope = buildInvocationEnvelope({
+    validation,
+    source: 'monolithic',
+    receivedAt: now,
+    edge,
+  });
+  const operationalMetrics = {
+    ...invocationEnvelope,
+    scope_kind: 'monolithic',
+    // Parent wall-clock elapsed for a monolithic job = job start → callback (this
+    // is NOT the sidecar's own timing; the sidecar's is inside invocation.metrics).
+    parent_elapsed_ms: duration,
+  };
+
   const patch: Record<string, unknown> = {
     status,
     stage: status === 'failed' ? 'failed' : 'parsed',
@@ -52,6 +87,7 @@ Deno.serve(async (req) => {
     finished_at: now,
     duration_ms: duration,
     updated_at: now,
+    operational_metrics: operationalMetrics,
   };
 
   if (status === 'failed') {
