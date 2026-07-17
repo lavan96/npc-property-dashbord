@@ -34,12 +34,7 @@ Deno.serve(async (req) => {
 
     const [{ data: flag, error: flagError }, { data: roleRows, error: roleError }] = await Promise.all([
       admin.from("feature_flags").select("value").eq("key", "aml_ctf").maybeSingle(),
-      admin
-        .schema("aml")
-        .from("role_assignments")
-        .select("role, granted_at, revoked_at")
-        .eq("user_id", auth.userId)
-        .is("revoked_at", null),
+      admin.rpc("get_aml_roles_for_user", { _user_id: auth.userId }),
     ]);
 
     if (flagError) throw flagError;

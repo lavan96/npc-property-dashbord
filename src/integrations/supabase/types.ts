@@ -20032,6 +20032,12 @@ export type Database = {
           total_entries: number
         }[]
       }
+      get_aml_roles_for_user: {
+        Args: { _user_id: string }
+        Returns: {
+          role: string
+        }[]
+      }
       get_api_health_stats: {
         Args: { days_back?: number }
         Returns: {
