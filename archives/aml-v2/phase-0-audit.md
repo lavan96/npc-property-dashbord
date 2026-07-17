@@ -86,7 +86,7 @@ Feature flag: `feature_flags.aml_ctf`.
 | 1 | Five-workspace shell + legacy route aliases | Legacy URLs must 200-resolve; no capability regressions |
 | 2 | Role-adaptive landings derived from effective permissions | No client-side role sniffing; restricted metric counts hidden | ✅ delivered — `suggestAmlLanding()` + capability-gated tiles/queues in `AmlOverview` |
 | 3 | Hybrid activation engine (Model A/B) + Activate Client dialog | Requires `legal_approval` flag + `program_version` before Model B production |
-| 4 | Case-centred Customer Compliance register | Preserves all Phase 4 sub-tables; case tabs replace top-nav pages |
+| 4 | Case-centred Customer Compliance register | Preserves all Phase 4 sub-tables; case tabs replace top-nav pages | ✅ delivered — `CaseWorkspaceTabs` (Overview/Verification/Screening/Risk/Audit) inside case sheet; legacy `/admin/aml/{verification,screening,risk}` show `LegacyAliasBanner` and remain functional |
 | 5 | Client Portal AML onboarding polish | Consent wall + resume/autosave; no restricted fields leak |
 | 6 | Provider orchestration (IDV, PEP/sanctions, adverse media) | Simulator vs live provider isolation |
 | 7 | Risk & decisions engine (policy-versioned, explainable) | Straight-through low-risk gate + controlled escalation |
