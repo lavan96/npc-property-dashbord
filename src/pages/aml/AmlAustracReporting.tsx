@@ -59,7 +59,10 @@ export default function AmlAustracReporting() {
   const [openSubmit, setOpenSubmit] = useState(false);
   const [submitChannel, setSubmitChannel] = useState<AmlSubmissionChannel>("austrac_online");
   const [submitRef, setSubmitRef] = useState("");
+  const [submitBundlePath, setSubmitBundlePath] = useState("");
+  const [submitAttest, setSubmitAttest] = useState(false);
   const [submitNotes, setSubmitNotes] = useState("");
+  const [submitReport, setSubmitReport] = useState<AmlReport | null>(null);
 
   const [openReceipt, setOpenReceipt] = useState<AmlReportSubmission | null>(null);
   const [receiptRef, setReceiptRef] = useState("");
