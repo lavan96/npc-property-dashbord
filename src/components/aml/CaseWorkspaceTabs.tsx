@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2, ShieldCheck, ScanSearch, Gauge, ClipboardList, Play,
-  Network, Wallet, ExternalLink, AlertTriangle,
+  Network, Wallet, ExternalLink, AlertTriangle, History,
+  FileText, Scale, CircleDot,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
