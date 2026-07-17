@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlProviderCapability =
   | "idv" | "pep_sanctions" | "adverse_media" | "transaction_monitoring" | "austrac_lodgement";
@@ -62,10 +62,7 @@ export interface AmlTenantSummary {
 }
 
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-tenant", { body: { op, ...args } });
-  if (error) throw new Error(error.message ?? "aml-tenant failed");
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-tenant", { op, ...args });
 }
 
 export const amlTenantApi = {

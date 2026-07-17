@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { amlCasesApi } from "@/lib/aml/amlCasesApi";
 import {
   amlTransactionsApi,
   type AmlTransaction, type AmlTransactionKind, type AmlTransactionStatus,
@@ -59,10 +59,7 @@ export default function AmlTransactions() {
   // Load AML cases (via case_events schema — reuse aml.cases)
   useEffect(() => {
     (async () => {
-      const { data } = await (supabase as any)
-        .schema("aml").from("cases")
-        .select("id, case_reference, subject_display_name, purchase_file_id")
-        .order("created_at", { ascending: false }).limit(200);
+      const { cases: data } = await amlCasesApi.list({ limit: 200 });
       setCases(data ?? []);
       if ((data ?? []).length && !caseId) setCaseId(data[0].id);
     })();

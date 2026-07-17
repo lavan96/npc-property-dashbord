@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlReportKind = "smr" | "ttr" | "ifti" | "compliance" | "annual";
 export type AmlReportStatus =
@@ -43,10 +43,7 @@ export interface AmlReportingSummary {
 }
 
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-reporting", { body: { op, ...args } });
-  if (error) throw new Error(error.message ?? "aml-reporting failed");
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-reporting", { op, ...args });
 }
 
 export const amlReportingApi = {

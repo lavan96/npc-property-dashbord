@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlRetentionScheduleEntity =
   | "case" | "verification" | "screening" | "transaction" | "report" | "alert" | "edd" | string;
@@ -62,10 +62,7 @@ export interface AmlRecordsSummary {
 }
 
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-records", { body: { op, ...args } });
-  if (error) throw new Error(error.message ?? "aml-records failed");
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-records", { op, ...args });
 }
 
 export const amlRecordsApi = {
