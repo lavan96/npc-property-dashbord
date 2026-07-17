@@ -122,7 +122,7 @@ export default function AmlConfiguration() {
 
 /* -------------------- summary tiles -------------------- */
 
-function SummaryTiles({ summary }: { summary: AmlTenantSummary }) {
+function SummaryTiles({ summary, hideMetrics = false }: { summary: AmlTenantSummary; hideMetrics?: boolean }) {
   const activeProviders = summary.providers.filter((p) => p.active).length;
   const failureRate = summary.metrics_30d.calls > 0
     ? (summary.metrics_30d.failures / summary.metrics_30d.calls) * 100 : 0;
@@ -131,8 +131,10 @@ function SummaryTiles({ summary }: { summary: AmlTenantSummary }) {
   const tiles = [
     { label: "Plan", value: plan?.label ?? "—", icon: Package, sub: plan?.description ?? "" },
     { label: "Active providers", value: String(activeProviders), icon: Plug, sub: `${summary.providers.length} total` },
-    { label: "30-day calls", value: summary.metrics_30d.calls.toLocaleString(), icon: Activity, sub: `${failureRate.toFixed(1)}% failure` },
-    { label: "30-day cost", value: fmtMoney(summary.metrics_30d.cost_cents), icon: DollarSign, sub: "across all providers" },
+    ...(hideMetrics ? [] : [
+      { label: "30-day calls", value: summary.metrics_30d.calls.toLocaleString(), icon: Activity, sub: `${failureRate.toFixed(1)}% failure` },
+      { label: "30-day cost", value: fmtMoney(summary.metrics_30d.cost_cents), icon: DollarSign, sub: "across all providers" },
+    ]),
   ];
   return (
     <div className="grid gap-3 md:grid-cols-4">
