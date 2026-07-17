@@ -62,7 +62,8 @@ export const amlReportingApi = {
   withdrawReport: (id: string, reason?: string) => invoke<{ report: AmlReport }>("withdraw_report", { id, reason }).then((r) => r.report),
   submitRecord: (args: {
     report_id: string; channel?: AmlSubmissionChannel; status?: AmlSubmissionStatus;
-    external_reference?: string; export_bundle_path?: string; notes?: string; response_payload?: Record<string, any>;
+    external_reference?: string; export_bundle_path?: string; notes?: string;
+    response_payload?: Record<string, any>; attest_no_tipping_off?: boolean;
   }) => invoke<{ submission: AmlReportSubmission }>("submit_record", args).then((r) => r.submission),
   recordReceipt: (args: {
     submission_id: string; receipt_reference: string; status?: AmlReceiptStatus;

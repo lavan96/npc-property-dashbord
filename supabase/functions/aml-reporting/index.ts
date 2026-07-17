@@ -80,8 +80,16 @@ Deno.serve(async (req) => {
     const roles = new Set<string>((roleRows ?? []).map((r: any) => r.role));
     const canWrite = roles.has("analyst") || roles.has("reviewer") || roles.has("mlro");
     const isMlro = roles.has("mlro");
+    const isAuditorOnly = roles.has("auditor") && !roles.has("analyst") && !roles.has("reviewer") && !roles.has("mlro");
     const requireWrite = () => { if (!canWrite) throw new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
     const requireMlro = () => { if (!isMlro) throw new Response(JSON.stringify({ error: "MLRO role required" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
+
+    // Tipping-off redaction: audit-only viewers may see SMR metadata but never narrative or payload contents.
+    const redactSmr = <T extends { kind?: string; narrative?: any; payload?: any } | null | undefined>(row: T): T => {
+      if (!row || !isAuditorOnly) return row;
+      if (row.kind !== "smr") return row;
+      return { ...row, narrative: null, payload: { redacted: true, reason: "tipping-off protection" } } as T;
+    };
 
     const op = String(body?.op ?? "");
 
@@ -93,7 +101,8 @@ Deno.serve(async (req) => {
       if (body.case_id) q = q.eq("case_id", String(body.case_id));
       const { data, error } = await q;
       if (error) return jr({ error: error.message }, 400);
-      return jr({ reports: data ?? [] });
+      const rows = (data ?? []).map((r: any) => redactSmr(r));
+      return jr({ reports: rows });
     }
     if (op === "get_report") {
       const id = String(body.id ?? "");
@@ -102,7 +111,9 @@ Deno.serve(async (req) => {
         aml.from("report_versions").select("*").eq("report_id", id).order("version", { ascending: false }),
         aml.from("report_submissions").select("*, receipts:report_receipts(*)").eq("report_id", id).order("submitted_at", { ascending: false }),
       ]);
-      return jr({ report, versions: versions ?? [], submissions: submissions ?? [] });
+      const safeReport = redactSmr(report as any);
+      const safeVersions = (versions ?? []).map((v: any) => (report?.kind === "smr" && isAuditorOnly) ? { ...v, narrative: null, snapshot: { redacted: true } } : v);
+      return jr({ report: safeReport, versions: safeVersions, submissions: submissions ?? [] });
     }
 
     // ── DRAFT WRITES ─────────────────────────────
@@ -194,30 +205,56 @@ Deno.serve(async (req) => {
       const { data: report } = await aml.from("reports").select("*").eq("id", String(body.report_id)).maybeSingle();
       if (!report) return jr({ error: "Report not found" }, 404);
       if (report.status !== "approved") return jr({ error: "Report must be MLRO-approved before recording a submission" }, 400);
+
+      // ── Phase 11 gate: cannot mark submitted without evidence ──
+      const extRef = String(body.external_reference ?? "").trim();
+      const bundlePath = String(body.export_bundle_path ?? "").trim();
+      const responseHasEvidence = body.response_payload && typeof body.response_payload === "object" &&
+        (body.response_payload.evidence || body.response_payload.attachment_url || body.response_payload.lodgement_id);
+      if (!extRef && !bundlePath && !responseHasEvidence) {
+        return jr({ error: "Submission evidence required: provide AUSTRAC external reference, an export bundle path, or attach evidence in response_payload." }, 400);
+      }
+      if (report.kind === "smr" && !extRef) {
+        return jr({ error: "SMR submissions require the AUSTRAC lodgement reference (external_reference)." }, 400);
+      }
+      if (body.attest_no_tipping_off !== true) {
+        return jr({ error: "MLRO must attest to no tipping-off breach (attest_no_tipping_off=true)." }, 400);
+      }
+
       const { data: latestVersion } = await aml.from("report_versions").select("version, content_hash").eq("report_id", report.id).order("version", { ascending: false }).limit(1).maybeSingle();
       const now = new Date().toISOString();
-      const { data: submission, error: subErr } = await aml.from("report_submissions").insert({
+      const attestation = {
+        attested_by: userId, attested_label: userLabel, attested_at: now,
+        no_tipping_off: true, evidence_source: extRef ? "external_reference" : bundlePath ? "export_bundle" : "response_payload",
+      };
+      const submissionInsert = {
         report_id: report.id,
         version: latestVersion?.version ?? 1,
         channel: body.channel ?? "austrac_online",
         status: body.status ?? "submitted",
-        external_reference: body.external_reference ?? null,
+        external_reference: extRef || null,
         submitted_by: userId,
         submitted_at: now,
-        response_payload: body.response_payload ?? {},
-        export_bundle_path: body.export_bundle_path ?? null,
+        response_payload: { ...(body.response_payload ?? {}), attestation },
+        export_bundle_path: bundlePath || null,
         content_hash: latestVersion?.content_hash ?? null,
         notes: body.notes ?? null,
-      }).select("*").single();
+      };
+      const { data: submission, error: subErr } = await aml.from("report_submissions").insert(submissionInsert).select("*").single();
       if (subErr) return jr({ error: subErr.message }, 400);
       await aml.from("reports").update({
         status: "submitted",
         submitted_at: now,
         submitted_by: userId,
+        metadata: { ...(report.metadata ?? {}), last_submission_attestation: attestation },
       }).eq("id", report.id);
-      await appendCaseEvent(admin, report.case_id, "system", `AUSTRAC ${report.kind.toUpperCase()} submitted via ${submission.channel}`, { report_id: report.id, submission_id: submission.id, external_reference: submission.external_reference }, userId, userLabel);
+      // Case-event payload is marked restricted for SMR to keep it out of finance/portal renderers.
+      const eventPayload: any = { report_id: report.id, submission_id: submission.id, external_reference: submission.external_reference };
+      if (report.kind === "smr") eventPayload.restricted = true;
+      await appendCaseEvent(admin, report.case_id, "system", `AUSTRAC ${report.kind.toUpperCase()} submitted via ${submission.channel}`, eventPayload, userId, userLabel);
       return jr({ submission });
     }
+
 
     if (op === "record_receipt") {
       requireMlro();
