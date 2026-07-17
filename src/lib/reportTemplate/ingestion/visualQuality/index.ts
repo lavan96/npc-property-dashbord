@@ -258,3 +258,32 @@ export {
   type ApplyRepairedTemplateOptions,
   type ApplyRepairedTemplateResult,
 } from './repair';
+
+// C7 — per-page review UI view-model + actions.
+export {
+  PAGE_REVIEW_MODEL_VERSION,
+  PAGE_REVIEW_EAGER_IMAGE_LIMIT,
+  PAGE_REVIEW_RESPONSIVE_PAGE_LIMIT,
+  buildPageReviewModels,
+  type BuildPageReviewModelsInput,
+  type PageReviewCollection,
+  type PageReviewModel,
+  type PageReviewImages,
+  type PageReviewMetric,
+  type PageReviewArtifactAvailability,
+  type PageRepairDiaryEntry,
+} from './pageReviewModel';
+
+export {
+  PAGE_REVIEW_ACTION_VERSION,
+  describePageActions,
+  applyPageReviewAction,
+  isPolicyAction,
+  type PageReviewAction,
+  type PageReviewPolicyAction,
+  type PageActionContext,
+  type PageActionDescriptor,
+  type PageActionVariant,
+  type ApplyPageReviewActionOptions,
+  type ApplyPageReviewActionResult,
+} from './pageReviewActions';

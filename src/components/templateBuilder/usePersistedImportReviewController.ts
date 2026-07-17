@@ -10,10 +10,15 @@ import {
   runImportReviewVisualQualityPipeline,
   runVisualRepairOrchestrationPipeline,
   saveVisualRepairAudit,
+  buildPageReviewModels,
+  applyPageReviewAction,
+  isPolicyAction,
   type PersistedVisualQuality,
   type PersistedVisualRepairAudit,
   type VisualQaReviewSummary,
   type VisualRepairOrchestrationSummary,
+  type PageReviewAction,
+  type PageReviewCollection,
 } from '@/lib/reportTemplate/ingestion/visualQuality';
 import {
   loadImportReviewDraft,
@@ -93,6 +98,7 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
   const [persistedRepairAudit, setPersistedRepairAudit] = useState<PersistedVisualRepairAudit | null>(null);
   const [applyRepairBusy, setApplyRepairBusy] = useState(false);
   const [forceModeBusy, setForceModeBusy] = useState(false);
+  const [pageActionBusyId, setPageActionBusyId] = useState<string | null>(null);
   const [repairApplied, setRepairApplied] = useState(false);
   const [repairDraftReady, setRepairDraftReady] = useState(false);
   const [reviewDebug, setReviewDebug] = useState<ImportReviewDebugSnapshot | null>(null);
@@ -109,6 +115,7 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     setRepairSummary(null);
     setPersistedRepairAudit(null);
     setApplyRepairBusy(false);
+    setPageActionBusyId(null);
     setRepairApplied(false);
     setRepairDraftReady(false);
     setReviewDebug(null);
@@ -372,6 +379,85 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     }
   }, [options, reviewImportId]);
 
+  // C7 — per-page review view-model. Built from the persisted per-page report,
+  // the signed-URL map, and the reviewed template (which carries the C5/C6
+  // per-page output policy). Presentation lives in the review grid.
+  const pageReviewCollection = useMemo<PageReviewCollection>(() => buildPageReviewModels({
+    report: persistedVisualQuality?.report ?? null,
+    signedUrls: persistedVisualQuality?.signedUrls ?? null,
+    template: persistedReview?.draft?.template ?? null,
+  }), [persistedReview?.draft?.template, persistedVisualQuality?.report, persistedVisualQuality?.signedUrls]);
+
+  // C7 — apply an operator's per-page action. Policy actions (force hybrid /
+  // force pixel / promote to native) mutate ONLY that page and persist a new,
+  // auditable template version; the rest are routed to their existing handlers.
+  const onPageAction = useCallback(async (pageId: string, action: PageReviewAction) => {
+    const templateId = reviewRecord?.created_template_id ?? null;
+    if (action === 'open_editor') {
+      if (templateId) navigate(`/admin/template-builder/${templateId}?page=${encodeURIComponent(pageId)}`);
+      else toast.error('No template record is linked to this import.');
+      return;
+    }
+    if (action === 'accept') {
+      toast.success(`Page ${pageId} accepted for native output.`);
+      return;
+    }
+    if (action === 'repair') {
+      await runRepair();
+      return;
+    }
+    if (action === 'ai_repair') {
+      toast.info('AI repair is operator-only and unlocks after the C9 safeguards land.');
+      return;
+    }
+    if (!isPolicyAction(action)) return;
+
+    const baseTemplate = persistedReview?.draft?.template;
+    if (!templateId) { toast.error('No template record is linked to this import.'); return; }
+    if (!baseTemplate) { toast.error('No template is loaded to change this page.'); return; }
+
+    const modelPage = pageReviewCollection.pages.find((p) => p.pageId === pageId);
+    if ((action === 'force_hybrid' || action === 'force_pixel') && !modelPage?.artifacts.source) {
+      toast.error('No source raster is available on this page to fall back to.');
+      return;
+    }
+
+    setPageActionBusyId(pageId);
+    try {
+      const result = applyPageReviewAction(baseTemplate, pageId, action, {
+        score: modelPage?.overallScore ?? null,
+        nativeMode: finalMode,
+      });
+      if (!result.changed) {
+        toast.error(result.skippedReason === 'page_not_found' ? 'That page is no longer in the template.' : 'No change was applied to this page.');
+        return;
+      }
+      const applied = await applyRepairedTemplateToRecord({
+        templateId,
+        repairedTemplate: result.template,
+        repairSummary: repairSummary ?? undefined,
+        repairAuditPath: persistedRepairAudit?.artifactPaths?.summary ?? null,
+        note: `Operator ${action.replace('_', ' ')} on page ${pageId} from import review (page-scoped).`,
+      });
+      // Reflect the change in the in-memory review draft so the grid updates.
+      setPersistedReview((prev) => (prev ? { ...prev, draft: { ...prev.draft, template: result.template } } : prev));
+      setReviewDebug((prev) => ({
+        ...(prev ?? {}),
+        stage: 'page_action_applied',
+        pageActionPageId: pageId,
+        pageAction: action,
+        appliedNextVersion: applied.nextVersion,
+      }));
+      toast.success(`Applied ${action.replace('_', ' ')} to page · template v${applied.nextVersion}.`);
+    } catch (err) {
+      const message = (err as Error).message;
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'page_action_failed', pageActionError: message }));
+      toast.error(`Could not apply ${action.replace('_', ' ')}: ${message}`);
+    } finally {
+      setPageActionBusyId(null);
+    }
+  }, [finalMode, navigate, pageReviewCollection.pages, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, repairSummary, reviewRecord?.created_template_id, runRepair]);
+
   const dialogProps = useMemo(() => ({
     open: reviewOpen,
     onOpenChange: (open: boolean) => { setReviewOpen(open); if (!open) resetReviewState(); },
@@ -396,7 +482,13 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     forceModeAvailable: Boolean(reviewRecord?.created_template_id && persistedReview?.draft?.template && !forceModeBusy),
     forceModeBusy,
     onRecordDecision: reviewImportId ? recordDecision : undefined,
-  }), [applyRepair, applyRepairAvailable, applyRepairBusy, forceMode, forceModeBusy, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, persistedVisualQuality?.artifactPaths, persistedVisualQuality?.signedUrls, recordDecision, recordedDecision, repairAvailable, repairBusy, repairSummary, resetReviewState, reviewDebug, reviewDraft, reviewImportId, reviewOpen, reviewRecord?.created_template_id, runRepair, runVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary]);
+    // C7 — per-page review grid + actions. The dialog builds the view-model
+    // from the persisted report; the controller owns the per-page action.
+    visualQualityReport: persistedVisualQuality?.report ?? null,
+    onPageAction: reviewRecord?.created_template_id ? onPageAction : undefined,
+    pageActionBusyId,
+    aiRepairEnabled: false,
+  }), [applyRepair, applyRepairAvailable, applyRepairBusy, forceMode, forceModeBusy, onPageAction, pageActionBusyId, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, persistedVisualQuality?.artifactPaths, persistedVisualQuality?.report, persistedVisualQuality?.signedUrls, recordDecision, recordedDecision, repairAvailable, repairBusy, repairSummary, resetReviewState, reviewDebug, reviewDraft, reviewImportId, reviewOpen, reviewRecord?.created_template_id, runRepair, runVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary]);
 
   return {
     reviewOpen,

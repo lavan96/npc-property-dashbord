@@ -7,10 +7,17 @@
 // re-checking the superadmin role server-side.
 //
 // Operations:
-//   - { operation: 'list',     status?, engine?, engineVersion?, limit? } -> { rows }
+//   - { operation: 'list',     status?, engine?, engineVersion?, limit? } -> { rows, gates }
 //   - { operation: 'get',      jobId }                       -> { row }
+//   - { operation: 'detail',   jobId }                       -> { job, importId, gate, chunks, missingArtifactPages, signedUrls } (C8)
 //   - { operation: 'download', diagnosticsPath, expiresIn? } -> { signedUrl }
 //   - { operation: 'stats' }                                 -> { totals, recent }
+//
+// C8 (pdf-import-diagnostics-v2): `list` also returns a { [jobId]: gateSummary }
+// map (the linked import's `meta.visual_quality_gate`) so the UI can render the
+// compact visual/quality columns; `detail` returns the raw correlated rows for a
+// single job — the frontend `pdfImportDiagnosticsV2` module does all shaping so
+// there is a single tested implementation and no server/client drift.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import {
@@ -23,6 +30,74 @@ import {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
+
+/** Pull the C3-C6 quality-gate summary out of a template_imports.meta blob. */
+function extractGateFromMeta(meta: unknown): Record<string, unknown> | null {
+  if (!meta || typeof meta !== 'object') return null;
+  const gate = (meta as Record<string, unknown>).visual_quality_gate;
+  return gate && typeof gate === 'object' ? (gate as Record<string, unknown>) : null;
+}
+
+/**
+ * C8 — batch-load the quality-gate summaries for a page of jobs, keyed by jobId.
+ * Uses the C1 `template_import_id` correlation column; jobs without one simply
+ * have no gate columns in the list.
+ */
+async function loadGateSummaries(
+  admin: ReturnType<typeof createClient>,
+  jobs: Array<{ id: string; template_import_id?: string | null }>,
+): Promise<Record<string, Record<string, unknown>>> {
+  const importIdToJobIds = new Map<string, string[]>();
+  for (const job of jobs) {
+    const importId = job.template_import_id;
+    if (!importId) continue;
+    const list = importIdToJobIds.get(importId) ?? [];
+    list.push(job.id);
+    importIdToJobIds.set(importId, list);
+  }
+  const importIds = [...importIdToJobIds.keys()];
+  if (importIds.length === 0) return {};
+
+  const { data, error } = await admin
+    .from('template_imports')
+    .select('id,meta')
+    .in('id', importIds);
+  if (error || !data) return {};
+
+  const gates: Record<string, Record<string, unknown>> = {};
+  for (const row of data as Array<{ id: string; meta: unknown }>) {
+    const gate = extractGateFromMeta(row.meta);
+    if (!gate) continue;
+    for (const jobId of importIdToJobIds.get(row.id) ?? []) gates[jobId] = gate;
+  }
+  return gates;
+}
+
+/**
+ * C8 — resolve a job's linked import + gate summary. Prefers the C1
+ * `template_import_id`; falls back to the reverse correlation stored at
+ * `template_imports.meta.import_manifests.pdf_import_job.job_id`.
+ */
+async function resolveImportGate(
+  admin: ReturnType<typeof createClient>,
+  job: { id: string; template_import_id?: string | null },
+): Promise<{ importId: string | null; gate: Record<string, unknown> | null }> {
+  if (job.template_import_id) {
+    const { data } = await admin
+      .from('template_imports')
+      .select('id,meta')
+      .eq('id', job.template_import_id)
+      .maybeSingle();
+    if (data) return { importId: (data as any).id, gate: extractGateFromMeta((data as any).meta) };
+  }
+  const { data: reverse } = await admin
+    .from('template_imports')
+    .select('id,meta')
+    .eq('meta->import_manifests->pdf_import_job->>job_id', job.id)
+    .maybeSingle();
+  if (reverse) return { importId: (reverse as any).id, gate: extractGateFromMeta((reverse as any).meta) };
+  return { importId: null, gate: null };
+}
 
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();
@@ -61,7 +136,9 @@ Deno.serve(async (req) => {
       let q = admin
         .from('pdf_import_jobs')
         .select(
-          'id,user_id,template_id,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,created_at,updated_at',
+          // C8: template_import_id/service_class/source_file_hash/plan_payload feed
+          // the diagnostics-v2 correlation + the gate-summary join below.
+          'id,user_id,template_id,template_import_id,service_class,source_file_hash,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,plan_payload,created_at,updated_at',
         )
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -72,7 +149,12 @@ Deno.serve(async (req) => {
 
       const { data, error } = await q;
       if (error) return json({ error: error.message }, 500);
-      return json({ rows: data ?? [] });
+      const rows = data ?? [];
+
+      // C8 — batch-fetch the linked imports' quality-gate summaries so the list
+      // can render the visual/quality columns without an N+1 per row.
+      const gates = await loadGateSummaries(admin, rows as any[]);
+      return json({ rows, gates });
     }
 
     if (operation === 'get') {
@@ -85,6 +167,71 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (error) return json({ error: error.message }, 500);
       return json({ row: data });
+    }
+
+    if (operation === 'detail') {
+      // C8 — heavy, correlated per-job drill-down. Returns RAW rows; the frontend
+      // `buildDiagnosticsDetail` does all shaping so there is one tested
+      // implementation. Superadmin auth already enforced above.
+      const jobId = body.jobId as string;
+      if (!jobId) return json({ error: 'jobId required' }, 400);
+
+      const { data: job, error: jobErr } = await admin
+        .from('pdf_import_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .maybeSingle();
+      if (jobErr) return json({ error: jobErr.message }, 500);
+      if (!job) return json({ error: 'job not found' }, 404);
+
+      const { importId, gate } = await resolveImportGate(admin, job as any);
+
+      const { data: chunkRows } = await admin
+        .from('pdf_import_chunks')
+        .select('id,chunk_index,page_start,page_end,status,attempts,error_code,error_text,duration_ms')
+        .eq('job_id', jobId)
+        .order('chunk_index', { ascending: true });
+      const chunks = chunkRows ?? [];
+
+      // Best-effort: pages beyond the count of persisted page rasters are missing
+      // their per-page artifacts.
+      const rasterCount = Array.isArray((job as any).result_payload?.page_raster_paths)
+        ? (job as any).result_payload.page_raster_paths.length
+        : 0;
+      const pageCount = Number((job as any).page_count) || 0;
+      const missingArtifactPages: number[] = [];
+      for (let p = rasterCount + 1; p <= pageCount; p += 1) missingArtifactPages.push(p);
+
+      // Short-lived signed URLs for the key per-job artifacts (never persisted).
+      const expiresIn = 300;
+      const signedUrls: Record<string, string> = {};
+      const signPaths: Array<[string, string | null | undefined]> = [
+        ['diagnostics', (job as any).diagnostics_path],
+        ['rastersManifest', (job as any).result_payload?.rasters_manifest_path],
+      ];
+      for (const [key, rawPath] of signPaths) {
+        if (!rawPath) continue;
+        const objectPath = String(rawPath).startsWith(`${DIAGNOSTICS_BUCKET}/`)
+          ? String(rawPath).slice(DIAGNOSTICS_BUCKET.length + 1)
+          : String(rawPath);
+        const { data: signed } = await admin.storage
+          .from(DIAGNOSTICS_BUCKET)
+          .createSignedUrl(objectPath, expiresIn);
+        if (signed?.signedUrl) signedUrls[key] = signed.signedUrl;
+      }
+
+      await admin.from('pdf_import_audit_log').insert({
+        job_id: jobId,
+        actor_id: auth.userId === 'service_role' ? null : auth.userId,
+        action: 'diagnostics_detail_viewed',
+        diagnostics_path: (job as any).diagnostics_path ?? null,
+        file_hash: (job as any).source_file_hash ?? null,
+        metadata: { import_id: importId, signed_artifact_count: Object.keys(signedUrls).length, expires_in: expiresIn },
+      }).then(({ error: auditError }) => {
+        if (auditError) console.warn('[pdf-import-diagnostics] detail audit insert failed', auditError);
+      });
+
+      return json({ job, importId, gate, chunks, missingArtifactPages, signedUrls, expiresIn });
     }
 
     if (operation === 'download') {
