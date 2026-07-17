@@ -286,7 +286,23 @@ Deno.serve(async (req) => {
           `Settlement date changed from ${existing?.settlement_date} to ${tx.settlement_date}`,
           { from: existing?.settlement_date, to: tx.settlement_date }, userId, userLabel);
       }
-      return jr({ transaction: tx });
+
+      // Phase 9 — automatic obligation evaluation
+      let obligationResult = { created: 0, obligation_ids: [] as string[] };
+      try {
+        obligationResult = await evaluateObligations(admin, aml, tx);
+        if (obligationResult.created > 0) {
+          await appendTxEvent(aml, tx.id, tx.case_id, "obligation_triggered",
+            `${obligationResult.created} new reportable obligation(s) detected`,
+            { obligation_ids: obligationResult.obligation_ids }, userId, userLabel);
+        }
+      } catch (e) {
+        // Never block a save because obligation evaluation failed; log to event chain.
+        await appendTxEvent(aml, tx.id, tx.case_id, "obligation_eval_error",
+          "Obligation evaluation failed", { error: String((e as any)?.message ?? e) }, userId, userLabel);
+      }
+
+      return jr({ transaction: tx, obligations_created: obligationResult.created });
     }
     if (op === "delete_transaction") {
       requireWrite();
