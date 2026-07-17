@@ -351,29 +351,74 @@ function QuestionnaireStep({
 }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [autosaving, setAutosaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [form, setForm] = useState<Record<string, any>>({});
   const [status, setStatus] = useState<string>('not_started');
+  const dirtyRef = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formRef = useRef(form);
+  formRef.current = form;
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    dirtyRef.current = false;
     amlPortalApi.getQuestionnaire(caseId, section)
       .then(r => {
         if (!alive) return;
         setForm(r.response?.payload ?? {});
         setStatus(r.response?.status ?? 'not_started');
+        setLastSavedAt(r.response?.updated_at ? new Date(r.response.updated_at) : null);
       })
       .catch((e) => toast.error(e?.message ?? 'Failed to load'))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [caseId, section]);
 
-  const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
+  const persistDraft = useCallback(async () => {
+    // Never overwrite a submitted/accepted section from the autosaver
+    if (['submitted', 'accepted', 'complete'].includes(statusRef.current)) return;
+    setAutosaving(true);
+    try {
+      await amlPortalApi.saveQuestionnaire(caseId, section, formRef.current, false);
+      dirtyRef.current = false;
+      setLastSavedAt(new Date());
+      if (statusRef.current === 'not_started') setStatus('draft');
+    } catch {
+      // silent — user can still hit Save/Submit manually
+    } finally {
+      setAutosaving(false);
+    }
+  }, [caseId, section]);
+
+  const set = (k: string, v: any) => {
+    setForm(prev => ({ ...prev, [k]: v }));
+    dirtyRef.current = true;
+    if (['submitted', 'accepted', 'complete'].includes(statusRef.current)) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => { void persistDraft(); }, 1200);
+  };
+
+  // Flush pending autosave on unmount / step change
+  useEffect(() => {
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      if (dirtyRef.current && !['submitted', 'accepted', 'complete'].includes(statusRef.current)) {
+        void amlPortalApi.saveQuestionnaire(caseId, section, formRef.current, false).catch(() => { /* silent */ });
+      }
+    };
+  }, [caseId, section]);
 
   const save = async (submit: boolean) => {
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     setSaving(true);
     try {
       await amlPortalApi.saveQuestionnaire(caseId, section, form, submit);
+      dirtyRef.current = false;
+      setLastSavedAt(new Date());
       toast.success(submit ? 'Section submitted' : 'Draft saved');
       setStatus(submit ? 'submitted' : 'draft');
       onSaved();
@@ -385,12 +430,21 @@ function QuestionnaireStep({
     }
   };
 
+  const savedLabel = lastSavedAt
+    ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    : 'Not saved yet';
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{title}</span>
-          <Badge variant="outline" className="capitalize">{status.replace(/_/g, ' ')}</Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">
+              {autosaving ? 'Autosaving…' : savedLabel}
+            </span>
+            <Badge variant="outline" className="capitalize">{status.replace(/_/g, ' ')}</Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -422,6 +476,7 @@ function QuestionnaireStep({
     </Card>
   );
 }
+
 
 /* ─────────────────  Section-specific forms  ────────────────── */
 
