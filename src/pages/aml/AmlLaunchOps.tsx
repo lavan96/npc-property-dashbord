@@ -151,6 +151,7 @@ export default function AmlLaunchOps() {
           <TabsTrigger value="rollout"><Rocket className="h-4 w-4 mr-1" /> Rollout</TabsTrigger>
           <TabsTrigger value="scenarios"><ClipboardCheck className="h-4 w-4 mr-1" /> Acceptance</TabsTrigger>
           <TabsTrigger value="risks"><ShieldAlert className="h-4 w-4 mr-1" /> Risks</TabsTrigger>
+          <TabsTrigger value="launch"><Award className="h-4 w-4 mr-1" /> Launch</TabsTrigger>
         </TabsList>
 
         {/* Rollout */}
