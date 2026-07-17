@@ -493,14 +493,7 @@ function DealManageRow({
 
 // ─── MAIN COMPONENT ───
 export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, onUpdateStage }: Props) {
-  // Collect all responsible persons for the dropdown
-  const responsiblePersons = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of deals) {
-      if (d.responsible_person) set.add(d.responsible_person);
-    }
-    return Array.from(set).sort();
-  }, [deals]);
+  const { data: teamUsers = [] } = useTeamUsers();
 
   // Summary stats
   const stats = useMemo(() => {
