@@ -19,7 +19,9 @@ export type AmlV3FlagKey =
   | "aml_v3_start_client_compliance"
   | "aml_v3_compliance_home"
   | "aml_v3_case_workspace"
-  | "aml_v3_regulatory_hub";
+  | "aml_v3_regulatory_hub"
+  | "aml_v3_terminology_editor"
+  | "aml_v3_metrics_relocation";
 
 export interface AmlV3Flags {
   v3Nav: boolean;
@@ -27,6 +29,8 @@ export interface AmlV3Flags {
   complianceHome: boolean;
   caseWorkspace: boolean;
   regulatoryHub: boolean;
+  terminologyEditor: boolean;
+  metricsRelocation: boolean;
   loading: boolean;
 }
 
