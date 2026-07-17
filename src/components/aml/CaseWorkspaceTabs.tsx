@@ -41,6 +41,7 @@ interface Props {
 }
 
 export function CaseWorkspaceTabs({ caseRow, events, canWrite, canInvestigate, onChanged }: Props) {
+  const { caseWorkspace: v3Case } = useAmlV3Flags();
   return (
     <Tabs defaultValue="overview" className="w-full">
       <TabsList className="w-full justify-start overflow-x-auto">
@@ -56,6 +57,16 @@ export function CaseWorkspaceTabs({ caseRow, events, canWrite, canInvestigate, o
         <TabsTrigger value="risk">
           <Gauge className="h-3.5 w-3.5 mr-1.5" /> Risk & Decision
         </TabsTrigger>
+        {v3Case && (
+          <TabsTrigger value="ownership">
+            <Network className="h-3.5 w-3.5 mr-1.5" /> Ownership & Control
+          </TabsTrigger>
+        )}
+        {v3Case && canInvestigate && (
+          <TabsTrigger value="finance">
+            <Wallet className="h-3.5 w-3.5 mr-1.5" /> Funding & Finance
+          </TabsTrigger>
+        )}
         <TabsTrigger value="audit">Audit</TabsTrigger>
       </TabsList>
 
@@ -71,6 +82,16 @@ export function CaseWorkspaceTabs({ caseRow, events, canWrite, canInvestigate, o
       <TabsContent value="risk" className="mt-4">
         <RiskTab caseId={caseRow.id} canWrite={canWrite} onChanged={onChanged} />
       </TabsContent>
+      {v3Case && (
+        <TabsContent value="ownership" className="mt-4">
+          <OwnershipControlTab caseRow={caseRow} />
+        </TabsContent>
+      )}
+      {v3Case && canInvestigate && (
+        <TabsContent value="finance" className="mt-4">
+          <FundingFinanceTab caseId={caseRow.id} />
+        </TabsContent>
+      )}
       <TabsContent value="audit" className="mt-4">
         <AuditTab events={events} />
       </TabsContent>
