@@ -136,8 +136,9 @@ function SummaryTiles({ summary, hideMetrics = false }: { summary: AmlTenantSumm
       { label: "30-day cost", value: fmtMoney(summary.metrics_30d.cost_cents), icon: DollarSign, sub: "across all providers" },
     ]),
   ];
+  const cols = tiles.length >= 4 ? "md:grid-cols-4" : tiles.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
   return (
-    <div className="grid gap-3 md:grid-cols-4">
+    <div className={`grid gap-3 ${cols}`}>
       {tiles.map((t) => (
         <Card key={t.label} className="border-border/60 bg-card/60">
           <CardContent className="p-4">
