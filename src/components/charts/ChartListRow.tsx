@@ -84,7 +84,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
               onClick={(e) => { e.stopPropagation(); navigate(`/report/${chart.report_id}`); }}
             >
               <FileText className="h-3 w-3 shrink-0" />
-              <span className="truncate max-w-[120px]">{chart.generated_reports.title}</span>
+              <span className="truncate max-w-[120px]">{chart.generated_reports.display_title ?? chart.generated_reports.title}</span>
               <ExternalLink className="h-2.5 w-2.5 shrink-0" />
             </button>
           )}
