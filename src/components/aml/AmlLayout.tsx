@@ -220,7 +220,7 @@ export function AmlLayout() {
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{w.label}</span>
+                  <span className="truncate">{t(w.label)}</span>
                 </NavLink>
               );
             })}
