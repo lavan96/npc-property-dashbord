@@ -22,6 +22,7 @@ import {
   type AmlTenantSummary, type AmlPlanTier, type AmlProviderConfig,
   type AmlProviderCapability, type AmlProviderHealth, type AmlEntitlementOverride,
 } from "@/lib/aml/amlTenantApi";
+import { refreshAmlTerminology } from "@/lib/aml/useAmlTerminology";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 
 function fmtMoney(cents: number, currency = "AUD") {
