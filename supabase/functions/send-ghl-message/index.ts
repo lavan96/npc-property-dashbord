@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
-import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
+import { getEffectiveGhlCredentials, resolveGhlAccessTokenForLocation } from '../_shared/ghl-account.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
