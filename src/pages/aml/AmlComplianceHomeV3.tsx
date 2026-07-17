@@ -1,80 +1,87 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  Bell,
+  FileSignature,
+  Gauge,
+  Info,
+  Lock,
+  PlayCircle,
+  ShieldCheck,
+  Settings2,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import {
-  Gauge,
-  ShieldCheck,
-  Users,
-  Info,
-  Bell,
-  FileSignature,
-  Settings2,
-  ArrowRight,
-  Lock,
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { amlCasesApi, type AmlCase } from "@/lib/aml/amlCasesApi";
 import { amlMonitoringApi, type AmlMonitoringSummary } from "@/lib/aml/amlMonitoringApi";
 import { amlReportingApi, type AmlReportingSummary } from "@/lib/aml/amlReportingApi";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 import { hasAmlCapability, type AmlCapability } from "@/lib/aml/permissions";
 import { suggestAmlLanding } from "@/lib/aml/defaultLanding";
-import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
-import AmlComplianceHomeV3 from "./AmlComplianceHomeV3";
 
 /**
- * Phase 2 — Compliance Home (role-adaptive).
+ * AML V3 — Phase 3 Compliance Home (Directives 5 & 6).
  *
- * All tiles and queue links are derived from the user's **effective
- * capabilities** returned by `useAmlAccess`. Restricted metric counts
- * (reporting SLA, configuration health) are never rendered — not even
- * as blurred placeholders — for users lacking the underlying capability,
- * to comply with tipping-off protections in AGENTS.md §2.
+ * Action-led, role-adaptive landing. Rendered when
+ * `feature_flags.aml_v3_compliance_home = true`. Otherwise the legacy
+ * V2 overview continues to render (byte-identical).
+ *
+ * Rules honoured (AGENTS.md):
+ *  - No role chips, no dev metadata.
+ *  - Landing recommendation derived from **effective capabilities**
+ *    (`useAmlAccess`), never from a client-side role string.
+ *  - Restricted metrics (reporting SLA, configuration health) are hidden
+ *    entirely for users lacking the underlying capability — no blurred
+ *    placeholder, no count leak (tipping-off protection).
+ *  - "Open AUSTRAC Hub" affordance is always surfaced to holders of
+ *    `aml.report` and never to anyone else.
+ *  - Empty states are actionable (explain + next step).
  */
 
-interface QueueLink {
+interface ActionEntry {
   key: string;
   label: string;
   description: string;
   to: string;
   cta: string;
+  icon: LucideIcon;
   capability: AmlCapability;
+  variant?: "default" | "primary";
 }
 
-const QUEUE_LINKS: QueueLink[] = [
+const ACTION_CATALOG: ActionEntry[] = [
   {
     key: "cases",
-    label: "Customer Case register",
-    description: "Search, open and continue any customer compliance case.",
+    label: "Customer cases",
+    description: "Continue any customer compliance case or open the register.",
     to: "/admin/aml/cases",
-    cta: "Open register",
+    cta: "Open case register",
+    icon: Users,
     capability: "aml.view",
   },
   {
     key: "monitoring",
     label: "Monitoring & alerts",
-    description: "Triage open alerts, unprocessed events and periodic reviews.",
+    description: "Triage open alerts and unprocessed rule-engine events.",
     to: "/admin/aml/monitoring",
     cta: "Open monitoring",
-    capability: "aml.investigate",
-  },
-  {
-    key: "investigations",
-    label: "Investigations & EDD",
-    description: "Progress EDD workstreams and evidence-backed decisions.",
-    to: "/admin/aml/investigations",
-    cta: "Open investigations",
+    icon: Bell,
     capability: "aml.investigate",
   },
   {
     key: "transactions",
     label: "Transactions",
-    description: "Investigate flagged transactions and IFTI/TTR triggers.",
+    description: "Investigate flagged transactions, TTR and IFTI triggers.",
     to: "/admin/aml/transactions",
     cta: "Open transactions",
+    icon: Gauge,
     capability: "aml.investigate",
   },
   {
@@ -83,27 +90,32 @@ const QUEUE_LINKS: QueueLink[] = [
     description: "SMR / TTR / IFTI drafting, MLRO approval and lodgement.",
     to: "/admin/aml/austrac",
     cta: "Open AUSTRAC Hub",
+    icon: FileSignature,
     capability: "aml.report",
+    variant: "primary",
+  },
+  {
+    key: "finance",
+    label: "Funding & Finance",
+    description: "Service-entitlement gate and downstream finance handoff.",
+    to: "/admin/aml/finance",
+    cta: "Open Funding & Finance",
+    icon: Wallet,
+    capability: "aml.investigate",
   },
   {
     key: "configuration",
-    label: "Configuration",
+    label: "Organisation Settings",
     description: "Tenant, thresholds, provider keys and program version.",
     to: "/admin/aml/configuration",
-    cta: "Open configuration",
+    cta: "Open settings",
+    icon: Settings2,
     capability: "aml.configure",
   },
 ];
 
-export default function AmlOverview() {
-  const { complianceHome: v3Home, loading: v3Loading } = useAmlV3Flags();
+export default function AmlComplianceHomeV3() {
   const { roles, loading: accessLoading } = useAmlAccess();
-
-  // Phase 3 (V3) — swap to the action-led Compliance Home when the
-  // `aml_v3_compliance_home` feature flag is on. Default false → V2 renders.
-  if (!v3Loading && v3Home) {
-    return <AmlComplianceHomeV3 />;
-  }
 
   const canView = hasAmlCapability(roles, "aml.view");
   const canInvestigate = hasAmlCapability(roles, "aml.investigate");
@@ -148,8 +160,7 @@ export default function AmlOverview() {
         setLoadingMonitoring(true);
         const s = await amlMonitoringApi.summary();
         if (alive) setMonitoring(s);
-      } catch (e) {
-        // silent — tile shows unavailable state
+      } catch {
         if (alive) setMonitoring(null);
       } finally {
         if (alive) setLoadingMonitoring(false);
@@ -166,7 +177,7 @@ export default function AmlOverview() {
         setLoadingReporting(true);
         const s = await amlReportingApi.summary();
         if (alive) setReporting(s);
-      } catch (e) {
+      } catch {
         if (alive) setReporting(null);
       } finally {
         if (alive) setLoadingReporting(false);
@@ -185,13 +196,12 @@ export default function AmlOverview() {
   );
 
   const landing = useMemo(() => suggestAmlLanding(roles), [roles]);
-
-  const visibleQueues = useMemo(
-    () => QUEUE_LINKS.filter((q) => hasAmlCapability(roles, q.capability)),
+  const visibleActions = useMemo(
+    () => ACTION_CATALOG.filter((a) => hasAmlCapability(roles, a.capability)),
     [roles],
   );
 
-  // No access at all — actionable empty state.
+  // Actionable no-access state.
   if (!accessLoading && roles.size === 0) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 py-10">
@@ -221,20 +231,35 @@ export default function AmlOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Role-adaptive landing hint */}
+      {/* Neutral continuation banner — no role labels, only capability-derived recommendation. */}
       {landing && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">Continue where you work most</div>
-              <div className="text-xs text-muted-foreground">{landing.reason}</div>
+            <div className="min-w-0 flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+                <PlayCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Continue where you work most</div>
+                <div className="text-xs text-muted-foreground">{landing.reason}</div>
+              </div>
             </div>
-            <Button asChild size="sm">
-              <Link to={landing.path}>
-                {landing.label}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link to={landing.path}>
+                  {landing.label}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              {canReport && landing.path !== "/admin/aml/austrac" && (
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/admin/aml/austrac">
+                    Open AUSTRAC Hub
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -264,7 +289,7 @@ export default function AmlOverview() {
         />
       </div>
 
-      {/* Investigate-only tiles: monitoring queue snapshot */}
+      {/* Investigate tiles */}
       {canInvestigate && (
         <div className="grid gap-4 md:grid-cols-3">
           <MetricTile
@@ -272,11 +297,7 @@ export default function AmlOverview() {
             icon={Bell}
             loading={loadingMonitoring}
             value={monitoring?.open_alerts ?? "—"}
-            hint={
-              monitoring
-                ? `${monitoring.critical_alerts} critical`
-                : "Awaiting first data refresh."
-            }
+            hint={monitoring ? `${monitoring.critical_alerts} critical` : "Awaiting first data refresh."}
             to="/admin/aml/monitoring"
           />
           <MetricTile
@@ -292,17 +313,13 @@ export default function AmlOverview() {
             icon={ShieldCheck}
             loading={loadingMonitoring}
             value={monitoring?.pending_reviews ?? "—"}
-            hint={
-              monitoring
-                ? `${monitoring.overdue_reviews} overdue`
-                : "Awaiting first data refresh."
-            }
+            hint={monitoring ? `${monitoring.overdue_reviews} overdue` : "Awaiting first data refresh."}
             to="/admin/aml/monitoring"
           />
         </div>
       )}
 
-      {/* Report-only tiles: MLRO reporting SLA */}
+      {/* Reporting tiles — never render for non-reporters. */}
       {canReport && (
         <div className="grid gap-4 md:grid-cols-3">
           <MetricTile
@@ -343,35 +360,48 @@ export default function AmlOverview() {
         </Alert>
       )}
 
-      {/* Queue directory — only entries the user can reach */}
+      {/* Action-led "Do next" — only capabilities the user actually holds. */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Your queues</CardTitle>
+          <CardTitle className="text-base">Do next</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Workspaces available to you right now, based on your assigned capabilities.
+            Actions available to you right now, based on your assigned capabilities.
           </p>
         </CardHeader>
         <CardContent>
-          {visibleQueues.length === 0 ? (
+          {visibleActions.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No actionable queues yet — request an AML role to get started.
             </p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
-              {visibleQueues.map((q) => (
-                <li
-                  key={q.key}
-                  className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card/40 p-3"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium">{q.label}</div>
-                    <div className="text-xs text-muted-foreground">{q.description}</div>
-                  </div>
-                  <Button asChild size="sm" variant="outline" className="shrink-0">
-                    <Link to={q.to}>{q.cta}</Link>
-                  </Button>
-                </li>
-              ))}
+              {visibleActions.map((a) => {
+                const Icon = a.icon;
+                return (
+                  <li
+                    key={a.key}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border/60 bg-card/40 p-3"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium">{a.label}</div>
+                        <div className="text-xs text-muted-foreground">{a.description}</div>
+                      </div>
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant={a.variant === "primary" ? "default" : "outline"}
+                      className="shrink-0"
+                    >
+                      <Link to={a.to}>{a.cta}</Link>
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
@@ -429,24 +459,11 @@ export default function AmlOverview() {
         </CardContent>
       </Card>
 
-      {/* Restricted-capability affordances live in tiles above; nothing more
-          leaks into the home for users without the underlying permission. */}
+      {/* Nothing more leaks below for users without report/configure capability. */}
       {!canReport && !canConfigure && (
         <p className="text-xs text-muted-foreground">
           Reporting and configuration surfaces are restricted and only appear for MLRO users.
         </p>
-      )}
-      {(canReport || canConfigure) && (
-        <div className="flex flex-wrap gap-2">
-          {canConfigure && (
-            <Button asChild size="sm" variant="outline">
-              <Link to="/admin/aml/configuration">
-                <Settings2 className="mr-2 h-4 w-4" />
-                Configuration
-              </Link>
-            </Button>
-          )}
-        </div>
       )}
     </div>
   );
@@ -454,7 +471,7 @@ export default function AmlOverview() {
 
 interface MetricTileProps {
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   loading: boolean;
   value: number | string;
   hint: string;
@@ -480,5 +497,14 @@ function MetricTile({ title, icon: Icon, loading, value, hint, to }: MetricTileP
       </CardContent>
     </Card>
   );
-  return to ? <Link to={to} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg">{body}</Link> : body;
+  return to ? (
+    <Link
+      to={to}
+      className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      {body}
+    </Link>
+  ) : (
+    body
+  );
 }
