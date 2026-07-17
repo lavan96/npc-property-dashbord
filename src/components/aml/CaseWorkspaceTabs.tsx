@@ -597,3 +597,239 @@ function FundingFinanceTab({ caseId }: { caseId: string }) {
     </Card>
   );
 }
+
+/* -------------------- Timeline (V3 · Directive 15) -------------------- */
+
+type TimelineCategory = "event" | "verification" | "screening" | "risk" | "decision" | "finance";
+
+interface TimelineEntry {
+  id: string;
+  at: string;
+  category: TimelineCategory;
+  title: string;
+  detail?: string;
+  badge?: string;
+  hash?: string | null;
+}
+
+const CATEGORY_META: Record<TimelineCategory, { label: string; icon: React.ComponentType<{ className?: string }>; className: string }> = {
+  event:        { label: "Case event",   icon: CircleDot,    className: "text-muted-foreground" },
+  verification: { label: "Verification", icon: ShieldCheck,  className: "text-primary" },
+  screening:    { label: "Screening",    icon: ScanSearch,   className: "text-primary" },
+  risk:         { label: "Risk",         icon: Gauge,        className: "text-yellow-500" },
+  decision:     { label: "Decision",     icon: Scale,        className: "text-success" },
+  finance:      { label: "Finance",      icon: Wallet,       className: "text-warning" },
+};
+
+/**
+ * Chronological, read-only build-out of the case lifecycle. Merges
+ * hash-chained case events with verification, screening, risk, decision
+ * and (if authorised) funding discrepancy artefacts into a single feed.
+ *
+ * Guardrails:
+ *   - Reuses existing APIs; no schema or write paths introduced.
+ *   - Finance category only surfaces when caller holds `aml.investigate`
+ *     (tipping-off protection preserved).
+ *   - No SMR / regulatory records; those remain gated on the AUSTRAC hub.
+ */
+function TimelineTab({
+  caseId,
+  events,
+  canInvestigate,
+}: {
+  caseId: string;
+  events: AmlCaseEvent[];
+  canInvestigate: boolean;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [idv, setIdv] = useState<IdentityCheck[]>([]);
+  const [screen, setScreen] = useState<ScreeningCheck[]>([]);
+  const [risk, setRisk] = useState<AmlRiskAssessment[]>([]);
+  const [decisions, setDecisions] = useState<AmlDecision[]>([]);
+  const [discrepancies, setDiscrepancies] = useState<AmlFinanceDiscrepancy[]>([]);
+  const [filter, setFilter] = useState<TimelineCategory | "all">("all");
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const promises: Promise<any>[] = [
+          amlVerificationApi.listIdv(caseId).catch(() => ({ identity_checks: [] })),
+          amlVerificationApi.listScreening(caseId).catch(() => ({ screening_checks: [] })),
+          amlRiskApi.listAssessments(caseId).catch(() => ({ assessments: [] })),
+          amlRiskApi.listDecisions?.(caseId).catch(() => ({ decisions: [] })) ??
+            amlRiskApi.latestDecision(caseId).then((r) => ({ decisions: r.decision ? [r.decision] : [] })).catch(() => ({ decisions: [] })),
+        ];
+        if (canInvestigate) {
+          promises.push(
+            amlFinanceApi.listDiscrepancies({ case_id: caseId }).catch(() => ({ discrepancies: [] })),
+          );
+        }
+        const res = await Promise.all(promises);
+        if (!alive) return;
+        setIdv(res[0]?.identity_checks ?? []);
+        setScreen(res[1]?.screening_checks ?? []);
+        setRisk(res[2]?.assessments ?? []);
+        setDecisions(res[3]?.decisions ?? []);
+        if (canInvestigate) setDiscrepancies(res[4]?.discrepancies ?? []);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [caseId, canInvestigate]);
+
+  const entries: TimelineEntry[] = useMemo(() => {
+    const out: TimelineEntry[] = [];
+    for (const e of events) {
+      out.push({
+        id: `evt-${e.id}`, at: e.created_at, category: "event",
+        title: e.summary || e.category, detail: e.actor_label ? `by ${e.actor_label}` : undefined,
+        hash: e.row_hash ?? null,
+      });
+    }
+    for (const r of idv) {
+      out.push({
+        id: `idv-${r.id}`, at: r.requested_at, category: "verification",
+        title: `IDV · ${r.subject_label}`,
+        detail: `${r.provider} · ${r.method}`, badge: r.status,
+      });
+    }
+    for (const s of screen) {
+      out.push({
+        id: `scr-${s.id}`, at: s.requested_at, category: "screening",
+        title: `Screening · ${s.subject_label}`,
+        detail: `${s.provider} · ${(s.scope || []).join(", ")}`, badge: s.status,
+      });
+    }
+    for (const a of risk) {
+      out.push({
+        id: `risk-${a.id}`, at: a.created_at, category: "risk",
+        title: `Risk assessment · ${(a.risk_rating ?? "unrated").toString().toUpperCase()}`,
+        detail: `MLTF ${a.mltf_score} · Verification ${a.verification_score} · Completion ${a.completion_score}`,
+        badge: a.straight_through ? "auto-cleared" : a.program_version,
+      });
+    }
+    for (const d of decisions) {
+      out.push({
+        id: `dec-${d.id}`, at: d.decided_at, category: "decision",
+        title: `Decision · ${d.outcome}`, detail: d.rationale ?? undefined,
+      });
+    }
+    for (const x of discrepancies) {
+      const at = (x as any).created_at ?? (x as any).detected_at ?? new Date().toISOString();
+      out.push({
+        id: `fin-${x.id}`, at, category: "finance",
+        title: `Funding discrepancy · ${(x as any).label ?? (x as any).kind ?? "item"}`,
+        detail: (x as any).detail ?? undefined, badge: x.status,
+      });
+    }
+    return out.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }, [events, idv, screen, risk, decisions, discrepancies]);
+
+  const filtered = filter === "all" ? entries : entries.filter((e) => e.category === filter);
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: entries.length };
+    for (const e of entries) c[e.category] = (c[e.category] ?? 0) + 1;
+    return c;
+  }, [entries]);
+
+  const categories: (TimelineCategory | "all")[] = [
+    "all", "event", "verification", "screening", "risk", "decision",
+    ...(canInvestigate ? (["finance"] as const) : []),
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-sm">Case lifecycle timeline</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Chronological view of everything on this case. Read-only —
+              actions remain on their respective tabs so step-up and entitlement
+              gates continue to apply.
+            </p>
+          </div>
+          <Badge variant="outline" className="text-[10px] uppercase">{entries.length} entries</Badge>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((c) => {
+            const active = filter === c;
+            const label = c === "all" ? "All" : CATEGORY_META[c].label;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setFilter(c)}
+                className={
+                  "text-[11px] rounded-md border px-2 py-1 transition-colors " +
+                  (active
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border/60 text-muted-foreground hover:bg-muted/40")
+                }
+              >
+                {label} <span className="ml-1 opacity-70">{counts[c] ?? 0}</span>
+              </button>
+            );
+          })}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Assembling timeline…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border/60 p-4 text-xs text-muted-foreground">
+            Nothing to show for this filter yet.
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[520px] pr-3">
+            <ol className="relative border-l border-border/60 pl-4 space-y-4">
+              {filtered.map((entry) => {
+                const meta = CATEGORY_META[entry.category];
+                const Icon = meta.icon;
+                return (
+                  <li key={entry.id} className="relative">
+                    <span
+                      className={
+                        "absolute -left-[22px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background border border-border " +
+                        meta.className
+                      }
+                    >
+                      <Icon className="h-2.5 w-2.5" />
+                    </span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                          {meta.label} · {new Date(entry.at).toLocaleString()}
+                        </div>
+                        <div className="text-sm font-medium">{entry.title}</div>
+                        {entry.detail && (
+                          <div className="text-xs text-muted-foreground">{entry.detail}</div>
+                        )}
+                        {entry.hash && (
+                          <div className="text-[10px] font-mono text-muted-foreground truncate">
+                            hash {entry.hash.slice(0, 16)}…
+                          </div>
+                        )}
+                      </div>
+                      {entry.badge && (
+                        <Badge variant="outline" className="text-[10px] uppercase whitespace-nowrap">
+                          {entry.badge}
+                        </Badge>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
