@@ -451,3 +451,138 @@ function AuditTab({ events }: { events: AmlCaseEvent[] }) {
     </Card>
   );
 }
+
+/* -------------------- Ownership & Control (V3) -------------------- */
+
+/**
+ * Directive 3 — case-scoped ownership & control summary.
+ * Shows the case subject's structure classification and a deep-link
+ * to the legacy Ownership & Control (formerly Structures) page. No
+ * write actions here — mutations remain on the dedicated page so
+ * capability + step-up rules are enforced by that surface.
+ */
+function OwnershipControlTab({ caseRow }: { caseRow: AmlCase }) {
+  const isEntity = caseRow.subject_type !== "individual";
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-sm">Ownership & Control</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Structures — beneficial owners, controllers and authorised representatives —
+            scoped to this case subject.
+          </p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/aml/counterparty">
+            Open Ownership & Control
+            <ExternalLink className="ml-2 h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <Row k="Subject" v={caseRow.subject_display_name} />
+        <Row k="Subject type" v={caseRow.subject_type} />
+        {!isEntity ? (
+          <div className="rounded-md border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
+            Individual subjects do not carry beneficial ownership or trustee structures.
+            Use the Verification tab for identity evidence.
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
+            Manage this subject's ownership graph on the Ownership & Control page.
+            Changes there flow back to the case decision audit trail.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* -------------------- Funding & Finance (V3) -------------------- */
+
+/**
+ * Directive 4 — case-scoped Funding & Finance snapshot.
+ * Reuses `amlFinanceApi` so this tab shares the same comparison /
+ * discrepancy engine as the standalone page. Read-only here — the
+ * page owns entitlement gate + write actions.
+ */
+function FundingFinanceTab({ caseId }: { caseId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [comparisons, setComparisons] = useState<AmlFinanceComparison[]>([]);
+  const [discrepancies, setDiscrepancies] = useState<AmlFinanceDiscrepancy[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const [c, d] = await Promise.all([
+          amlFinanceApi.listComparisons(caseId),
+          amlFinanceApi.listDiscrepancies({ case_id: caseId }),
+        ]);
+        if (!alive) return;
+        setComparisons(c ?? []);
+        setDiscrepancies(d ?? []);
+      } catch {
+        // silent — panel shows empty state
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [caseId]);
+
+  const latest = comparisons[0] ?? null;
+  const openDiscrepancies = useMemo(
+    () => discrepancies.filter((d) => d.status === "open" || d.status === "under_review"),
+    [discrepancies],
+  );
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-sm">Funding & Finance</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Source-of-funds comparison and discrepancy queue for this case. Service
+            entitlement (Model B) remains gated on the dedicated Funding & Finance page.
+          </p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/admin/aml/finance">
+            Open Funding & Finance
+            <ExternalLink className="ml-2 h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Row k="Latest comparison" v={latest ? new Date(latest.created_at ?? "").toLocaleDateString() : "—"} />
+              <Row k="Open discrepancies" v={String(openDiscrepancies.length)} />
+            </div>
+            {openDiscrepancies.length > 0 ? (
+              <div className="rounded-md border border-warning/30 bg-warning/5 p-3 text-xs text-warning flex items-start gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <div>
+                  {openDiscrepancies.length} unresolved item{openDiscrepancies.length === 1 ? "" : "s"}.
+                  Triage on the Funding & Finance page — decisions write back to this case's audit trail.
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-border/60 p-3 text-xs text-muted-foreground">
+                No open funding discrepancies for this case.
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
