@@ -36,11 +36,14 @@ export interface AmlEntitlementOverride {
   created_at: string; updated_at: string;
 }
 
+export type AmlProviderMode = "simulator" | "live";
+
 export interface AmlProviderConfig {
   id: string; tenant_id: string; capability: AmlProviderCapability; provider_key: string;
   display_label: string | null; priority: number;
   cost_per_unit_cents: number; currency: string;
   active: boolean; secret_ref: string | null; config: Record<string, any>;
+  mode: AmlProviderMode;
   last_health_at: string | null; last_health_status: AmlProviderHealth | null;
   last_health_message: string | null;
   created_by: string | null; created_at: string; updated_at: string;
@@ -59,6 +62,7 @@ export interface AmlTenantSummary {
   overrides: AmlEntitlementOverride[];
   metrics_30d: { calls: number; failures: number; cost_cents: number };
   locked_terminology_keys: string[];
+  orchestration?: { env_mode: AmlProviderMode; live_active: number; simulator_active: number };
 }
 
 export interface AmlActivationProgram {
