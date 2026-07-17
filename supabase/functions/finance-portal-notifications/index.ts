@@ -25,6 +25,14 @@ function extractToken(headers: Headers, body?: any): string | null {
     || null;
 }
 
+/** Apply the authoritative portal boundary to retrieval and read mutations. */
+function authorisedFinanceRoute(query: any) {
+  return query
+    .eq('target_portal', 'finance_portal')
+    .eq('notification_domain', 'finance')
+    .eq('command_centre_authorised', true);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -58,10 +66,10 @@ Deno.serve(async (req) => {
       case 'list': {
         const limit = Math.min(Number(body.limit) || 50, 200);
         const onlyUnread = !!body.only_unread;
-        let q = supabase
+        let q = authorisedFinanceRoute(supabase
           .from('finance_portal_notifications')
           .select('*, clients:client_id(id, primary_first_name, primary_surname)')
-          .eq('portal_user_id', portalUser.id)
+          .eq('portal_user_id', portalUser.id))
           .order('created_at', { ascending: false })
           .limit(limit);
         if (onlyUnread) q = q.eq('is_read', false);
@@ -71,10 +79,10 @@ Deno.serve(async (req) => {
       }
 
       case 'unread_count': {
-        const { count, error } = await supabase
+        const { count, error } = await authorisedFinanceRoute(supabase
           .from('finance_portal_notifications')
           .select('id', { count: 'exact', head: true })
-          .eq('portal_user_id', portalUser.id)
+          .eq('portal_user_id', portalUser.id))
           .eq('is_read', false);
         if (error) return jsonResponse({ error: error.message }, 500);
         return jsonResponse({ count: count || 0 });
@@ -82,21 +90,21 @@ Deno.serve(async (req) => {
 
       case 'mark_read': {
         if (!body.notification_id) return jsonResponse({ error: 'notification_id required' }, 400);
-        const { error } = await supabase
+        const { error } = await authorisedFinanceRoute(supabase
           .from('finance_portal_notifications')
           .update({ is_read: true, read_at: new Date().toISOString() })
           .eq('id', body.notification_id)
-          .eq('portal_user_id', portalUser.id);
+          .eq('portal_user_id', portalUser.id));
         if (error) return jsonResponse({ error: error.message }, 500);
         return jsonResponse({ success: true });
       }
 
       case 'mark_all_read': {
-        const { error } = await supabase
+        const { error } = await authorisedFinanceRoute(supabase
           .from('finance_portal_notifications')
           .update({ is_read: true, read_at: new Date().toISOString() })
           .eq('portal_user_id', portalUser.id)
-          .eq('is_read', false);
+          .eq('is_read', false));
         if (error) return jsonResponse({ error: error.message }, 500);
         return jsonResponse({ success: true });
       }
