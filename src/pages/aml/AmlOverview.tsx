@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 import { hasAmlCapability, type AmlCapability } from "@/lib/aml/permissions";
 import { suggestAmlLanding } from "@/lib/aml/defaultLanding";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import AmlComplianceHomeV3 from "./AmlComplianceHomeV3";
 
 /**
  * Phase 2 — Compliance Home (role-adaptive).
