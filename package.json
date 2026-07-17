@@ -19,7 +19,9 @@
     "test:messaging-phase9": "node scripts/validate-messaging-phase9-deployment.cjs",
     "pdf-import:release-gate": "node scripts/regression/pdf-import-release-gate.mjs",
     "pdf-import:release-gate:static": "node scripts/regression/pdf-import-release-gate.mjs --mode=static",
-    "pdf-import:release-gate:no-build": "node scripts/regression/pdf-import-release-gate.mjs --no-build"
+    "pdf-import:release-gate:no-build": "node scripts/regression/pdf-import-release-gate.mjs --no-build",
+    "test:e2e": "playwright test",
+    "test:e2e:pdf-import": "playwright test tests-e2e/pdfImportRenderParity.e2e.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -100,6 +102,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
