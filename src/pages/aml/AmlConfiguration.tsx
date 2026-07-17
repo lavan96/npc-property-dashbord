@@ -40,6 +40,7 @@ function healthColor(status: AmlProviderHealth | null): string {
 
 export default function AmlConfiguration() {
   const { isMlro } = useAmlAccess();
+  const { metricsRelocation } = useAmlV3Flags();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<AmlTenantSummary | null>(null);
 
