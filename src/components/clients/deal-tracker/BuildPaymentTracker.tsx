@@ -199,8 +199,8 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                   </TableCell>
 
                   {/* Commission */}
-
                   <TableCell className="text-center">
+
                     {p.is_commission_trigger ? (
                       <div className="flex flex-col items-center gap-0.5">
                         <Checkbox
