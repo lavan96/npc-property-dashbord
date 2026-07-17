@@ -12,6 +12,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "../_shared/auth.ts";
+import { requireStepUpSession } from "../_shared/aml/step-up.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -231,6 +232,66 @@ Deno.serve(async (req) => {
         const { error } = await aml.from("risk_register").delete().eq("tenant_id", TENANT).eq("id", id);
         if (error) return jr({ error: error.message }, 500);
         return jr({ ok: true });
+      }
+
+      case "list_certifications": {
+        const { data } = await aml.from("launch_certifications").select("*")
+          .eq("tenant_id", TENANT).order("created_at", { ascending: false }).limit(50);
+        return jr({ certifications: data ?? [] });
+      }
+
+      case "certify_launch": {
+        requireMlro();
+        const stepUpErr = await requireStepUpSession({
+          admin, userId, capability: "aml.configure",
+          token: body?.step_up_session_token, headers: req.headers,
+        });
+        if (stepUpErr) return stepUpErr;
+
+        const attestation = String(body?.attestation ?? "").trim();
+        if (attestation.length < 20) return jr({ error: "Attestation statement (≥20 chars) is required" }, 400);
+
+        const [{ data: gate }, { data: scen }, { data: risks }, { data: tenant }] = await Promise.all([
+          aml.from("release_gates").select("id,status,ran_at,summary").order("ran_at", { ascending: false }).limit(1).maybeSingle(),
+          aml.from("acceptance_scenarios").select("code,title,phase,last_status,last_run_at").eq("tenant_id", TENANT).eq("is_active", true),
+          aml.from("risk_register").select("code,title,status,impact,likelihood").eq("tenant_id", TENANT),
+          aml.from("tenant_settings").select("rollout_stage").eq("tenant_id", TENANT).maybeSingle(),
+        ]);
+
+        if (!gate || gate.status !== "pass") return jr({ error: "Latest release gate must be PASS to certify launch" }, 400);
+        const failing = (scen ?? []).filter((r: any) => r.last_status === "failed" || r.last_status === "blocked");
+        if (failing.length > 0) return jr({ error: `Cannot certify: ${failing.length} scenario(s) failing`, failing_scenarios: failing.map((r: any) => r.code) }, 400);
+        const notRun = (scen ?? []).filter((r: any) => r.last_status === "not_run");
+        if (notRun.length > 0) return jr({ error: `Cannot certify: ${notRun.length} scenario(s) never run`, not_run: notRun.map((r: any) => r.code) }, 400);
+        const critOpen = (risks ?? []).filter((r: any) => r.status === "open" && r.impact === "critical");
+        if (critOpen.length > 0) return jr({ error: `Cannot certify while open critical risks remain`, blocking_risks: critOpen.map((r: any) => r.code) }, 400);
+
+        const { data, error } = await aml.from("launch_certifications").insert({
+          tenant_id: TENANT, status: "issued",
+          attested_by: userId, attested_by_label: label, attestation,
+          release_gate_id: gate.id, release_gate_status: gate.status,
+          rollout_stage: tenant?.rollout_stage ?? null,
+          scenario_snapshot: scen ?? [], risk_snapshot: risks ?? [],
+        }).select().single();
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ certification: data });
+      }
+
+      case "revoke_certification": {
+        requireMlro();
+        const stepUpErr = await requireStepUpSession({
+          admin, userId, capability: "aml.configure",
+          token: body?.step_up_session_token, headers: req.headers,
+        });
+        if (stepUpErr) return stepUpErr;
+        const id = String(body?.id ?? "");
+        const reason = String(body?.reason ?? "").trim();
+        if (!id || reason.length < 5) return jr({ error: "id and reason (≥5 chars) required" }, 400);
+        const { data, error } = await aml.from("launch_certifications")
+          .update({ status: "revoked", revoked_by: userId, revoked_by_label: label, revoked_reason: reason, revoked_at: new Date().toISOString() })
+          .eq("tenant_id", TENANT).eq("id", id).eq("status", "issued").select().single();
+        if (error) return jr({ error: error.message }, 500);
+        return jr({ certification: data });
       }
 
       default:

@@ -46,6 +46,9 @@ const RESTRICTED_OPS: Record<string, AmlCapability> = {
   "aml-tenant:set_provider_health": "aml.configure",
   "aml-tenant:upsert_entitlement_override": "aml.configure",
   "aml-tenant:delete_entitlement_override": "aml.configure",
+  // Launch certifications (Phase 15)
+  "aml-launch-ops:certify_launch": "aml.configure",
+  "aml-launch-ops:revoke_certification": "aml.configure",
 };
 
 export function requiredCapabilityFor(functionName: string, op: string | undefined): AmlCapability | null {
