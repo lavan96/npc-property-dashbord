@@ -97,7 +97,20 @@ export const LiveCallsMonitor = () => {
       const { data, error } = await fetchLiveCallsSecure();
 
       if (error) throw error;
-      setLiveCalls(data || []);
+
+      // Client-side safety net: hide any "active" row whose started_at is
+      // older than 2 hours. Real calls never last that long — these are
+      // stale rows where VAPI failed to send an end-of-call webhook.
+      const STALE_CUTOFF_MS = 2 * 60 * 60 * 1000;
+      const now = Date.now();
+      const fresh = (data || []).filter((c: LiveCall) => {
+        if (!c.started_at) return true;
+        const started = new Date(c.started_at).getTime();
+        if (Number.isNaN(started)) return false;
+        return now - started < STALE_CUTOFF_MS;
+      });
+
+      setLiveCalls(fresh);
     } catch (error) {
       console.error('Error fetching live calls:', error);
     } finally {
