@@ -15,7 +15,7 @@
  *   - Rollback is symmetric: setting any flag back to `false` restores V2.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, RefreshCw, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Loader2, RefreshCw, ShieldAlert, CheckCircle2, Trash2, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +25,13 @@ import { toast } from "sonner";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useAuth } from "@/hooks/useAuth";
 import { refreshAmlV3Flags, type AmlV3FlagKey } from "@/lib/aml/useAmlV3Flags";
+import {
+  readLegacyAliasSummary,
+  clearLegacyAliasHits,
+  totalLegacyAliasHits,
+  type LegacyHitSummary,
+} from "@/lib/aml/legacyAliasTelemetry";
+
 
 interface FlagRow {
   key: string;
