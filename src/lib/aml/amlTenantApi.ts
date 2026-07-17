@@ -71,6 +71,36 @@ export const amlTenantApi = {
   updateSettings: (patch: Partial<AmlTenantSettings>) =>
     invoke<{ settings: AmlTenantSettings }>("update_tenant_settings", { patch }).then((r) => r.settings),
 
+  /**
+   * Phase 3 — Activation program (Model B gate).
+   * Stored under `tenant_settings.metadata.aml_activation_program`.
+   * Model B activation is BLOCKED unless `legal_approval === true` and
+   * `program_version` is a non-empty string. Enforced server-side too.
+   */
+  getActivationProgram: async () => {
+    const s = await invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings);
+    const p = (s?.metadata as any)?.aml_activation_program ?? {};
+    return {
+      legal_approval: Boolean(p?.legal_approval),
+      program_version: String(p?.program_version ?? ""),
+      approved_by: p?.approved_by ?? null,
+      approved_at: p?.approved_at ?? null,
+      notes: p?.notes ?? null,
+    } as AmlActivationProgram;
+  },
+  updateActivationProgram: async (patch: Partial<AmlActivationProgram>) => {
+    const current = await invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings);
+    const nextProgram = {
+      ...((current?.metadata as any)?.aml_activation_program ?? {}),
+      ...patch,
+    };
+    const nextMeta = { ...(current?.metadata ?? {}), aml_activation_program: nextProgram };
+    return invoke<{ settings: AmlTenantSettings }>(
+      "update_tenant_settings",
+      { patch: { metadata: nextMeta } },
+    ).then((r) => r.settings);
+  },
+
   listPlans: () => invoke<{ plans: AmlPlanTier[] }>("list_plans").then((r) => r.plans),
   upsertPlan: (plan: Partial<AmlPlanTier>) =>
     invoke<{ plan: AmlPlanTier }>("upsert_plan", { plan }).then((r) => r.plan),
