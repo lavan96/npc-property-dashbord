@@ -220,9 +220,9 @@ export function ClientEmailCompose({
           {/* Sender */}
           <div className="space-y-2">
             <Label>From</Label>
-            <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
+            <Select value={selectedMailbox} onValueChange={setSelectedMailbox} disabled={mailboxes.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder="Select sender mailbox" />
+                <SelectValue placeholder={mailboxes.length === 0 ? 'No personal mailbox configured — set one in Settings' : 'Select sender mailbox'} />
               </SelectTrigger>
               <SelectContent>
                 {mailboxes.map((mailbox) => (
@@ -232,6 +232,11 @@ export function ClientEmailCompose({
                 ))}
               </SelectContent>
             </Select>
+            {mailboxes.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Configure your personal mailbox in Settings → Profile to send emails from here.
+              </p>
+            )}
           </div>
 
           {/* Recipient */}
