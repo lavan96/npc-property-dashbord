@@ -25,6 +25,13 @@ interface ChartLightboxProps {
 export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPrev, hasNext, exporting }: ChartLightboxProps) {
   const navigate = useNavigate();
   const cfg = chart ? getChartTypeConfig(chart.chart_type) : null;
+  const [zoom, setZoom] = useState(100);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // Reset zoom when chart changes
+  useEffect(() => { setZoom(100); }, [chart?.id]);
+
+  const clampZoom = (z: number) => Math.min(400, Math.max(50, Math.round(z)));
 
   // Keyboard navigation (Enhancement #3)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
