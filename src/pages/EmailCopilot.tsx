@@ -3453,8 +3453,9 @@ export default function EmailCopilot() {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
-            <div className="space-y-4">
+          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&>[data-radix-scroll-area-viewport]]:!block [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!w-full">
+            <div className="w-full min-w-0 max-w-full space-y-4">
+
               {/* Email Recipients Section */}
               <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-4 shadow-sm">
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
@@ -3534,24 +3535,25 @@ export default function EmailCopilot() {
                 </div>
                 {/* QA PDF Attachment Badge (from Report Q&A) */}
                 {qaPDFAttachment && (
-                  <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 p-3 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-xl bg-primary/20 p-2">
+                  <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 p-3 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+                        <div className="rounded-xl bg-primary/20 p-2 flex-shrink-0">
                           <FileIcon className="h-6 w-6 text-primary" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{qaPDFAttachment.fileName}</p>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-primary/30 text-primary">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="min-w-0 flex-1 truncate font-medium text-sm" title={qaPDFAttachment.fileName}>{qaPDFAttachment.fileName}</p>
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-primary/30 text-primary flex-shrink-0">
                               From Q&A
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {(qaPDFAttachment.fileSize / 1024).toFixed(1)} KB • Attached and ready to send
                           </p>
                         </div>
                       </div>
+
                       <Button
                         type="button"
                         variant="ghost"
@@ -3579,14 +3581,15 @@ export default function EmailCopilot() {
                         // Find the original index for removal
                         const originalIndex = composeAttachments.findIndex(f2 => f2 === file);
                         return (
-                          <div key={index} className="flex items-center justify-between rounded-xl bg-background p-2 text-sm">
-                            <div className="flex items-center gap-2 min-w-0">
+                          <div key={index} className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 overflow-hidden rounded-xl bg-background p-2 text-sm">
+                            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                               <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="truncate">{file.name}</span>
+                              <span className="min-w-0 flex-1 truncate" title={file.name}>{file.name}</span>
                               <span className="text-xs text-muted-foreground flex-shrink-0">
                                 ({formatFileSize(file.size)})
                               </span>
                             </div>
+
                             <Button
                               type="button"
                               variant="ghost"
