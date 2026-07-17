@@ -423,11 +423,38 @@ function ProvidersPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumm
     await amlTenantApi.setProviderHealth(id, status); toast.success(`Marked ${status}`); onSaved();
   };
 
+  const orchestration = summary.orchestration;
+  const anyLive = (orchestration?.live_active ?? 0) > 0;
   return (
     <div className="space-y-4">
+      <Card className={`border ${anyLive ? "border-warning/50 bg-warning/5" : "border-primary/40 bg-primary/5"}`}>
+        <CardContent className="p-3 flex items-start gap-3">
+          <div className={`h-8 w-8 rounded-md flex items-center justify-center ${anyLive ? "bg-warning/20 text-warning" : "bg-primary/20 text-primary"}`}>
+            <Plug className="h-4 w-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold">Provider orchestration</span>
+              <Badge variant="outline" className={anyLive ? "border-warning/50 text-warning" : "border-primary/40 text-primary"}>
+                {anyLive ? "Live providers active" : "Simulator only"}
+              </Badge>
+              {orchestration && (
+                <span className="text-[11px] text-muted-foreground">
+                  {orchestration.live_active} live · {orchestration.simulator_active} simulator · env {orchestration.env_mode}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Live-mode providers must have their adapter wired in <code className="font-mono">supabase/functions/_shared/aml/providers</code>.
+              Simulator mode is safe by default; a live provider without an adapter will hard-fail rather than silently fall back.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {canWrite && (
         <div className="flex justify-end">
-          <Button onClick={() => setEditing({ capability: "idv", provider_key: "", priority: 1, cost_per_unit_cents: 0, currency: "AUD", active: true, config: {} })}>
+          <Button onClick={() => setEditing({ capability: "idv", provider_key: "", priority: 1, cost_per_unit_cents: 0, currency: "AUD", active: true, config: {}, mode: "simulator" })}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Add provider
           </Button>
         </div>
