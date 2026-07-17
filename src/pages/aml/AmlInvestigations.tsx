@@ -20,6 +20,7 @@ const STATUS_TONE: Record<string, string> = {
 export default function AmlInvestigations() {
   const { roles } = useAmlAccess();
   const canReview = roles.has("reviewer") || roles.has("mlro");
+  const { regulatoryHub } = useAmlV3Flags();
   const [tab, setTab] = useState("overrides");
   const [overrides, setOverrides] = useState<AmlRiskOverride[]>([]);
   const [approvals, setApprovals] = useState<AmlApproval[]>([]);
