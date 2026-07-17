@@ -125,6 +125,7 @@ export function useAmlV3Flags(): AmlV3Flags {
       regulatoryHub: false,
       terminologyEditor: false,
       metricsRelocation: false,
+      orgSettings: false,
     },
   );
   const [loading, setLoading] = useState<boolean>(!cached);
