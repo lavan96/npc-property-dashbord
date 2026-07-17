@@ -412,8 +412,10 @@ function CaseDetailSheet({
                 events={events}
                 canWrite={canWrite}
                 canInvestigate={canInvestigate}
+                initialTab={initialTab}
                 onChanged={() => { void load(caseRow.id); onChanged(); }}
               />
+
             </div>
           )}
         </ScrollArea>
