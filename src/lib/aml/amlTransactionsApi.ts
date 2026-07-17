@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlTransactionKind = "purchase" | "sale" | "refinance" | "off_the_plan" | "auction" | "private_treaty" | "other";
 export type AmlTransactionStatus = "draft" | "under_contract" | "unconditional" | "settled" | "terminated";
@@ -111,10 +111,7 @@ export interface AmlSettlementGateStatus {
 }
 
 async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-transactions", { body: payload });
-  if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-transactions", payload);
 }
 
 export const amlTransactionsApi = {

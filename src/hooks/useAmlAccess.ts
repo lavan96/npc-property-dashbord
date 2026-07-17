@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useAuthenticatedSupabase } from "@/hooks/useAuthenticatedSupabase";
+import { invokeSecureFunction } from "@/lib/secureInvoke";
 
 export type AmlRole = "analyst" | "reviewer" | "mlro" | "auditor";
 
@@ -16,7 +16,6 @@ export interface AmlAccess {
 
 export function useAmlAccess(): AmlAccess {
   const { user, loading: authLoading } = useAuth();
-  const { supabase: authenticatedSupabase, isAuthenticated } = useAuthenticatedSupabase();
   const [loading, setLoading] = useState(true);
   const [flagEnabled, setFlagEnabled] = useState(false);
   const [roles, setRoles] = useState<Set<AmlRole>>(new Set());
@@ -31,21 +30,21 @@ export function useAmlAccess(): AmlAccess {
     try {
       const uid = user?.id;
 
-      if (!uid || !isAuthenticated) {
+      if (!uid) {
         setFlagEnabled(false);
         setRoles(new Set());
         return;
       }
 
-      const [{ data: flag }, roleResult] = await Promise.all([
-        authenticatedSupabase.from("feature_flags").select("value").eq("key", "aml_ctf").maybeSingle(),
-        authenticatedSupabase.schema("aml" as any).from("role_assignments" as any)
-          .select("role").eq("user_id", uid).is("revoked_at", null),
-      ]);
+      const { data, error } = await invokeSecureFunction<{
+        flagEnabled: boolean;
+        roles: AmlRole[];
+      }>("aml-access", { op: "summary" }, { timeoutMs: 15000 });
 
-      const val = (flag?.value ?? {}) as { enabled?: boolean };
-      setFlagEnabled(Boolean(val?.enabled));
-      setRoles(new Set(((roleResult as any).data ?? []).map((r: any) => r.role as AmlRole)));
+      if (error) throw new Error(error.message);
+
+      setFlagEnabled(Boolean(data?.flagEnabled));
+      setRoles(new Set((data?.roles ?? []) as AmlRole[]));
     } catch (e) {
       console.warn("useAmlAccess failed", e);
       setFlagEnabled(false);
@@ -53,7 +52,7 @@ export function useAmlAccess(): AmlAccess {
     } finally {
       setLoading(false);
     }
-  }, [authLoading, authenticatedSupabase, isAuthenticated, user?.id]);
+  }, [authLoading, user?.id]);
 
   useEffect(() => { load(); }, [load]);
 

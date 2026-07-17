@@ -1,0 +1,66 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { verifyAuth } from "../_shared/auth.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const json = (payload: unknown, status = 200) =>
+  new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const AML_ROLES = new Set(["analyst", "reviewer", "mlro", "auditor"]);
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) return json({ error: "Server configuration missing" }, 500);
+
+    const body = await req.json().catch(() => ({}));
+    const admin = createClient(supabaseUrl, serviceRoleKey);
+    const auth = await verifyAuth(admin, req.headers, body);
+
+    if (auth.error || !auth.userId || auth.userId === "service_role") {
+      return json({ error: auth.error || "Authentication required" }, 401);
+    }
+
+    const [{ data: flag, error: flagError }, { data: roleRows, error: roleError }] = await Promise.all([
+      admin.from("feature_flags").select("value").eq("key", "aml_ctf").maybeSingle(),
+      admin
+        .schema("aml")
+        .from("role_assignments")
+        .select("role, granted_at, revoked_at")
+        .eq("user_id", auth.userId)
+        .is("revoked_at", null),
+    ]);
+
+    if (flagError) throw flagError;
+    if (roleError) throw roleError;
+
+    const roles = (roleRows ?? [])
+      .map((row: any) => String(row.role ?? ""))
+      .filter((role) => AML_ROLES.has(role));
+    const uniqueRoles = [...new Set(roles)];
+    const flagEnabled = Boolean((flag?.value as { enabled?: boolean } | null | undefined)?.enabled);
+
+    return json({
+      flagEnabled,
+      roles: uniqueRoles,
+      hasAnyRole: uniqueRoles.length > 0,
+      canWrite: uniqueRoles.some((role) => ["analyst", "reviewer", "mlro"].includes(role)),
+      isMlro: uniqueRoles.includes("mlro"),
+      userId: auth.userId,
+    });
+  } catch (error) {
+    console.error("[aml-access] failed", error);
+    return json({ error: error instanceof Error ? error.message : "Unable to resolve AML access" }, 500);
+  }
+});

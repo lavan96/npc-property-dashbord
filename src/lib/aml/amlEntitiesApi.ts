@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlEntityType = "company" | "trust" | "smsf" | "partnership" | "sole_trader" | "other";
 export type AmlControlType = "shareholding" | "trustee" | "beneficiary" | "appointor" | "director" | "partner" | "settlor" | "other";
@@ -85,10 +85,7 @@ export interface AmlOwnershipSummary {
 }
 
 async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-entities", { body: payload });
-  if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-entities", payload);
 }
 
 export const amlEntitiesApi = {

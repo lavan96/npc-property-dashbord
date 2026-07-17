@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "@/lib/aml/invokeAmlFunction";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,10 +62,7 @@ const badgeFor = (s: string, kind: "scenario" | "risk" | "stage" = "scenario") =
 };
 
 async function callOp(op: string, extra: Record<string, unknown> = {}) {
-  const { data, error } = await supabase.functions.invoke("aml-launch-ops", { body: { op, ...extra } });
-  if (error) throw new Error(error.message);
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as any;
+  return invokeAmlFunction<any>("aml-launch-ops", { op, ...extra });
 }
 
 export default function AmlLaunchOps() {

@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlRiskFactor = {
   id: string; key: string; label: string; category: "mltf" | "completion" | "verification" | string;
@@ -48,10 +48,7 @@ export type AmlGateStatus = {
 };
 
 async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-risk", { body: payload });
-  if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-risk", payload);
 }
 
 export const amlRiskApi = {

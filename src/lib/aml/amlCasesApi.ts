@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "./invokeAmlFunction";
 
 export type AmlCaseStatus =
   | "draft" | "kyc_in_progress" | "kyc_complete" | "edd_required"
@@ -45,10 +45,7 @@ export interface AmlCaseEvent {
 }
 
 async function invoke<T = any>(payload: Record<string, any>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke("aml-cases", { body: payload });
-  if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as T;
+  return invokeAmlFunction<T>("aml-cases", payload);
 }
 
 export const amlCasesApi = {

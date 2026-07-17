@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeAmlFunction } from "@/lib/aml/invokeAmlFunction";
 import type { AmlCapability } from "@/lib/aml/permissions";
 
 export interface StepUpVerifiedPayload {
@@ -54,13 +54,9 @@ export function StepUpAuthDialog({ open, capability, onCancel, onConfirm }: Step
   const issue = async () => {
     setBusy(true); setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("aml-step-up", {
-        body: { op: "issue", capability },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      setChallengeId((data as any).challenge_id);
-      setDevCode((data as any).code ?? null);
+      const data = await invokeAmlFunction<any>("aml-step-up", { op: "issue", capability });
+      setChallengeId(data.challenge_id);
+      setDevCode(data.code ?? null);
       setPhase("verify");
     } catch (e: any) {
       setError(e?.message ?? "Failed to issue challenge");
@@ -73,12 +69,7 @@ export function StepUpAuthDialog({ open, capability, onCancel, onConfirm }: Step
     if (!challengeId || code.trim().length < 4) return;
     setBusy(true); setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("aml-step-up", {
-        body: { op: "verify", challenge_id: challengeId, code: code.trim() },
-      });
-      if (error) throw error;
-      const d = data as any;
-      if (d?.error) throw new Error(d.error);
+      const d = await invokeAmlFunction<any>("aml-step-up", { op: "verify", challenge_id: challengeId, code: code.trim() });
       onConfirm({ session_token: d.session_token, capability, expires_at: d.expires_at });
     } catch (e: any) {
       setError(e?.message ?? "Verification failed");

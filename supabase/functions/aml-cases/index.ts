@@ -15,10 +15,11 @@
  * require analyst/reviewer/mlro. Enforced in-code AND by RLS.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { verifyAuth } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -133,23 +134,16 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    const authHeader = req.headers.get('Authorization') ?? '';
-    if (!authHeader.startsWith('Bearer ')) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-    // Identify caller with anon-key client + user JWT
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) return jsonResponse({ error: 'Invalid session' }, 401);
-    const userId = userData.user.id;
-    const userEmail = userData.user.email ?? null;
-
-    // Service-role client for privileged AML schema access
     const admin = createClient(supabaseUrl, serviceKey);
+
+    const body = await req.json().catch(() => ({}));
+    const auth = await verifyAuth(admin, req.headers, body);
+    if (auth.error || !auth.userId || auth.userId === 'service_role') {
+      return jsonResponse({ error: auth.error || 'Authentication required' }, 401);
+    }
+    const userId = auth.userId;
+    const userEmail = auth.username ?? null;
 
     // Confirm caller has any AML role
     const { data: hasAny } = await admin.rpc('has_any_aml_role', { _user_id: userId });
@@ -166,7 +160,6 @@ Deno.serve(async (req) => {
     const canWrite = roles.has('analyst') || roles.has('reviewer') || roles.has('mlro');
     const isMlro = roles.has('mlro');
 
-    const body = await req.json().catch(() => ({}));
     const op = String(body?.op ?? '');
     if (!op) return jsonResponse({ error: 'op is required' }, 400);
 

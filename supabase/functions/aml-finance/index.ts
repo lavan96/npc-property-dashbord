@@ -13,10 +13,11 @@
  * Writes: analyst/reviewer/mlro.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { verifyAuth } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const jr = (d: unknown, s = 200) =>
@@ -165,21 +166,15 @@ Deno.serve(async (req) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
-    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const auth = req.headers.get("Authorization") ?? "";
-    if (!auth.startsWith("Bearer ")) return jr({ error: "Unauthorized" }, 401);
-
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: auth } } });
-    const { data: userData, error: uErr } = await userClient.auth.getUser();
-    if (uErr || !userData?.user) return jr({ error: "Invalid session" }, 401);
-    const userId = userData.user.id;
-    const userLabel = userData.user.email ?? null;
-
     const admin = createClient(url, service);
     const aml = admin.schema("aml");
 
     const body = await req.json().catch(() => ({}));
+    const auth = await verifyAuth(admin, req.headers, body);
+    if (auth.error || !auth.userId || auth.userId === "service_role") return jr({ error: auth.error || "Authentication required" }, 401);
+    const userId = auth.userId;
+    const userLabel = auth.username ?? null;
     const op = String(body?.op ?? "");
 
     // Limited status endpoint — auth only, does NOT require AML role.
