@@ -3535,24 +3535,25 @@ export default function EmailCopilot() {
                 </div>
                 {/* QA PDF Attachment Badge (from Report Q&A) */}
                 {qaPDFAttachment && (
-                  <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 p-3 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-xl bg-primary/20 p-2">
+                  <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 p-3 shadow-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+                        <div className="rounded-xl bg-primary/20 p-2 flex-shrink-0">
                           <FileIcon className="h-6 w-6 text-primary" />
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm">{qaPDFAttachment.fileName}</p>
-                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-primary/30 text-primary">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="min-w-0 flex-1 truncate font-medium text-sm" title={qaPDFAttachment.fileName}>{qaPDFAttachment.fileName}</p>
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-primary/30 text-primary flex-shrink-0">
                               From Q&A
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {(qaPDFAttachment.fileSize / 1024).toFixed(1)} KB • Attached and ready to send
                           </p>
                         </div>
                       </div>
+
                       <Button
                         type="button"
                         variant="ghost"
