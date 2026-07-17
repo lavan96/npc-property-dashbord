@@ -440,6 +440,98 @@ Deno.serve(async (req) => {
       return jr({ attempt: data });
     }
 
+    // ── PHASE 9 — OBLIGATIONS (TTR / IFTI / SMR / structuring) ──
+    if (op === "list_obligations") {
+      const caseId = body.case_id ? String(body.case_id) : null;
+      const txId = body.transaction_id ? String(body.transaction_id) : null;
+      if (!caseId && !txId) return jr({ error: "case_id or transaction_id required" }, 400);
+      let q = aml.from("transaction_obligations").select("*").order("created_at", { ascending: false });
+      if (txId) q = q.eq("transaction_id", txId); else q = q.eq("case_id", caseId!);
+      const { data, error } = await q;
+      if (error) return jr({ error: error.message }, 400);
+      return jr({ obligations: data ?? [] });
+    }
+
+    if (op === "evaluate_obligations") {
+      requireWrite();
+      const txId = String(body.transaction_id ?? "");
+      if (!txId) return jr({ error: "transaction_id required" }, 400);
+      const { data: tx } = await aml.from("transactions").select("*").eq("id", txId).maybeSingle();
+      if (!tx) return jr({ error: "transaction not found" }, 404);
+      const result = await evaluateObligations(admin, aml, tx);
+      if (result.created > 0) {
+        await appendTxEvent(aml, tx.id, tx.case_id, "obligation_reevaluated",
+          `${result.created} obligation(s) detected on re-evaluation`,
+          { obligation_ids: result.obligation_ids }, userId, userLabel);
+      }
+      return jr(result);
+    }
+
+    if (op === "acknowledge_obligation") {
+      requireWrite();
+      const id = String(body.id ?? "");
+      const { data, error } = await aml.from("transaction_obligations")
+        .update({ status: "acknowledged", acknowledged_by: userId, acknowledged_at: new Date().toISOString() })
+        .eq("id", id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendTxEvent(aml, data.transaction_id, data.case_id, "obligation_acknowledged",
+        `Obligation ${data.kind} acknowledged`, { obligation_id: data.id }, userId, userLabel);
+      return jr({ obligation: data });
+    }
+
+    if (op === "waive_obligation") {
+      requireWrite();
+      const id = String(body.id ?? "");
+      const reason = String(body.reason ?? "").trim();
+      if (!reason) return jr({ error: "reason required" }, 400);
+      const { data, error } = await aml.from("transaction_obligations")
+        .update({ status: "waived", waived_by: userId, waived_at: new Date().toISOString(), waive_reason: reason })
+        .eq("id", id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendTxEvent(aml, data.transaction_id, data.case_id, "obligation_waived",
+        `Obligation ${data.kind} waived: ${reason}`, { obligation_id: data.id, reason }, userId, userLabel);
+      return jr({ obligation: data });
+    }
+
+    if (op === "link_obligation_report") {
+      requireWrite();
+      const id = String(body.id ?? "");
+      const reportId = body.report_id ? String(body.report_id) : null;
+      const { data, error } = await aml.from("transaction_obligations")
+        .update({ status: "report_created", linked_report_id: reportId })
+        .eq("id", id).select("*").maybeSingle();
+      if (error) return jr({ error: error.message }, 400);
+      if (data) await appendTxEvent(aml, data.transaction_id, data.case_id, "obligation_reported",
+        `Obligation ${data.kind} linked to AUSTRAC report`, { obligation_id: data.id, report_id: reportId },
+        userId, userLabel);
+      return jr({ obligation: data });
+    }
+
+    // Counterparty CDD roll-up summary (per case).
+    if (op === "counterparty_cdd_summary") {
+      const caseId = String(body.case_id ?? "");
+      if (!caseId) return jr({ error: "case_id required" }, 400);
+      const today = new Date().toISOString().slice(0, 10);
+      const [cpAll, cpOpen, reqOpen, reqOverdue] = await Promise.all([
+        aml.from("counterparty_cases").select("id", { count: "exact", head: true }).eq("case_id", caseId),
+        aml.from("counterparty_cases").select("id", { count: "exact", head: true }).eq("case_id", caseId)
+          .in("status", ["open", "in_progress", "awaiting_info", "escalated"]),
+        aml.from("counterparty_requests").select("id", { count: "exact", head: true }).eq("case_id", caseId)
+          .in("status", ["pending", "sent", "awaiting_response"]),
+        aml.from("counterparty_requests").select("id", { count: "exact", head: true }).eq("case_id", caseId)
+          .in("status", ["pending", "sent", "awaiting_response"]).lte("due_date", today),
+      ]);
+      return jr({
+        summary: {
+          counterparty_cases_total: cpAll.count ?? 0,
+          counterparty_cases_open: cpOpen.count ?? 0,
+          requests_open: reqOpen.count ?? 0,
+          requests_overdue: reqOverdue.count ?? 0,
+          all_cleared: (cpOpen.count ?? 0) === 0 && (reqOpen.count ?? 0) === 0,
+        },
+      });
+    }
+
     return jr({ error: `Unknown op: ${op}` }, 400);
   } catch (e: any) {
     if (e instanceof Response) return e;
