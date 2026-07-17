@@ -202,10 +202,11 @@ interface SlashSnippetMenuProps {
   snippets: EmailSnippet[];
   onPick: (s: EmailSnippet) => void;
   onClose: () => void;
+  onManage?: () => void;
   anchor: { top: number; left: number } | null;
 }
 
-export function SlashSnippetMenu({ open, query, snippets, onPick, onClose, anchor }: SlashSnippetMenuProps) {
+export function SlashSnippetMenu({ open, query, snippets, onPick, onClose, onManage, anchor }: SlashSnippetMenuProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return snippets.slice(0, 8);
@@ -222,7 +223,7 @@ export function SlashSnippetMenu({ open, query, snippets, onPick, onClose, ancho
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); setActive(a => Math.min(a + 1, filtered.length - 1)); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); setActive(a => Math.min(a + 1, Math.max(filtered.length - 1, 0))); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }
       else if (e.key === 'Enter' || e.key === 'Tab') {
         if (filtered[active]) { e.preventDefault(); onPick(filtered[active]); }
@@ -232,30 +233,62 @@ export function SlashSnippetMenu({ open, query, snippets, onPick, onClose, ancho
     return () => window.removeEventListener('keydown', onKey, true);
   }, [open, filtered, active, onPick, onClose]);
 
-  if (!open || !anchor || filtered.length === 0) return null;
+  if (!open || !anchor) return null;
 
   return (
     <div
       className="fixed z-50 w-72 bg-popover border rounded-md shadow-lg overflow-hidden"
       style={{ top: anchor.top, left: anchor.left }}
     >
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b">
-        Snippets {query && <span>matching "/{query}"</span>}
+      <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground border-b flex items-center justify-between">
+        <span>Snippets {query && <span>matching "/{query}"</span>}</span>
+        {onManage && (
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); onClose(); onManage(); }}
+            className="text-[10px] normal-case tracking-normal text-primary hover:underline"
+          >
+            Manage
+          </button>
+        )}
       </div>
       <div className="max-h-64 overflow-y-auto">
-        {filtered.map((s, i) => (
-          <button
-            key={s.id}
-            onMouseDown={(e) => { e.preventDefault(); onPick(s); }}
-            onMouseEnter={() => setActive(i)}
-            className={`w-full text-left px-2 py-1.5 text-sm flex items-center gap-2 ${i === active ? 'bg-accent' : ''}`}
-          >
-            <Wand2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="truncate flex-1">{s.title}</span>
-            {s.shortcut && <span className="text-[10px] text-muted-foreground">/{s.shortcut}</span>}
-          </button>
-        ))}
+        {filtered.length === 0 ? (
+          <div className="p-3 text-xs text-muted-foreground space-y-2">
+            {snippets.length === 0 ? (
+              <>
+                <p>You don't have any snippets yet.</p>
+                {onManage && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); onClose(); onManage(); }}
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <Wand2 className="h-3 w-3" /> Create your first snippet
+                  </button>
+                )}
+              </>
+            ) : (
+              <p>No snippets match "/{query}".</p>
+            )}
+          </div>
+        ) : (
+          filtered.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onPick(s); }}
+              onMouseEnter={() => setActive(i)}
+              className={`w-full text-left px-2 py-1.5 text-sm flex items-center gap-2 ${i === active ? 'bg-accent' : ''}`}
+            >
+              <Wand2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="truncate flex-1">{s.title}</span>
+              {s.shortcut && <span className="text-[10px] text-muted-foreground">/{s.shortcut}</span>}
+            </button>
+          ))
+        )}
       </div>
     </div>
   );
 }
+
