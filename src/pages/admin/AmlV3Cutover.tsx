@@ -132,6 +132,18 @@ export default function AmlV3Cutover() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Record<string, FlagRow | null>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [legacyHits, setLegacyHits] = useState<LegacyHitSummary[]>([]);
+  const [legacyTotal, setLegacyTotal] = useState(0);
+
+  const refreshLegacy = useCallback(() => {
+    setLegacyHits(readLegacyAliasSummary());
+    setLegacyTotal(totalLegacyAliasHits());
+  }, []);
+
+  useEffect(() => {
+    if (isSuperadmin) refreshLegacy();
+  }, [isSuperadmin, refreshLegacy]);
+
 
   const load = useCallback(async () => {
     setLoading(true);
