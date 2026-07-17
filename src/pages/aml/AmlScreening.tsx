@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { amlCasesApi, type AmlCase } from "@/lib/aml/amlCasesApi";
 import { amlVerificationApi, type ScreeningCheck, type ScreeningMatch, type ScreeningScope } from "@/lib/aml/amlVerificationApi";
+import { LegacyAliasBanner } from "@/components/aml/LegacyAliasBanner";
 
 const ALL_SCOPES: { value: ScreeningScope; label: string }[] = [
   { value: "pep", label: "PEP" },
@@ -98,6 +99,7 @@ export default function AmlScreening() {
 
   return (
     <div className="space-y-6 p-6">
+      <LegacyAliasBanner label="Screening" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">

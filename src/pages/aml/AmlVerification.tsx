@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { amlCasesApi, type AmlCase } from "@/lib/aml/amlCasesApi";
 import { amlVerificationApi, type IdentityCheck, type IdvStatus } from "@/lib/aml/amlVerificationApi";
+import { LegacyAliasBanner } from "@/components/aml/LegacyAliasBanner";
 
 const STATUS_TONE: Record<IdvStatus, string> = {
   pending: "bg-muted text-muted-foreground",
@@ -85,6 +86,7 @@ export default function AmlVerification() {
 
   return (
     <div className="space-y-6 p-6">
+      <LegacyAliasBanner label="Verification" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">

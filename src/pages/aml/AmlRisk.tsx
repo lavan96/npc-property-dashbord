@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { amlCasesApi, type AmlCase } from "@/lib/aml/amlCasesApi";
 import { amlRiskApi, type AmlRiskFactor, type AmlMandatoryTrigger, type AmlRiskAssessment, type AmlCaseCondition, type AmlDecision } from "@/lib/aml/amlRiskApi";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { LegacyAliasBanner } from "@/components/aml/LegacyAliasBanner";
 
 const RATING_TONE: Record<string, string> = {
   low: "bg-success/15 text-success",
@@ -104,6 +105,7 @@ export default function AmlRisk() {
 
   return (
     <div className="space-y-6">
+      <LegacyAliasBanner label="Risk & Decision" />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
           <div>
