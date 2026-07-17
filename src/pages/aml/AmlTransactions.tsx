@@ -259,6 +259,14 @@ export default function AmlTransactions() {
               <TabsList>
                 <TabsTrigger value="parties">Parties</TabsTrigger>
                 <TabsTrigger value="counterparty">Counterparty CDD</TabsTrigger>
+                <TabsTrigger value="obligations">
+                  Obligations
+                  {obligations.filter((o) => o.status === "pending").length > 0 && (
+                    <Badge variant="outline" className="ml-2 border-destructive/40 text-destructive">
+                      {obligations.filter((o) => o.status === "pending").length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="events">Timeline</TabsTrigger>
               </TabsList>
             </div>
