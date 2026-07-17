@@ -477,7 +477,7 @@ function ProvidersPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumm
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Provider</TableHead><TableHead>Priority</TableHead>
+                    <TableHead>Provider</TableHead><TableHead>Mode</TableHead><TableHead>Priority</TableHead>
                     <TableHead>Cost/unit</TableHead><TableHead>Health</TableHead>
                     <TableHead>Active</TableHead><TableHead className="w-32">Actions</TableHead>
                   </TableRow>
@@ -488,6 +488,11 @@ function ProvidersPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumm
                       <TableCell>
                         <div className="font-medium">{p.display_label ?? p.provider_key}</div>
                         <div className="text-[11px] text-muted-foreground">{p.provider_key}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={p.mode === "live" ? "border-warning/50 text-warning" : "border-primary/40 text-primary"}>
+                          {p.mode ?? "simulator"}
+                        </Badge>
                       </TableCell>
                       <TableCell>{p.priority}</TableCell>
                       <TableCell>{fmtMoney(p.cost_per_unit_cents, p.currency)}</TableCell>
