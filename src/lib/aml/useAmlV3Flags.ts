@@ -21,7 +21,8 @@ export type AmlV3FlagKey =
   | "aml_v3_case_workspace"
   | "aml_v3_regulatory_hub"
   | "aml_v3_terminology_editor"
-  | "aml_v3_metrics_relocation";
+  | "aml_v3_metrics_relocation"
+  | "aml_v3_org_settings";
 
 export interface AmlV3Flags {
   v3Nav: boolean;
@@ -31,8 +32,10 @@ export interface AmlV3Flags {
   regulatoryHub: boolean;
   terminologyEditor: boolean;
   metricsRelocation: boolean;
+  orgSettings: boolean;
   loading: boolean;
 }
+
 
 const CACHE_KEY = "aml:v3_flags:v1";
 type Cache = Omit<AmlV3Flags, "loading">;
@@ -75,6 +78,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
     "aml_v3_regulatory_hub",
     "aml_v3_terminology_editor",
     "aml_v3_metrics_relocation",
+    "aml_v3_org_settings",
   ];
   try {
     const { data, error } = await supabase
@@ -91,6 +95,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       regulatoryHub: coerceBool(map.get("aml_v3_regulatory_hub")),
       terminologyEditor: coerceBool(map.get("aml_v3_terminology_editor")),
       metricsRelocation: coerceBool(map.get("aml_v3_metrics_relocation")),
+      orgSettings: coerceBool(map.get("aml_v3_org_settings")),
     };
     writeCache(next);
     return next;
@@ -103,6 +108,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       regulatoryHub: false,
       terminologyEditor: false,
       metricsRelocation: false,
+      orgSettings: false,
     };
     return fallback;
   }
@@ -119,6 +125,7 @@ export function useAmlV3Flags(): AmlV3Flags {
       regulatoryHub: false,
       terminologyEditor: false,
       metricsRelocation: false,
+      orgSettings: false,
     },
   );
   const [loading, setLoading] = useState<boolean>(!cached);

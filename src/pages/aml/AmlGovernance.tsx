@@ -12,8 +12,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ShieldCheck, PlayCircle, ClipboardList, BookOpen, Bot, KeyRound, LifeBuoy, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
+  ShieldCheck, PlayCircle, ClipboardList, BookOpen, Bot, KeyRound, LifeBuoy, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Users,
 } from "lucide-react";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { GovernanceContactsPanel } from "@/components/aml/GovernanceContactsPanel";
 
 type CheckResult = { name: string; status: "pass" | "fail" | "warn"; detail?: string; metric?: number };
 type GateRun = {
@@ -62,6 +64,7 @@ function CheckIcon({ status }: { status: string }) {
 
 export default function AmlGovernance() {
   const [tab, setTab] = useState("gate");
+  const { orgSettings: orgSettingsFlag } = useAmlV3Flags();
 
   // Release gate
   const [gates, setGates] = useState<GateRun[]>([]);
@@ -222,7 +225,17 @@ export default function AmlGovernance() {
           <TabsTrigger value="stepup"><KeyRound className="h-4 w-4 mr-1" /> Step-Up Sessions</TabsTrigger>
           <TabsTrigger value="drills"><LifeBuoy className="h-4 w-4 mr-1" /> Resilience Drills</TabsTrigger>
           <TabsTrigger value="runbooks"><BookOpen className="h-4 w-4 mr-1" /> Runbooks</TabsTrigger>
+          {orgSettingsFlag && (
+            <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1" /> Contacts</TabsTrigger>
+          )}
         </TabsList>
+
+        {orgSettingsFlag && (
+          <TabsContent value="contacts" className="space-y-4">
+            <GovernanceContactsPanel />
+          </TabsContent>
+        )}
+
 
         {/* Release Gate */}
         <TabsContent value="gate" className="space-y-4">

@@ -73,6 +73,21 @@ export interface AmlActivationProgram {
   notes: string | null;
 }
 
+export interface AmlGovernanceContact {
+  name: string;
+  email: string;
+  phone: string;
+  title: string;
+  notes: string;
+}
+export type AmlGovernanceContactRole =
+  | "compliance_officer"
+  | "mlro"
+  | "senior_approver"
+  | "backup_officer"
+  | "austrac_administrator";
+export type AmlGovernanceContacts = Record<AmlGovernanceContactRole, AmlGovernanceContact>;
+
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
   return invokeAmlFunction<T>("aml-tenant", { op, ...args });
 }
@@ -108,6 +123,42 @@ export const amlTenantApi = {
       ...patch,
     };
     const nextMeta = { ...(current?.metadata ?? {}), aml_activation_program: nextProgram };
+    return invoke<{ settings: AmlTenantSettings }>(
+      "update_tenant_settings",
+      { patch: { metadata: nextMeta } },
+    ).then((r) => r.settings);
+  },
+
+  /**
+   * Phase 9 — Governance & Compliance Leadership Contacts (Directive 14).
+   * Stored under `tenant_settings.metadata.aml_governance_contacts`, same
+   * additive pattern as the activation program — no schema change required.
+   * Roles: compliance_officer, mlro, senior_approver, backup_officer,
+   * austrac_administrator.
+   */
+  getGovernanceContacts: async () => {
+    const s = await invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings);
+    const raw = (s?.metadata as any)?.aml_governance_contacts ?? {};
+    const norm = (r: any) => ({
+      name: String(r?.name ?? ""),
+      email: String(r?.email ?? ""),
+      phone: String(r?.phone ?? ""),
+      title: String(r?.title ?? ""),
+      notes: String(r?.notes ?? ""),
+    });
+    return {
+      compliance_officer: norm(raw.compliance_officer),
+      mlro: norm(raw.mlro),
+      senior_approver: norm(raw.senior_approver),
+      backup_officer: norm(raw.backup_officer),
+      austrac_administrator: norm(raw.austrac_administrator),
+    } as AmlGovernanceContacts;
+  },
+  updateGovernanceContacts: async (patch: Partial<AmlGovernanceContacts>) => {
+    const current = await invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings);
+    const prev = (current?.metadata as any)?.aml_governance_contacts ?? {};
+    const next = { ...prev, ...patch };
+    const nextMeta = { ...(current?.metadata ?? {}), aml_governance_contacts: next };
     return invoke<{ settings: AmlTenantSettings }>(
       "update_tenant_settings",
       { patch: { metadata: nextMeta } },
