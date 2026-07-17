@@ -42,15 +42,16 @@ async function loadRoles(admin: any, userId: string): Promise<Set<string>> {
 const isMlro = (roles: Set<string>) => roles.has("mlro");
 const hasAny = (roles: Set<string>) => roles.size > 0;
 
-function sanitizeTerminology(input: Record<string, unknown>): Record<string, string> {
-  const out: Record<string, string> = {};
+function sanitizeTerminology(input: Record<string, unknown>): { clean: Record<string, string>; rejected: string[] } {
+  const clean: Record<string, string> = {};
+  const rejected: string[] = [];
   for (const [k, v] of Object.entries(input ?? {})) {
-    if (LOCKED_TERMINOLOGY_KEYS.has(k)) continue;
+    if (LOCKED_TERMINOLOGY_KEYS.has(k)) { rejected.push(k); continue; }
     if (typeof v === "string" && v.trim().length > 0 && v.length <= 120) {
-      out[k] = v.trim();
+      clean[k] = v.trim();
     }
   }
-  return out;
+  return { clean, rejected };
 }
 
 Deno.serve(async (req) => {
@@ -119,15 +120,18 @@ Deno.serve(async (req) => {
       case "update_tenant_settings": {
         const err = mlroRequired(); if (err) return err;
         const patch = (args as any).patch ?? {};
+        let rejected: string[] = [];
         if (patch.terminology_overrides) {
-          patch.terminology_overrides = sanitizeTerminology(patch.terminology_overrides);
+          const { clean, rejected: r } = sanitizeTerminology(patch.terminology_overrides);
+          patch.terminology_overrides = clean;
+          rejected = r;
         }
         // Never allow tenant_id key change through here.
         delete patch.tenant_id;
         const { data, error } = await aml.from("tenant_settings")
           .update(patch).eq("tenant_id", tenantId).select("*").maybeSingle();
         if (error) return jr({ error: error.message }, 400);
-        return jr({ settings: data });
+        return jr({ settings: data, rejected_terminology_keys: rejected });
       }
 
       case "list_plans": {

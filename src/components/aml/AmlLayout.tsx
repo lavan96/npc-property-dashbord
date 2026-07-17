@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 import { hasAmlCapability, type AmlCapability } from "@/lib/aml/permissions";
+import { useAmlTerminology } from "@/lib/aml/useAmlTerminology";
 
 /**
  * Phase 1 — Five-Workspace Navigation Shell.
@@ -141,6 +142,7 @@ function pathMatchesWorkspace(pathname: string, workspace: Workspace): boolean {
 
 export function AmlLayout() {
   const { roles, loading } = useAmlAccess();
+  const { t } = useAmlTerminology();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -188,9 +190,9 @@ export function AmlLayout() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold tracking-tight">AML/CTF Compliance</h1>
+              <h1 className="text-lg font-semibold tracking-tight">{t("AML/CTF Compliance")}</h1>
               <p className="text-xs text-muted-foreground">
-                Case-centred workspace for AUSTRAC-aligned KYC, screening, monitoring and reporting.
+                {t("Case-centred workspace for AUSTRAC-aligned KYC, screening, monitoring and reporting.")}
               </p>
             </div>
             {/* Role chips + module status intentionally removed per Version 2 spec.
@@ -218,7 +220,7 @@ export function AmlLayout() {
                   aria-current={active ? "page" : undefined}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{w.label}</span>
+                  <span className="truncate">{t(w.label)}</span>
                 </NavLink>
               );
             })}
@@ -248,7 +250,7 @@ export function AmlLayout() {
                     )}
                     aria-current={active ? "page" : undefined}
                   >
-                    {s.label}
+                    {t(s.label)}
                   </NavLink>
                 );
               })}

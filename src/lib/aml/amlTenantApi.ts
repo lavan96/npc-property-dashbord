@@ -82,7 +82,7 @@ export const amlTenantApi = {
   summary: () => invoke<AmlTenantSummary>("summary"),
   getSettings: () => invoke<{ settings: AmlTenantSettings | null }>("get_tenant_settings").then((r) => r.settings),
   updateSettings: (patch: Partial<AmlTenantSettings>) =>
-    invoke<{ settings: AmlTenantSettings }>("update_tenant_settings", { patch }).then((r) => r.settings),
+    invoke<{ settings: AmlTenantSettings; rejected_terminology_keys?: string[] }>("update_tenant_settings", { patch }),
 
   /**
    * Phase 3 — Activation program (Model B gate).

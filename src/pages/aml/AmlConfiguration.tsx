@@ -22,6 +22,7 @@ import {
   type AmlTenantSummary, type AmlPlanTier, type AmlProviderConfig,
   type AmlProviderCapability, type AmlProviderHealth, type AmlEntitlementOverride,
 } from "@/lib/aml/amlTenantApi";
+import { refreshAmlTerminology } from "@/lib/aml/useAmlTerminology";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 
 function fmtMoney(cents: number, currency = "AUD") {
@@ -172,14 +173,23 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
       let termino: Record<string, string> = {};
       try { termino = terminologyText.trim() ? JSON.parse(terminologyText) : {}; }
       catch { toast.error("Terminology overrides must be valid JSON"); setSaving(false); return; }
-      await amlTenantApi.updateSettings({
+      const result = await amlTenantApi.updateSettings({
         display_name: displayName, contact_email: contactEmail || null,
         mlro_contact_name: mlroName || null, mlro_contact_email: mlroEmail || null,
         support_url: supportUrl || null, timezone, locale,
         disposal_grace_days: Number(disposalGrace) || 0,
         terminology_overrides: termino,
       });
-      toast.success("Branding & terminology saved");
+      const rejected = result?.rejected_terminology_keys ?? [];
+      if (rejected.length > 0) {
+        toast.warning(
+          `Locked regulatory terms were refused: ${rejected.join(", ")}`,
+          { description: "These control names cannot be renamed and were dropped from your overrides." },
+        );
+      } else {
+        toast.success("Branding & terminology saved");
+      }
+      await refreshAmlTerminology();
       onSaved();
     } catch (e: any) {
       toast.error(e.message ?? "Save failed");
@@ -257,12 +267,69 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
             onChange={(e) => setTerminologyText(e.target.value)}
             placeholder='{\n  "Customer Case": "Client Matter"\n}'
           />
+          <TerminologyPreview jsonText={terminologyText} lockedKeys={locked} />
         </CardContent>
       </Card>
 
       <div className="md:col-span-2 flex justify-end">
         <Button disabled={!canWrite || saving} onClick={save}>{saving ? "Saving…" : "Save branding"}</Button>
       </div>
+    </div>
+  );
+}
+
+/* -------------------- terminology live preview -------------------- */
+
+const PREVIEW_SAMPLES = [
+  "Compliance Home", "Customer Compliance", "Transaction Compliance",
+  "Regulatory & Assurance", "Platform Administration",
+  "Register", "Intake Queue", "Verification", "Screening", "Risk",
+  "AUSTRAC Hub", "Records & Privacy", "Governance", "Configuration",
+];
+
+function TerminologyPreview({ jsonText, lockedKeys }: { jsonText: string; lockedKeys: string[] }) {
+  const parsed = useMemo(() => {
+    try { return jsonText.trim() ? JSON.parse(jsonText) as Record<string, string> : {}; }
+    catch { return null; }
+  }, [jsonText]);
+  const lockedSet = useMemo(() => new Set(lockedKeys), [lockedKeys]);
+  if (parsed === null) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+        Invalid JSON — preview unavailable.
+      </div>
+    );
+  }
+  const refused = Object.keys(parsed).filter((k) => lockedSet.has(k));
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium text-muted-foreground">Live preview</span>
+        {refused.length > 0 && (
+          <Badge variant="outline" className="border-destructive/50 text-destructive text-[10px]">
+            {refused.length} locked key{refused.length === 1 ? "" : "s"} will be refused
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {PREVIEW_SAMPLES.map((label) => {
+          const override = parsed[label];
+          return (
+            <Badge
+              key={label}
+              variant="outline"
+              className={override ? "border-primary/40 text-primary" : "border-border/60 text-muted-foreground"}
+            >
+              {override ?? label}
+            </Badge>
+          );
+        })}
+      </div>
+      {refused.length > 0 && (
+        <div className="text-[11px] text-destructive">
+          Refused: <span className="font-mono">{refused.join(", ")}</span>
+        </div>
+      )}
     </div>
   );
 }
