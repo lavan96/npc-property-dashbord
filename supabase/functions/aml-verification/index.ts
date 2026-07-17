@@ -246,10 +246,13 @@ Deno.serve(async (req) => {
         if (insertErr) throw insertErr;
 
         try {
-          const result = await provider.runScreening({
+          const result = await runWithMetrics(admin, {
+            tenantId, capability, providerKey: provider.name,
+            costCents: resolved?.costCents ?? 0, configId: resolved?.configId ?? null,
+          }, () => provider.runScreening({
             caseId, subjectLabel: caseRow.subject_display_name,
             subjectType: caseRow.subject_type ?? "individual", scope, metadata: body.metadata,
-          });
+          }));
 
           const { data: updated } = await admin.schema("aml").from("screening_checks").update({
             status: result.status,
