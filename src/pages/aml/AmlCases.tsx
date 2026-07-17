@@ -62,6 +62,25 @@ export default function AmlCasesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [initialTab, setInitialTab] = useState<string | undefined>(undefined);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Phase 12 · deep-link support from legacy alias banner: /admin/aml/cases?open=<id>&tab=<hint>
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    const tab = searchParams.get("tab") ?? undefined;
+    if (openId) {
+      setActiveId(openId);
+      setInitialTab(tab);
+      // Clear query so refresh doesn't reopen sheet unexpectedly.
+      const next = new URLSearchParams(searchParams);
+      next.delete("open");
+      next.delete("tab");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const load = async () => {
     setLoading(true);
