@@ -230,11 +230,13 @@ export default function AmlCasesPage() {
 
       <CaseDetailSheet
         caseId={activeId}
-        onClose={() => setActiveId(null)}
+        initialTab={initialTab}
+        onClose={() => { setActiveId(null); setInitialTab(undefined); }}
         onChanged={load}
         canWrite={access.canWrite}
         canInvestigate={access.canWrite}
       />
+
     </div>
   );
 }
