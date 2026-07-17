@@ -116,3 +116,12 @@ Phase 0 is complete. Proceeding to Phase 1 requires:
 1. This document reviewed.
 2. No edits to Launch Operations or Provider Configuration surfaces during Phase 0.
 3. Legacy `/admin/aml/*` routes remain live so Phase 1 can build V3 nav on top of aliases (per report §11 Phase 1 "Preserve legacy routes through safe redirects or privileged diagnostics").
+
+## 10. V3 closeout (Phase 13)
+
+V3 is functionally complete behind feature flags as of Phase 13. See
+`archives/aml-v3/phase-13-brief.md` for the directive → phase closure
+map, invariant sweep evidence, and the authoritative flag-flip
+runbook. Hard exclusions (Directives 9 & 12) remain byte-identical to
+the Phase 0 baseline recorded in §6.
+
