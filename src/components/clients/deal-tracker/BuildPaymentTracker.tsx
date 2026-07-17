@@ -98,7 +98,7 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
             {sorted.map((p) => {
               const stageAmount = buildPrice ? (buildPrice * p.percentage / 100) : p.amount;
               return (
-                <TableRow key={p.id} className={cn(p.funds_released && 'bg-success/5')}>
+                <TableRow key={p.id} className={cn(isStageComplete(p) && 'bg-success/5')}>
                   <TableCell className="font-mono text-xs">{p.stage_number}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
@@ -112,8 +112,8 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                   <TableCell className="text-right text-sm">{formatCurrency(stageAmount || null)}</TableCell>
 
                   {/* Invoice Received */}
-
                   <TableCell className="text-center">
+
                     <div className="flex flex-col items-center gap-0.5">
                       <Checkbox
                         checked={p.builder_invoice_received}
