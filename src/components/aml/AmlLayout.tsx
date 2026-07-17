@@ -190,9 +190,9 @@ export function AmlLayout() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold tracking-tight">AML/CTF Compliance</h1>
+              <h1 className="text-lg font-semibold tracking-tight">{t("AML/CTF Compliance")}</h1>
               <p className="text-xs text-muted-foreground">
-                Case-centred workspace for AUSTRAC-aligned KYC, screening, monitoring and reporting.
+                {t("Case-centred workspace for AUSTRAC-aligned KYC, screening, monitoring and reporting.")}
               </p>
             </div>
             {/* Role chips + module status intentionally removed per Version 2 spec.
