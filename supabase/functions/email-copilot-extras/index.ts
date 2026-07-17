@@ -174,6 +174,57 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === 'get_scheduled') {
+      const { id } = body;
+      if (!id) return json({ error: 'id required' }, 400);
+      const { data, error } = await supabase
+        .from('email_copilot_scheduled_sends')
+        .select('id, recipient, cc_recipients, bcc_recipients, subject, body, attachments, scheduled_for, status, error, mailbox_source, original_email_id')
+        .eq('id', id)
+        .eq('user_id', effectiveUserId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: 'Not found' }, 404);
+      return json({ success: true, scheduled: data });
+    }
+
+    if (action === 'update_scheduled') {
+      const {
+        id, recipient, cc_recipients, bcc_recipients, subject,
+        body: emailBody, attachments, scheduled_for, mailbox_source,
+      } = body;
+      if (!id) return json({ error: 'id required' }, 400);
+      const patch: Record<string, unknown> = {};
+      if (recipient !== undefined) patch.recipient = String(recipient);
+      if (cc_recipients !== undefined) patch.cc_recipients = Array.isArray(cc_recipients) ? cc_recipients : [];
+      if (bcc_recipients !== undefined) patch.bcc_recipients = Array.isArray(bcc_recipients) ? bcc_recipients : [];
+      if (subject !== undefined) patch.subject = String(subject);
+      if (emailBody !== undefined) patch.body = String(emailBody);
+      if (attachments !== undefined) patch.attachments = Array.isArray(attachments) ? attachments : [];
+      if (mailbox_source !== undefined) patch.mailbox_source = mailbox_source;
+      if (scheduled_for !== undefined) {
+        const when = new Date(scheduled_for);
+        if (isNaN(when.getTime()) || when.getTime() < Date.now() - 60_000) {
+          return json({ error: 'scheduled_for must be a valid future timestamp' }, 400);
+        }
+        patch.scheduled_for = when.toISOString();
+      }
+      // Re-arm any previously failed send back to pending on edit.
+      patch.status = 'pending';
+      patch.error = null;
+      const { data, error } = await supabase
+        .from('email_copilot_scheduled_sends')
+        .update(patch)
+        .eq('id', id)
+        .eq('user_id', effectiveUserId)
+        .in('status', ['pending', 'failed'])
+        .select(SCHEDULED_COLS)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ error: 'Send is no longer editable (already sent or cancelled)' }, 409);
+      return json({ success: true, scheduled: data });
+    }
+
     // ────────── FOLLOW-UP REMINDER ──────────
     if (action === 'create_followup_reminder') {
       const { client_id, due_date, title, description, priority } = body;
