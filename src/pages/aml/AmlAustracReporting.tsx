@@ -43,6 +43,7 @@ function fmt(d: string | null | undefined) { return d ? new Date(d).toLocaleStri
 
 export default function AmlAustracReporting() {
   const { canWrite, isMlro, hasAnyRole, loading: accessLoading } = useAmlAccess();
+  const { regulatoryHub } = useAmlV3Flags();
 
   const [summary, setSummary] = useState<AmlReportingSummary | null>(null);
   const [reports, setReports] = useState<AmlReport[]>([]);
