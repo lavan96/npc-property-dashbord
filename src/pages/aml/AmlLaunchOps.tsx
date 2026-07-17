@@ -296,6 +296,18 @@ export default function AmlLaunchOps() {
   );
 }
 
+function ReadinessRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-2 border rounded-md p-2">
+      {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 mt-0.5" />}
+      <div className="flex-1">
+        <div className="font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">{detail}</div>
+      </div>
+    </div>
+  );
+}
+
 function EmptyScenarioNotice() {
   return (
     <Alert>
