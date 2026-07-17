@@ -89,6 +89,7 @@ export default function AmlConfiguration() {
       <Tabs defaultValue="branding" className="w-full">
         <TabsList>
           <TabsTrigger value="branding"><Palette className="h-4 w-4 mr-1.5" />Branding</TabsTrigger>
+          <TabsTrigger value="activation"><ShieldCheck className="h-4 w-4 mr-1.5" />Activation</TabsTrigger>
           <TabsTrigger value="plan"><Package className="h-4 w-4 mr-1.5" />Plan & Entitlements</TabsTrigger>
           <TabsTrigger value="providers"><Plug className="h-4 w-4 mr-1.5" />Providers</TabsTrigger>
           <TabsTrigger value="metrics"><Activity className="h-4 w-4 mr-1.5" />Metrics</TabsTrigger>
@@ -96,6 +97,9 @@ export default function AmlConfiguration() {
 
         <TabsContent value="branding" className="mt-4">
           <BrandingPanel summary={summary} canWrite={isMlro} onSaved={reload} />
+        </TabsContent>
+        <TabsContent value="activation" className="mt-4">
+          <ActivationProgramPanel canWrite={isMlro} />
         </TabsContent>
         <TabsContent value="plan" className="mt-4">
           <PlanPanel summary={summary} canWrite={isMlro} onSaved={reload} />
