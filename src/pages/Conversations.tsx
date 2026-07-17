@@ -1442,9 +1442,15 @@ export default function Conversations() {
                               </span>
                             </p>
                             {conv.unread_count > 0 && (
-                              <Badge className="h-6 min-w-[24px] shrink-0 rounded-full bg-brand-300 px-2 text-[10px] font-bold text-black shadow-[0_0_18px_rgba(251,191,36,0.28)]">
-                                {conv.unread_count}
-                              </Badge>
+                              <span
+                                className="relative flex shrink-0 items-center"
+                                aria-label={`${conv.unread_count} unread`}
+                              >
+                                <span className="absolute inset-0 -m-0.5 rounded-full bg-brand-300/40 blur-[6px] animate-pulse" aria-hidden />
+                                <Badge className="relative h-6 min-w-[26px] justify-center rounded-full border border-brand-200/50 bg-gradient-to-br from-brand-200 via-brand-300 to-brand-400 px-2 text-[10px] font-extrabold leading-none text-black tabular-nums shadow-[0_0_18px_rgba(251,191,36,0.55),inset_0_1px_0_rgba(255,255,255,0.55)]">
+                                  {conv.unread_count > 99 ? "99+" : conv.unread_count}
+                                </Badge>
+                              </span>
                             )}
                           </div>
                         </div>
