@@ -99,7 +99,7 @@ export default function AmlScreening() {
 
   return (
     <div className="space-y-6 p-6">
-      <LegacyAliasBanner label="Screening" />
+      <LegacyAliasBanner label="Screening" tabHint="screening" routePath="/admin/aml/screening" />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
