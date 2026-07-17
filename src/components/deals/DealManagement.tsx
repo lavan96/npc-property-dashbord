@@ -374,7 +374,7 @@ function DealManageRow({
         </TableCell>
 
         {/* Responsible (inline edit) */}
-        <TableCell className="hidden md:table-cell w-[140px]">
+        <TableCell className="hidden md:table-cell w-[160px]">
           <Select
             key={`${deal.id}-responsible`}
             defaultValue={deal.responsible_person || UNASSIGNED_SENTINEL}
@@ -385,9 +385,16 @@ function DealManageRow({
             </SelectTrigger>
             <SelectContent className="border-brand-200/15 bg-background dark:bg-background">
               <SelectItem value={UNASSIGNED_SENTINEL} className="text-xs italic">Unassigned</SelectItem>
-              {responsiblePersons.map(p => (
-                <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
+              {teamUsers.map(u => (
+                <SelectItem key={u.id} value={u.id} className="text-xs">
+                  {smartCapitalize(u.username || u.email || 'Unknown')}
+                </SelectItem>
               ))}
+              {deal.responsible_person && !teamUsers.some(u => u.id === deal.responsible_person) && (
+                <SelectItem value={deal.responsible_person} className="text-xs text-muted-foreground">
+                  {smartCapitalize(deal.responsible_person)}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </TableCell>
