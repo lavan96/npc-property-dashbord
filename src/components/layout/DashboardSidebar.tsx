@@ -256,15 +256,24 @@ export function DashboardSidebar() {
     }),
   };
 
-  // Phase 2 — AML/CTF Compliance group. Only rendered when the tenant has
-  // aml_ctf enabled and the current user has at least one AML role assigned.
+  // AML/CTF Compliance — consolidated into a single sidebar entry. All
+  // sub-surfaces (Intake, Cases, Screening, AUSTRAC, Configuration, …) live
+  // as in-page tabs inside `/admin/aml` via `AmlLayout`.
   const amlGroupedItems = (() => {
     if (aml.loading || !aml.flagEnabled || !aml.hasAnyRole) return null;
-    const items = amlNavItems
-      .filter((item) => hasAmlCapability(aml.roles, item.capability))
-      .map(({ capability, ...rest }) => ({ ...rest, moduleKey: '__aml__' }));
-    if (items.length === 0) return null;
-    return { title: 'AML/CTF Compliance', items };
+    const anyAllowed = amlNavItems.some((item) => hasAmlCapability(aml.roles, item.capability));
+    if (!anyAllowed) return null;
+    return {
+      title: 'AML/CTF Compliance',
+      items: [
+        {
+          title: 'AML/CTF Compliance',
+          url: '/admin/aml',
+          icon: ShieldCheck,
+          moduleKey: '__aml__',
+        },
+      ],
+    };
   })();
 
 
