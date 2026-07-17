@@ -357,7 +357,14 @@ Deno.serve(async (req) => {
     //   for identical document reference IDs shared across cases belonging to DIFFERENT clients
     //   and records `duplicate_doc_ref` discrepancies against every affected case.
     if (op === "duplicate_document_refs") {
-      // permission gated below at general canWrite check; run the scoped scan
+      // Requires an AML role (analyst/reviewer/mlro). Inline check because this op
+      // sits above the general role gate to keep the file's cross-portal ops grouped.
+      const { data: hasAmlRole } = await admin.rpc("has_any_aml_role", { _user_id: userId });
+      if (!hasAmlRole) return jr({ error: "AML role required" }, 403);
+      const { data: rolesRows2 } = await aml.from("role_assignments")
+        .select("role").eq("user_id", userId).is("revoked_at", null);
+      const rset = new Set<string>((rolesRows2 ?? []).map((r: any) => r.role));
+      const dupCanWrite = rset.has("analyst") || rset.has("reviewer") || rset.has("mlro");
       const scopeCase = body.case_id ? String(body.case_id) : null;
 
       // Pull evidence rows keyed by reference_id
