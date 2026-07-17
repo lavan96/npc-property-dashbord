@@ -73,6 +73,21 @@ export interface AmlActivationProgram {
   notes: string | null;
 }
 
+export interface AmlGovernanceContact {
+  name: string;
+  email: string;
+  phone: string;
+  title: string;
+  notes: string;
+}
+export type AmlGovernanceContactRole =
+  | "compliance_officer"
+  | "mlro"
+  | "senior_approver"
+  | "backup_officer"
+  | "austrac_administrator";
+export type AmlGovernanceContacts = Record<AmlGovernanceContactRole, AmlGovernanceContact>;
+
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
   return invokeAmlFunction<T>("aml-tenant", { op, ...args });
 }
