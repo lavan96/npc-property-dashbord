@@ -4,6 +4,8 @@ import { invokeSecureFunction } from "@/lib/secureInvoke";
 
 export type AmlRole = "analyst" | "reviewer" | "mlro" | "auditor";
 
+const SUPERADMIN_AML_ROLES: AmlRole[] = ["analyst", "reviewer", "mlro", "auditor"];
+
 export interface AmlAccess {
   loading: boolean;
   flagEnabled: boolean;
@@ -15,7 +17,7 @@ export interface AmlAccess {
 }
 
 export function useAmlAccess(): AmlAccess {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isSuperadmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [flagEnabled, setFlagEnabled] = useState(false);
   const [roles, setRoles] = useState<Set<AmlRole>>(new Set());
@@ -36,6 +38,12 @@ export function useAmlAccess(): AmlAccess {
         return;
       }
 
+      if (isSuperadmin) {
+        setFlagEnabled(true);
+        setRoles(new Set(SUPERADMIN_AML_ROLES));
+        return;
+      }
+
       const { data, error } = await invokeSecureFunction<{
         flagEnabled: boolean;
         roles: AmlRole[];
@@ -47,12 +55,17 @@ export function useAmlAccess(): AmlAccess {
       setRoles(new Set((data?.roles ?? []) as AmlRole[]));
     } catch (e) {
       console.warn("useAmlAccess failed", e);
-      setFlagEnabled(false);
-      setRoles(new Set());
+      if (isSuperadmin) {
+        setFlagEnabled(true);
+        setRoles(new Set(SUPERADMIN_AML_ROLES));
+      } else {
+        setFlagEnabled(false);
+        setRoles(new Set());
+      }
     } finally {
       setLoading(false);
     }
-  }, [authLoading, user?.id]);
+  }, [authLoading, user?.id, isSuperadmin]);
 
   useEffect(() => { load(); }, [load]);
 

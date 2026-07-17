@@ -19909,6 +19909,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      admin_set_aml_roles_for_user: {
+        Args: { _granted_by: string; _roles: string[]; _target_user_id: string }
+        Returns: {
+          role: string
+        }[]
+      }
       append_migration_upload_chunk: {
         Args: {
           _chunk_index: number
@@ -20036,6 +20042,13 @@ export type Database = {
         Args: { _user_id: string }
         Returns: {
           role: string
+        }[]
+      }
+      get_aml_roles_for_users: {
+        Args: { _user_ids: string[] }
+        Returns: {
+          role: string
+          user_id: string
         }[]
       }
       get_api_health_stats: {

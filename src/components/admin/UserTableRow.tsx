@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Crown, Key, Mail, Settings, ShieldOff, Trash2, Shield, Copy, LogOut } from 'lucide-react';
+import { Crown, Key, Mail, Settings, ShieldOff, Trash2, Shield, Copy, LogOut, ShieldCheck } from 'lucide-react';
 import { Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,7 +20,17 @@ interface User {
   deleted_at: string | null;
   user_roles: Array<{ role: string }>;
   personal_mailbox: string | null;
+  aml_roles?: AmlRole[];
 }
+
+type AmlRole = 'analyst' | 'reviewer' | 'mlro' | 'auditor';
+
+const AML_ROLE_LABELS: Record<AmlRole, string> = {
+  analyst: 'Analyst',
+  reviewer: 'Reviewer',
+  mlro: 'MLRO',
+  auditor: 'Auditor',
+};
 
 interface UserTableRowProps {
   u: User;
@@ -33,6 +43,7 @@ interface UserTableRowProps {
   onDelete: (userId: string) => void;
   onEditMailbox: (userId: string, currentMailbox: string | null) => void;
   onClonePermissions: (userId: string) => void;
+  onManageAmlRoles: (userId: string) => void;
   onForceLogout?: (userId: string) => void;
   selected?: boolean;
   onToggleSelect?: (userId: string) => void;
@@ -40,10 +51,11 @@ interface UserTableRowProps {
 
 export function UserTableRow({
   u, isSelf, onToggleActive, onEditPermissions, onResetPassword,
-  onPromote, onDemote, onDelete, onEditMailbox, onClonePermissions, onForceLogout, selected, onToggleSelect,
+  onPromote, onDemote, onDelete, onEditMailbox, onClonePermissions, onManageAmlRoles, onForceLogout, selected, onToggleSelect,
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
+  const amlRoles = u.aml_roles ?? [];
   const actionButtonClass = 'h-9 w-9 rounded-xl border-border/70 bg-background/80 p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 motion-reduce:transform-none motion-reduce:transition-none';
   const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-brand-300/40 bg-brand-500/10 p-0 text-brand-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-brand-500/15 focus-visible:ring-brand-400/40 motion-reduce:transform-none motion-reduce:transition-none dark:text-brand-200';
   const destructiveActionButtonClass = 'h-9 w-9 rounded-xl p-0 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-destructive/40 motion-reduce:transform-none motion-reduce:transition-none';
@@ -94,6 +106,17 @@ export function UserTableRow({
             </Badge>
           )}
           {!hasSuperadmin && !hasAdmin && <Badge variant="outline" className="border-border/70 bg-muted/40 text-muted-foreground">User</Badge>}
+        </div>
+      </TableCell>
+      <TableCell className="py-4">
+        <div className="flex max-w-[220px] flex-wrap gap-1.5">
+          {amlRoles.length > 0 ? amlRoles.map((role) => (
+            <Badge key={role} variant="outline" className="border-primary/25 bg-primary/10 text-primary">
+              {AML_ROLE_LABELS[role] ?? role}
+            </Badge>
+          )) : (
+            <span className="rounded-full border border-dashed border-border/70 bg-muted/25 px-2.5 py-1 text-xs text-muted-foreground">Not assigned</span>
+          )}
         </div>
       </TableCell>
       <TableCell className="max-w-[260px] py-4">
@@ -176,6 +199,20 @@ export function UserTableRow({
                 <TooltipContent>Clone Permissions To Another User</TooltipContent>
               </Tooltip>
             )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onManageAmlRoles(u.id)}
+                  className={actionButtonClass}
+                  aria-label={`Manage AML roles for ${u.username}`}
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Manage AML Roles</TooltipContent>
+            </Tooltip>
             {!isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
