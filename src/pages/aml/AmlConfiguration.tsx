@@ -98,20 +98,40 @@ export default function AmlConfiguration() {
         <TabsList>
           <TabsTrigger value="branding"><Palette className="h-4 w-4 mr-1.5" />Branding</TabsTrigger>
           <TabsTrigger value="activation"><ShieldCheck className="h-4 w-4 mr-1.5" />Activation</TabsTrigger>
-          <TabsTrigger value="plan"><Package className="h-4 w-4 mr-1.5" />Plan & Entitlements</TabsTrigger>
+          {!orgSettings && (
+            <TabsTrigger value="plan"><Package className="h-4 w-4 mr-1.5" />Plan & Entitlements</TabsTrigger>
+          )}
           <TabsTrigger value="providers"><Plug className="h-4 w-4 mr-1.5" />Providers</TabsTrigger>
           <TabsTrigger value="metrics"><Activity className="h-4 w-4 mr-1.5" />Metrics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="branding" className="mt-4">
+          {orgSettings && (
+            <Alert className="mb-4 border-primary/30">
+              <Palette className="h-4 w-4" />
+              <AlertTitle>Branding is managed centrally</AlertTitle>
+              <AlertDescription className="flex items-center justify-between gap-3">
+                <span>
+                  Logos, colours and cover artwork now live in the tenant’s
+                  central White Label workspace. AML surfaces inherit those
+                  values automatically — no per-module upload required.
+                </span>
+                <Button asChild size="sm" variant="outline">
+                  <a href="/white-label">Open White Label</a>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <BrandingPanel summary={summary} canWrite={isMlro} onSaved={reload} />
         </TabsContent>
         <TabsContent value="activation" className="mt-4">
           <ActivationProgramPanel canWrite={isMlro} />
         </TabsContent>
-        <TabsContent value="plan" className="mt-4">
-          <PlanPanel summary={summary} canWrite={isMlro} onSaved={reload} />
-        </TabsContent>
+        {!orgSettings && (
+          <TabsContent value="plan" className="mt-4">
+            <PlanPanel summary={summary} canWrite={isMlro} onSaved={reload} />
+          </TabsContent>
+        )}
         <TabsContent value="providers" className="mt-4">
           <ProvidersPanel summary={summary} canWrite={isMlro} onSaved={reload} />
         </TabsContent>
