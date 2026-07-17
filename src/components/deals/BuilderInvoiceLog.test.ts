@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildBuilderInvoiceProjectRows, getSelectedStage } from './BuilderInvoiceLog';
+import {
+  buildBuilderInvoiceProjectRows,
+  getActiveStage,
+  getAvailableStages,
+  getSelectedStage,
+  isInvoiceStageComplete,
+} from './BuilderInvoiceLog';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 const payment = (id: string, stageName: string, stageNumber: number, overrides = {}) => ({
@@ -32,6 +38,13 @@ const deal = (overrides: Partial<DealWithClient> = {}) => ({
   ...overrides,
 } as DealWithClient);
 
+const completed = {
+  builder_invoice_received: true,
+  submitted_to_lender: true,
+  funds_released: true,
+  paid_to_builder: true,
+};
+
 describe('Builder Invoice Log project rows', () => {
   it('creates one row per deal while retaining every stage record', () => {
     const rows = buildBuilderInvoiceProjectRows([deal()]);
@@ -52,27 +65,57 @@ describe('Builder Invoice Log project rows', () => {
     expect(rows[1].stages[1].amount).toBe(30_000);
   });
 
-  it('selects the persisted stage and falls back to the latest stage with progress', () => {
-    const persisted = buildBuilderInvoiceProjectRows([
-      deal({ builder_invoice_current_payment_id: 'deposit' }),
-    ])[0];
-    expect(getSelectedStage(persisted)?.paymentId).toBe('deposit');
-
-    const inferred = buildBuilderInvoiceProjectRows([
+  it('makes the first incomplete chronological stage authoritative', () => {
+    const row = buildBuilderInvoiceProjectRows([
       deal({ buildPayments: [
-        payment('deposit', 'Deposit', 1, { builder_invoice_received: true }),
-        payment('slab', 'Slab/Base', 2, { funds_released: true }),
+        payment('deposit', 'Deposit', 1, completed),
+        payment('slab', 'Slab/Base', 2, completed),
         payment('frame', 'Frame', 3),
+        payment('lockup', 'Lock-up', 4),
       ] }),
     ])[0];
-    expect(getSelectedStage(inferred)?.paymentId).toBe('slab');
+
+    expect(getActiveStage(row)?.paymentId).toBe('frame');
+    expect(getAvailableStages(row, getActiveStage(row)).map((stage) => stage.paymentId))
+      .toEqual(['deposit', 'slab', 'frame']);
   });
 
-  it('uses an immediate local selection ahead of the persisted value', () => {
+  it('allows completed history to be viewed without exposing a future stage', () => {
     const row = buildBuilderInvoiceProjectRows([
-      deal({ builder_invoice_current_payment_id: 'deposit' }),
+      deal({ buildPayments: [
+        payment('deposit', 'Deposit', 1, completed),
+        payment('slab', 'Slab/Base', 2, completed),
+        payment('frame', 'Frame', 3),
+        payment('lockup', 'Lock-up', 4),
+      ] }),
     ])[0];
 
-    expect(getSelectedStage(row, 'slab')?.stageName).toBe('Slab/Base');
+    expect(getSelectedStage(row, 'deposit')?.stageName).toBe('Deposit');
+    expect(getSelectedStage(row, 'lockup')?.stageName).toBe('Frame');
+  });
+
+  it('does not move backwards when historical data is corrected', () => {
+    const row = buildBuilderInvoiceProjectRows([
+      deal({
+        builder_invoice_current_payment_id: 'frame',
+        buildPayments: [
+          payment('deposit', 'Deposit', 1, completed),
+          payment('slab', 'Slab/Base', 2, { ...completed, funds_released: false }),
+          payment('frame', 'Frame', 3),
+        ],
+      }),
+    ])[0];
+
+    expect(getActiveStage(row)?.paymentId).toBe('frame');
+  });
+
+  it('uses the existing four payment milestones as the completion gate', () => {
+    const row = buildBuilderInvoiceProjectRows([deal({ buildPayments: [
+      payment('deposit', 'Deposit', 1, completed),
+      payment('slab', 'Slab/Base', 2, { ...completed, paid_to_builder: false }),
+    ] })])[0];
+
+    expect(isInvoiceStageComplete(row.stages[0])).toBe(true);
+    expect(isInvoiceStageComplete(row.stages[1])).toBe(false);
   });
 });
