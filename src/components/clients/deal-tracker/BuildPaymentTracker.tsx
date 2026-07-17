@@ -188,7 +188,18 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                     </div>
                   </TableCell>
 
+                  {/* Completed — derived final status */}
+                  <TableCell className="text-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <Checkbox checked={isStageComplete(p)} disabled aria-readonly />
+                      {isStageComplete(p) && p.paid_to_builder_date && (
+                        <span className="text-[10px] text-success">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
+                      )}
+                    </div>
+                  </TableCell>
+
                   {/* Commission */}
+
                   <TableCell className="text-center">
                     {p.is_commission_trigger ? (
                       <div className="flex flex-col items-center gap-0.5">
