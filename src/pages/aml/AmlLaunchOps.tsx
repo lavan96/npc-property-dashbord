@@ -189,6 +189,38 @@ export default function AmlLaunchOps() {
             </CardContent>
           </Card>
 
+          {summary?.readiness && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Broad-production readiness</CardTitle>
+                <CardDescription>All three gates must clear before advancing to broad production.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <ReadinessRow
+                  ok={summary.readiness.gate_pass}
+                  label="Latest release gate PASS"
+                  detail={`Status: ${summary.readiness.gate_status}${summary.readiness.gate_ran_at ? ` · ran ${new Date(summary.readiness.gate_ran_at).toLocaleString()}` : ""}`}
+                />
+                <ReadinessRow
+                  ok={summary.readiness.failing_scenarios.length === 0}
+                  label="No failing / blocked acceptance scenarios"
+                  detail={summary.readiness.failing_scenarios.length === 0 ? "All scenarios passing, waived or not run." : `Failing: ${summary.readiness.failing_scenarios.join(", ")}`}
+                />
+                <ReadinessRow
+                  ok={summary.readiness.open_critical_risks.length === 0}
+                  label="Zero open critical risks"
+                  detail={summary.readiness.open_critical_risks.length === 0 ? "Risk register clear of critical items." : `Open: ${summary.readiness.open_critical_risks.join(", ")}`}
+                />
+                {!summary.readiness.broad_production_ready && (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertTitle>Advance to broad_production is blocked</AlertTitle>
+                    <AlertDescription>Clear every gate above before requesting the final rollout advance.</AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader><CardTitle>Stage history</CardTitle></CardHeader>
             <CardContent>
