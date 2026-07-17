@@ -253,6 +253,9 @@ export default function AmlMonitoring() {
                       <TableCell className="text-right">
                         {canWrite && a.status !== "closed" && a.status !== "false_positive" && (
                           <div className="flex justify-end gap-1">
+                            {a.status === "open" && (
+                              <Button size="sm" variant="secondary" onClick={() => investigateAlert(a)}>Investigate</Button>
+                            )}
                             <Button size="sm" variant="outline" onClick={() => resolveAlert(a, "closed")}>Close</Button>
                             <Button size="sm" variant="ghost" onClick={() => resolveAlert(a, "false_positive")}>FP</Button>
                             <Button size="sm" variant="ghost" onClick={() => resolveAlert(a, "escalated")}>Escalate</Button>
