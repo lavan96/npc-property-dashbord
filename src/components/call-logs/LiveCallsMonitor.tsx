@@ -99,9 +99,10 @@ export const LiveCallsMonitor = () => {
       if (error) throw error;
 
       // Client-side safety net: hide any "active" row whose started_at is
-      // older than 2 hours. Real calls never last that long — these are
+      // older than 30 minutes. Real calls never last that long — these are
       // stale rows where VAPI failed to send an end-of-call webhook.
-      const STALE_CUTOFF_MS = 2 * 60 * 60 * 1000;
+      const STALE_CUTOFF_MS = 30 * 60 * 1000; // 30 min hard stop
+
       const now = Date.now();
       const fresh = (data || []).filter((c: LiveCall) => {
         if (!c.started_at) return true;

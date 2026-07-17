@@ -64,14 +64,15 @@ Deno.serve(async (req) => {
     }
 
     // Mode: live - fetch only active calls (ringing, in-progress, queued)
-    // Sanity cutoff: any "active" row older than 2 hours is stale (VAPI never
+    // Sanity cutoff: any "active" row older than 30 minutes is stale (VAPI never
     // sent an end-of-call webhook). We auto-close it so the Live Monitor never
-    // shows phantom multi-day calls with impossible durations.
+    // shows phantom calls with impossible durations. 30 min = hard stop.
     if (mode === 'live') {
       console.log('[get-call-logs] Fetching live calls');
 
-      const STALE_CUTOFF_MS = 2 * 60 * 60 * 1000; // 2 hours
+      const STALE_CUTOFF_MS = 30 * 60 * 1000; // 30 minutes — hard stop
       const staleBefore = new Date(Date.now() - STALE_CUTOFF_MS).toISOString();
+
 
       const { data: staleRows, error: staleError } = await supabase
         .from('vapi_call_logs')
