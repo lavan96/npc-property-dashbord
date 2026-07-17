@@ -75,19 +75,23 @@ export function ClientEmailCompose({
   const [isSending, setIsSending] = useState(false);
   const { user } = useAuth();
 
-  // Fetch available mailboxes
+  // Fetch current user's mailbox only (session isolation)
   const { data: mailboxes = [] } = useQuery({
-    queryKey: ['mailboxes-for-email'],
+    queryKey: ['mailboxes-for-email', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from('custom_users')
         .select('id, email, personal_mailbox')
-        .not('personal_mailbox', 'is', null);
-      
+        .eq('id', user.id)
+        .not('personal_mailbox', 'is', null)
+        .maybeSingle();
+
       if (error) throw error;
-      return data.filter(u => u.personal_mailbox) || [];
+      if (!data?.personal_mailbox) return [];
+      return [data];
     },
-    enabled: open
+    enabled: open && !!user?.id
   });
 
   // Set defaults when modal opens
