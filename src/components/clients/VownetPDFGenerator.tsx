@@ -790,14 +790,32 @@ export function VownetPDFGenerator({
       reader.readAsDataURL(pdfBlob);
       const base64Data = await base64Promise;
 
-      // Get user's mailbox for sending
-      const { data: userData } = await supabase
-        .from('custom_users')
-        .select('personal_mailbox')
-        .eq('id', user?.id)
-        .single();
+      // Get current user's mailbox (session-scoped, matches ClientEmailCompose pattern)
+      let senderMailbox: string | null = null;
+      if (user?.id) {
+        const { data: userData } = await supabase
+          .from('custom_users')
+          .select('personal_mailbox')
+          .eq('id', user.id)
+          .not('personal_mailbox', 'is', null)
+          .maybeSingle();
+        senderMailbox = userData?.personal_mailbox ?? null;
+      }
 
-      if (!userData?.personal_mailbox) {
+      // Fallback: let the edge function resolve the authenticated user's mailbox
+      // server-side when the client-side lookup is blocked by RLS.
+      if (!senderMailbox) {
+        try {
+          const { data: meData } = await invokeSecureFunction('get-client-data', {
+            operation: 'get_current_user_mailbox',
+          });
+          senderMailbox = (meData as any)?.personal_mailbox ?? null;
+        } catch {
+          /* ignore — handled below */
+        }
+      }
+
+      if (!senderMailbox) {
         toast.error('Please configure your personal mailbox in Settings first');
         return;
       }
@@ -807,7 +825,7 @@ export function VownetPDFGenerator({
         to: targetContact.email,
       subject: `Client Detail Form - ${clientName}`,
       body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the client detail form for ${clientName}.\n\nKind regards`,
-        senderMailbox: userData.personal_mailbox,
+        senderMailbox,
         attachments: [{
           name: fileName,
           content: base64Data,
