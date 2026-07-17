@@ -72,20 +72,28 @@ Deno.serve(async (req) => {
       conversationId: conversationId,
     };
 
-    // For SMS/WhatsApp, GHL requires contactId — look it up from our DB
-    if (messageType !== 'Email') {
-      const { data: convRecord } = await supabase
-        .from("ghl_conversations")
-        .select("ghl_contact_id")
-        .eq("ghl_conversation_id", conversationId)
-        .maybeSingle();
+    // Look up contact for this conversation (required by GHL for SMS/WhatsApp)
+    const { data: convRecord } = await supabase
+      .from("ghl_conversations")
+      .select("ghl_contact_id")
+      .eq("ghl_conversation_id", conversationId)
+      .maybeSingle();
 
-      if (convRecord?.ghl_contact_id) {
-        ghlPayload.contactId = convRecord.ghl_contact_id;
+    const contactId = convRecord?.ghl_contact_id;
+
+    if (messageType !== 'Email') {
+      if (!contactId) {
+        return new Response(
+          JSON.stringify({
+            error: "Unable to send message: this conversation is missing a linked GHL contact. Try syncing conversations, or open the client record to send.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+      ghlPayload.contactId = contactId;
       ghlPayload.message = message;
     } else {
-      // For Email, use html/subject fields
+      if (contactId) ghlPayload.contactId = contactId;
       ghlPayload.html = message;
       ghlPayload.message = message;
       if (subject) {
@@ -93,15 +101,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Resolve to a Location-level token when an agency/main token is configured
+    let accessToken = apiKey;
+    try {
+      const resolved = await resolveGhlAccessTokenForLocation({ apiKey, locationId, label: _ghlCreds.label });
+      accessToken = resolved.accessToken;
+      if (resolved.diagnostics.exchange_attempted && !resolved.diagnostics.exchange_succeeded) {
+        console.warn('[send-ghl-message] Location token exchange failed:', resolved.diagnostics.exchange_error);
+      }
+    } catch (e: any) {
+      console.warn('[send-ghl-message] Token resolve threw, using raw key:', e?.message);
+    }
+
     const ghlUrl = `https://services.leadconnectorhq.com/conversations/messages`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
       Version: "2021-04-15",
     };
 
-    console.log(`[send-ghl-message] Sending ${messageType} to conversation ${conversationId}`);
+    console.log(`[send-ghl-message] Sending ${messageType} to conversation ${conversationId} (contact ${contactId ?? 'n/a'})`);
 
     const ghlRes = await fetch(ghlUrl, {
       method: "POST",
@@ -109,12 +130,24 @@ Deno.serve(async (req) => {
       body: JSON.stringify(ghlPayload),
     });
 
-    const ghlData = await ghlRes.json();
+    const ghlText = await ghlRes.text();
+    let ghlData: any = {};
+    try { ghlData = ghlText ? JSON.parse(ghlText) : {}; } catch { ghlData = { raw: ghlText }; }
 
     if (!ghlRes.ok) {
-      console.error("[send-ghl-message] GHL API error:", ghlData);
+      console.error("[send-ghl-message] GHL API error:", ghlRes.status, ghlData);
+      const providerMsg =
+        ghlData?.message ||
+        (Array.isArray(ghlData?.message) ? ghlData.message.join('; ') : null) ||
+        ghlData?.error ||
+        ghlData?.raw ||
+        `HTTP ${ghlRes.status}`;
       return new Response(
-        JSON.stringify({ error: "Failed to send message via GHL", details: ghlData }),
+        JSON.stringify({
+          error: `GHL rejected the message: ${providerMsg}`,
+          status: ghlRes.status,
+          details: ghlData,
+        }),
         { status: ghlRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
