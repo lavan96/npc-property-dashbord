@@ -61,14 +61,15 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
     const aml = admin.schema("aml");
 
-    const { op, ...args } = await req.json().catch(() => ({}));
-    const auth = await verifyAuth(admin, req.headers, { op, ...args });
+    const body = await req.json().catch(() => ({}));
+    const auth = await verifyAuth(admin, req.headers, body);
     if (auth.error || !auth.userId || auth.userId === "service_role") return jr({ error: auth.error || "Authentication required" }, 401);
     const userId = auth.userId;
 
     const roles = await loadRoles(admin, userId);
     if (!hasAny(roles)) return jr({ error: "No AML role" }, 403);
 
+    const { op, ...args } = body;
     if (!op) return jr({ error: "op required" }, 400);
 
     const tenantId: string = String((args as any).tenant_id ?? DEFAULT_TENANT);
