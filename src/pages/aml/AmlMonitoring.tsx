@@ -116,6 +116,21 @@ export default function AmlMonitoring() {
     try { await amlMonitoringApi.resolveAlert(a.id, status, note); void loadAlerts(); void load(); }
     catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
+  const investigateAlert = async (a: AmlAlert) => {
+    try { await amlMonitoringApi.assignAlert(a.id, { status: "investigating" }); toast.success("Assigned to you"); void loadAlerts(); void load(); }
+    catch (e: any) { toast.error(e?.message ?? "Failed"); }
+  };
+  const runScansNow = async () => {
+    if (!isMlro) { toast.error("MLRO role required"); return; }
+    if (!confirm("Run rescreen + stale-IDV scans and escalate overdue reviews now?")) return;
+    setBusy(true);
+    try {
+      const r = await amlMonitoringApi.runScansAdmin();
+      toast.success(`Scans complete — ${r.alerts_created} alert(s), ${r.reviews_escalated} review(s) escalated`);
+      void load(); if (tab === "alerts") void loadAlerts(); if (tab === "reviews") void loadReviews();
+    } catch (e: any) { toast.error(e?.message ?? "Scan failed"); }
+    finally { setBusy(false); }
+  };
 
   const saveEdd = async () => {
     try {
