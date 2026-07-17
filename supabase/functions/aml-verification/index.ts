@@ -15,8 +15,19 @@ import { verifyAuth } from "../_shared/auth.ts";
 import {
   getIdvProvider,
   getScreeningProvider,
+  resolveTenantProvider,
+  runWithMetrics,
   type ScreeningScope,
 } from "../_shared/aml/providers/index.ts";
+
+const DEFAULT_TENANT = "default";
+async function resolveTenantId(admin: any, caseId: string): Promise<string> {
+  try {
+    const { data } = await admin.schema("aml").from("cases")
+      .select("tenant_id").eq("id", caseId).maybeSingle();
+    return (data?.tenant_id as string) || DEFAULT_TENANT;
+  } catch { return DEFAULT_TENANT; }
+}
 import { reserveTokens, commitTokens, cancelTokens } from "../_shared/missionControl.ts";
 
 const corsHeaders = {
