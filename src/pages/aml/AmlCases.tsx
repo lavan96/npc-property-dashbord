@@ -332,8 +332,9 @@ function CreateCaseDialog({
 }
 
 function CaseDetailSheet({
-  caseId, onClose, onChanged, canWrite, canInvestigate,
-}: { caseId: string | null; onClose: () => void; onChanged: () => void; canWrite: boolean; canInvestigate: boolean }) {
+  caseId, onClose, onChanged, canWrite, canInvestigate, initialTab,
+}: { caseId: string | null; onClose: () => void; onChanged: () => void; canWrite: boolean; canInvestigate: boolean; initialTab?: string }) {
+
   const [caseRow, setCaseRow] = useState<AmlCase | null>(null);
   const [events, setEvents] = useState<AmlCaseEvent[]>([]);
   const [loading, setLoading] = useState(false);
