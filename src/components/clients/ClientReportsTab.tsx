@@ -449,8 +449,9 @@ export function ClientReportsTab({
   };
 
   const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+    const normalized = normalizeStoragePath(fileUrl);
     try {
-      const result = await secureStorageDownload('client-files', fileUrl);
+      const result = await secureStorageDownload('client-files', normalized);
       if (!result.success || !result.blob) throw new Error(result.error || 'Download failed');
 
       const url = URL.createObjectURL(result.blob);
@@ -466,7 +467,7 @@ export function ClientReportsTab({
       console.error('Download error:', error);
       // Fallback to investment-reports bucket for older files
       try {
-        const fallbackResult = await secureStorageDownload('investment-reports', fileUrl);
+        const fallbackResult = await secureStorageDownload('investment-reports', normalized);
         if (!fallbackResult.success || !fallbackResult.blob) throw new Error('Fallback download failed');
         const url = URL.createObjectURL(fallbackResult.blob);
         const a = document.createElement('a');
@@ -484,6 +485,7 @@ export function ClientReportsTab({
   };
 
   const handleViewFile = async (fileUrl: string) => {
+    const normalized = normalizeStoragePath(fileUrl);
     // Open the tab synchronously inside the click handler so popup blockers
     // (Chrome/Safari) don't kill it after the async storage download.
     const viewer = window.open('', '_blank');
@@ -494,7 +496,9 @@ export function ClientReportsTab({
     }
 
     const openBlob = (blob: Blob) => {
-      const url = URL.createObjectURL(blob);
+      // Force application/pdf so the browser renders inline instead of downloading.
+      const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfBlob);
       if (viewer) {
         viewer.location.href = url;
       } else {
@@ -510,7 +514,7 @@ export function ClientReportsTab({
     };
 
     try {
-      const result = await secureStorageDownload('client-files', fileUrl);
+      const result = await secureStorageDownload('client-files', normalized);
       if (result.success && result.blob) {
         openBlob(result.blob);
         return;
@@ -519,14 +523,14 @@ export function ClientReportsTab({
     } catch (err) {
       // Fallback: try the investment-reports bucket via the same secure path.
       try {
-        const fallback = await secureStorageDownload('investment-reports', fileUrl);
+        const fallback = await secureStorageDownload('investment-reports', normalized);
         if (fallback.success && fallback.blob) {
           openBlob(fallback.blob);
           return;
         }
       } catch {}
       if (viewer) viewer.close();
-      console.error('[handleViewFile] failed', err);
+      console.error('[handleViewFile] failed', err, 'raw=', fileUrl, 'normalized=', normalized);
       toast.error('Failed to open PDF');
     }
   };
@@ -536,8 +540,9 @@ export function ClientReportsTab({
       toast.error('No file available to attach');
       return;
     }
+    const normalized = normalizeStoragePath(report.fileUrl);
     try {
-      const result = await secureStorageDownload('client-files', report.fileUrl);
+      const result = await secureStorageDownload('client-files', normalized);
       if (!result.success || !result.blob) throw new Error('Download failed');
       onEmailClick(result.blob, report.name);
     } catch {
