@@ -11,7 +11,7 @@ const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret, x-session-token, x-command-centre-session-token',
 };
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -81,14 +81,27 @@ Deno.serve(async (req) => {
   }
 
   if (action === 'report') {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
-    const userSb = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: authHeader } } });
+    const { verifyAuth } = await import('../_shared/auth.ts');
+    const auth = await verifyAuth(sb, req.headers, {});
+    if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
+    // Admin/superadmin gate (native user_roles OR custom_users)
+    let allowed = auth.userId === 'service_role';
+    if (!allowed) {
+      const { data: rr } = await sb.from('user_roles').select('role').eq('user_id', auth.userId);
+      const roles = (rr ?? []).map((r: any) => r.role);
+      allowed = roles.includes('admin') || roles.includes('superadmin') || roles.includes('super_admin');
+      if (!allowed) {
+        const { data: cu } = await sb.from('custom_users').select('role_display, is_active').eq('id', auth.userId).maybeSingle();
+        const rd = String(cu?.role_display ?? '').toLowerCase();
+        allowed = Boolean(cu?.is_active) && (rd === 'super_admin' || rd === 'superadmin' || rd === 'admin');
+      }
+    }
+    if (!allowed) return json({ error: 'forbidden' }, 403);
     const days = Math.min(90, Math.max(1, Number(body?.days ?? 30)));
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const { data, error } = await userSb.from('market_qa_quality_daily')
+    const { data, error } = await sb.from('market_qa_quality_daily')
       .select('*').gte('snapshot_date', since).order('snapshot_date', { ascending: true });
-    if (error) return json({ error: error.message }, 403);
+    if (error) return json({ error: error.message }, 500);
     return json({ snapshots: data ?? [] });
   }
 
