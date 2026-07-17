@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
       if (body.case_id) q = q.eq("case_id", String(body.case_id));
       const { data, error } = await q;
       if (error) return jr({ error: error.message }, 400);
-      return jr({ reports: data ?? [] });
+      const rows = (data ?? []).map((r: any) => redactSmr(r));
+      return jr({ reports: rows });
     }
     if (op === "get_report") {
       const id = String(body.id ?? "");
@@ -110,7 +111,9 @@ Deno.serve(async (req) => {
         aml.from("report_versions").select("*").eq("report_id", id).order("version", { ascending: false }),
         aml.from("report_submissions").select("*, receipts:report_receipts(*)").eq("report_id", id).order("submitted_at", { ascending: false }),
       ]);
-      return jr({ report, versions: versions ?? [], submissions: submissions ?? [] });
+      const safeReport = redactSmr(report as any);
+      const safeVersions = (versions ?? []).map((v: any) => (report?.kind === "smr" && isAuditorOnly) ? { ...v, narrative: null, snapshot: { redacted: true } } : v);
+      return jr({ report: safeReport, versions: safeVersions, submissions: submissions ?? [] });
     }
 
     // ── DRAFT WRITES ─────────────────────────────
