@@ -298,7 +298,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                    <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                     <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -343,7 +343,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                    <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                     <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -387,7 +387,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
                     tickLine={{ stroke: 'rgba(255,255,255,0.12)' }}
                     axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
                   />
-                  <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                  <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                   <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
                   <Bar dataKey="Total Calls" fill="#60a5fa" radius={[8, 8, 0, 0]} />
                   <Bar dataKey="Completed" fill="#34d399" radius={[8, 8, 0, 0]} />
