@@ -116,6 +116,21 @@ export default function AmlMonitoring() {
     try { await amlMonitoringApi.resolveAlert(a.id, status, note); void loadAlerts(); void load(); }
     catch (e: any) { toast.error(e?.message ?? "Failed"); }
   };
+  const investigateAlert = async (a: AmlAlert) => {
+    try { await amlMonitoringApi.assignAlert(a.id, { status: "investigating" }); toast.success("Assigned to you"); void loadAlerts(); void load(); }
+    catch (e: any) { toast.error(e?.message ?? "Failed"); }
+  };
+  const runScansNow = async () => {
+    if (!isMlro) { toast.error("MLRO role required"); return; }
+    if (!confirm("Run rescreen + stale-IDV scans and escalate overdue reviews now?")) return;
+    setBusy(true);
+    try {
+      const r = await amlMonitoringApi.runScansAdmin();
+      toast.success(`Scans complete — ${r.alerts_created} alert(s), ${r.reviews_escalated} review(s) escalated`);
+      void load(); if (tab === "alerts") void loadAlerts(); if (tab === "reviews") void loadReviews();
+    } catch (e: any) { toast.error(e?.message ?? "Scan failed"); }
+    finally { setBusy(false); }
+  };
 
   const saveEdd = async () => {
     try {
@@ -163,10 +178,19 @@ export default function AmlMonitoring() {
             <p className="text-xs text-muted-foreground">Alerts, EDD, source of funds/wealth, and existing-customer remediation.</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={busy}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {isMlro && (
+            <Button variant="outline" size="sm" onClick={runScansNow} disabled={busy}>
+              <Sparkles className="mr-2 h-4 w-4" /> Run scans now
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={load} disabled={busy}>
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Refresh
+          </Button>
+        </div>
       </div>
+
+
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
         {[
@@ -229,6 +253,9 @@ export default function AmlMonitoring() {
                       <TableCell className="text-right">
                         {canWrite && a.status !== "closed" && a.status !== "false_positive" && (
                           <div className="flex justify-end gap-1">
+                            {a.status === "open" && (
+                              <Button size="sm" variant="secondary" onClick={() => investigateAlert(a)}>Investigate</Button>
+                            )}
                             <Button size="sm" variant="outline" onClick={() => resolveAlert(a, "closed")}>Close</Button>
                             <Button size="sm" variant="ghost" onClick={() => resolveAlert(a, "false_positive")}>FP</Button>
                             <Button size="sm" variant="ghost" onClick={() => resolveAlert(a, "escalated")}>Escalate</Button>
