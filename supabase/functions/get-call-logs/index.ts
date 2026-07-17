@@ -64,13 +64,37 @@ Deno.serve(async (req) => {
     }
 
     // Mode: live - fetch only active calls (ringing, in-progress, queued)
+    // Sanity cutoff: any "active" row older than 2 hours is stale (VAPI never
+    // sent an end-of-call webhook). We auto-close it so the Live Monitor never
+    // shows phantom multi-day calls with impossible durations.
     if (mode === 'live') {
       console.log('[get-call-logs] Fetching live calls');
-      
+
+      const STALE_CUTOFF_MS = 2 * 60 * 60 * 1000; // 2 hours
+      const staleBefore = new Date(Date.now() - STALE_CUTOFF_MS).toISOString();
+
+      const { data: staleRows, error: staleError } = await supabase
+        .from('vapi_call_logs')
+        .update({
+          call_status: 'ended',
+          call_outcome: 'stale',
+          ended_at: new Date().toISOString(),
+        })
+        .in('call_status', ['in-progress', 'ringing', 'queued'])
+        .lt('started_at', staleBefore)
+        .select('id');
+
+      if (staleError) {
+        console.warn('[get-call-logs] Failed to auto-close stale calls:', staleError.message);
+      } else if (staleRows && staleRows.length > 0) {
+        console.log(`[get-call-logs] Auto-closed ${staleRows.length} stale live calls`);
+      }
+
       const { data, error } = await supabase
         .from('vapi_call_logs')
         .select('id, vapi_call_id, agent_name, phone_number, customer_name, call_direction, call_status, started_at, is_squad_call, squad_name, call_intent')
         .in('call_status', ['in-progress', 'ringing', 'queued'])
+        .gte('started_at', staleBefore)
         .order('started_at', { ascending: false });
 
       if (error) {
