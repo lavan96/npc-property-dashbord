@@ -42,15 +42,16 @@ async function loadRoles(admin: any, userId: string): Promise<Set<string>> {
 const isMlro = (roles: Set<string>) => roles.has("mlro");
 const hasAny = (roles: Set<string>) => roles.size > 0;
 
-function sanitizeTerminology(input: Record<string, unknown>): Record<string, string> {
-  const out: Record<string, string> = {};
+function sanitizeTerminology(input: Record<string, unknown>): { clean: Record<string, string>; rejected: string[] } {
+  const clean: Record<string, string> = {};
+  const rejected: string[] = [];
   for (const [k, v] of Object.entries(input ?? {})) {
-    if (LOCKED_TERMINOLOGY_KEYS.has(k)) continue;
+    if (LOCKED_TERMINOLOGY_KEYS.has(k)) { rejected.push(k); continue; }
     if (typeof v === "string" && v.trim().length > 0 && v.length <= 120) {
-      out[k] = v.trim();
+      clean[k] = v.trim();
     }
   }
-  return out;
+  return { clean, rejected };
 }
 
 Deno.serve(async (req) => {
