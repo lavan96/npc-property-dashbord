@@ -3,6 +3,9 @@ project_id = "dduzbchuswwbefdunfct"
 [functions.aml-cases]
 verify_jwt = true
 
+[functions.aml-access]
+verify_jwt = false
+
 [functions.aml-client-portal]
 verify_jwt = false
 
