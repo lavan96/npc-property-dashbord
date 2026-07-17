@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { amlRiskApi, type AmlRiskOverride, type AmlApproval } from "@/lib/aml/amlRiskApi";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { RegulatoryAssuranceHeader } from "@/components/aml/RegulatoryAssuranceHeader";
 
 const STATUS_TONE: Record<string, string> = {
   pending: "bg-warning/15 text-warning",
@@ -18,6 +20,7 @@ const STATUS_TONE: Record<string, string> = {
 export default function AmlInvestigations() {
   const { roles } = useAmlAccess();
   const canReview = roles.has("reviewer") || roles.has("mlro");
+  const { regulatoryHub } = useAmlV3Flags();
   const [tab, setTab] = useState("overrides");
   const [overrides, setOverrides] = useState<AmlRiskOverride[]>([]);
   const [approvals, setApprovals] = useState<AmlApproval[]>([]);
@@ -47,6 +50,7 @@ export default function AmlInvestigations() {
 
   return (
     <div className="space-y-6">
+      {regulatoryHub && <RegulatoryAssuranceHeader />}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>

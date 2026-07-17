@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { RegulatoryAssuranceHeader } from "@/components/aml/RegulatoryAssuranceHeader";
 import {
   amlReportingApi,
   type AmlReport, type AmlReportKind, type AmlReportStatus,
@@ -41,6 +43,7 @@ function fmt(d: string | null | undefined) { return d ? new Date(d).toLocaleStri
 
 export default function AmlAustracReporting() {
   const { canWrite, isMlro, hasAnyRole, loading: accessLoading } = useAmlAccess();
+  const { regulatoryHub } = useAmlV3Flags();
 
   const [summary, setSummary] = useState<AmlReportingSummary | null>(null);
   const [reports, setReports] = useState<AmlReport[]>([]);
@@ -200,6 +203,7 @@ export default function AmlAustracReporting() {
 
   return (
     <div className="space-y-6">
+      {regulatoryHub && <RegulatoryAssuranceHeader />}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2"><FileText className="h-6 w-6 text-primary" /> AUSTRAC Reporting Hub</h1>

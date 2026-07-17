@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { RegulatoryAssuranceHeader } from "@/components/aml/RegulatoryAssuranceHeader";
 import {
   amlMonitoringApi, type AmlAlert, type AmlAlertSeverity, type AmlAlertStatus,
   type AmlEddCase, type AmlMonitoringRule, type AmlMonitoringSummary, type AmlReview,
@@ -38,6 +40,7 @@ function fmt(d: string | null) { return d ? new Date(d).toLocaleString() : "—"
 
 export default function AmlMonitoring() {
   const { canWrite, isMlro } = useAmlAccess();
+  const { regulatoryHub } = useAmlV3Flags();
   const [summary, setSummary] = useState<AmlMonitoringSummary | null>(null);
   const [tab, setTab] = useState("alerts");
   const [alerts, setAlerts] = useState<AmlAlert[]>([]);
@@ -170,6 +173,7 @@ export default function AmlMonitoring() {
 
   return (
     <div className="space-y-6">
+      {regulatoryHub && <RegulatoryAssuranceHeader />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><Activity className="h-5 w-5" /></div>
