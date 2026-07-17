@@ -21,7 +21,8 @@ export type AmlV3FlagKey =
   | "aml_v3_case_workspace"
   | "aml_v3_regulatory_hub"
   | "aml_v3_terminology_editor"
-  | "aml_v3_metrics_relocation";
+  | "aml_v3_metrics_relocation"
+  | "aml_v3_org_settings";
 
 export interface AmlV3Flags {
   v3Nav: boolean;
@@ -31,8 +32,10 @@ export interface AmlV3Flags {
   regulatoryHub: boolean;
   terminologyEditor: boolean;
   metricsRelocation: boolean;
+  orgSettings: boolean;
   loading: boolean;
 }
+
 
 const CACHE_KEY = "aml:v3_flags:v1";
 type Cache = Omit<AmlV3Flags, "loading">;
