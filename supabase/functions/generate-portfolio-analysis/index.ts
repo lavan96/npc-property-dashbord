@@ -646,7 +646,7 @@ Format your response as valid JSON with this structure:
         { role: 'user', content: prompt },
       ],
       temperature: 0.7,
-      maxTokens: 16000,
+      maxTokens: 8000,
     });
 
     if (!aiResponse.ok) {
