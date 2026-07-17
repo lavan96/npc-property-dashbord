@@ -462,6 +462,8 @@ function StructuredTerminologyEditor({
 }
 
 
+/* -------------------- plan tab -------------------- */
+
 function PlanPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
   const [selected, setSelected] = useState(summary.settings?.plan_tier_key ?? "starter");
   const [overrides, setOverrides] = useState<AmlEntitlementOverride[]>(summary.overrides ?? []);
