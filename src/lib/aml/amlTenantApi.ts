@@ -61,9 +61,18 @@ export interface AmlTenantSummary {
   locked_terminology_keys: string[];
 }
 
+export interface AmlActivationProgram {
+  legal_approval: boolean;
+  program_version: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  notes: string | null;
+}
+
 async function invoke<T>(op: string, args: Record<string, any> = {}): Promise<T> {
   return invokeAmlFunction<T>("aml-tenant", { op, ...args });
 }
+
 
 export const amlTenantApi = {
   summary: () => invoke<AmlTenantSummary>("summary"),
