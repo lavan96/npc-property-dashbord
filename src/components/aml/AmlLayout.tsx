@@ -250,7 +250,7 @@ export function AmlLayout() {
                     )}
                     aria-current={active ? "page" : undefined}
                   >
-                    {s.label}
+                    {t(s.label)}
                   </NavLink>
                 );
               })}
