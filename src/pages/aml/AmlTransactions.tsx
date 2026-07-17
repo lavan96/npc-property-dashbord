@@ -88,19 +88,40 @@ export default function AmlTransactions() {
   useEffect(() => { loadTransactions(); /* eslint-disable-next-line */ }, [caseId]);
 
   useEffect(() => {
-    if (!selectedTx) { setParties([]); setEvents([]); setGate(null); return; }
+    if (!selectedTx) { setParties([]); setEvents([]); setGate(null); setObligations([]); return; }
     (async () => {
-      const [{ parties: p }, { events: e }] = await Promise.all([
+      const [{ parties: p }, { events: e }, obl] = await Promise.all([
         amlTransactionsApi.listParties(selectedTx.id),
         amlTransactionsApi.listEvents(selectedTx.id),
+        amlTransactionsApi.listObligations({ transaction_id: selectedTx.id }).catch(() => ({ obligations: [] as AmlTransactionObligation[] })),
       ]);
-      setParties(p); setEvents(e);
+      setParties(p); setEvents(e); setObligations(obl.obligations ?? []);
       if (selectedTx.purchase_file_id) {
         try { setGate(await amlTransactionsApi.settlementGateStatus(selectedTx.purchase_file_id)); }
         catch { setGate(null); }
       } else setGate(null);
     })();
   }, [selectedTx?.id]);
+
+  const reloadObligations = async () => {
+    if (!selectedTx) return;
+    const { obligations: o } = await amlTransactionsApi.listObligations({ transaction_id: selectedTx.id });
+    setObligations(o);
+    if (selectedTx.purchase_file_id) {
+      try { setGate(await amlTransactionsApi.settlementGateStatus(selectedTx.purchase_file_id)); } catch {}
+    }
+  };
+
+  const runEvaluate = async () => {
+    if (!selectedTx) return;
+    setReevaluating(true);
+    try {
+      const r = await amlTransactionsApi.evaluateObligations(selectedTx.id);
+      toast.success(r.created > 0 ? `${r.created} new obligation(s) detected` : "No new obligations detected");
+      await reloadObligations();
+    } catch (e: any) { toast.error(e?.message ?? "Evaluation failed"); }
+    finally { setReevaluating(false); }
+  };
 
   const currentCase = useMemo(() => cases.find((c) => c.id === caseId) ?? null, [cases, caseId]);
 
