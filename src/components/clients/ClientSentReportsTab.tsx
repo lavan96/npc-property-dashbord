@@ -381,17 +381,17 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
 
       {/* Publish Dialog */}
       <Dialog open={showPublishDialog} onOpenChange={handleClosePublish}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="w-full max-w-lg overflow-hidden p-6">
+          <DialogHeader className="space-y-1.5">
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Publish Report to Portal
             </DialogTitle>
             <DialogDescription>Upload a file and publish it to {clientName}'s client portal.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
+          <div className="w-full space-y-4 mt-2">
             {/* Drag & Drop Upload Zone */}
-            <div>
+            <div className="w-full">
               <Label>Upload File *</Label>
               <input
                 ref={fileInputRef}
@@ -401,7 +401,7 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.png,.jpg,.jpeg"
               />
               {uploadedFile ? (
-                <div className="mt-1.5 flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+                <div className="mt-1.5 w-full flex items-center gap-3 rounded-lg border bg-muted/50 p-3 min-w-0">
                   <File className="h-8 w-8 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{uploadedFile.name}</p>
@@ -423,7 +423,7 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
-                    'mt-1.5 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors',
+                    'mt-1.5 w-full flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors',
                     isDragging
                       ? 'border-primary bg-primary/5'
                       : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
@@ -441,9 +441,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </div>
 
             {/* Report Title */}
-            <div>
+            <div className="w-full">
               <Label>Report Title *</Label>
               <Input
+                className="w-full"
                 value={newReport.report_title}
                 onChange={(e) => setNewReport(p => ({ ...p, report_title: e.target.value }))}
                 placeholder="e.g., Investment Analysis - 123 Main St"
@@ -451,10 +452,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </div>
 
             {/* Report Type - Optional */}
-            <div>
+            <div className="w-full">
               <Label>Report Category <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Select value={newReport.report_type} onValueChange={(v) => setNewReport(p => ({ ...p, report_type: v }))}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a category..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -468,9 +469,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </div>
 
             {/* Notes */}
-            <div>
+            <div className="w-full">
               <Label>Notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Textarea
+                className="w-full"
                 value={newReport.notes}
                 onChange={(e) => setNewReport(p => ({ ...p, notes: e.target.value }))}
                 placeholder="Brief note for internal tracking..."
