@@ -14,6 +14,7 @@ export interface DealWithClient {
   land_price: number | null;
   property_address: string | null;
   build_price: number | null;
+  builder_invoice_current_payment_id: string | null;
   loan_amount: number | null;
   valuation_completed: boolean;
   settlement_date: string | null;

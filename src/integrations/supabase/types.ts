@@ -3480,6 +3480,7 @@ export type Database = {
       client_deals: {
         Row: {
           build_price: number | null
+          builder_invoice_current_payment_id: string | null
           cash_out_purpose: string | null
           cash_out_verified: boolean | null
           clawback_expiry_date: string | null
@@ -3527,6 +3528,7 @@ export type Database = {
         }
         Insert: {
           build_price?: number | null
+          builder_invoice_current_payment_id?: string | null
           cash_out_purpose?: string | null
           cash_out_verified?: boolean | null
           clawback_expiry_date?: string | null
@@ -3574,6 +3576,7 @@ export type Database = {
         }
         Update: {
           build_price?: number | null
+          builder_invoice_current_payment_id?: string | null
           cash_out_purpose?: string | null
           cash_out_verified?: boolean | null
           clawback_expiry_date?: string | null

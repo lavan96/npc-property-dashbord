@@ -319,6 +319,7 @@ export default function DealPipeline() {
             deals={filteredDeals}
             isLoading={isLoading}
             onUpdatePayment={handleUpdatePayment}
+            onUpdateDeal={handleUpdateDeal}
           />
         </TabsContent>
         </section>
