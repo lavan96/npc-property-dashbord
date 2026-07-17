@@ -31,10 +31,17 @@ const STEPS: { key: StepKey; label: string; section?: AmlSection }[] = [
 
 const CONSENT_VERSION = '1.0';
 
+const CONSENT_STORAGE_PREFIX = 'aml_portal_consent:';
+const RESUME_STORAGE_PREFIX = 'aml_portal_resume:';
+
+function consentKey(caseId: string) { return `${CONSENT_STORAGE_PREFIX}${caseId}`; }
+function resumeKey(caseId: string) { return `${RESUME_STORAGE_PREFIX}${caseId}`; }
+
 export default function PortalAml() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AmlPortalOverview | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
+  const resumedRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,6 +58,55 @@ export default function PortalAml() {
   useEffect(() => { load(); }, [load]);
 
   const caseObj = data?.case ?? null;
+
+  // Consent wall: consented if locally recorded OR any section has moved past not_started
+  // (server-side gate enforces this; we mirror it in the UI to prevent bypass via stepper clicks).
+  const consented = useMemo(() => {
+    if (!caseObj) return false;
+    try {
+      if (localStorage.getItem(consentKey(caseObj.id)) === '1') return true;
+    } catch { /* ignore */ }
+    return (data?.sections ?? []).some(s => s.status && s.status !== 'not_started');
+  }, [caseObj, data?.sections]);
+
+  // Resume: on first load, jump to the last section the user was on, or the first incomplete step.
+  useEffect(() => {
+    if (!caseObj || resumedRef.current || loading) return;
+    resumedRef.current = true;
+    if (!consented) { setStepIdx(0); return; }
+    let target = 1;
+    try {
+      const saved = localStorage.getItem(resumeKey(caseObj.id));
+      if (saved != null) {
+        const n = Number(saved);
+        if (Number.isFinite(n) && n >= 0 && n < STEPS.length) target = n;
+      } else {
+        const sections = data?.sections ?? [];
+        const firstIncompleteIdx = STEPS.findIndex(s => {
+          if (!s.section) return false;
+          const st = sections.find(x => x.section === s.section)?.status;
+          return !['submitted', 'accepted', 'complete'].includes(st ?? '');
+        });
+        if (firstIncompleteIdx > 0) target = firstIncompleteIdx;
+      }
+    } catch { /* ignore */ }
+    setStepIdx(target);
+  }, [caseObj, consented, data?.sections, loading]);
+
+  // Persist current step for resume
+  useEffect(() => {
+    if (!caseObj) return;
+    try { localStorage.setItem(resumeKey(caseObj.id), String(stepIdx)); } catch { /* ignore */ }
+  }, [caseObj, stepIdx]);
+
+  const safeSetStep = useCallback((i: number) => {
+    if (!consented && i !== 0) {
+      toast.error('Please confirm the consents first.');
+      return;
+    }
+    setStepIdx(i);
+  }, [consented]);
+
   const step = STEPS[stepIdx];
 
   const progressPct = useMemo(() => {
@@ -111,11 +167,36 @@ export default function PortalAml() {
             </CardContent>
           </Card>
 
-          <Stepper steps={STEPS} currentIdx={stepIdx} onSelect={setStepIdx} sections={data?.sections ?? []} />
+          {!consented && (
+            <Alert>
+              <ShieldCheck className="h-4 w-4" />
+              <AlertTitle>Consent required to continue</AlertTitle>
+              <AlertDescription>
+                Please review and confirm the consents below before completing the rest of the onboarding.
+                Your progress is saved automatically as you go.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Stepper
+            steps={STEPS}
+            currentIdx={stepIdx}
+            onSelect={safeSetStep}
+            sections={data?.sections ?? []}
+            consented={consented}
+          />
 
           <div className="min-h-[300px]">
-            {step.key === 'consent' && <ConsentStep caseId={caseObj.id} onDone={() => setStepIdx(1)} />}
-            {step.section && (
+            {step.key === 'consent' && (
+              <ConsentStep
+                caseId={caseObj.id}
+                onDone={() => {
+                  try { localStorage.setItem(consentKey(caseObj.id), '1'); } catch { /* ignore */ }
+                  setStepIdx(1);
+                }}
+              />
+            )}
+            {step.section && consented && (
               <QuestionnaireStep
                 key={step.key}
                 caseId={caseObj.id}
@@ -126,7 +207,7 @@ export default function PortalAml() {
                 onBack={() => setStepIdx(i => Math.max(0, i - 1))}
               />
             )}
-            {step.key === 'documents' && (
+            {step.key === 'documents' && consented && (
               <DocumentsStep
                 caseId={caseObj.id}
                 requirements={data?.requirements ?? []}
@@ -135,7 +216,7 @@ export default function PortalAml() {
                 onBack={() => setStepIdx(i => i - 1)}
               />
             )}
-            {step.key === 'review' && (
+            {step.key === 'review' && consented && (
               <ReviewStep
                 overview={data}
                 caseId={caseObj.id}
@@ -157,10 +238,11 @@ export default function PortalAml() {
 /* ─────────────────────────  Stepper  ──────────────────────── */
 
 function Stepper({
-  steps, currentIdx, onSelect, sections,
+  steps, currentIdx, onSelect, sections, consented,
 }: {
   steps: typeof STEPS; currentIdx: number; onSelect: (i: number) => void;
   sections: { section: AmlSection; status: string }[];
+  consented: boolean;
 }) {
   const statusFor = (s?: AmlSection) => sections.find(x => x.section === s)?.status;
   return (
@@ -169,14 +251,19 @@ function Stepper({
         const st = statusFor(s.section);
         const done = st === 'submitted' || st === 'accepted' || st === 'complete';
         const active = i === currentIdx;
+        const locked = !consented && i !== 0;
         return (
           <li key={s.key}>
             <button
               type="button"
               onClick={() => onSelect(i)}
+              disabled={locked}
+              aria-disabled={locked}
+              title={locked ? 'Confirm consents to unlock' : undefined}
               className={cn(
                 'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition',
                 active ? 'border-brand-500 bg-brand-500/10 text-foreground' : 'border-border/60 text-muted-foreground hover:text-foreground',
+                locked && 'opacity-50 cursor-not-allowed hover:text-muted-foreground',
               )}
             >
               <span className={cn(
@@ -192,6 +279,7 @@ function Stepper({
       })}
     </ol>
   );
+
 }
 
 /* ─────────────────────────  Consent  ──────────────────────── */
@@ -263,29 +351,74 @@ function QuestionnaireStep({
 }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [autosaving, setAutosaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [form, setForm] = useState<Record<string, any>>({});
   const [status, setStatus] = useState<string>('not_started');
+  const dirtyRef = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formRef = useRef(form);
+  formRef.current = form;
+  const statusRef = useRef(status);
+  statusRef.current = status;
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    dirtyRef.current = false;
     amlPortalApi.getQuestionnaire(caseId, section)
       .then(r => {
         if (!alive) return;
         setForm(r.response?.payload ?? {});
         setStatus(r.response?.status ?? 'not_started');
+        setLastSavedAt(r.response?.updated_at ? new Date(r.response.updated_at) : null);
       })
       .catch((e) => toast.error(e?.message ?? 'Failed to load'))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [caseId, section]);
 
-  const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
+  const persistDraft = useCallback(async () => {
+    // Never overwrite a submitted/accepted section from the autosaver
+    if (['submitted', 'accepted', 'complete'].includes(statusRef.current)) return;
+    setAutosaving(true);
+    try {
+      await amlPortalApi.saveQuestionnaire(caseId, section, formRef.current, false);
+      dirtyRef.current = false;
+      setLastSavedAt(new Date());
+      if (statusRef.current === 'not_started') setStatus('draft');
+    } catch {
+      // silent — user can still hit Save/Submit manually
+    } finally {
+      setAutosaving(false);
+    }
+  }, [caseId, section]);
+
+  const set = (k: string, v: any) => {
+    setForm(prev => ({ ...prev, [k]: v }));
+    dirtyRef.current = true;
+    if (['submitted', 'accepted', 'complete'].includes(statusRef.current)) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => { void persistDraft(); }, 1200);
+  };
+
+  // Flush pending autosave on unmount / step change
+  useEffect(() => {
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      if (dirtyRef.current && !['submitted', 'accepted', 'complete'].includes(statusRef.current)) {
+        void amlPortalApi.saveQuestionnaire(caseId, section, formRef.current, false).catch(() => { /* silent */ });
+      }
+    };
+  }, [caseId, section]);
 
   const save = async (submit: boolean) => {
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     setSaving(true);
     try {
       await amlPortalApi.saveQuestionnaire(caseId, section, form, submit);
+      dirtyRef.current = false;
+      setLastSavedAt(new Date());
       toast.success(submit ? 'Section submitted' : 'Draft saved');
       setStatus(submit ? 'submitted' : 'draft');
       onSaved();
@@ -297,12 +430,21 @@ function QuestionnaireStep({
     }
   };
 
+  const savedLabel = lastSavedAt
+    ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    : 'Not saved yet';
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{title}</span>
-          <Badge variant="outline" className="capitalize">{status.replace(/_/g, ' ')}</Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">
+              {autosaving ? 'Autosaving…' : savedLabel}
+            </span>
+            <Badge variant="outline" className="capitalize">{status.replace(/_/g, ' ')}</Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -334,6 +476,7 @@ function QuestionnaireStep({
     </Card>
   );
 }
+
 
 /* ─────────────────  Section-specific forms  ────────────────── */
 
