@@ -31,7 +31,13 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Pre-download Docling models at build time so cold start ≈ container start (no first-request 30s download).
 RUN python -c "import importlib.util; spec=importlib.util.find_spec('docling.utils.model_downloader'); print('Docling model predownload skipped: downloader module unavailable') if spec is None else __import__('docling.utils.model_downloader', fromlist=['download_models']).download_models()"
 
-COPY app.py ./
+# Runtime application and G1/G2 support modules.
+COPY app.py lane_policy.py operational_metrics.py ./
+
+# Catch missing runtime modules and syntax errors during image build rather than
+# after Cloud Run creates a revision.
+RUN python -m py_compile app.py lane_policy.py operational_metrics.py \
+    && python -c "import lane_policy, operational_metrics"
 
 # Cloud Run expects the container to listen on $PORT.
 EXPOSE 8080
