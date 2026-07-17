@@ -14,6 +14,16 @@ export type AmlRiskAssessment = {
   triggered_holds: Array<{ key: string; label: string; severity: "block" | "hold" }>;
   factor_breakdown: Array<{ key: string; label: string; input: any; score: number; weight: number; weighted: number }>;
   inputs: Record<string, any>; computed_by: string | null; created_at: string;
+  program_version?: string | null;
+  policy_snapshot_hash?: string | null;
+  straight_through?: boolean;
+  explanation?: {
+    top_positive?: Array<{ key: string; label: string; weighted: number; input: any }>;
+    top_neutral_missing?: Array<{ key: string; label: string }>;
+    trigger_reasons?: Array<{ key: string; label: string; severity: string }>;
+    rating_band?: string;
+    thresholds?: Record<string, number>;
+  };
 };
 export type AmlRiskOverride = {
   id: string; case_id: string; assessment_id: string | null; requested_by: string;
@@ -26,7 +36,25 @@ export type AmlDecision = {
   outcome: "cleared" | "blocked" | "escalated" | "conditional";
   rationale: string | null; snapshot: any; snapshot_hash: string;
   decided_by: string; decided_at: string;
+  program_version?: string | null;
+  is_straight_through?: boolean;
 };
+export type AmlStraightThroughConfig = {
+  enabled: boolean;
+  max_mltf_score?: number;
+  require_completion_score?: number;
+  require_verification_score?: number;
+  disallow_holds?: boolean;
+};
+export type AmlPolicySnapshot = {
+  program_version: string;
+  straight_through_config: AmlStraightThroughConfig;
+  policy_snapshot_hash: string;
+  factors: AmlRiskFactor[];
+  triggers: AmlMandatoryTrigger[];
+  tenant_id: string;
+};
+
 export type AmlApproval = {
   id: string; case_id: string; decision_id: string | null; kind: string;
   status: "pending" | "approved" | "rejected"; requested_by: string;
@@ -58,8 +86,9 @@ export const amlRiskApi = {
   upsertTrigger: (trigger: Partial<AmlMandatoryTrigger>) => invoke<{ trigger: AmlMandatoryTrigger }>({ op: "upsert_trigger", trigger }),
 
   evaluate: (case_id: string, inputs: Record<string, any>) =>
-    invoke<{ assessment: AmlRiskAssessment }>({ op: "evaluate", case_id, inputs }),
+    invoke<{ assessment: AmlRiskAssessment; auto_decision: AmlDecision | null; program_version: string; straight_through: boolean }>({ op: "evaluate", case_id, inputs }),
   listAssessments: (case_id: string) => invoke<{ assessments: AmlRiskAssessment[] }>({ op: "list_assessments", case_id }),
+
 
   requestOverride: (p: { case_id: string; assessment_id?: string; requested_reason: string; requested_rating?: string }) =>
     invoke<{ override: AmlRiskOverride }>({ op: "request_override", ...p }),
@@ -86,4 +115,10 @@ export const amlRiskApi = {
 
   gateStatus: (p: { case_id?: string; purchase_file_id?: string }) =>
     invoke<AmlGateStatus>({ op: "gate_status", ...p }),
+
+  policySnapshot: (tenant_id: string = "default") =>
+    invoke<AmlPolicySnapshot>({ op: "policy_snapshot", tenant_id }),
+  updateRiskPolicy: (p: { tenant_id?: string; risk_program_version?: string; straight_through_config?: AmlStraightThroughConfig }) =>
+    invoke<{ tenant: { tenant_id: string; risk_program_version: string; straight_through_config: AmlStraightThroughConfig } }>({ op: "update_risk_policy", ...p }),
 };
+
