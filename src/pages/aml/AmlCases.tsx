@@ -200,6 +200,12 @@ export default function AmlCasesPage() {
         onCreated={(c) => { setCreateOpen(false); load(); setActiveId(c.id); }}
       />
 
+      <ActivateClientDialog
+        open={activateOpen}
+        onOpenChange={setActivateOpen}
+        onActivated={(c) => { load(); setActiveId(c.id); }}
+      />
+
       <CaseDetailSheet
         caseId={activeId}
         onClose={() => setActiveId(null)}
