@@ -87,7 +87,7 @@ Feature flag: `feature_flags.aml_ctf`.
 | 2 | Role-adaptive landings derived from effective permissions | No client-side role sniffing; restricted metric counts hidden | ✅ delivered — `suggestAmlLanding()` + capability-gated tiles/queues in `AmlOverview` |
 | 3 | Hybrid activation engine (Model A/B) + Activate Client dialog | Requires `legal_approval` flag + `program_version` before Model B production |
 | 4 | Case-centred Customer Compliance register | Preserves all Phase 4 sub-tables; case tabs replace top-nav pages | ✅ delivered — `CaseWorkspaceTabs` (Overview/Verification/Screening/Risk/Audit) inside case sheet; legacy `/admin/aml/{verification,screening,risk}` show `LegacyAliasBanner` and remain functional |
-| 5 | Client Portal AML onboarding polish | Consent wall + resume/autosave; no restricted fields leak |
+| 5 | Client Portal AML onboarding polish | Consent wall + resume/autosave; no restricted fields leak | ✅ delivered — consent gate locks stepper until 3 consents recorded, 1.2s debounced autosave on questionnaire drafts (skips submitted sections), resume jumps to last step / first incomplete section via `localStorage`, unmount flush prevents data loss. Portal view already filtered to safe fields (`status_label`, `sections`, `requirements`); no risk_rating / SMR / internal notes surfaced |
 | 6 | Provider orchestration (IDV, PEP/sanctions, adverse media) | Simulator vs live provider isolation |
 | 7 | Risk & decisions engine (policy-versioned, explainable) | Straight-through low-risk gate + controlled escalation |
 | 8 | Finance Portal integration (handoff tokens, cross-portal RBAC) | No SMR/restricted data leak; duplicate doc-ref tests |
