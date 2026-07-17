@@ -366,6 +366,94 @@ export default function AmlTransactions() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="obligations" className="space-y-3">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-primary" />
+                      AUSTRAC reportable obligations ({obligations.length})
+                    </CardTitle>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Automatically evaluated on every save. TTR ≥ AUD 10k cash · IFTI international · SMR high-risk / manual · structuring pattern.
+                    </p>
+                  </div>
+                  {canWrite && (
+                    <Button size="sm" variant="outline" disabled={reevaluating} onClick={runEvaluate}>
+                      <RefreshCw className={`mr-1 h-3 w-3 ${reevaluating ? "animate-spin" : ""}`} /> Re-evaluate
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {obligations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No reportable obligations detected for this transaction.</p>
+                  ) : obligations.map((o) => {
+                    const kindLabel: Record<AmlObligationKind, string> = {
+                      ttr: "TTR (Threshold Transaction Report)",
+                      ifti: "IFTI (International Funds Transfer Instruction)",
+                      smr_candidate: "SMR candidate (Suspicious Matter)",
+                      structuring_suspected: "Structuring pattern suspected",
+                    };
+                    const statusTone: Record<string, string> = {
+                      pending: "border-destructive/40 text-destructive",
+                      acknowledged: "border-yellow-500/40 text-yellow-500",
+                      report_created: "border-success/40 text-success",
+                      waived: "border-muted-foreground/40 text-muted-foreground",
+                    };
+                    return (
+                      <div key={o.id} className="rounded-md border p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">{kindLabel[o.kind] ?? o.kind}</p>
+                          <Badge variant="outline" className={`capitalize ${statusTone[o.status] ?? ""}`}>
+                            {o.status.replace(/_/g, " ")}
+                          </Badge>
+                          {o.observed_amount != null && (
+                            <span className="text-xs text-muted-foreground">
+                              Observed: AUD {o.observed_amount.toLocaleString()}
+                              {o.threshold_amount != null && ` / threshold AUD ${o.threshold_amount.toLocaleString()}`}
+                            </span>
+                          )}
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {new Date(o.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Reason: {o.reason.replace(/_/g, " ")}</p>
+                        {o.waive_reason && <p className="mt-1 text-xs text-muted-foreground">Waived: {o.waive_reason}</p>}
+                        {canWrite && o.status === "pending" && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              await amlTransactionsApi.acknowledgeObligation(o.id);
+                              toast.success("Obligation acknowledged");
+                              reloadObligations();
+                            }}>
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Acknowledge
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              const reason = window.prompt("Reason for waiving this obligation (required):");
+                              if (!reason?.trim()) return;
+                              await amlTransactionsApi.waiveObligation(o.id, reason.trim());
+                              toast.success("Obligation waived");
+                              reloadObligations();
+                            }}>
+                              Waive
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              const reportId = window.prompt("AUSTRAC report reference (optional):") ?? null;
+                              await amlTransactionsApi.linkObligationReport(o.id, reportId);
+                              toast.success("Linked to report");
+                              reloadObligations();
+                            }}>
+                              <FileText className="mr-1 h-3 w-3" /> Link report
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="events" className="space-y-3">
               <Card>
                 <CardHeader className="flex flex-row items-center gap-2">
