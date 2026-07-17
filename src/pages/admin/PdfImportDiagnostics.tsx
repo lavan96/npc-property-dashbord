@@ -48,6 +48,11 @@ import {
 import { toast } from 'sonner';
 import { invokeSecureFunction, describeAuthError } from '@/lib/secureInvoke';
 import { supabase } from '@/integrations/supabase/client';
+import { PdfImportDiagnosticsDetailDialog } from '@/components/admin/PdfImportDiagnosticsDetailDialog';
+import {
+  buildDiagnosticsListRow,
+  type DiagnosticsGateSummary,
+} from '@/lib/reportTemplate/ingestion/diagnostics/pdfImportDiagnosticsV2';
 
 type EngineValue = 'legacy' | 'docling';
 type StatusValue =
@@ -179,6 +184,9 @@ export default function PdfImportDiagnostics() {
   const [engineFilter, setEngineFilter] = useState<string>('all');
   const [engineVersionFilter, setEngineVersionFilter] = useState<string>('all');
   const [downloading, setDownloading] = useState<string | null>(null);
+  // C8 — per-job quality-gate summaries (from the linked import) + detail drill-down.
+  const [gates, setGates] = useState<Record<string, DiagnosticsGateSummary>>({});
+  const [detailJobId, setDetailJobId] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     const res = await invokeSecureFunction<StatsResponse>('pdf-import-diagnostics', {
@@ -196,7 +204,7 @@ export default function PdfImportDiagnostics() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await invokeSecureFunction<{ rows: JobRow[] }>('pdf-import-diagnostics', {
+      const res = await invokeSecureFunction<{ rows: JobRow[]; gates?: Record<string, DiagnosticsGateSummary> }>('pdf-import-diagnostics', {
         operation: 'list',
         status: statusFilter === 'all' ? null : statusFilter,
         engine: engineFilter === 'all' ? null : engineFilter,
@@ -211,6 +219,7 @@ export default function PdfImportDiagnostics() {
         return;
       }
       setRows(res.data?.rows ?? []);
+      setGates(res.data?.gates ?? {});
     } finally {
       setLoading(false);
     }
@@ -577,13 +586,14 @@ export default function PdfImportDiagnostics() {
                   <TableHead className="text-right">Duration</TableHead>
                   <TableHead className="text-right">Run ms</TableHead>
                   <TableHead className="text-right">SSIM</TableHead>
-                  <TableHead className="text-right">Diagnostics</TableHead>
+                  <TableHead>Quality</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="py-14">
+                    <TableCell colSpan={17} className="py-14">
                       <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-center shadow-sm" role="status" aria-live="polite">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
                         <div>
@@ -595,7 +605,7 @@ export default function PdfImportDiagnostics() {
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="py-14">
+                    <TableCell colSpan={17} className="py-14">
                       <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-5 text-center shadow-sm" role="status" aria-live="polite">
                         <Activity className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                         <div>
@@ -705,21 +715,58 @@ export default function PdfImportDiagnostics() {
                           ? row.ssim_score.toFixed(3)
                           : '—'}
                       </TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const listRow = buildDiagnosticsListRow(row as unknown as Parameters<typeof buildDiagnosticsListRow>[0], gates[row.id]);
+                          if (!gates[row.id]) return <span className="text-muted-foreground">—</span>;
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1">
+                                {listRow.visualCoverage && (
+                                  <Badge
+                                    variant={listRow.visualCoverage === 'complete' ? 'success' : listRow.visualCoverage === 'none' ? 'destructive' : 'warning'}
+                                    className="rounded-full px-1.5 py-0 text-[10px]"
+                                  >
+                                    {listRow.visualCoverage}
+                                  </Badge>
+                                )}
+                                {listRow.manualReviewRequired ? (
+                                  <span className="text-[10px] text-warning">review</span>
+                                ) : null}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground tabular-nums">
+                                N{listRow.pagesNative ?? 0}·H{listRow.pagesHybridFallback ?? 0}·P{listRow.pagesPixelFallback ?? 0}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                          disabled={!row.diagnostics_path || downloading === row.id}
-                          onClick={() => handleDownload(row.diagnostics_path, row.id)}
-                          aria-label="Download audited diagnostics bundle"
-                        >
-                          {downloading === row.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Download className="h-3 w-3" />
-                          )}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 rounded-full px-2 text-xs hover:bg-primary/10 hover:text-primary"
+                            onClick={() => setDetailJobId(row.id)}
+                            aria-label="View correlated import diagnostics detail"
+                          >
+                            Details
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                            disabled={!row.diagnostics_path || downloading === row.id}
+                            onClick={() => handleDownload(row.diagnostics_path, row.id)}
+                            aria-label="Download audited diagnostics bundle"
+                          >
+                            {downloading === row.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Download className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -729,6 +776,12 @@ export default function PdfImportDiagnostics() {
           </div>
         </CardContent>
       </Card>
+
+      <PdfImportDiagnosticsDetailDialog
+        jobId={detailJobId}
+        open={detailJobId !== null}
+        onOpenChange={(next) => { if (!next) setDetailJobId(null); }}
+      />
     </DashboardThemeFrame>
   );
 }
