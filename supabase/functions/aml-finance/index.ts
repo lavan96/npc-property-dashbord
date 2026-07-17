@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
 
       const duplicates: any[] = [];
       let created = 0;
-      const auth2 = canWrite; // reuse role check
+      const auth2 = dupCanWrite;
       for (const [refId, list] of byRef) {
         if (list.length < 2) continue;
         const distinctClients = new Set(list.map((l) => caseToClient.get(l.case_id) ?? "?"));
