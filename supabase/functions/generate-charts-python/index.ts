@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface ChartData {
-  type: 'bar' | 'pie' | 'line';
+  type: 'bar' | 'pie' | 'line' | 'scatter' | 'area' | 'radar' | 'doughnut' | 'donut';
   title: string;
   data: Array<{ label: string; value: number; color?: string }>;
   width?: number;
