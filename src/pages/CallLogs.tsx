@@ -1309,7 +1309,7 @@ const CallLogs = () => {
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
           "flex flex-col overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card/98 dark:from-background/98 via-card/95 dark:via-background/95 to-background/95 dark:to-black/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl",
-          isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "w-[calc(100vw-32px)] max-w-4xl h-[85vh] max-h-[85vh]"
+          isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "w-[calc(100vw-32px)] max-w-6xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 bg-gradient-to-r from-brand-100 via-muted to-brand-300 bg-clip-text text-transparent">
