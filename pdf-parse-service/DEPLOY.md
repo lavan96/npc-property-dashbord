@@ -5,6 +5,13 @@ Cloud Run with all **Phase A–D** enrichments active (formula + code, sharp
 picture crops at 2× scale, table accuracy, OCR fallback, DocTags + Markdown
 exports, outline + cross-references + per-page language, streaming progress).
 
+> **Lane Policy V2 (`extractor-lane-policy-v2`)** — extraction-lane behaviour and
+> the converter cache key are governed by [`LANE-POLICY.md`](./LANE-POLICY.md).
+> No new environment variables are introduced and Cloud Run CPU/memory sizing is
+> unchanged. Deploy the sidecar **together with** the `pdf-parse-dispatch` edge
+> function (whose `LANE_POLICY_VERSION` mirror is also bumped to v2) so the C1
+> cache fingerprint never reuses a v1-semantics artifact for a v2 request.
+
 The sidecar is called by the `pdf-parse-dispatch` Supabase edge function via
 two secrets stored on the Supabase project:
 
