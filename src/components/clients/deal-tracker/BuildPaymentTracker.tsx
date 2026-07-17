@@ -85,12 +85,13 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
               <TableHead>Stage</TableHead>
               <TableHead className="text-right">%</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-center">Completed</TableHead>
               <TableHead className="text-center">Invoice Rcvd</TableHead>
               <TableHead className="text-center">Submitted</TableHead>
               <TableHead className="text-center">Funds Released</TableHead>
               <TableHead className="text-center">Paid Builder</TableHead>
+              <TableHead className="text-center">Completed</TableHead>
               <TableHead className="text-center">Commission</TableHead>
+
             </TableRow>
           </TableHeader>
           <TableBody>
