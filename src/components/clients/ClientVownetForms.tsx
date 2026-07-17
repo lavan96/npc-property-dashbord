@@ -63,7 +63,7 @@ interface ImportSummary {
  * (legacy upload behaviour), even though new uploads target the "vownet-forms" bucket.
  */
 function resolveStorageLocation(raw: string): { bucket: 'vownet-forms' | 'client-files'; key: string } {
-  if (!raw) return { bucket: 'vownet-forms', key: raw };
+  if (!raw) return { bucket: 'client-files', key: raw };
   const trimmed = raw.trim();
 
   // Legacy: stored the JSON response object
@@ -72,18 +72,31 @@ function resolveStorageLocation(raw: string): { bucket: 'vownet-forms' | 'client
       const parsed = JSON.parse(trimmed);
       const fullPath: string = parsed?.fullPath || '';
       const path: string = parsed?.path || '';
-      // fullPath is "client-files/vownet-forms/..." -> bucket=client-files, key=vownet-forms/...
       if (fullPath.startsWith('client-files/')) {
         return { bucket: 'client-files', key: fullPath.replace(/^client-files\//, '') };
       }
-      if (path) return { bucket: 'vownet-forms', key: path.replace(/^vownet-forms\//, '') };
+      if (fullPath.startsWith('vownet-forms/')) {
+        // fullPath prefixed with bucket "vownet-forms" but files actually live in client-files
+        return { bucket: 'client-files', key: fullPath };
+      }
+      if (path) {
+        // Path from upload response is typically "vownet-forms/<clientId>/<file>" —
+        // the object physically lives in the client-files bucket with that full key.
+        return { bucket: 'client-files', key: path.startsWith('vownet-forms/') ? path : `vownet-forms/${path}` };
+      }
     } catch {
       /* fall through */
     }
   }
 
-  // Plain path - assume new-style upload to vownet-forms bucket
-  return { bucket: 'vownet-forms', key: trimmed.replace(/^vownet-forms\//, '') };
+  // Plain path — vownet uploads are routed to the client-files bucket, even
+  // though the stored key starts with "vownet-forms/". Keep the key intact.
+  if (trimmed.startsWith('vownet-forms/')) {
+    return { bucket: 'client-files', key: trimmed };
+  }
+
+  // Any other plain path is a client-files key as-is.
+  return { bucket: 'client-files', key: trimmed };
 }
 
 export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsProps) {
