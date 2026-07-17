@@ -171,11 +171,18 @@ Deno.serve(async (req) => {
     const aml = admin.schema("aml");
 
     const body = await req.json().catch(() => ({}));
+    const opPre = String(body?.op ?? "");
+
+    // ─── PHASE 8 pre-auth ops (finance-portal session or token-only) ───
+    if (opPre === "create_case_handoff" || opPre === "redeem_case_handoff") {
+      return await handlePhase8Handoff(admin, aml, opPre, body, req);
+    }
+
     const auth = await verifyAuth(admin, req.headers, body);
     if (auth.error || !auth.userId || auth.userId === "service_role") return jr({ error: auth.error || "Authentication required" }, 401);
     const userId = auth.userId;
     const userLabel = auth.username ?? null;
-    const op = String(body?.op ?? "");
+    const op = opPre;
 
     // Limited status endpoint — auth only, does NOT require AML role.
     // Returns just enough for the Finance Portal to show a status pill.
