@@ -66,6 +66,7 @@ const squadTooltipContentStyle = {
   color: '#f4f4f5',
 };
 const squadTooltipLabelStyle = { color: '#f4f4f5' };
+const squadTooltipItemStyle = { color: '#f4f4f5' };
 
 const getIntentColor = (intent: string, index: number): string => {
   const normalizedIntent = intent.toLowerCase().replace(/\s+/g, '_');

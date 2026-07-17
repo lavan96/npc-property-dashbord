@@ -66,6 +66,7 @@ const tooltipContentStyle = {
   color: '#f4f4f5',
 };
 const tooltipLabelStyle = { color: '#f4f4f5' };
+const tooltipItemStyle = { color: '#f4f4f5' };
 
 export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) => {
   // Calculate sentiment distribution
