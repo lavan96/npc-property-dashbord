@@ -75,19 +75,23 @@ export function ClientEmailCompose({
   const [isSending, setIsSending] = useState(false);
   const { user } = useAuth();
 
-  // Fetch available mailboxes
+  // Fetch current user's mailbox only (session isolation)
   const { data: mailboxes = [] } = useQuery({
-    queryKey: ['mailboxes-for-email'],
+    queryKey: ['mailboxes-for-email', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from('custom_users')
         .select('id, email, personal_mailbox')
-        .not('personal_mailbox', 'is', null);
-      
+        .eq('id', user.id)
+        .not('personal_mailbox', 'is', null)
+        .maybeSingle();
+
       if (error) throw error;
-      return data.filter(u => u.personal_mailbox) || [];
+      if (!data?.personal_mailbox) return [];
+      return [data];
     },
-    enabled: open
+    enabled: open && !!user?.id
   });
 
   // Set defaults when modal opens
@@ -216,9 +220,9 @@ export function ClientEmailCompose({
           {/* Sender */}
           <div className="space-y-2">
             <Label>From</Label>
-            <Select value={selectedMailbox} onValueChange={setSelectedMailbox}>
+            <Select value={selectedMailbox} onValueChange={setSelectedMailbox} disabled={mailboxes.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder="Select sender mailbox" />
+                <SelectValue placeholder={mailboxes.length === 0 ? 'No personal mailbox configured — set one in Settings' : 'Select sender mailbox'} />
               </SelectTrigger>
               <SelectContent>
                 {mailboxes.map((mailbox) => (
@@ -228,6 +232,11 @@ export function ClientEmailCompose({
                 ))}
               </SelectContent>
             </Select>
+            {mailboxes.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Configure your personal mailbox in Settings → Profile to send emails from here.
+              </p>
+            )}
           </div>
 
           {/* Recipient */}
