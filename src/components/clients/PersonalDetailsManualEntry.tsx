@@ -275,25 +275,19 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
         dependents_count: formData.dependents_count || null,
       };
 
-      let edgeSaved = false;
-      try {
-        const { data: resp, error } = await invokeSecureFunction('manage-client-data', {
-          operation: 'update', table: 'clients', clientId, data: updateData,
-        });
-        if (error) {
-          console.warn('Edge function returned error for client update:', error);
-        } else if (resp?.success) {
-          edgeSaved = true;
-        }
-      } catch (err) {
-        console.warn('Edge function call threw:', err);
+      // Update via secure edge function only — the anon-key fallback would fail RLS and
+      // silently mask errors, so we surface the real error instead.
+      const { data: resp, error: edgeErr } = await invokeSecureFunction('manage-client-data', {
+        operation: 'update', table: 'clients', clientId, data: updateData,
+      });
+      if (edgeErr) {
+        console.error('[client-update] edge function error', edgeErr, updateData);
+        throw new Error(edgeErr.message || 'Failed to save client details');
       }
-
-      // Fallback to direct Supabase if edge function didn't save
-      if (!edgeSaved) {
-        console.log('Falling back to direct Supabase update for client data');
-        const { error } = await supabase.from('clients').update(updateData as any).eq('id', clientId);
-        if (error) throw error;
+      if (!resp?.success) {
+        const details = (resp as any)?.details || (resp as any)?.error || 'Unknown error';
+        console.error('[client-update] non-success response', resp, updateData);
+        throw new Error(String(details));
       }
 
       // Delete removed contacts
