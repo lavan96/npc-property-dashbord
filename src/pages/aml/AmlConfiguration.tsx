@@ -158,6 +158,7 @@ function SummaryTiles({ summary, hideMetrics = false }: { summary: AmlTenantSumm
 /* -------------------- branding tab -------------------- */
 
 function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSummary; canWrite: boolean; onSaved: () => void }) {
+  const { terminologyEditor } = useAmlV3Flags();
   const s = summary.settings;
   const [displayName, setDisplayName] = useState(s?.display_name ?? "");
   const [contactEmail, setContactEmail] = useState(s?.contact_email ?? "");
