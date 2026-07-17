@@ -96,13 +96,18 @@ Deno.serve(async (req) => {
           totals.failures += m.failure_count ?? 0;
           totals.cost_cents += Number(m.cost_cents_sum ?? 0);
         }
+        const providerRows = providers ?? [];
+        const liveCount = providerRows.filter((p: any) => p.mode === "live" && p.active).length;
+        const simCount = providerRows.filter((p: any) => (p.mode ?? "simulator") === "simulator" && p.active).length;
+        const envMode = (Deno.env.get("AML_PROVIDER_MODE") || "simulator").toLowerCase() === "live" ? "live" : "simulator";
         return jr({
           settings: settings ?? null,
           plans: plans ?? [],
-          providers: providers ?? [],
+          providers: providerRows,
           overrides: overrides ?? [],
           metrics_30d: totals,
           locked_terminology_keys: [...LOCKED_TERMINOLOGY_KEYS],
+          orchestration: { env_mode: envMode, live_active: liveCount, simulator_active: simCount },
         });
       }
 
