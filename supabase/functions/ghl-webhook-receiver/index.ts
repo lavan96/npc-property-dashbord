@@ -481,24 +481,51 @@ async function handleContactEvent(supabase: any, body: any, apiKey: string | nul
     return { success: false, error: 'Missing contact ID', status: 400 };
   }
 
-  const fullAddress = [address, city, state, postalCode].filter(Boolean).join(', ') || null;
-
-  const clientData: Record<string, any> = {
-    primary_first_name: firstName,
-    primary_surname: lastName,
-    primary_email: email,
-    primary_mobile: phone,
-    current_address: fullAddress,
-    country: country,
+  // Base identity payload always safe to sync
+  const baseSyncData: Record<string, any> = {
     ghl_contact_id: contactId,
     ghl_sync_status: 'synced',
     ghl_last_synced_at: new Date().toISOString(),
   };
 
+  // Structured address from GHL — split into our per-field columns so a round-trip
+  // stays idempotent. Only include a field if GHL explicitly provided a non-empty
+  // value; otherwise we must NOT clobber local edits (a ContactUpdate webhook for
+  // an unrelated field would otherwise revert address changes made in the app).
+  const incomingFields: Record<string, any> = {
+    primary_first_name: firstName && firstName !== 'Unknown' ? firstName : undefined,
+    primary_surname: lastName && lastName !== 'Unknown' ? lastName : undefined,
+    primary_email: email || undefined,
+    primary_mobile: phone || undefined,
+    current_address: address || undefined,
+    current_suburb: city || undefined,
+    current_state: state || undefined,
+    current_postcode: postalCode || undefined,
+    country: country || undefined,
+  };
+  const nonEmptyFields = Object.fromEntries(
+    Object.entries(incomingFields).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+  );
+
+  const buildUpdatePayload = (existing: Record<string, any> | null) => {
+    // For NEW clients, seed everything from GHL. For existing rows, only overwrite
+    // a field if it is currently blank OR the incoming value actually differs and
+    // the existing row was last touched by GHL (never overwrite user-edited fields
+    // with stale GHL data). Safest baseline: never overwrite non-empty local values.
+    const patch: Record<string, any> = { ...baseSyncData };
+    for (const [key, value] of Object.entries(nonEmptyFields)) {
+      const current = existing?.[key];
+      if (current === null || current === undefined || current === '') {
+        patch[key] = value;
+      }
+    }
+    return patch;
+  };
+
   // Check if client already exists by ghl_contact_id
   const { data: existingByGhl } = await supabase
     .from('clients')
-    .select('id')
+    .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, current_address, current_suburb, current_state, current_postcode, country')
     .eq('ghl_contact_id', contactId)
     .maybeSingle();
 
@@ -506,30 +533,46 @@ async function handleContactEvent(supabase: any, body: any, apiKey: string | nul
   let isNewClient = false;
 
   if (existingByGhl) {
+    const patch = buildUpdatePayload(existingByGhl);
     const { error: updateError } = await supabase
       .from('clients')
-      .update(clientData)
+      .update(patch)
       .eq('id', existingByGhl.id);
     if (updateError) console.error('[ghl-webhook] Error updating client:', updateError);
     clientDbId = existingByGhl.id;
-    console.log('[ghl-webhook] Updated existing client:', clientDbId);
+    console.log('[ghl-webhook] Updated existing client (non-destructive):', clientDbId, Object.keys(patch));
   } else if (email) {
     const { data: existingByEmail } = await supabase
       .from('clients')
-      .select('id')
+      .select('id, primary_first_name, primary_surname, primary_email, primary_mobile, current_address, current_suburb, current_state, current_postcode, country')
       .eq('primary_email', email)
       .maybeSingle();
 
     if (existingByEmail) {
+      const patch = buildUpdatePayload(existingByEmail);
       const { error: updateError } = await supabase
         .from('clients')
-        .update(clientData)
+        .update(patch)
         .eq('id', existingByEmail.id);
       if (updateError) console.error('[ghl-webhook] Error updating client by email:', updateError);
       clientDbId = existingByEmail.id;
-      console.log('[ghl-webhook] Updated client by email match:', clientDbId);
+      console.log('[ghl-webhook] Updated client by email match (non-destructive):', clientDbId);
     }
   }
+
+  // For NEW client inserts below, use the full seeded payload
+  const clientData: Record<string, any> = {
+    ...baseSyncData,
+    primary_first_name: firstName,
+    primary_surname: lastName,
+    primary_email: email,
+    primary_mobile: phone,
+    current_address: address || null,
+    current_suburb: city || null,
+    current_state: state || null,
+    current_postcode: postalCode || null,
+    country: country,
+  };
 
   if (!clientDbId) {
     const { data: inserted, error: insertError } = await supabase
