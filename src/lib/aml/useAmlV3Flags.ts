@@ -95,6 +95,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       regulatoryHub: coerceBool(map.get("aml_v3_regulatory_hub")),
       terminologyEditor: coerceBool(map.get("aml_v3_terminology_editor")),
       metricsRelocation: coerceBool(map.get("aml_v3_metrics_relocation")),
+      orgSettings: coerceBool(map.get("aml_v3_org_settings")),
     };
     writeCache(next);
     return next;
@@ -107,6 +108,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       regulatoryHub: false,
       terminologyEditor: false,
       metricsRelocation: false,
+      orgSettings: false,
     };
     return fallback;
   }
