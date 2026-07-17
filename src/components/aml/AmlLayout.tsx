@@ -142,6 +142,7 @@ function pathMatchesWorkspace(pathname: string, workspace: Workspace): boolean {
 
 export function AmlLayout() {
   const { roles, loading } = useAmlAccess();
+  const { t } = useAmlTerminology();
   const location = useLocation();
   const navigate = useNavigate();
 
