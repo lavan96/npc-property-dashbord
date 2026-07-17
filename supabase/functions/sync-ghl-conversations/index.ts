@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
 
         for (const conv of conversations) {
           const ghlConvId = conv.id;
-          const channelType = mapChannelType(conv.type);
+          const channelType = mapChannelType(conv.type || conv.lastMessageType);
 
           // Upsert conversation
           const { data: upsertedConv, error: convError } = await supabase
