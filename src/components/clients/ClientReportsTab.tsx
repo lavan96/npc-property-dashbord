@@ -466,17 +466,50 @@ export function ClientReportsTab({
   };
 
   const handleViewFile = async (fileUrl: string) => {
+    // Open the tab synchronously inside the click handler so popup blockers
+    // (Chrome/Safari) don't kill it after the async storage download.
+    const viewer = window.open('', '_blank');
+    if (viewer) {
+      viewer.document.write(
+        '<title>Loading PDF…</title><style>body{margin:0;background:#0d0d0d;color:#d4a843;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh}</style><body>Loading PDF…</body>'
+      );
+    }
+
+    const openBlob = (blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      if (viewer) {
+        viewer.location.href = url;
+      } else {
+        // Popup blocked — fall back to same-tab download link.
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.click();
+      }
+      // Revoke after the viewer has had time to load the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    };
+
     try {
       const result = await secureStorageDownload('client-files', fileUrl);
-      if (!result.success || !result.blob) throw new Error(result.error || 'Failed');
-      const url = URL.createObjectURL(result.blob);
-      window.open(url, '_blank');
-    } catch {
-      // Fallback
-      window.open(
-        `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/investment-reports/${fileUrl}`,
-        '_blank'
-      );
+      if (result.success && result.blob) {
+        openBlob(result.blob);
+        return;
+      }
+      throw new Error(result.error || 'Failed');
+    } catch (err) {
+      // Fallback: try the investment-reports bucket via the same secure path.
+      try {
+        const fallback = await secureStorageDownload('investment-reports', fileUrl);
+        if (fallback.success && fallback.blob) {
+          openBlob(fallback.blob);
+          return;
+        }
+      } catch {}
+      if (viewer) viewer.close();
+      console.error('[handleViewFile] failed', err);
+      toast.error('Failed to open PDF');
     }
   };
 
