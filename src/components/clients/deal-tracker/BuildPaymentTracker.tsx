@@ -111,23 +111,8 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                   <TableCell className="text-right font-mono text-sm">{p.percentage}%</TableCell>
                   <TableCell className="text-right text-sm">{formatCurrency(stageAmount || null)}</TableCell>
 
-                  {/* Completed */}
-                  <TableCell className="text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <Checkbox
-                        checked={p.paid_to_builder}
-                        onCheckedChange={(checked) => onUpdatePayment(p.id, {
-                          paid_to_builder: !!checked,
-                          paid_to_builder_date: checked ? (p.paid_to_builder_date || format(new Date(), 'yyyy-MM-dd')) : null,
-                        })}
-                      />
-                      {p.paid_to_builder && p.paid_to_builder_date && (
-                        <span className="text-[10px] text-success">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
-                      )}
-                    </div>
-                  </TableCell>
-
                   {/* Invoice Received */}
+
                   <TableCell className="text-center">
                     <div className="flex flex-col items-center gap-0.5">
                       <Checkbox
