@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/tooltip';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import { smartCapitalize } from '@/utils/nameFormatting';
+import { useTeamUsers, type TeamUser } from '@/hooks/useTeamUsers';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 const UNASSIGNED_SENTINEL = '__unassigned__';
@@ -310,13 +311,13 @@ function DealExpandedRow({
 // ─── Deal Management Row ───
 function DealManageRow({
   deal,
-  responsiblePersons,
+  teamUsers,
   onDealClick,
   onUpdateDeal,
   onUpdateStage,
 }: {
   deal: DealWithClient;
-  responsiblePersons: string[];
+  teamUsers: TeamUser[];
   onDealClick?: () => void;
   onUpdateDeal?: (dealId: string, clientId: string, data: any) => void;
   onUpdateStage?: (stageId: string, clientId: string, data: any, dealId?: string, allStages?: any[]) => void;
@@ -373,7 +374,7 @@ function DealManageRow({
         </TableCell>
 
         {/* Responsible (inline edit) */}
-        <TableCell className="hidden md:table-cell w-[140px]">
+        <TableCell className="hidden md:table-cell w-[160px]">
           <Select
             key={`${deal.id}-responsible`}
             defaultValue={deal.responsible_person || UNASSIGNED_SENTINEL}
@@ -384,9 +385,16 @@ function DealManageRow({
             </SelectTrigger>
             <SelectContent className="border-brand-200/15 bg-background dark:bg-background">
               <SelectItem value={UNASSIGNED_SENTINEL} className="text-xs italic">Unassigned</SelectItem>
-              {responsiblePersons.map(p => (
-                <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
+              {teamUsers.map(u => (
+                <SelectItem key={u.id} value={u.id} className="text-xs">
+                  {smartCapitalize(u.username || u.email || 'Unknown')}
+                </SelectItem>
               ))}
+              {deal.responsible_person && !teamUsers.some(u => u.id === deal.responsible_person) && (
+                <SelectItem value={deal.responsible_person} className="text-xs text-muted-foreground">
+                  {smartCapitalize(deal.responsible_person)}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </TableCell>
@@ -485,14 +493,7 @@ function DealManageRow({
 
 // ─── MAIN COMPONENT ───
 export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, onUpdateStage }: Props) {
-  // Collect all responsible persons for the dropdown
-  const responsiblePersons = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of deals) {
-      if (d.responsible_person) set.add(d.responsible_person);
-    }
-    return Array.from(set).sort();
-  }, [deals]);
+  const { data: teamUsers = [] } = useTeamUsers();
 
   // Summary stats
   const stats = useMemo(() => {
@@ -595,7 +596,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
                   <DealManageRow
                     key={deal.id}
                     deal={deal}
-                    responsiblePersons={responsiblePersons}
+                    teamUsers={teamUsers}
                     onDealClick={() => onDealClick?.(deal)}
                     onUpdateDeal={onUpdateDeal}
                     onUpdateStage={onUpdateStage}
