@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, ExternalLink, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ShieldCheck, Eye, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { amlFinanceApi, type AmlLimitedStatus } from "@/lib/aml/amlFinanceApi";
+import { useFinancePortalAuth } from "@/hooks/useFinancePortalAuth";
+import { toast } from "sonner";
 
 const STATUS_TONE: Record<string, string> = {
   not_started: "bg-muted text-muted-foreground",
