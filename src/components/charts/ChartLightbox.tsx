@@ -1,9 +1,10 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X, FileImage, FileCode2, ChevronDown } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X, FileImage, FileCode2, ChevronDown, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,13 @@ interface ChartLightboxProps {
 export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPrev, hasNext, exporting }: ChartLightboxProps) {
   const navigate = useNavigate();
   const cfg = chart ? getChartTypeConfig(chart.chart_type) : null;
+  const [zoom, setZoom] = useState(100);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // Reset zoom when chart changes
+  useEffect(() => { setZoom(100); }, [chart?.id]);
+
+  const clampZoom = (z: number) => Math.min(400, Math.max(50, Math.round(z)));
 
   // Keyboard navigation (Enhancement #3)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -42,9 +50,18 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
       e.preventDefault();
       onNext();
     } else if (e.key === 'Escape') {
+      if (fullscreen) { setFullscreen(false); return; }
       onClose();
+    } else if ((e.key === '+' || e.key === '=') && !isReadingAnalysis) {
+      e.preventDefault(); setZoom((z) => clampZoom(z + 25));
+    } else if (e.key === '-' && !isReadingAnalysis) {
+      e.preventDefault(); setZoom((z) => clampZoom(z - 25));
+    } else if (e.key === '0' && !isReadingAnalysis) {
+      e.preventDefault(); setZoom(100);
+    } else if ((e.key === 'f' || e.key === 'F') && !isReadingAnalysis) {
+      e.preventDefault(); setFullscreen((v) => !v);
     }
-  }, [chart, hasPrev, hasNext, onPrev, onNext, onClose]);
+  }, [chart, hasPrev, hasNext, onPrev, onNext, onClose, fullscreen]);
 
   useEffect(() => {
     if (chart) {
@@ -97,21 +114,49 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
               </div>
             </DialogHeader>
 
-            <div className="relative mt-4 grid min-h-0 flex-1 w-full min-w-0 grid-rows-[minmax(0,1fr)_auto] gap-4 px-0 sm:mt-5 sm:px-14">
+            <div className={`relative mt-4 grid min-h-0 flex-1 w-full min-w-0 gap-4 px-0 sm:mt-5 sm:px-14 ${fullscreen || !chart.analysis_text ? 'grid-rows-[minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)_auto]'}`}>
               <div className="relative flex min-h-[260px] w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-brand-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-3 lg:p-4">
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/65 to-transparent" />
                 <div className="pointer-events-none absolute -left-24 top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
                 <div className="pointer-events-none absolute -right-20 bottom-8 h-48 w-48 rounded-full bg-brand-400/12 blur-3xl" />
-                <div className="relative flex h-full w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.25rem] border border-border/85 bg-white p-2 shadow-[0_20px_58px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:p-3 lg:p-4 dark:border-white/15">
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.62),transparent_28%,transparent_72%,rgba(15,23,42,0.035))]" />
-                  <div className="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center [&>div]:h-full [&>div]:max-h-full [&>div]:w-full [&>div]:max-w-full [&_img]:h-full [&_img]:max-h-full [&_img]:w-full [&_img]:max-w-full [&_svg]:h-full [&_svg]:max-h-full [&_svg]:w-full [&_svg]:max-w-full" role="img" aria-label={`${chart.title} chart`}>
+                <div className="relative flex h-full w-full min-w-0 items-center justify-center overflow-auto rounded-[1.25rem] border border-border/85 bg-white p-2 shadow-[0_20px_58px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:p-3 lg:p-4 dark:border-white/15">
+                  <div className="pointer-events-none sticky inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.62),transparent_28%,transparent_72%,rgba(15,23,42,0.035))]" />
+                  <div
+                    className="relative flex min-h-full min-w-full items-center justify-center [&>div]:h-full [&>div]:w-full [&_img]:h-full [&_img]:w-full [&_img]:object-contain [&_svg]:h-full [&_svg]:w-full"
+                    style={{ width: `${zoom}%`, height: `${zoom}%` }}
+                    role="img"
+                    aria-label={`${chart.title} chart`}
+                  >
                     {renderChartImage(chart, 'expanded')}
                   </div>
                 </div>
-                <div className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-background/62 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground dark:text-white/70 shadow-lg backdrop-blur-xl sm:flex">
-                  <span>← Previous</span>
-                  <span className="h-1 w-1 rounded-full bg-brand-300/70" />
-                  <span>Next →</span>
+
+                {/* Zoom / fullscreen controls */}
+                <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-border/60 dark:border-white/15 bg-background/85 dark:bg-background/70 px-2 py-1.5 shadow-lg backdrop-blur-xl">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setZoom((z) => clampZoom(z - 25))} disabled={zoom <= 50} aria-label="Zoom out">
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="hidden w-28 px-1 sm:block">
+                    <Slider value={[zoom]} min={50} max={400} step={25} onValueChange={(v) => setZoom(clampZoom(v[0] ?? 100))} aria-label="Chart zoom" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(100)}
+                    className="min-w-[3.25rem] rounded-md px-1.5 py-0.5 text-center text-[11px] font-mono font-semibold tabular-nums text-foreground/85 transition hover:bg-muted"
+                    title="Reset zoom (0)"
+                  >
+                    {zoom}%
+                  </button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setZoom((z) => clampZoom(z + 25))} disabled={zoom >= 400} aria-label="Zoom in">
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="mx-0.5 h-4 w-px bg-border/70" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setZoom(100)} aria-label="Reset zoom" title="Reset zoom">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" onClick={() => setFullscreen((v) => !v)} aria-label={fullscreen ? 'Exit fullscreen' : 'Enlarge chart'} title={fullscreen ? 'Exit fullscreen (F)' : 'Enlarge chart (F)'}>
+                    {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  </Button>
                 </div>
               </div>
 
@@ -138,8 +183,8 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                 </Button>
               )}
 
-            {/* Analysis panel in lightbox (Enhancement #1) */}
-            {chart.analysis_text && (
+            {/* Analysis panel — hidden in fullscreen mode */}
+            {chart.analysis_text && !fullscreen && (
               <div
                 data-chart-analysis-scroll
                 tabIndex={0}
@@ -155,10 +200,12 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
             )}
             </div>
 
+
             <div className="mt-4 flex shrink-0 flex-col gap-3 border-t border-border/60 pb-1 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-medium text-foreground/70">
-                Use <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Esc</kbd> to close and <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">←</kbd> <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">→</kbd> to navigate.
+                <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Esc</kbd> close · <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">←</kbd> <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">→</kbd> navigate · <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">+</kbd> <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">−</kbd> zoom · <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">0</kbd> reset · <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">F</kbd> fullscreen
               </p>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="group inline-flex h-11 w-full items-center justify-center gap-2.5 rounded-full border-brand-300/45 bg-gradient-to-r from-background/95 via-brand-50/80 to-background/95 px-4 font-semibold text-foreground shadow-[0_10px_28px_rgba(217,119,6,0.13)] ring-1 ring-brand-200/25 transition-all hover:-translate-y-0.5 hover:border-brand-400/70 hover:bg-brand-50 hover:text-brand-700 hover:shadow-[0_16px_34px_rgba(217,119,6,0.20)] focus-visible:ring-2 focus-visible:ring-brand-300/80 focus-visible:ring-offset-2 dark:from-background/85 dark:via-brand-400/10 dark:to-background/85 dark:hover:bg-brand-400/15 dark:hover:text-brand-200 sm:w-auto" disabled={exporting} aria-label={`Export ${chart.title}`}>
