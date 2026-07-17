@@ -586,6 +586,15 @@ function ProviderEditor({ editing, onClose, onSaved }: {
           <FormRow label="Secret reference (name of stored secret)">
             <Input value={form.secret_ref ?? ""} onChange={(e) => setF({ secret_ref: e.target.value })} placeholder="FRANKIEONE_API_KEY" />
           </FormRow>
+          <FormRow label="Mode">
+            <Select value={(form.mode as string) ?? "simulator"} onValueChange={(v) => setF({ mode: v as any })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="simulator">Simulator (deterministic, no external calls)</SelectItem>
+                <SelectItem value="live">Live (requires wired adapter + secret)</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormRow>
           <div className="flex items-center justify-between rounded-md border border-border/60 p-2">
             <Label htmlFor="active" className="text-sm">Active</Label>
             <Switch id="active" checked={!!form.active} onCheckedChange={(v) => setF({ active: v })} />
