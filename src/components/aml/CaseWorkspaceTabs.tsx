@@ -107,7 +107,7 @@ function OverviewTab({ caseRow }: { caseRow: AmlCase }) {
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-3">
       <span className="text-muted-foreground">{k}</span>
