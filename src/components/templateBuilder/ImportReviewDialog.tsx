@@ -6,7 +6,7 @@
  * warnings, page/layer counts, and the decision recommendation before opening
  * the generated template for manual refinement.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Activity, AlertTriangle, CheckCircle2, FileCode2, Image as ImageIcon, Layers3, Loader2, MousePointerClick, RotateCw, Wand2, Wrench } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -19,8 +19,10 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import type { ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { CdirLayer } from '@/lib/reportTemplate/ingestion/cdir';
-import type { VisualQaReviewSummary, VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import type { VisualQaReviewSummary, VisualRepairOrchestrationSummary, PageReviewAction, VisualImportQualityReport } from '@/lib/reportTemplate/ingestion/visualQuality';
+import { buildPageReviewModels } from '@/lib/reportTemplate/ingestion/visualQuality';
 import type { ReconciliationPolicyDecision, ReconciliationRecommendation, AiReconciliationAuditSummary } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { VisualQualityPageReviewGrid } from './VisualQualityPageReviewGrid';
 
 interface Props {
   open: boolean;
@@ -62,6 +64,12 @@ interface Props {
   reconciliationPolicy?: ReconciliationPolicyDecision | null;
   aiReconciliationBusy?: boolean;
   aiReconciliationSummary?: AiReconciliationAuditSummary | null;
+  // C7 — real per-page review grid + per-page actions. The dialog assembles the
+  // per-page view-model from the persisted report + signed URLs + template.
+  visualQualityReport?: VisualImportQualityReport | null;
+  onPageAction?: (pageId: string, action: PageReviewAction) => void;
+  pageActionBusyId?: string | null;
+  aiRepairEnabled?: boolean;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -87,9 +95,20 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy, onForceMode, forceModeAvailable, forceModeBusy, onRunAiReconciliation, reconciliationPolicy, aiReconciliationBusy, aiReconciliationSummary }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy, onForceMode, forceModeAvailable, forceModeBusy, onRunAiReconciliation, reconciliationPolicy, aiReconciliationBusy, aiReconciliationSummary, visualQualityReport, onPageAction, pageActionBusyId, aiRepairEnabled }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
+  // C7 — assemble the per-page review view-model from the persisted per-page
+  // report, the signed-URL map, and the reviewed template (source of the C5/C6
+  // per-page output policy).
+  const pageReviewCollection = useMemo(
+    () => buildPageReviewModels({
+      report: visualQualityReport ?? null,
+      signedUrls: visualQualitySignedUrls ?? null,
+      template: draft?.template ?? null,
+    }),
+    [visualQualityReport, visualQualitySignedUrls, draft?.template],
+  );
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
   const totalLayers = draft?.cdir.pages.reduce((sum, page) => sum + flattenLayers(page.layers).length, 0) ?? 0;
   const fallbackLayers = draft?.cdir.pages.reduce((sum, page) => sum + flattenLayers(page.layers).filter((layer) => layer.kind === 'image' && layer.fallbackRaster).length, 0) ?? 0;
@@ -398,22 +417,35 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
               </Card>
             </div>
 
-            <Card className="p-4">
-              <div className="text-sm font-medium">Pages</div>
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
-                {draft.fidelity.pages.map((page) => (
-                  <div key={page.pageId} className="rounded-md border p-3 text-sm">
-                    <div className="font-medium">{page.pageLabel}</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                      <span>Native {pct(page.nativeCoverage)}</span>
-                      <span>Raster {pct(page.rasterFallbackCoverage)}</span>
-                      <span>Text layers {page.editableTextLayers}</span>
-                      <span>Warnings {page.warnings.length}</span>
+            {/* C7 — real per-page review grid (source/generated/diff imagery,
+                metric breakdown, applied policy, warnings, repair diary, and
+                per-page actions). Falls back to the structural page summary when
+                no visual-quality report has been produced yet. */}
+            {pageReviewCollection && pageReviewCollection.totalPages > 0 ? (
+              <VisualQualityPageReviewGrid
+                collection={pageReviewCollection}
+                aiRepairEnabled={aiRepairEnabled}
+                busyPageId={pageActionBusyId}
+                onAction={onPageAction}
+              />
+            ) : (
+              <Card className="p-4">
+                <div className="text-sm font-medium">Pages</div>
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {draft.fidelity.pages.map((page) => (
+                    <div key={page.pageId} className="rounded-md border p-3 text-sm">
+                      <div className="font-medium">{page.pageLabel}</div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <span>Native {pct(page.nativeCoverage)}</span>
+                        <span>Raster {pct(page.rasterFallbackCoverage)}</span>
+                        <span>Text layers {page.editableTextLayers}</span>
+                        <span>Warnings {page.warnings.length}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
         )}
 
