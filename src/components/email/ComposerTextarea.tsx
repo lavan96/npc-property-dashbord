@@ -197,6 +197,7 @@ export const ComposerTextarea = forwardRef<ComposerTextareaHandle, Props>(functi
         snippets={snippets}
         onPick={pickSnippet}
         onClose={() => { setSlashOpen(false); setSlashStart(null); }}
+        onManage={onManageSnippets}
         anchor={anchor}
       />
     </div>
