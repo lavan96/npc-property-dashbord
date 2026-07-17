@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Rocket, ClipboardCheck, ShieldAlert, RefreshCw, ArrowRight, ArrowLeft, Plus } from "lucide-react";
+import { Rocket, ClipboardCheck, ShieldAlert, RefreshCw, ArrowRight, ArrowLeft, Plus, CheckCircle2, XCircle } from "lucide-react";
 
 const STAGES = ["internal_dev_only", "admin_limited", "controlled_team_rollout", "broad_production"] as const;
 type Stage = typeof STAGES[number];
@@ -34,11 +34,20 @@ type Risk = {
   mitigation: string | null; next_review_at: string | null;
 };
 type HistoryRow = { id: string; from_stage: string | null; to_stage: string; changed_by_label: string | null; reason: string | null; created_at: string };
+type Readiness = {
+  gate_pass: boolean;
+  gate_status: string;
+  gate_ran_at: string | null;
+  failing_scenarios: string[];
+  open_critical_risks: string[];
+  broad_production_ready: boolean;
+};
 type Summary = {
   rollout: { rollout_stage: Stage; rollout_stage_since?: string; rollout_notes?: string | null };
   scenarios: { total: number; by_status: Record<string, number> };
   risks: { total: number; by_status: Record<string, number> };
   recent_history: HistoryRow[];
+  readiness?: Readiness;
   my_role_is_mlro: boolean;
 };
 
@@ -180,6 +189,38 @@ export default function AmlLaunchOps() {
             </CardContent>
           </Card>
 
+          {summary?.readiness && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Broad-production readiness</CardTitle>
+                <CardDescription>All three gates must clear before advancing to broad production.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <ReadinessRow
+                  ok={summary.readiness.gate_pass}
+                  label="Latest release gate PASS"
+                  detail={`Status: ${summary.readiness.gate_status}${summary.readiness.gate_ran_at ? ` · ran ${new Date(summary.readiness.gate_ran_at).toLocaleString()}` : ""}`}
+                />
+                <ReadinessRow
+                  ok={summary.readiness.failing_scenarios.length === 0}
+                  label="No failing / blocked acceptance scenarios"
+                  detail={summary.readiness.failing_scenarios.length === 0 ? "All scenarios passing, waived or not run." : `Failing: ${summary.readiness.failing_scenarios.join(", ")}`}
+                />
+                <ReadinessRow
+                  ok={summary.readiness.open_critical_risks.length === 0}
+                  label="Zero open critical risks"
+                  detail={summary.readiness.open_critical_risks.length === 0 ? "Risk register clear of critical items." : `Open: ${summary.readiness.open_critical_risks.join(", ")}`}
+                />
+                {!summary.readiness.broad_production_ready && (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertTitle>Advance to broad_production is blocked</AlertTitle>
+                    <AlertDescription>Clear every gate above before requesting the final rollout advance.</AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader><CardTitle>Stage history</CardTitle></CardHeader>
             <CardContent>
@@ -251,6 +292,18 @@ export default function AmlLaunchOps() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function ReadinessRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-2 border rounded-md p-2">
+      {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 mt-0.5" />}
+      <div className="flex-1">
+        <div className="font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">{detail}</div>
+      </div>
     </div>
   );
 }
