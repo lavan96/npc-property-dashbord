@@ -439,7 +439,7 @@ export function PortfolioAnalysisPDFGenerator({
         includeOwnerOccupied,
         analysisConfig,
         customInstructions
-      });
+      }, { timeoutMs: 240000 });
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Analysis failed');
