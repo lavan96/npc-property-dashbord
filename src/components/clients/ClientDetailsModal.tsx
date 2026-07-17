@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ClientNotes } from './ClientNotes';
+import { StartClientComplianceButton } from './StartClientComplianceButton';
 import { ClientTags } from './ClientTags';
 import { ClientReminders } from './ClientReminders';
 import { ClientActivityTimeline } from './ClientActivityTimeline';
