@@ -212,6 +212,7 @@ export default function AmlCasesPage() {
         onClose={() => setActiveId(null)}
         onChanged={load}
         canWrite={access.canWrite}
+        canInvestigate={access.canWrite}
       />
     </div>
   );
