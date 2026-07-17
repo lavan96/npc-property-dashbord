@@ -458,8 +458,19 @@ Deno.serve(async (req) => {
       let skippedCount = 0;
       
       for (const email of emails) {
+        // Detect self-sent emails: when the mailbox owner is the sender
+        // (e.g. an outbound message from CRM / GHL that also lands back in the
+        // inbox as a delivery copy). Reclassify these as 'sent' so they appear
+        // in the Sent tab of Email Copilot instead of polluting the inbox.
+        const senderAddress = (email.from?.emailAddress?.address || '').toLowerCase();
+        const mailboxAddress = (targetMailbox || '').toLowerCase();
+        const effectiveFolder: 'inbox' | 'sent' =
+          folder === 'inbox' && senderAddress && senderAddress === mailboxAddress
+            ? 'sent'
+            : folder;
+
         // For sent emails, use sentDateTime if available, otherwise fall back to receivedDateTime
-        const emailDate = folder === 'sent' 
+        const emailDate = effectiveFolder === 'sent'
           ? (email as any).sentDateTime || email.receivedDateTime
           : email.receivedDateTime;
 
@@ -484,13 +495,13 @@ Deno.serve(async (req) => {
             body: bodyContent.substring(0, 200000),
             body_html: rawHtml ? rawHtml.substring(0, 500000) : null,
             received_at: emailDate,
-            status: folder === 'sent' ? 'sent' : 'unread',
+            status: effectiveFolder === 'sent' ? 'sent' : 'unread',
             to_recipients: toRecipients,
             cc_recipients: ccRecipients,
             bcc_recipients: bccRecipients,
             attachments: [],
             mailbox_source: mailboxSource,
-            folder: folder,
+            folder: effectiveFolder,
             conversation_id: email.conversationId || null
           })
           .select('id')
@@ -502,7 +513,7 @@ Deno.serve(async (req) => {
             skippedCount++;
             continue;
           }
-          console.error(`[Outlook Sync] Insert error for ${folder}:`, insertError);
+          console.error(`[Outlook Sync] Insert error for ${effectiveFolder}:`, insertError);
           continue;
         }
 
@@ -536,8 +547,8 @@ Deno.serve(async (req) => {
             }
           }
 
-        // Create bell notification for new inbox emails
-        if (folder === 'inbox' && insertedEmail) {
+        // Create bell notification for new inbox emails (never for self-sent copies)
+        if (effectiveFolder === 'inbox' && insertedEmail) {
           const senderName = (email.from?.emailAddress?.name || email.from?.emailAddress?.address || 'Unknown').split('<')[0].trim();
           const subject = email.subject || 'No subject';
           await supabase
