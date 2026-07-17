@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, ShieldAlert, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { ActivateClientDialog } from "@/components/aml/ActivateClientDialog";
+import { CaseWorkspaceTabs } from "@/components/aml/CaseWorkspaceTabs";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
 import {
   amlCasesApi, AmlCase, AmlCaseEvent, AmlCaseStatus, AmlRiskRating,
