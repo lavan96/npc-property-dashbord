@@ -133,7 +133,7 @@ export default function AmlV3Cutover() {
         operation: "list",
         prefix: "aml_v3_",
       });
-      if (error) throw new Error(error);
+      if (error) throw new Error(error.message);
       const map: Record<string, FlagRow | null> = {};
       for (const spec of SPECS) map[spec.key] = null;
       for (const row of data?.rows ?? []) map[row.key] = row;
@@ -159,7 +159,7 @@ export default function AmlV3Cutover() {
           value: nextEnabled,
           description: `${spec.directive} · Phase ${spec.phase} · ${spec.label}`,
         });
-        if (error) throw new Error(error);
+        if (error) throw new Error(error.message);
         setRows((prev) => ({ ...prev, [spec.key]: data?.row ?? prev[spec.key] }));
         // Refresh the in-app hook cache so any open AML tab picks up the change on next mount.
         await refreshAmlV3Flags();
