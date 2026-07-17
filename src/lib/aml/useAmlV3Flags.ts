@@ -89,6 +89,8 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       complianceHome: coerceBool(map.get("aml_v3_compliance_home")),
       caseWorkspace: coerceBool(map.get("aml_v3_case_workspace")),
       regulatoryHub: coerceBool(map.get("aml_v3_regulatory_hub")),
+      terminologyEditor: coerceBool(map.get("aml_v3_terminology_editor")),
+      metricsRelocation: coerceBool(map.get("aml_v3_metrics_relocation")),
     };
     writeCache(next);
     return next;
@@ -99,6 +101,8 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       complianceHome: false,
       caseWorkspace: false,
       regulatoryHub: false,
+      terminologyEditor: false,
+      metricsRelocation: false,
     };
     return fallback;
   }
@@ -113,6 +117,8 @@ export function useAmlV3Flags(): AmlV3Flags {
       complianceHome: false,
       caseWorkspace: false,
       regulatoryHub: false,
+      terminologyEditor: false,
+      metricsRelocation: false,
     },
   );
   const [loading, setLoading] = useState<boolean>(!cached);
