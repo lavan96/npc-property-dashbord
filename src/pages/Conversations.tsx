@@ -1868,7 +1868,7 @@ export default function Conversations() {
                   }
                   channel={replyChannel as "sms" | "email" | "whatsapp"}
                   placeholder={`Type your ${replyChannel === "sms" ? "SMS" : replyChannel === "whatsapp" ? "WhatsApp" : "email"} message...`}
-                  rows={replyChannel === "email" ? 4 : 2}
+                  rows={replyChannel === "email" ? 3 : 2}
                 />
               </div>
             </>
