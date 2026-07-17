@@ -84,6 +84,12 @@ async function evaluateSettlementGate(admin: any, aml: any, pfId: string) {
     .lte("due_date", today);
   if ((reqCount ?? 0) > 0) reasons.push(`overdue_counterparty_requests:${reqCount}`);
 
+  // Phase 9 — pending / acknowledged reportable obligations must not remain unresolved at settlement.
+  const { count: oblCount } = await aml.from("transaction_obligations")
+    .select("id", { count: "exact", head: true })
+    .eq("case_id", c.id).in("status", ["pending", "acknowledged"]);
+  if ((oblCount ?? 0) > 0) reasons.push(`unresolved_reportable_obligations:${oblCount}`);
+
   return {
     gate_enabled: enabled,
     blocked: enabled && reasons.length > 0,
@@ -93,6 +99,7 @@ async function evaluateSettlementGate(admin: any, aml: any, pfId: string) {
     risk_rating: c.risk_rating,
   };
 }
+
 
 // ─── PHASE 9 — Obligation evaluation (TTR / IFTI / SMR / structuring) ───
 // AUSTRAC thresholds:
