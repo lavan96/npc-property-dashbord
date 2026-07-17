@@ -12,8 +12,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
-  ShieldCheck, PlayCircle, ClipboardList, BookOpen, Bot, KeyRound, LifeBuoy, RefreshCw, CheckCircle2, XCircle, AlertTriangle,
+  ShieldCheck, PlayCircle, ClipboardList, BookOpen, Bot, KeyRound, LifeBuoy, RefreshCw, CheckCircle2, XCircle, AlertTriangle, Users,
 } from "lucide-react";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { GovernanceContactsPanel } from "@/components/aml/GovernanceContactsPanel";
 
 type CheckResult = { name: string; status: "pass" | "fail" | "warn"; detail?: string; metric?: number };
 type GateRun = {
