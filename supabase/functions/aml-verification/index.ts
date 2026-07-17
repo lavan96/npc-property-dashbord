@@ -98,6 +98,9 @@ Deno.serve(async (req) => {
           .select("id, subject_display_name").eq("id", caseId).maybeSingle();
         if (!caseRow) return jr({ error: "Case not found" }, 404);
 
+        const method: "document_and_liveness" | "document_only" | "database_lookup" | "manual" =
+          ["document_and_liveness", "document_only", "database_lookup", "manual"].includes(body.method)
+            ? body.method : "document_and_liveness";
         const tenantId = await resolveTenantId(admin, caseId);
         const resolved = await resolveTenantProvider(admin, tenantId, "idv");
         const provider = getIdvProvider({ resolved, preferred: body.provider });
