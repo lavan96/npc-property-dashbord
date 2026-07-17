@@ -1,14 +1,20 @@
 /**
- * Phase 4 — Provider-agnostic AML adapters.
+ * AML provider orchestration (Phase 6 upgrade).
  *
- * Real IDV / screening providers (Frankie, Trulioo, ComplyAdvantage, Refinitiv…)
- * plug in behind these interfaces. Until keys are wired via `add_secret`, the
- * `simulator` provider returns deterministic, seed-based results so the whole
- * workflow (initiate → run → match resolution → status) is fully exercisable
- * end-to-end without ever calling out and without any false-pass path.
+ * Tri-mode isolation:
+ *   - "simulator": deterministic, no external calls (default, safe for tests).
+ *   - "live":      real external provider adapters. If a requested provider is
+ *                  not wired, the factory THROWS (never silently falls back to
+ *                  simulator) so that a live-mode misconfiguration surfaces
+ *                  loudly instead of producing a false-pass.
  *
- * Providers MUST NEVER be selected client-side. Callers pass a provider hint
- * only; the shared factory decides based on env + case metadata.
+ * Mode is resolved per capability using (in priority order):
+ *   1. `provider_configs.mode` for the tenant's active provider (if `admin` client passed).
+ *   2. Env override: `AML_PROVIDER_MODE` = "simulator" | "live".
+ *   3. Default: "simulator".
+ *
+ * Providers MUST NEVER be selected client-side. Callers pass a hint only;
+ * the shared factory + tenant configuration decide.
  */
 
 export type IdvMethod = "document_and_liveness" | "document_only" | "database_lookup" | "manual";
@@ -59,15 +65,20 @@ export interface ScreeningResult {
 
 export interface IdvProvider {
   readonly name: string;
+  readonly mode: ProviderMode;
   runIdv(req: IdvRequest): Promise<IdvResult>;
 }
 
 export interface ScreeningProvider {
   readonly name: string;
+  readonly mode: ProviderMode;
   runScreening(req: ScreeningRequest): Promise<ScreeningResult>;
 }
 
-// ---------- deterministic simulator ----------
+export type ProviderMode = "simulator" | "live";
+export type ProviderCapability = "idv" | "screening" | "adverse_media";
+
+// ---------- deterministic simulators ----------
 
 function hashSeed(input: string): number {
   let h = 2166136261;
@@ -80,15 +91,16 @@ function hashSeed(input: string): number {
 
 function pseudoRandom(seed: number, salt: string): number {
   const n = hashSeed(`${seed}|${salt}`);
-  return (n % 10_000) / 10_000; // 0..1
+  return (n % 10_000) / 10_000;
 }
 
 const SIMULATOR_IDV: IdvProvider = {
   name: "simulator",
+  mode: "simulator",
   async runIdv(req) {
     const seed = hashSeed(`${req.caseId}|${req.subjectLabel}`);
     const scoreBase = pseudoRandom(seed, "idv");
-    const overallScore = Math.round((0.6 + scoreBase * 0.4) * 100) / 100; // 0.60–1.00
+    const overallScore = Math.round((0.6 + scoreBase * 0.4) * 100) / 100;
     const status: IdvResult["status"] =
       overallScore >= 0.85 ? "verified" : overallScore >= 0.70 ? "manual_review" : "failed";
     return {
@@ -115,6 +127,7 @@ const KNOWN_LIST_HITS = [
 
 const SIMULATOR_SCREENING: ScreeningProvider = {
   name: "simulator",
+  mode: "simulator",
   async runScreening(req) {
     const seed = hashSeed(`${req.caseId}|${req.subjectLabel}`);
     const matches: ScreeningMatch[] = [];
@@ -132,7 +145,6 @@ const SIMULATOR_SCREENING: ScreeningProvider = {
       }
     }
 
-    // Fuzzy adverse-media chance for demo purposes.
     if (req.scope.includes("adverse_media") && pseudoRandom(seed, "am") > 0.85) {
       matches.push({
         matchType: "adverse_media",
@@ -163,32 +175,186 @@ const SIMULATOR_SCREENING: ScreeningProvider = {
   },
 };
 
-// ---------- factory ----------
+// ---------- live adapter stubs (throw until wired) ----------
+//
+// Real adapters (Frankie, Trulioo, ComplyAdvantage, Refinitiv, Dow Jones…)
+// will be added here one by one. Each stub throws a clearly-labelled error so
+// that "live" mode never silently falls back to simulator results.
 
-export function getIdvProvider(preferred?: string): IdvProvider {
-  // Real providers gated by env secrets. Absent → simulator (safe default).
-  const forced = (Deno.env.get("AML_IDV_PROVIDER") || preferred || "").toLowerCase();
-  if (forced && forced !== "simulator") {
-    // Real adapter would go here — for now we fall back to simulator to avoid false-pass.
-    console.warn(`[aml/providers] IDV provider "${forced}" not wired; using simulator.`);
-  }
-  return SIMULATOR_IDV;
+const LIVE_IDV_ADAPTERS: Record<string, () => IdvProvider> = {
+  // "frankie":       () => makeFrankieIdvProvider(),
+  // "trulioo":       () => makeTruliooIdvProvider(),
+};
+const LIVE_SCREENING_ADAPTERS: Record<string, () => ScreeningProvider> = {
+  // "complyadvantage": () => makeComplyAdvantageProvider(),
+  // "refinitiv":       () => makeRefinitivProvider(),
+  // "dowjones":        () => makeDowJonesProvider(),
+};
+
+// ---------- resolver + factory ----------
+
+export interface ResolvedProvider {
+  providerKey: string;
+  mode: ProviderMode;
+  configId: string | null;
+  config: Record<string, unknown>;
+  costCents: number;
 }
 
-export function getScreeningProvider(preferred?: string): ScreeningProvider {
-  const forced = (Deno.env.get("AML_SCREENING_PROVIDER") || preferred || "").toLowerCase();
-  if (forced && forced !== "simulator") {
-    console.warn(`[aml/providers] Screening provider "${forced}" not wired; using simulator.`);
+/**
+ * Resolve the tenant's highest-priority active provider for a capability.
+ * Returns null if the tenant has no configured provider (caller falls back
+ * to env / simulator default).
+ */
+export async function resolveTenantProvider(
+  admin: any,
+  tenantId: string,
+  capability: ProviderCapability,
+): Promise<ResolvedProvider | null> {
+  if (!admin) return null;
+  try {
+    const { data } = await admin.schema("aml").from("provider_configs")
+      .select("id, provider_key, mode, config, cost_per_unit_cents, priority, active")
+      .eq("tenant_id", tenantId)
+      .eq("capability", capability)
+      .eq("active", true)
+      .order("priority", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      providerKey: String(data.provider_key),
+      mode: (data.mode === "live" ? "live" : "simulator") as ProviderMode,
+      configId: data.id ?? null,
+      config: (data.config ?? {}) as Record<string, unknown>,
+      costCents: Number(data.cost_per_unit_cents ?? 0),
+    };
+  } catch (e) {
+    console.warn("[aml/providers] resolveTenantProvider failed", (e as Error)?.message);
+    return null;
   }
-  return SIMULATOR_SCREENING;
+}
+
+function envMode(): ProviderMode {
+  const v = (Deno.env.get("AML_PROVIDER_MODE") || "").toLowerCase();
+  return v === "live" ? "live" : "simulator";
+}
+
+export interface FactoryOptions {
+  /** Tenant-resolved provider (see `resolveTenantProvider`). */
+  resolved?: ResolvedProvider | null;
+  /** Free-form hint from caller; only used when no tenant config exists. */
+  preferred?: string;
+}
+
+export function getIdvProvider(opts: FactoryOptions = {}): IdvProvider {
+  const mode: ProviderMode = opts.resolved?.mode ?? envMode();
+  const key = (opts.resolved?.providerKey || opts.preferred || "simulator").toLowerCase();
+
+  if (mode === "simulator" || key === "simulator") return SIMULATOR_IDV;
+
+  const build = LIVE_IDV_ADAPTERS[key];
+  if (!build) {
+    throw new Error(
+      `[aml/providers] IDV provider "${key}" is set to live mode but no adapter is wired. ` +
+      `Configure the adapter or switch this provider back to simulator mode in AML › Configuration › Providers.`,
+    );
+  }
+  return build();
+}
+
+export function getScreeningProvider(opts: FactoryOptions = {}): ScreeningProvider {
+  const mode: ProviderMode = opts.resolved?.mode ?? envMode();
+  const key = (opts.resolved?.providerKey || opts.preferred || "simulator").toLowerCase();
+
+  if (mode === "simulator" || key === "simulator") return SIMULATOR_SCREENING;
+
+  const build = LIVE_SCREENING_ADAPTERS[key];
+  if (!build) {
+    throw new Error(
+      `[aml/providers] Screening provider "${key}" is set to live mode but no adapter is wired. ` +
+      `Configure the adapter or switch this provider back to simulator mode in AML › Configuration › Providers.`,
+    );
+  }
+  return build();
+}
+
+/** Adverse media resolves to the same screening adapter, restricted to that scope. */
+export function getAdverseMediaProvider(opts: FactoryOptions = {}): ScreeningProvider {
+  return getScreeningProvider(opts);
+}
+
+// ---------- metrics helper ----------
+
+/**
+ * Wrap a provider call, recording latency + success/failure + cost into
+ * `aml.provider_metrics_daily`. Metrics failures never break the call.
+ */
+export async function runWithMetrics<T>(
+  admin: any,
+  args: {
+    tenantId: string;
+    capability: ProviderCapability;
+    providerKey: string;
+    costCents?: number;
+    configId?: string | null;
+  },
+  fn: () => Promise<T>,
+): Promise<T> {
+  const started = Date.now();
+  let failed = 0;
+  try {
+    const out = await fn();
+    return out;
+  } catch (e) {
+    failed = 1;
+    if (admin && args.configId) {
+      await admin.schema("aml").from("provider_configs").update({
+        last_health_at: new Date().toISOString(),
+        last_health_status: "failing",
+        last_health_message: (e as Error)?.message?.slice(0, 240) ?? "provider_failure",
+      }).eq("id", args.configId).then(() => {}, () => {});
+    }
+    throw e;
+  } finally {
+    const latency = Date.now() - started;
+    try {
+      if (!admin) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: existing } = await admin.schema("aml").from("provider_metrics_daily")
+        .select("id, call_count, failure_count, latency_ms_sum, cost_cents_sum")
+        .eq("tenant_id", args.tenantId)
+        .eq("capability", args.capability)
+        .eq("provider_key", args.providerKey)
+        .eq("metric_date", today)
+        .maybeSingle();
+      if (existing) {
+        await admin.schema("aml").from("provider_metrics_daily").update({
+          call_count: (existing.call_count ?? 0) + 1,
+          failure_count: (existing.failure_count ?? 0) + failed,
+          latency_ms_sum: Number(existing.latency_ms_sum ?? 0) + latency,
+          cost_cents_sum: Number(existing.cost_cents_sum ?? 0) + (failed ? 0 : Number(args.costCents ?? 0)),
+        }).eq("id", existing.id);
+      } else {
+        await admin.schema("aml").from("provider_metrics_daily").insert({
+          tenant_id: args.tenantId,
+          capability: args.capability,
+          provider_key: args.providerKey,
+          metric_date: today,
+          call_count: 1,
+          failure_count: failed,
+          latency_ms_sum: latency,
+          cost_cents_sum: failed ? 0 : Number(args.costCents ?? 0),
+        });
+      }
+    } catch (metricErr) {
+      console.warn("[aml/providers] metric recording failed", (metricErr as Error)?.message);
+    }
+  }
 }
 
 // ---------- webhook signature verification ----------
 
-/**
- * Timing-safe HMAC-SHA256 verification for provider webhooks.
- * Providers supply a shared secret via `add_secret` (e.g. AML_WEBHOOK_SECRET_<PROVIDER>).
- */
 export async function verifyWebhookSignature(
   rawBody: string,
   signatureHex: string,

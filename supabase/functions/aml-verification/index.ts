@@ -15,8 +15,19 @@ import { verifyAuth } from "../_shared/auth.ts";
 import {
   getIdvProvider,
   getScreeningProvider,
+  resolveTenantProvider,
+  runWithMetrics,
   type ScreeningScope,
 } from "../_shared/aml/providers/index.ts";
+
+const DEFAULT_TENANT = "default";
+async function resolveTenantId(admin: any, caseId: string): Promise<string> {
+  try {
+    const { data } = await admin.schema("aml").from("cases")
+      .select("tenant_id").eq("id", caseId).maybeSingle();
+    return (data?.tenant_id as string) || DEFAULT_TENANT;
+  } catch { return DEFAULT_TENANT; }
+}
 import { reserveTokens, commitTokens, cancelTokens } from "../_shared/missionControl.ts";
 
 const corsHeaders = {
@@ -87,9 +98,12 @@ Deno.serve(async (req) => {
           .select("id, subject_display_name").eq("id", caseId).maybeSingle();
         if (!caseRow) return jr({ error: "Case not found" }, 404);
 
-        const method = ["document_and_liveness", "document_only", "database_lookup", "manual"].includes(body.method)
-          ? body.method : "document_and_liveness";
-        const provider = getIdvProvider(body.provider);
+        const method: "document_and_liveness" | "document_only" | "database_lookup" | "manual" =
+          ["document_and_liveness", "document_only", "database_lookup", "manual"].includes(body.method)
+            ? body.method : "document_and_liveness";
+        const tenantId = await resolveTenantId(admin, caseId);
+        const resolved = await resolveTenantProvider(admin, tenantId, "idv");
+        const provider = getIdvProvider({ resolved, preferred: body.provider });
 
         const idempotencyKey = `aml-idv-${caseId}-${Date.now()}`;
         let reservation: { jobId: string } | null = null;
@@ -118,9 +132,12 @@ Deno.serve(async (req) => {
         if (insertErr) throw insertErr;
 
         try {
-          const result = await provider.runIdv({
+          const result = await runWithMetrics(admin, {
+            tenantId, capability: "idv", providerKey: provider.name,
+            costCents: resolved?.costCents ?? 0, configId: resolved?.configId ?? null,
+          }, () => provider.runIdv({
             caseId, subjectLabel: caseRow.subject_display_name, method, metadata: body.metadata,
-          });
+          }));
 
           const { data: updated } = await admin.schema("aml").from("identity_checks").update({
             status: result.status,
@@ -196,7 +213,10 @@ Deno.serve(async (req) => {
         const scope: ScreeningScope[] = Array.isArray(body.scope) && body.scope.length
           ? body.scope.filter((s: string) => ["pep", "sanctions", "adverse_media", "watchlist"].includes(s))
           : ["pep", "sanctions", "adverse_media"];
-        const provider = getScreeningProvider(body.provider);
+        const tenantId = await resolveTenantId(admin, caseId);
+        const capability = scope.length === 1 && scope[0] === "adverse_media" ? "adverse_media" : "screening";
+        const resolved = await resolveTenantProvider(admin, tenantId, capability);
+        const provider = getScreeningProvider({ resolved, preferred: body.provider });
 
         const idempotencyKey = `aml-scr-${caseId}-${Date.now()}`;
         let reservation: { jobId: string } | null = null;
@@ -226,10 +246,13 @@ Deno.serve(async (req) => {
         if (insertErr) throw insertErr;
 
         try {
-          const result = await provider.runScreening({
+          const result = await runWithMetrics(admin, {
+            tenantId, capability, providerKey: provider.name,
+            costCents: resolved?.costCents ?? 0, configId: resolved?.configId ?? null,
+          }, () => provider.runScreening({
             caseId, subjectLabel: caseRow.subject_display_name,
             subjectType: caseRow.subject_type ?? "individual", scope, metadata: body.metadata,
-          });
+          }));
 
           const { data: updated } = await admin.schema("aml").from("screening_checks").update({
             status: result.status,
