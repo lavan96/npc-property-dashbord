@@ -43,6 +43,8 @@ export interface DiagnosticsPlanPayload {
   requested_mode?: string | null;
   dispatch_effective_mode?: string | null;
   service_class?: string | null;
+  /** C11 — sidecar plan wall time, when the planner reported it. */
+  plan_ms?: number | null;
 }
 
 export interface DiagnosticsRawJob {
@@ -74,6 +76,10 @@ export interface DiagnosticsRawJob {
   finished_at?: string | null;
   result_payload?: DiagnosticsResultPayload | null;
   plan_payload?: DiagnosticsPlanPayload | null;
+  // C11 — sidecar operational-metrics envelope + cache-hit provenance.
+  operational_metrics?: unknown;
+  cache_hit?: boolean | null;
+  cache_source_job_id?: string | null;
 }
 
 /** Subset of the C3-C6 quality-gate summary staged into `template_imports.meta`. */

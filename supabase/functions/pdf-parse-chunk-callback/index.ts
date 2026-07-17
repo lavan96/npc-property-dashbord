@@ -15,6 +15,15 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createTokenAuthCorsHeaders } from '../_shared/auth.ts';
+import { validateSidecarOperationalMetricsV1 } from '../_shared/sidecarOperationalMetricsV1.pure.ts';
+import {
+  buildInvocationEnvelope,
+  buildEdgeObservation,
+  aggregateChunkMetrics,
+  chooseChunkMetricsEnvelope,
+  chunkEnvelopeToAggInput,
+  type ChunkAggregationInput,
+} from '../_shared/pdfOperationalMetricsEnvelope.pure.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -22,6 +31,7 @@ const CALLBACK_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
 const PARSE_URL = (Deno.env.get('PDF_PARSE_SERVICE_URL') ?? '').replace(/\/$/, '');
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 const DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
+const EDGE_FUNCTION_VERSION = Deno.env.get('SUPABASE_FUNCTION_VERSION') ?? null;
 
 // deno-lint-ignore no-explicit-any
 type Admin = ReturnType<typeof createClient>;
@@ -704,6 +714,7 @@ function validateParentPerPageDoclingManifest(
 /** Merge per-chunk Docling outputs into final artifacts and finalize the job. */
 async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const startedAt = Date.now();
+  const mergePerfStart = performance.now();
   await admin.from('pdf_import_jobs').update({
     stage: 'finalizing',
     stage_started_at: new Date(startedAt).toISOString(),
@@ -711,7 +722,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
 
   const { data: chunkRows, error: chunkErr } = await admin
     .from('pdf_import_chunks')
-    .select('id, chunk_index, page_start, page_end, status, artifact_paths, summary')
+    .select('id, chunk_index, page_start, page_end, status, artifact_paths, summary, operational_metrics')
     .eq('job_id', jobId)
     .neq('status', 'split')
     .order('chunk_index', { ascending: true });
@@ -1160,6 +1171,28 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const prior = ((existing as any)?.result_payload ?? {}) as Record<string, unknown>;
   const planPayload = ((existing as any)?.plan_payload ?? {}) as Record<string, unknown>;
 
+  // C11 — honest parent aggregation. `parent_elapsed_ms` is the job wall clock
+  // (started_at → finalize done), measured independently of the chunk sums;
+  // `merge_ms` is the finalize/merge wall time alone. Only valid V1 chunk metrics
+  // feed the sums/maxima; legacy/invalid/missing are counted, not fabricated.
+  const parentElapsedMs = finished - startedJob;
+  const mergeMs = Math.round(performance.now() - mergePerfStart);
+  const chunkAggInputs: ChunkAggregationInput[] = (chunkRows as any[]).map((c) =>
+    chunkEnvelopeToAggInput(c.operational_metrics, null),
+  );
+  const parentAggregation = aggregateChunkMetrics({
+    chunks: chunkAggInputs,
+    parentElapsedMs,
+    mergeMs,
+  });
+  const finalizeEdge = buildEdgeObservation({
+    callbackReceivedAt: new Date(finished).toISOString(),
+    edgeProcessingMs: mergeMs,
+    operation: 'parent_finalize',
+    edgeFunctionVersion: EDGE_FUNCTION_VERSION,
+  });
+  const parentOperationalMetrics = { ...parentAggregation, finalize_edge: finalizeEdge };
+
   const parentExtractorLane = String(
     chunkExtractorLanes[0]
       ?? prior.extractor_lane
@@ -1203,6 +1236,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     finished_at: new Date(finished).toISOString(),
     updated_at: new Date(finished).toISOString(),
     duration_ms: finished - startedJob,
+    operational_metrics: parentOperationalMetrics,
     result_payload: {
       ...prior,
       chunked: true,
@@ -1251,6 +1285,9 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
 }
 
 Deno.serve(async (req) => {
+  // C11 — monotonic Edge-processing timer (measures validation/persistence up to
+  // the DB write; boundary documented, no second fragile update).
+  const edgeStart = performance.now();
   const cors = createTokenAuthCorsHeaders();
   const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), {
     status,
@@ -1279,14 +1316,48 @@ Deno.serve(async (req) => {
 
   const { data: chunkRow } = await admin
     .from('pdf_import_chunks')
-    .select('id, job_id, parent_chunk_id, chunk_index, page_start, page_end, status, attempts, max_attempts, artifact_paths')
+    .select('id, job_id, parent_chunk_id, chunk_index, page_start, page_end, status, attempts, max_attempts, artifact_paths, operational_metrics')
     .eq('id', chunkId)
     .maybeSingle();
   if (!chunkRow) return json({ error: 'unknown chunk' }, 404);
   const chunk = chunkRow as ChunkRow;
+  const priorChunkMetrics = (chunkRow as any).operational_metrics;
 
   const status = (body as any).status === 'failed' ? 'failed' : 'succeeded';
   const now = new Date().toISOString();
+
+  // C11 — validate this delivery's chunk metrics + build the persisted envelope.
+  // Fail-open: legacy/invalid/unknown never blocks the chunk callback.
+  const chunkValidation = validateSidecarOperationalMetricsV1((body as any).metrics);
+  const chunkEdge = buildEdgeObservation({
+    callbackReceivedAt: now,
+    edgeProcessingMs: Math.round(performance.now() - edgeStart),
+    operation: status === 'failed' ? 'chunk_failure' : 'chunk_success',
+    edgeFunctionVersion: EDGE_FUNCTION_VERSION,
+  });
+  const nextChunkEnvelope = buildInvocationEnvelope({
+    validation: chunkValidation,
+    source: 'chunk',
+    receivedAt: now,
+    attempt: Number(chunk.attempts ?? 0),
+    edge: chunkEdge,
+  });
+  const { envelope: chunkMetricsToPersist, supersededPriorValid } = chooseChunkMetricsEnvelope(
+    priorChunkMetrics,
+    nextChunkEnvelope,
+  );
+  if (supersededPriorValid) {
+    // A recovered re-run replaced an earlier valid metric — keep the earlier one
+    // visible in the attempt log so a prior attempt's metrics are never lost.
+    await appendJobAttempt(admin, jobId, {
+      kind: 'chunk_metrics_superseded',
+      chunk_id: chunkId,
+      chunk_index: chunkIndex,
+      prior_validation_state: supersededPriorValid.validation_state,
+      prior_attempt: supersededPriorValid.attempt,
+      prior_status: supersededPriorValid.metrics?.status ?? null,
+    });
+  }
 
   if (status === 'succeeded') {
     const artifacts = { ...(((body as any).artifact_paths ?? {}) as Record<string, unknown>) };
@@ -1310,6 +1381,7 @@ Deno.serve(async (req) => {
       duration_ms: Number((body as any).duration_ms) || null,
       error_code: null,
       error_text: null,
+      operational_metrics: chunkMetricsToPersist,
     }).eq('id', chunkId);
     await appendJobAttempt(admin, jobId, {
       kind: 'chunk_succeeded',
@@ -1354,6 +1426,8 @@ Deno.serve(async (req) => {
     error_text: message,
     finished_at: now,
     duration_ms: Number((body as any).duration_ms) || null,
+    // C11 — preserve this failed attempt's partial metrics (never clobber a prior valid one).
+    operational_metrics: chunkMetricsToPersist,
   }).eq('id', chunkId);
   await appendJobAttempt(admin, jobId, {
     kind: 'chunk_failed',

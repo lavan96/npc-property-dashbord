@@ -26,6 +26,11 @@ import {
   type DiagnosticsChunkRow,
   type FailedPageCategory,
 } from '@/lib/reportTemplate/ingestion/diagnostics/pdfImportDiagnosticsV2';
+import {
+  buildOperationalMetricsSummary,
+  type OperationalMetricsSummary,
+  type MetricTimingCell,
+} from '@/lib/reportTemplate/ingestion/diagnostics/pdfImportOperationalMetricsSummary';
 
 interface DetailResponse {
   job: DiagnosticsRawJob;
@@ -61,6 +66,39 @@ function ms(value: number | null): string {
   return `${Math.floor(value / 60_000)}m ${Math.floor((value % 60_000) / 1000)}s`;
 }
 
+const METRIC_STATE_COPY: Record<string, string> = {
+  measured: '',
+  not_applicable: 'n/a',
+  unavailable: 'unavailable',
+  not_completed: 'not completed',
+  failed_before_phase: 'failed before phase',
+  not_observable_in_same_delivery: 'not observable',
+  legacy: 'legacy sidecar',
+  cache_hit: '',
+  invalid: 'invalid',
+};
+
+/** One labelled timing cell: a null value is a state ("—" / label), never 0 ms. */
+function MetricCell({ cell }: { cell: MetricTimingCell }) {
+  const suffix = cell.aggregate === 'total' ? ' total' : cell.aggregate === 'slowest' ? ' (slowest)' : '';
+  const stateLabel = cell.state !== 'measured' && cell.state !== 'cache_hit' ? METRIC_STATE_COPY[cell.state] ?? cell.state : '';
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-border/40 py-1">
+      <span className="text-xs text-muted-foreground">
+        {cell.label}
+        {cell.subsetOfUpload && <span className="ml-1 text-[10px] italic text-muted-foreground/70">(⊆ upload)</span>}
+      </span>
+      <span className="text-right text-xs font-medium tabular-nums">
+        {cell.ms === null ? (
+          <span className="text-muted-foreground">— {stateLabel && <span className="text-[10px]">{stateLabel}</span>}</span>
+        ) : (
+          `${ms(cell.ms)}${suffix}`
+        )}
+      </span>
+    </div>
+  );
+}
+
 function Field({ label, value, mono }: { label: string; value: string | number | null | undefined; mono?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border/40 py-1">
@@ -72,6 +110,7 @@ function Field({ label, value, mono }: { label: string; value: string | number |
 
 export function PdfImportDiagnosticsDetailDialog({ jobId, open, onOpenChange }: Props) {
   const [detail, setDetail] = useState<DiagnosticsDetail | null>(null);
+  const [metrics, setMetrics] = useState<OperationalMetricsSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -79,6 +118,7 @@ export function PdfImportDiagnosticsDetailDialog({ jobId, open, onOpenChange }: 
     let cancelled = false;
     setLoading(true);
     setDetail(null);
+    setMetrics(null);
     (async () => {
       const res = await invokeSecureFunction<DetailResponse>('pdf-import-diagnostics', { operation: 'detail', jobId });
       if (cancelled) return;
@@ -87,13 +127,22 @@ export function PdfImportDiagnosticsDetailDialog({ jobId, open, onOpenChange }: 
         setLoading(false);
         return;
       }
+      const job = res.data.job;
       setDetail(buildDiagnosticsDetail({
-        job: res.data.job,
+        job,
         importId: res.data.importId,
         gate: res.data.gate,
         chunks: res.data.chunks,
         missingArtifactPages: res.data.missingArtifactPages,
         signedUrls: res.data.signedUrls,
+      }));
+      // C11 — read-time operational-metrics summary (labelled, honest states).
+      setMetrics(buildOperationalMetricsSummary({
+        operationalMetrics: job.operational_metrics,
+        cacheHit: job.cache_hit,
+        cacheSourceJobId: job.cache_source_job_id,
+        durationMs: job.duration_ms,
+        planMs: job.plan_payload?.plan_ms,
       }));
       setLoading(false);
     })();
@@ -155,6 +204,53 @@ export function PdfImportDiagnosticsDetailDialog({ jobId, open, onOpenChange }: 
                   <Field label="Needs review" value={detail.pages.needingReview} />
                 </div>
               </Card>
+
+              {metrics && (
+                <Card className="p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Operational metrics (C11)
+                    <Badge variant={metrics.degraded ? 'warning' : metrics.kind === 'legacy_missing' ? 'secondary' : metrics.kind === 'cache_hit' ? 'secondary' : 'success'}>
+                      {metrics.kind === 'legacy_missing' ? 'legacy sidecar' : metrics.kind === 'cache_hit' ? 'cache hit' : metrics.state}
+                    </Badge>
+                    {metrics.extractorLane && <span className="font-normal normal-case text-muted-foreground">lane: {metrics.extractorLane}</span>}
+                    {metrics.memoryProfile && <span className="font-normal normal-case text-muted-foreground">· {metrics.memoryProfile}</span>}
+                  </div>
+                  {metrics.kind === 'legacy_missing' && (
+                    <div className="mb-2 text-[11px] text-muted-foreground">
+                      This job predates Operational Metrics V1 (or ran on the old sidecar) — timings are unavailable, not zero.
+                    </div>
+                  )}
+                  {metrics.degraded && metrics.kind !== 'legacy_missing' && (
+                    <div className="mb-2 flex items-center gap-1 text-[11px] text-warning">
+                      <AlertTriangle className="h-3 w-3" /> Metrics are degraded ({metrics.state}); values shown are partial.
+                    </div>
+                  )}
+                  <div className="grid gap-x-6 sm:grid-cols-2">
+                    {metrics.planMs !== null && <MetricCell cell={{ key: 'plan_ms', label: 'Plan', ms: metrics.planMs, state: 'measured' }} />}
+                    {metrics.timings.map((cell) => <MetricCell key={cell.key} cell={cell} />)}
+                    <MetricCell cell={{ key: 'edge', label: 'Edge callback processing', ms: metrics.callbackEdgeProcessingMs, state: metrics.callbackEdgeProcessingMs === null ? 'unavailable' : 'measured' }} />
+                    {metrics.mergeMs !== null && <MetricCell cell={{ key: 'merge', label: 'Merge', ms: metrics.mergeMs, state: 'measured' }} />}
+                    <MetricCell cell={{ key: 'parent', label: 'Parent elapsed (wall clock)', ms: metrics.parentElapsedMs, state: metrics.parentElapsedMs === null ? 'unavailable' : 'measured' }} />
+                  </div>
+                  {metrics.chunkCounts && (
+                    <div className="mt-2 flex flex-wrap gap-1 text-[11px]">
+                      <Badge variant="outline">chunks: {metrics.chunkCounts.total}</Badge>
+                      <Badge variant="success">valid {metrics.chunkCounts.valid}</Badge>
+                      {metrics.chunkCounts.legacyMissing > 0 && <Badge variant="secondary">legacy {metrics.chunkCounts.legacyMissing}</Badge>}
+                      {metrics.chunkCounts.invalid > 0 && <Badge variant="destructive">invalid {metrics.chunkCounts.invalid}</Badge>}
+                      {metrics.chunkCounts.unknownVersion > 0 && <Badge variant="warning">unknown {metrics.chunkCounts.unknownVersion}</Badge>}
+                    </div>
+                  )}
+                  {metrics.cache && (
+                    <div className="mt-2 text-[11px] text-muted-foreground">
+                      Cache hit — copied from job <span className="font-mono">{metrics.cache.sourceJobId ?? '—'}</span>; no sidecar ran this time, so parse/raster are not applicable. Copy + elapsed are this run's own timings.
+                    </div>
+                  )}
+                  <div className="mt-2 text-[10px] italic text-muted-foreground/70" title={metrics.callbackLimitationNote}>
+                    {metrics.callbackLimitationNote}
+                  </div>
+                </Card>
+              )}
 
               <Card className="p-3">
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
