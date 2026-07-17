@@ -28,3 +28,9 @@ audit-output/
 
 # Phase 11D release gate generated reports (local-only)
 reports/
+
+# C10 — Playwright (Tier 2) artifacts + the live-corpus (Tier 3) directory.
+# Client PDFs are NEVER committed; the live corpus lives in a local dir only.
+test-results/
+playwright-report/
+.pdf-import-golden-corpus/

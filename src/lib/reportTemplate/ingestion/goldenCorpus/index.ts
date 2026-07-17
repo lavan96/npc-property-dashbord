@@ -14,3 +14,7 @@ export * from './goldenRunHistoryTypes';
 export * from './goldenRunHistorySummary';
 export * from './goldenRunHistoryPersistence';
 export * from './goldenRunBaselineComparison';
+
+// C10 — three-tier golden/regression taxonomy + live-corpus loader.
+export * from './goldenRegressionTiers';
+export * from './pdfImportGoldenLiveCorpus';
