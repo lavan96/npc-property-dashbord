@@ -181,10 +181,14 @@ const amlNavItems: Array<{
   { title: 'Screening', url: '/admin/aml/screening', icon: AlertTriangle, capability: 'aml.view' },
   { title: 'Risk', url: '/admin/aml/risk', icon: Gauge, capability: 'aml.view' },
   { title: 'Counterparty', url: '/admin/aml/counterparty', icon: Users, capability: 'aml.view' },
+  { title: 'Finance Comparison', url: '/admin/aml/finance', icon: TrendingUp, capability: 'aml.investigate' },
+  { title: 'Transactions', url: '/admin/aml/transactions', icon: Coins, capability: 'aml.investigate' },
   { title: 'Monitoring', url: '/admin/aml/monitoring', icon: Activity, capability: 'aml.view' },
   { title: 'Investigations', url: '/admin/aml/investigations', icon: FileSignature, capability: 'aml.investigate' },
   { title: 'AUSTRAC Reporting', url: '/admin/aml/austrac', icon: FileText, capability: 'aml.report' },
+  { title: 'Records & Privacy', url: '/admin/aml/records', icon: Database, capability: 'aml.view' },
   { title: 'Governance', url: '/admin/aml/governance', icon: ClipboardList, capability: 'aml.view' },
+  { title: 'Launch Ops', url: '/admin/aml/launch-ops', icon: Zap, capability: 'aml.view' },
   { title: 'Configuration', url: '/admin/aml/configuration', icon: Settings, capability: 'aml.configure' },
 ];
 
