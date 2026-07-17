@@ -72,12 +72,15 @@ export default function AmlConfiguration() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-            <Settings2 className="h-6 w-6 text-primary" /> AML Configuration
+            <Settings2 className="h-6 w-6 text-primary" />
+            {orgSettings ? "Organisation Settings" : "AML Configuration"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {metricsRelocation
-              ? "White-label branding, plan entitlements, and provider selection. Provider cost & failure metrics have moved to the Integration Health workspace."
-              : "White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics."}
+            {orgSettings
+              ? "Tenant-wide organisation settings for AML/CTF: branding link, activation program, providers, and (when relocated) metrics. Plan sales moved to the Aurixa billing portal."
+              : metricsRelocation
+                ? "White-label branding, plan entitlements, and provider selection. Provider cost & failure metrics have moved to the Integration Health workspace."
+                : "White-label branding, plan entitlements, provider selection, and 30-day cost & failure metrics."}
           </p>
         </div>
         {!isMlro && (
