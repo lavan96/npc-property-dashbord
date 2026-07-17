@@ -3221,9 +3221,9 @@ export function PortfolioAnalysisPDFGenerator({
       </div>
 
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+        <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <DialogTitle className="flex items-center justify-between gap-4 flex-wrap">
               <span>Portfolio Performance Analysis</span>
               <div className="flex items-center gap-2">
                 <Button 
@@ -3255,7 +3255,8 @@ export function PortfolioAnalysisPDFGenerator({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[calc(90vh-120px)]">
+          <ScrollArea className="flex-1 min-h-0">
+
             {analysisData && (
               <div id="portfolio-analysis-content" className="p-6 bg-background space-y-6">
                 {/* Header */}
