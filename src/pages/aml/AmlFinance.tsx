@@ -21,6 +21,8 @@ import {
   type AmlDiscrepancyStatus,
 } from "@/lib/aml/amlFinanceApi";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { LegacyAliasBanner } from "@/components/aml/LegacyAliasBanner";
+
 
 const SEVERITY_TONE: Record<string, string> = {
   info: "bg-muted text-muted-foreground",
