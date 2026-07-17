@@ -14,6 +14,10 @@ export * from './responseParser';
 export * from './repairLoop';
 export * from './visualDiff';
 
+// C9 — runtime-validated, page-scoped AI visual repair.
+export * from './visualDiffRepairPatch';
+export * from './visualDiffRepairRequest';
+
 export * from './reviewArtifacts';
 export * from './pdfReconcile';
 export * from './reconciliationPolicy';

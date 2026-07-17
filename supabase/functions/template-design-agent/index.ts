@@ -26,6 +26,43 @@ const SYNTHESIS_MODEL = 'openai/gpt-5';
 const VISION_MODEL = 'openai/gpt-5';
 const CLAUDE_MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-opus-4-8';
 
+// ─── C9: server-side visual-diff-repair-patch-v1 allowlist ───────────────────
+// Defense-in-depth mirror of the client `validateVisualDiffRepairPatches`. The
+// `layout_reconciliation_repair` mode may ONLY ever return page-scoped patches
+// from this allowlist: known ops, no cross-page ids, no text-content edits, no
+// added text overlays, capped. Page add/delete/reorder is unrepresentable.
+const VISUAL_DIFF_REPAIR_ALLOWLIST_VERSION = 'visual-diff-repair-patch-v1';
+const VISUAL_DIFF_REPAIR_ALLOWED_OPS = new Set(['updatePageBackground', 'updateOverlay', 'addOverlay', 'removeOverlay']);
+const VISUAL_DIFF_REPAIR_FORBIDDEN_FIELDS = ['content', 'text'];
+const VISUAL_DIFF_REPAIR_TEXT_TYPES = new Set(['text', 'textOnPath']);
+
+function sanitizeVisualDiffRepairPatches(
+  raw: unknown,
+  pageId: string,
+  maxOps: number,
+): { patches: any[]; rejected: Array<{ index: number; reason: string }> } {
+  const patches: any[] = [];
+  const rejected: Array<{ index: number; reason: string }> = [];
+  if (!Array.isArray(raw)) return { patches, rejected: [{ index: -1, reason: 'patch payload is not an array' }] };
+  raw.forEach((item: any, index: number) => {
+    if (patches.length >= maxOps) { rejected.push({ index, reason: `exceeds max ${maxOps} operations` }); return; }
+    const op = item?.operation;
+    if (typeof op !== 'string' || !VISUAL_DIFF_REPAIR_ALLOWED_OPS.has(op)) { rejected.push({ index, reason: 'unknown or malformed operation' }); return; }
+    if (item?.pageId !== pageId) { rejected.push({ index, reason: 'cross-page patch not allowed' }); return; }
+    if (op === 'updateOverlay' && item?.changes && typeof item.changes === 'object'
+      && VISUAL_DIFF_REPAIR_FORBIDDEN_FIELDS.some((f) => f in item.changes)) {
+      rejected.push({ index, reason: 'text-content edits are not permitted' });
+      return;
+    }
+    if (op === 'addOverlay' && VISUAL_DIFF_REPAIR_TEXT_TYPES.has(item?.overlay?.type)) {
+      rejected.push({ index, reason: 'adding text overlays is not permitted' });
+      return;
+    }
+    patches.push(item);
+  });
+  return { patches, rejected };
+}
+
 
 // ─── helpers: outline + uuid ──────────────────────────────────────────────────
 function uid() { return crypto.randomUUID(); }
@@ -521,6 +558,20 @@ Deno.serve(async (req) => {
       body.groundedReference && typeof body.groundedReference === 'object' && Array.isArray(body.groundedReference.elements)
         ? body.groundedReference
         : null;
+
+    // C9 — page-scoped AI visual repair. This mode may ONLY return patches from
+    // the visual-diff-repair-patch-v1 allowlist, scoped to a single page; it must
+    // NOT fall through to the generic op-based `apply_changes` flow (which emits a
+    // different shape). Any candidate patches are sanitized server-side before
+    // return — the client re-validates them again before applying. Never mutates
+    // a template server-side.
+    if (body.mode === 'layout_reconciliation_repair') {
+      const pageId = typeof body.pageId === 'string' ? body.pageId : '';
+      if (!pageId) return json({ error: 'layout_reconciliation_repair requires a pageId' }, 400);
+      const maxOps = Math.min(Math.max(Number(body.maxOperations) || 20, 1), 40);
+      const { patches, rejected } = sanitizeVisualDiffRepairPatches(body.candidatePatches ?? [], pageId, maxOps);
+      return json({ patches, rejected, pageId, allowlistVersion: VISUAL_DIFF_REPAIR_ALLOWLIST_VERSION });
+    }
 
     // Decide whether to run the Design Brief pipeline.
     // R5 split: the brief pipeline is the REDESIGN path (it reinterprets a
