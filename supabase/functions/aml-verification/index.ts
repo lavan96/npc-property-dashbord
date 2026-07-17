@@ -213,7 +213,10 @@ Deno.serve(async (req) => {
         const scope: ScreeningScope[] = Array.isArray(body.scope) && body.scope.length
           ? body.scope.filter((s: string) => ["pep", "sanctions", "adverse_media", "watchlist"].includes(s))
           : ["pep", "sanctions", "adverse_media"];
-        const provider = getScreeningProvider(body.provider);
+        const tenantId = await resolveTenantId(admin, caseId);
+        const capability = scope.length === 1 && scope[0] === "adverse_media" ? "adverse_media" : "screening";
+        const resolved = await resolveTenantProvider(admin, tenantId, capability);
+        const provider = getScreeningProvider({ resolved, preferred: body.provider });
 
         const idempotencyKey = `aml-scr-${caseId}-${Date.now()}`;
         let reservation: { jobId: string } | null = null;
