@@ -80,8 +80,16 @@ Deno.serve(async (req) => {
     const roles = new Set<string>((roleRows ?? []).map((r: any) => r.role));
     const canWrite = roles.has("analyst") || roles.has("reviewer") || roles.has("mlro");
     const isMlro = roles.has("mlro");
+    const isAuditorOnly = roles.has("auditor") && !roles.has("analyst") && !roles.has("reviewer") && !roles.has("mlro");
     const requireWrite = () => { if (!canWrite) throw new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
     const requireMlro = () => { if (!isMlro) throw new Response(JSON.stringify({ error: "MLRO role required" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }); };
+
+    // Tipping-off redaction: audit-only viewers may see SMR metadata but never narrative or payload contents.
+    const redactSmr = <T extends { kind?: string; narrative?: any; payload?: any } | null | undefined>(row: T): T => {
+      if (!row || !isAuditorOnly) return row;
+      if (row.kind !== "smr") return row;
+      return { ...row, narrative: null, payload: { redacted: true, reason: "tipping-off protection" } } as T;
+    };
 
     const op = String(body?.op ?? "");
 
