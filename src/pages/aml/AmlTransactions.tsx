@@ -19,6 +19,7 @@ import {
   type AmlTransaction, type AmlTransactionKind, type AmlTransactionStatus,
   type AmlTransactionParty, type AmlPartyType, type AmlTransactionEvent,
   type AmlCounterpartyCase, type AmlCounterpartyRequest, type AmlCpRequestStatus,
+  type AmlTransactionObligation, type AmlObligationKind,
 } from "@/lib/aml/amlTransactionsApi";
 
 const TX_KINDS: AmlTransactionKind[] = ["purchase", "sale", "refinance", "off_the_plan", "auction", "private_treaty", "other"];
