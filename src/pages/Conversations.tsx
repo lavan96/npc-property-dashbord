@@ -1368,7 +1368,7 @@ export default function Conversations() {
                           className={cn(
                             "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-border dark:ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
                             avatarBackgrounds[normalized] ||
-                              "from-muted0/18 via-muted/12 to-card/72 dark:to-background/72",
+                              "from-muted/30 via-muted/16 to-card dark:to-background",
                           )}
                         >
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">
