@@ -115,4 +115,10 @@ export const amlRiskApi = {
 
   gateStatus: (p: { case_id?: string; purchase_file_id?: string }) =>
     invoke<AmlGateStatus>({ op: "gate_status", ...p }),
+
+  policySnapshot: (tenant_id: string = "default") =>
+    invoke<AmlPolicySnapshot>({ op: "policy_snapshot", tenant_id }),
+  updateRiskPolicy: (p: { tenant_id?: string; risk_program_version?: string; straight_through_config?: AmlStraightThroughConfig }) =>
+    invoke<{ tenant: { tenant_id: string; risk_program_version: string; straight_through_config: AmlStraightThroughConfig } }>({ op: "update_risk_policy", ...p }),
 };
+
