@@ -295,6 +295,16 @@ export default function AmlLaunchOps() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Launch certification */}
+        <TabsContent value="launch" className="space-y-4">
+          <LaunchCertificationPanel
+            summary={summary}
+            isMlro={!!isMlro}
+            certifications={certifications}
+            onChanged={loadAll}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
