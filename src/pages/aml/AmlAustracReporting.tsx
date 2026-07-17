@@ -135,14 +135,23 @@ export default function AmlAustracReporting() {
   };
 
   const openSubmitFor = (r: AmlReport) => {
-    setSelectedId(r.id); setSubmitChannel("austrac_online"); setSubmitRef(""); setSubmitNotes(""); setOpenSubmit(true);
+    setSelectedId(r.id); setSubmitReport(r);
+    setSubmitChannel("austrac_online"); setSubmitRef(""); setSubmitBundlePath("");
+    setSubmitAttest(false); setSubmitNotes(""); setOpenSubmit(true);
   };
   const submitNow = async () => {
     if (!selectedId) return;
+    const isSmr = submitReport?.kind === "smr";
+    if (!submitAttest) { toast.error("MLRO tipping-off attestation is required"); return; }
+    if (!submitRef.trim() && !submitBundlePath.trim()) { toast.error("Provide an AUSTRAC reference or an export bundle path"); return; }
+    if (isSmr && !submitRef.trim()) { toast.error("SMR submissions require the AUSTRAC lodgement reference"); return; }
     try {
       await amlReportingApi.submitRecord({
         report_id: selectedId, channel: submitChannel,
-        external_reference: submitRef || undefined, notes: submitNotes || undefined,
+        external_reference: submitRef || undefined,
+        export_bundle_path: submitBundlePath || undefined,
+        notes: submitNotes || undefined,
+        attest_no_tipping_off: true,
       });
       toast.success("Submission recorded");
       setOpenSubmit(false); await load(); await loadDetail(selectedId);
