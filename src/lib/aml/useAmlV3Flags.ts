@@ -68,6 +68,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
     "aml_v3_start_client_compliance",
     "aml_v3_compliance_home",
     "aml_v3_case_workspace",
+    "aml_v3_regulatory_hub",
   ];
   try {
     const { data, error } = await supabase
@@ -81,6 +82,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       startClientCompliance: coerceBool(map.get("aml_v3_start_client_compliance")),
       complianceHome: coerceBool(map.get("aml_v3_compliance_home")),
       caseWorkspace: coerceBool(map.get("aml_v3_case_workspace")),
+      regulatoryHub: coerceBool(map.get("aml_v3_regulatory_hub")),
     };
     writeCache(next);
     return next;
@@ -90,6 +92,7 @@ export async function refreshAmlV3Flags(): Promise<Cache> {
       startClientCompliance: false,
       complianceHome: false,
       caseWorkspace: false,
+      regulatoryHub: false,
     };
     return fallback;
   }
@@ -103,6 +106,7 @@ export function useAmlV3Flags(): AmlV3Flags {
       startClientCompliance: false,
       complianceHome: false,
       caseWorkspace: false,
+      regulatoryHub: false,
     },
   );
   const [loading, setLoading] = useState<boolean>(!cached);
