@@ -51,6 +51,7 @@ import {
 } from '@/components/ui/tooltip';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import { smartCapitalize } from '@/utils/nameFormatting';
+import { useTeamUsers, type TeamUser } from '@/hooks/useTeamUsers';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 const UNASSIGNED_SENTINEL = '__unassigned__';
