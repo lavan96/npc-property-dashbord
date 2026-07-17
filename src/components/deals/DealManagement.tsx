@@ -586,7 +586,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden sm:table-cell">Progress</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden md:table-cell">Responsible</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden lg:table-cell">Risk</TableHead>
+                  <TableHead className="min-w-[160px] whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden lg:table-cell">Risk</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden xl:table-cell">Next Action</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground w-20">Actions</TableHead>
                 </TableRow>
