@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { amlCasesApi, type AmlCase } from "@/lib/aml/amlCasesApi";
 import { amlVerificationApi, type IdentityCheck, type IdvStatus } from "@/lib/aml/amlVerificationApi";
+import { LegacyAliasBanner } from "@/components/aml/LegacyAliasBanner";
 
 const STATUS_TONE: Record<IdvStatus, string> = {
   pending: "bg-muted text-muted-foreground",
