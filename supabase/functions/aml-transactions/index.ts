@@ -1,14 +1,18 @@
 /**
- * Phase 8 — Property Transactions, Counterparty CDD & Settlement Gate.
+ * Phase 8 + 9 — Property Transactions, Counterparty CDD, Obligations & Settlement Gate.
  *
  * Ops:
  *   Transactions:     list_transactions, get_transaction, upsert_transaction, delete_transaction, append_event, list_events
  *   Parties:          list_parties, upsert_party, delete_party
  *   Counterparty:     list_cp_cases, upsert_cp_case, delete_cp_case,
  *                     list_cp_requests, upsert_cp_request, resolve_cp_request,
- *                     list_cp_attempts, add_cp_attempt
+ *                     list_cp_attempts, add_cp_attempt,
+ *                     counterparty_cdd_summary
+ *   Obligations:      list_obligations, evaluate_obligations,
+ *                     acknowledge_obligation, waive_obligation, link_obligation_report
  *   Gate:             settlement_gate_status (returns { gate_enabled, blocked, reasons[] } — auth only)
  */
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth } from "../_shared/auth.ts";
 
