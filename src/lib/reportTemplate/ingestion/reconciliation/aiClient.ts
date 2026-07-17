@@ -3,6 +3,7 @@ import { buildBackgroundFirstImportPlan } from './planBuilder';
 import { assertValidTemplateImportPlan } from './validatePlan';
 import { buildReconciliationPrompt } from './prompt';
 import { parseTemplateImportPlanResponse } from './responseParser';
+import { filterWellFormedRepairPatches, DEFAULT_MAX_REPAIR_OPERATIONS } from './visualDiffRepairPatch';
 
 export interface RepairRequest {
   plan: TemplateImportPlan;
@@ -10,9 +11,23 @@ export interface RepairRequest {
   maxOperations?: number;
 }
 
+/**
+ * C9 — single-page visual-repair request. The page id scopes the model to one
+ * page; the raw response is validated by `validateVisualDiffRepairPatches`
+ * (page-scoped) at the call site, so `repairPage` returns the RAW patch payload.
+ */
+export interface SinglePageRepairRequest {
+  pageId: string;
+  diffReport?: unknown;
+  plan?: TemplateImportPlan | unknown;
+  maxOperations?: number;
+}
+
 export interface ReconciliationAiClient {
   reconcile(input: ReconciliationRequest): Promise<TemplateImportPlan>;
   repair(input: RepairRequest): Promise<TemplateImportPatch[]>;
+  /** C9 — page-scoped repair; returns the raw (unvalidated) patch payload. */
+  repairPage(input: SinglePageRepairRequest): Promise<unknown>;
 }
 
 export type ReconciliationInvoke = (
@@ -34,6 +49,10 @@ export class BackgroundFirstReconciliationClient implements ReconciliationAiClie
   async repair(): Promise<TemplateImportPatch[]> {
     return [];
   }
+
+  async repairPage(): Promise<unknown> {
+    return [];
+  }
 }
 
 export class StaticPlanReconciliationClient implements ReconciliationAiClient {
@@ -44,6 +63,10 @@ export class StaticPlanReconciliationClient implements ReconciliationAiClient {
   }
 
   async repair(): Promise<TemplateImportPatch[]> {
+    return [];
+  }
+
+  async repairPage(): Promise<unknown> {
     return [];
   }
 }
@@ -89,13 +112,31 @@ export class TemplateDesignAgentReconciliationClient implements ReconciliationAi
       mode: 'layout_reconciliation_repair',
       plan: input.plan,
       diffReport: input.diffReport,
-      maxOperations: input.maxOperations ?? 20,
+      maxOperations: input.maxOperations ?? DEFAULT_MAX_REPAIR_OPERATIONS,
       instruction: 'Return TemplateImportPatch[] JSON only. Do not rewrite the full template.',
     }, { timeoutMs: 120000 });
     if (error) throw new Error(error.message);
-    const patches = extractPatchesCandidate(data);
-    if (!Array.isArray(patches)) throw new Error('Repair response did not contain a patch array.');
-    return patches as TemplateImportPatch[];
+    // C9 — runtime-validate the model output instead of a blind `as` cast:
+    // malformed ops, text-content edits, and added text overlays are dropped.
+    return filterWellFormedRepairPatches(extractPatchesCandidate(data));
+  }
+
+  /**
+   * C9 — page-scoped visual repair. Returns the RAW patch payload; the caller
+   * validates it with `validateVisualDiffRepairPatches({ pageId })` (page-scoped
+   * allowlist) before it can touch the template.
+   */
+  async repairPage(input: SinglePageRepairRequest): Promise<unknown> {
+    const { data, error } = await this.invoke('template-design-agent', {
+      mode: 'layout_reconciliation_repair',
+      pageId: input.pageId,
+      diffReport: input.diffReport,
+      plan: input.plan,
+      maxOperations: input.maxOperations ?? DEFAULT_MAX_REPAIR_OPERATIONS,
+      instruction: `Return a visual-diff-repair-patch-v1 JSON array for page ${input.pageId} ONLY. Geometry/style/background alignment only — never edit or add text content, never touch another page. Do not rewrite the template.`,
+    }, { timeoutMs: 120000 });
+    if (error) throw new Error(error.message);
+    return extractPatchesCandidate(data);
   }
 }
 

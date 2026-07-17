@@ -283,6 +283,7 @@ describe('Template Import Reconciliation Engine foundation', () => {
           return buildBackgroundFirstImportPlan(request.importAsset, { importId: request.importAsset.fileId });
         },
         repair: async () => [],
+        repairPage: async () => [],
       },
     });
 
@@ -361,6 +362,7 @@ describe('Template Import Reconciliation Engine foundation', () => {
         { operation: 'updateOverlay' as const, pageId: template.pages[0].id, blockId, overlayId: 'heading_1', changes: { y: 100 } as any },
         { operation: 'updatePageBackground' as const, pageId: template.pages[0].id, changes: { imageUrl: '' } },
       ]),
+      repairPage: async () => [],
     };
 
     const result = await runReconciliationRepairPass({ template, plan, diffReport: { diffScore: 0.2 }, client, maxOperations: 2 });

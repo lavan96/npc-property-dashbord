@@ -32,6 +32,8 @@ import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTempla
 import { applyFidelityModeToTemplate, type ForcedFidelityMode } from '@/lib/reportTemplate/pdfImport/applyFidelityMode';
 import type { FidelityMode } from '@/lib/reportTemplate/pdfImport/types';
 import type { ImportAsset, RawImportManifest } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { TemplateDesignAgentReconciliationClient, runVisualDiffRepairRequest } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 
 type ImportReviewDebugSnapshot = Record<string, string | number | boolean | null>;
 type FinalMode = 'semantic' | 'hybrid' | 'pixel-perfect';
@@ -42,6 +44,13 @@ interface PersistedImportReviewControllerOptions {
   finalMode?: FinalMode;
   maxRasterDim?: number;
   maxRepairPasses?: number;
+  /**
+   * C9 — enable the operator-only, page-scoped AI visual repair action. OFF by
+   * default: AI never runs automatically and is gated behind an explicit
+   * operator opt-in (e.g. superadmin). Even when enabled, the model output is
+   * runtime-validated (visual-diff-repair-patch-v1) before it can touch a page.
+   */
+  enableAiRepair?: boolean;
 }
 
 function toFinalMode(mode?: PersistedImportReviewControllerOptions['finalMode'] | FidelityMode): FinalMode {
@@ -407,7 +416,55 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
       return;
     }
     if (action === 'ai_repair') {
-      toast.info('AI repair is operator-only and unlocks after the C9 safeguards land.');
+      // C9 — operator-only, page-scoped AI visual repair. Runs only on this
+      // explicit click; the model output is runtime-validated + page-scoped by
+      // runVisualDiffRepairRequest before it can touch the page, then persisted
+      // as an auditable version. Never automatic; disabled unless opted in.
+      if (!options.enableAiRepair) {
+        toast.info('AI repair is operator-only and disabled for this review.');
+        return;
+      }
+      const aiBaseTemplate = persistedReview?.draft?.template;
+      if (!templateId) { toast.error('No template record is linked to this import.'); return; }
+      if (!aiBaseTemplate) { toast.error('No template is loaded to repair this page.'); return; }
+      const pageReport = persistedVisualQuality?.report?.pages?.find((p) => p.pageId === pageId) ?? null;
+      setPageActionBusyId(pageId);
+      try {
+        const client = new TemplateDesignAgentReconciliationClient(invokeSecureFunction as any);
+        const result = await runVisualDiffRepairRequest({
+          template: aiBaseTemplate,
+          context: { templateId, pageId, diffReport: pageReport, maxOperations: 20 },
+          fetchPatches: (ctx) => client.repairPage({ pageId: ctx.pageId, diffReport: ctx.diffReport, maxOperations: ctx.maxOperations }),
+        });
+        if (result.error) { toast.error(`AI repair failed: ${result.error}`); return; }
+        if (!result.changed) {
+          toast.info(result.rejected.length
+            ? `AI repair produced no applicable changes (${result.rejected.length} rejected by the allowlist).`
+            : 'AI repair produced no changes.');
+          return;
+        }
+        const applied = await applyRepairedTemplateToRecord({
+          templateId,
+          repairedTemplate: result.template,
+          repairSummary: repairSummary ?? undefined,
+          repairAuditPath: persistedRepairAudit?.artifactPaths?.summary ?? null,
+          note: `Operator AI visual repair on page ${pageId} — ${result.applied} op${result.applied === 1 ? '' : 's'} applied, page-scoped (visual-diff-repair-patch-v1).`,
+        });
+        setPersistedReview((prev) => (prev ? { ...prev, draft: { ...prev.draft, template: result.template } } : prev));
+        setReviewDebug((prev) => ({
+          ...(prev ?? {}),
+          stage: 'ai_repair_applied',
+          aiRepairPageId: pageId,
+          aiRepairApplied: result.applied,
+          aiRepairRejected: result.rejected.length,
+          appliedNextVersion: applied.nextVersion,
+        }));
+        toast.success(`AI repair applied ${result.applied} change${result.applied === 1 ? '' : 's'} to page · template v${applied.nextVersion}.`);
+      } catch (err) {
+        toast.error(`Could not apply AI repair: ${(err as Error).message}`);
+      } finally {
+        setPageActionBusyId(null);
+      }
       return;
     }
     if (!isPolicyAction(action)) return;
@@ -456,7 +513,7 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     } finally {
       setPageActionBusyId(null);
     }
-  }, [finalMode, navigate, pageReviewCollection.pages, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, repairSummary, reviewRecord?.created_template_id, runRepair]);
+  }, [finalMode, navigate, options.enableAiRepair, pageReviewCollection.pages, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, persistedVisualQuality?.report, repairSummary, reviewRecord?.created_template_id, runRepair]);
 
   const dialogProps = useMemo(() => ({
     open: reviewOpen,
@@ -487,8 +544,8 @@ export function usePersistedImportReviewController(options: PersistedImportRevie
     visualQualityReport: persistedVisualQuality?.report ?? null,
     onPageAction: reviewRecord?.created_template_id ? onPageAction : undefined,
     pageActionBusyId,
-    aiRepairEnabled: false,
-  }), [applyRepair, applyRepairAvailable, applyRepairBusy, forceMode, forceModeBusy, onPageAction, pageActionBusyId, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, persistedVisualQuality?.artifactPaths, persistedVisualQuality?.report, persistedVisualQuality?.signedUrls, recordDecision, recordedDecision, repairAvailable, repairBusy, repairSummary, resetReviewState, reviewDebug, reviewDraft, reviewImportId, reviewOpen, reviewRecord?.created_template_id, runRepair, runVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary]);
+    aiRepairEnabled: Boolean(options.enableAiRepair),
+  }), [applyRepair, applyRepairAvailable, applyRepairBusy, forceMode, forceModeBusy, onPageAction, options.enableAiRepair, pageActionBusyId, persistedRepairAudit?.artifactPaths?.summary, persistedReview?.draft?.template, persistedVisualQuality?.artifactPaths, persistedVisualQuality?.report, persistedVisualQuality?.signedUrls, recordDecision, recordedDecision, repairAvailable, repairBusy, repairSummary, resetReviewState, reviewDebug, reviewDraft, reviewImportId, reviewOpen, reviewRecord?.created_template_id, runRepair, runVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary]);
 
   return {
     reviewOpen,
