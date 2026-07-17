@@ -630,7 +630,7 @@ Deno.serve(async (req: Request) => {
           const rolesByUser = new Map<string, string[]>();
           for (const row of amlRoleRows ?? []) {
             const current = rolesByUser.get(row.user_id) ?? [];
-            current.push(row.role);
+            current.push(row.role_name ?? row.role);
             rolesByUser.set(row.user_id, current);
           }
           usersWithAmlRoles = (users ?? []).map((entry: any) => ({
