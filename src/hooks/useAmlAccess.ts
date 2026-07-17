@@ -4,6 +4,8 @@ import { invokeSecureFunction } from "@/lib/secureInvoke";
 
 export type AmlRole = "analyst" | "reviewer" | "mlro" | "auditor";
 
+const SUPERADMIN_AML_ROLES: AmlRole[] = ["analyst", "reviewer", "mlro", "auditor"];
+
 export interface AmlAccess {
   loading: boolean;
   flagEnabled: boolean;
@@ -38,7 +40,7 @@ export function useAmlAccess(): AmlAccess {
 
       if (isSuperadmin) {
         setFlagEnabled(true);
-        setRoles(new Set(["analyst", "reviewer", "mlro", "auditor"]));
+        setRoles(new Set(SUPERADMIN_AML_ROLES));
         return;
       }
 
@@ -55,7 +57,7 @@ export function useAmlAccess(): AmlAccess {
       console.warn("useAmlAccess failed", e);
       if (isSuperadmin) {
         setFlagEnabled(true);
-        setRoles(new Set(["analyst", "reviewer", "mlro", "auditor"]));
+        setRoles(new Set(SUPERADMIN_AML_ROLES));
       } else {
         setFlagEnabled(false);
         setRoles(new Set());

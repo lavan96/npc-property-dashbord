@@ -56,25 +56,31 @@ async function verifySuperadmin(supabase: any, headers: Headers, body: any) {
     return { error: authResult.error || 'Authentication required', user: null };
   }
 
-  // Check if user has superadmin role
+  // Check if user has superadmin role. Support both the canonical user_roles
+  // record and the legacy/custom_users super_admin marker so command-centre
+  // superadmins never get blocked by missing granular RBAC rows.
+  const { data: currentUser, error: userError } = await supabase
+    .from('custom_users')
+    .select('*')
+    .eq('id', authResult.userId)
+    .maybeSingle();
+
+  if (userError || !currentUser?.is_active) {
+    return { error: 'Unauthorized: Active user required', user: null };
+  }
+
   const { data: roleData, error: roleError } = await supabase
     .from('user_roles')
     .select('role')
     .eq('user_id', authResult.userId)
     .eq('role', 'superadmin')
-    .single();
+    .maybeSingle();
 
-  if (roleError || !roleData) {
+  if (currentUser.role !== 'super_admin' && (roleError || !roleData)) {
     return { error: 'Unauthorized: Superadmin access required', user: null };
   }
 
-  const { data: user } = await supabase
-    .from('custom_users')
-    .select('*')
-    .eq('id', authResult.userId)
-    .single();
-
-  return { error: null, user };
+  return { error: null, user: currentUser };
 }
 
 Deno.serve(async (req: Request) => {
