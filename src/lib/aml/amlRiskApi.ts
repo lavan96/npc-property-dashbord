@@ -14,6 +14,16 @@ export type AmlRiskAssessment = {
   triggered_holds: Array<{ key: string; label: string; severity: "block" | "hold" }>;
   factor_breakdown: Array<{ key: string; label: string; input: any; score: number; weight: number; weighted: number }>;
   inputs: Record<string, any>; computed_by: string | null; created_at: string;
+  program_version?: string | null;
+  policy_snapshot_hash?: string | null;
+  straight_through?: boolean;
+  explanation?: {
+    top_positive?: Array<{ key: string; label: string; weighted: number; input: any }>;
+    top_neutral_missing?: Array<{ key: string; label: string }>;
+    trigger_reasons?: Array<{ key: string; label: string; severity: string }>;
+    rating_band?: string;
+    thresholds?: Record<string, number>;
+  };
 };
 export type AmlRiskOverride = {
   id: string; case_id: string; assessment_id: string | null; requested_by: string;
@@ -26,7 +36,25 @@ export type AmlDecision = {
   outcome: "cleared" | "blocked" | "escalated" | "conditional";
   rationale: string | null; snapshot: any; snapshot_hash: string;
   decided_by: string; decided_at: string;
+  program_version?: string | null;
+  is_straight_through?: boolean;
 };
+export type AmlStraightThroughConfig = {
+  enabled: boolean;
+  max_mltf_score?: number;
+  require_completion_score?: number;
+  require_verification_score?: number;
+  disallow_holds?: boolean;
+};
+export type AmlPolicySnapshot = {
+  program_version: string;
+  straight_through_config: AmlStraightThroughConfig;
+  policy_snapshot_hash: string;
+  factors: AmlRiskFactor[];
+  triggers: AmlMandatoryTrigger[];
+  tenant_id: string;
+};
+
 export type AmlApproval = {
   id: string; case_id: string; decision_id: string | null; kind: string;
   status: "pending" | "approved" | "rejected"; requested_by: string;
