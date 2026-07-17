@@ -1762,7 +1762,7 @@ export default function Conversations() {
               </ScrollArea>
 
               {/* Reply composer */}
-              <div className="shrink-0 space-y-3 border-t border-brand-100/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.78),rgba(9,9,11,0.96))] px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+              <div className="shrink-0 max-h-[45vh] overflow-y-auto space-y-3 border-t border-brand-100/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.78),rgba(9,9,11,0.96))] px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-100/50">
                     Send via
@@ -1868,7 +1868,7 @@ export default function Conversations() {
                   }
                   channel={replyChannel as "sms" | "email" | "whatsapp"}
                   placeholder={`Type your ${replyChannel === "sms" ? "SMS" : replyChannel === "whatsapp" ? "WhatsApp" : "email"} message...`}
-                  rows={replyChannel === "email" ? 4 : 2}
+                  rows={replyChannel === "email" ? 3 : 2}
                 />
               </div>
             </>
