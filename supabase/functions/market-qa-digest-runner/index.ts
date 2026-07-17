@@ -147,14 +147,15 @@ Deno.serve(async (req) => {
   }
 
   if (action === 'list') {
-    // Owner-only via RLS; requires user JWT.
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
-    const userSb = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data, error } = await userSb.from('market_qa_digests')
+    const { verifyAuth } = await import('../_shared/auth.ts');
+    const auth = await verifyAuth(sb, req.headers, {});
+    if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
+    const query = sb.from('market_qa_digests')
       .select('*').order('sent_at', { ascending: false }).limit(100);
+    // Scope to owner unless service_role
+    const { data, error } = auth.userId === 'service_role'
+      ? await query
+      : await query.eq('user_id', auth.userId);
     if (error) return json({ error: error.message }, 500);
     return json({ digests: data ?? [] });
   }
