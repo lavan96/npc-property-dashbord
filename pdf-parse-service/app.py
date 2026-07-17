@@ -79,6 +79,14 @@ from lane_policy import (
     normalize_lane,
 )
 
+# G2 — Sidecar Operational Metrics V1 (pure; unit-tested in test_operational_metrics.py).
+from operational_metrics import (
+    OperationalMetricsAccumulator,
+    operational_metrics_capabilities,
+    SIDECAR_OPERATIONAL_METRICS_VERSION,
+    NOT_APPLICABLE as METRICS_NOT_APPLICABLE,
+)
+
 REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")
 
 
@@ -504,6 +512,37 @@ async def _resolve_pdf_bytes(url: Optional[str], pdf_base64: Optional[str]) -> b
     if not data.startswith(b"%PDF"):
         raise SidecarError(400, "invalid_pdf", "Payload is not a PDF.")
     return data
+
+
+async def _resolve_source_timed(metrics: OperationalMetricsAccumulator, url, pdf_base64) -> bytes:
+    """G2: resolve source bytes while recording the correct source phase +
+    bytes_in on the metrics accumulator. URL → source_download_ms (network);
+    base64 → source_resolve_ms (decode/validate, no network). On failure the
+    phase stays un-measured (partial metrics) — never a fabricated timing."""
+    phase = "source_resolve_ms" if pdf_base64 else "source_download_ms"
+    start = metrics.now()
+    data = await _resolve_pdf_bytes(url, pdf_base64)
+    metrics.record_since(phase, start)
+    metrics.set_bytes_in(len(data))
+    return data
+
+
+def _log_operational_metrics(metrics_dict: dict, *, callback_attempt_count=None, callback_attempt_ms=None, error_code=None) -> None:
+    """Structured, PII-safe operational-metrics log line — never tokens, URLs,
+    document text, or raw artifact contents."""
+    t = metrics_dict.get("timings", {}) or {}
+    c = metrics_dict.get("counts", {}) or {}
+    LOG.info(
+        "operational_metrics contract=%s scope=%s status=%s job_id=%s chunk_index=%s lane=%s effective_mode=%s "
+        "elapsed_ms=%s parse_ms=%s raster_ms=%s upload_ms=%s per_page_ms=%s pages=%s callback_attempts=%s completed_callback_attempt_ms=%s error_code=%s",
+        metrics_dict.get("contract_version"), metrics_dict.get("scope"), metrics_dict.get("status"),
+        metrics_dict.get("job_id"), metrics_dict.get("chunk_index"), metrics_dict.get("extractor_lane"),
+        metrics_dict.get("effective_mode"), t.get("sidecar_elapsed_before_callback_ms"),
+        t.get("parse_ms"), t.get("raster_ms"), t.get("artifact_upload_ms"), t.get("per_page_artifact_ms"),
+        c.get("page_count"),
+        callback_attempt_count if callback_attempt_count is not None else metrics_dict.get("callback_attempt_count"),
+        callback_attempt_ms, error_code,
+    )
 
 
 PII_PATTERNS = [
@@ -1797,18 +1836,23 @@ async def _upload_picture_assets(client: httpx.AsyncClient, job_id: str, docling
     return total
 
 
-async def _post_callback(client: httpx.AsyncClient, callback_url: str, callback_token: str, job_id: str, payload: dict) -> None:
+async def _post_callback(client: httpx.AsyncClient, callback_url: str, callback_token: str, job_id: str, payload: dict) -> tuple[int, Optional[int]]:
+    """POST the callback. Returns (attempt_count, completed_attempt_ms) so the
+    caller can log the ACTUAL callback-attempt duration AFTER delivery — the
+    payload itself never claims to contain the duration of its own delivery (G2)."""
     headers = {
         "Authorization": f"Bearer {callback_token}",
         "Content-Type": "application/json",
         "X-Request-Id": job_id,
     }
+    started = time.monotonic()
     try:
         resp = await client.post(callback_url, json=payload, headers=headers, timeout=30)
         if resp.status_code >= 300:
             LOG.error("callback POST failed %s: %s", resp.status_code, resp.text[:500])
     except Exception as exc:
         LOG.error("callback POST exception: %s", exc)
+    return 1, int((time.monotonic() - started) * 1000)
 
 
 async def _run_async_job(req: ParseRequest) -> None:
@@ -1820,8 +1864,18 @@ async def _run_async_job(req: ParseRequest) -> None:
     bytes_in = 0
     bytes_out = 0
     cloud_run_ms = 0
+    # G2 — operational metrics accumulator, initialized before source resolution
+    # so a failure at any phase still produces truthful partial metrics.
+    metrics = OperationalMetricsAccumulator(
+        "monolithic",
+        clock=time.monotonic,
+        engine_version=ENGINE_VERSION,
+        lane_enforcement_version=LANE_ENFORCEMENT_VERSION,
+        job_id=job_id,
+        source_input_kind=("base64" if req.pdf_base64 else "url"),
+    )
     try:
-        pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+        pdf_bytes = await _resolve_source_timed(metrics, req.url, req.pdf_base64)
         bytes_in = len(pdf_bytes)
 
         policy = _resolve_policy(
@@ -1831,8 +1885,14 @@ async def _run_async_job(req: ParseRequest) -> None:
             include_markdown=req.include_markdown,
         )
         lane_policy = policy.as_dict()
+        metrics.extractor_lane = policy.lane
+        metrics.requested_mode = policy.requested_mode
+        metrics.effective_mode = policy.effective_mode
+        metrics.memory_profile = policy.memory_profile
 
+        parse_start = metrics.now()
         parse_result = _do_parse(pdf_bytes, policy=policy, redact_pii=req.redact_pii)
+        metrics.record_since("parse_ms", parse_start)
         cloud_run_ms += int(parse_result.get("parsed_ms") or 0)
 
         page_count = int(parse_result.get("page_count") or 0)
@@ -1848,6 +1908,10 @@ async def _run_async_job(req: ParseRequest) -> None:
             effective_mode = "pixel_perfect"
 
         async with httpx.AsyncClient(timeout=120) as client:
+            # G2: measure total artifact-upload wall time; subtract the raster
+            # compute below so artifact_upload_ms reflects upload, not rasterize.
+            upload_start = metrics.now()
+            raster_wall_ms = 0.0
             doclingDoc = parse_result.get("docling_document") or {}
             if isinstance(doclingDoc, dict) and summary:
                 doclingDoc["summary"] = summary
@@ -1887,7 +1951,10 @@ async def _run_async_job(req: ParseRequest) -> None:
             if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
                 dpi = policy.resolve_raster_dpi(req.raster_dpi, RASTER_DPI)
                 raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
+                raster_start = metrics.now()
                 raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=raster_fmt)
+                raster_wall_ms = (metrics.now() - raster_start) * 1000
+                metrics.record("raster_ms", raster_wall_ms)
                 cloud_run_ms += int(raster_result.get("raster_ms") or 0)
 
                 normalized = {
@@ -1928,7 +1995,12 @@ async def _run_async_job(req: ParseRequest) -> None:
                     body = json.dumps(normalized).encode("utf-8")
                     rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
                     bytes_out += len(body)
+            else:
+                # No raster pass for this mode/page-count — truthfully not_applicable,
+                # never a fabricated 0 (G2).
+                metrics.mark("raster_ms", METRICS_NOT_APPLICABLE)
 
+            per_page_start = metrics.now()
             per_page_payload = _build_per_page_docling_artifacts(
                 doclingDoc,
                 job_id=job_id,
@@ -1941,13 +2013,23 @@ async def _run_async_job(req: ParseRequest) -> None:
                 per_page_payload,
                 source="monolithic-parse",
             )
+            metrics.record_since("per_page_artifact_ms", per_page_start)
             per_page_docling_manifest_path = per_page_artifacts.get("per_page_docling_manifest_path")
             per_page_docling_page_count = int(per_page_artifacts.get("per_page_docling_page_count") or 0)
             per_page_docling_validation = per_page_artifacts.get("per_page_docling_validation") or {"ok": False, "problems": ["missing_validation"]}
             bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
+            # G2: total upload-block wall time minus the raster compute = artifact
+            # upload time; then finalize counts/bytes and build one canonical metrics
+            # object referenced identically at the top level and in result_payload.
+            upload_wall_ms = (metrics.now() - upload_start) * 1000
+            metrics.record("artifact_upload_ms", max(0.0, upload_wall_ms - raster_wall_ms))
+            metrics.set_counts_from_summary(summary, page_count)
+            metrics.set_bytes_out(bytes_out)
+            metrics_dict = metrics.build("succeeded")
+
             duration_ms = int((time.monotonic() - started) * 1000)
-            await _post_callback(client, callback_url, callback_token, job_id, {
+            attempts, attempt_ms = await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "succeeded",
                 "engine_version": parse_result.get("engine_version"),
@@ -1963,6 +2045,7 @@ async def _run_async_job(req: ParseRequest) -> None:
                 "extractor_lane": lane_policy["lane"],
                 "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
                 "lane_policy": lane_policy,
+                "metrics": metrics_dict,
                 "result_payload": {
                     "docling_path": docling_path,
                     "rasters_path": rasters_path,
@@ -1987,28 +2070,42 @@ async def _run_async_job(req: ParseRequest) -> None:
                     "extractor_lane": lane_policy["lane"],
                     "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
                     "lane_policy": lane_policy,
+                    # Same canonical object as the top-level `metrics` field (G2).
+                    "metrics": metrics_dict,
                 },
             })
+            # Log the ACTUAL completed callback-attempt duration after delivery —
+            # a value the payload itself can never truthfully contain.
+            metrics.set_callback_attempt_count(attempts)
+            _log_operational_metrics(metrics_dict, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms)
     except SidecarError as exc:
         LOG.warning("async job failed (sidecar error): %s", exc.message)
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
         async with httpx.AsyncClient(timeout=30) as client:
-            await _post_callback(client, callback_url, callback_token, job_id, {
+            attempts, attempt_ms = await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "failed",
                 "error_code": exc.error_code,
                 "message": exc.message,
                 "retryable": exc.retryable,
+                "metrics": failed_metrics,
             })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code=exc.error_code)
     except Exception as exc:
         LOG.exception("async job unhandled failure")
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
         async with httpx.AsyncClient(timeout=30) as client:
-            await _post_callback(client, callback_url, callback_token, job_id, {
+            attempts, attempt_ms = await _post_callback(client, callback_url, callback_token, job_id, {
                 "job_id": job_id,
                 "status": "failed",
                 "error_code": "sidecar_async_unhandled",
                 "message": str(exc)[:500],
                 "retryable": True,
+                "metrics": failed_metrics,
             })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code="sidecar_async_unhandled")
 
 
 def _pkg_version(name: str) -> Optional[str]:
@@ -2085,6 +2182,9 @@ def _docling_capabilities() -> dict[str, Any]:
         "converter_variants": converter_variants,
         "lanes_effective": describe_lane_defaults(GLOBAL_CAPABILITIES),
         "lanes_intent": LANE_PROFILES,
+        # G2: self-describing operational-metrics contract (fields, states, and
+        # the callback-timing limitation) so consumers/C11 can validate offline.
+        "operational_metrics": operational_metrics_capabilities(),
     }
 
 
@@ -2139,18 +2239,41 @@ async def parse(req: ParseRequest, background_tasks: BackgroundTasks):
     # Legacy synchronous mode (backwards compatible). G1: this path now resolves
     # the SAME EffectiveLanePolicy the async path uses — it no longer silently
     # drops force_full_page_ocr / table_mode / do_ocr.
-    pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+    # G2: synchronous scope — no raster, no artifact upload, no callback; the
+    # metrics ride back inline on the response.
+    metrics = OperationalMetricsAccumulator(
+        "synchronous",
+        clock=time.monotonic,
+        engine_version=ENGINE_VERSION,
+        lane_enforcement_version=LANE_ENFORCEMENT_VERSION,
+        request_id=REQUEST_ID.get(),
+        source_input_kind=("base64" if req.pdf_base64 else "url"),
+    )
+    pdf_bytes = await _resolve_source_timed(metrics, req.url, req.pdf_base64)
     policy = _resolve_policy(
         req.extractor_lane, req.mode,
         enable_picture_description=req.enable_picture_description,
         include_doctags=req.include_doctags,
         include_markdown=req.include_markdown,
     )
+    metrics.extractor_lane = policy.lane
+    metrics.requested_mode = policy.requested_mode
+    metrics.effective_mode = policy.effective_mode
+    metrics.memory_profile = policy.memory_profile
 
+    parse_start = metrics.now()
     result = _do_parse(pdf_bytes, policy=policy, redact_pii=req.redact_pii)
+    metrics.record_since("parse_ms", parse_start)
+    # Phases that structurally do not occur on the synchronous path.
+    for phase in ("raster_ms", "artifact_upload_ms", "per_page_artifact_ms"):
+        metrics.mark(phase, METRICS_NOT_APPLICABLE)
+    metrics.set_counts_from_summary(result.get("summary") or {}, int(result.get("page_count") or 0))
+    metrics_dict = metrics.build("succeeded")
     result["extractor_lane"] = policy.lane
     result["lane_enforcement_version"] = LANE_ENFORCEMENT_VERSION
     result["lane_policy"] = policy.as_dict()
+    result["metrics"] = metrics_dict
+    _log_operational_metrics(metrics_dict)
     return result
 
 
@@ -2260,7 +2383,12 @@ async def _post_chunk_callback(
     callback_token: str,
     job_id: str,
     payload: dict,
-) -> None:
+) -> tuple[int, Optional[int]]:
+    """POST the chunk callback with bounded retry. Returns
+    (attempt_count, completed_attempt_ms) so the caller can log the ACTUAL
+    delivery duration after the fact — a value the payload can never contain (G2).
+    completed_attempt_ms is the wall time of the settling attempt (success or
+    permanent 4xx); it is None when every attempt was exhausted without settling."""
     headers = {
         "Authorization": f"Bearer {callback_token}",
         "Content-Type": "application/json",
@@ -2268,18 +2396,23 @@ async def _post_chunk_callback(
     }
     # Retry callback up to 3× on transient failures so a flaky edge bounce
     # doesn't leave the dispatcher waiting on a chunk that already finished.
+    attempts = 0
     for attempt in range(1, 4):
+        attempts = attempt
+        attempt_start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(callback_url, json=payload, headers=headers)
+                attempt_ms = int((time.monotonic() - attempt_start) * 1000)
                 if resp.status_code < 300:
-                    return
+                    return attempts, attempt_ms
                 LOG.error("chunk callback failed %s (attempt %d): %s", resp.status_code, attempt, resp.text[:300])
                 if resp.status_code < 500 and resp.status_code != 429:
-                    return  # 4xx (not 429) is permanent
+                    return attempts, attempt_ms  # 4xx (not 429) is permanent
         except Exception as exc:
             LOG.error("chunk callback exception (attempt %d): %s", attempt, exc)
         await __import__("asyncio").sleep(2 ** attempt)
+    return attempts, None
 
 
 async def _run_chunk_job(req: ChunkRequest) -> None:
@@ -2287,8 +2420,22 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
     artifacts: dict[str, Optional[str]] = {}
     bytes_in = 0
     bytes_out = 0
+    # G2 — chunk-scoped operational metrics; page range + chunk identity carried
+    # so C11 can aggregate per-chunk timings into the parent job downstream.
+    metrics = OperationalMetricsAccumulator(
+        "chunk",
+        clock=time.monotonic,
+        engine_version=ENGINE_VERSION,
+        lane_enforcement_version=LANE_ENFORCEMENT_VERSION,
+        job_id=req.job_id,
+        chunk_id=req.chunk_id,
+        chunk_index=req.chunk_index,
+        page_start=req.page_start,
+        page_end=req.page_end,
+        source_input_kind=("base64" if req.pdf_base64 else "url"),
+    )
     try:
-        pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
+        pdf_bytes = await _resolve_source_timed(metrics, req.url, req.pdf_base64)
         bytes_in = len(pdf_bytes)
         chunk_pdf, actual_pages = _extract_page_range(pdf_bytes, req.page_start, req.page_end)
 
@@ -2301,11 +2448,19 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             include_markdown=req.include_markdown,
         )
         lane_policy = policy.as_dict()
+        metrics.extractor_lane = policy.lane
+        metrics.requested_mode = policy.requested_mode
+        metrics.effective_mode = policy.effective_mode
+        metrics.memory_profile = policy.memory_profile
 
+        parse_start = metrics.now()
         parse_result = _do_parse(chunk_pdf, policy=policy, redact_pii=req.redact_pii)
+        metrics.record_since("parse_ms", parse_start)
 
         prefix = f"{req.job_id}/chunks/{req.chunk_index:04d}"
         async with httpx.AsyncClient(timeout=120) as client:
+            upload_start = metrics.now()
+            raster_wall_ms = 0.0
             doclingDoc = parse_result.get("docling_document") or {}
             raster_manifest_payload = None
             picture_bytes = await _upload_picture_assets(client, f"{req.job_id}/chunks/{req.chunk_index:04d}", doclingDoc)
@@ -2339,7 +2494,10 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                 dpi = policy.resolve_raster_dpi(req.raster_dpi, RASTER_DPI)
                 try:
                     raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
+                    raster_start = metrics.now()
                     raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=raster_fmt)
+                    raster_wall_ms = (metrics.now() - raster_start) * 1000
+                    metrics.record("raster_ms", raster_wall_ms)
                     normalized = {
                         "format": raster_result.get("format"),
                         "dpi": raster_result.get("dpi"),
@@ -2392,7 +2550,11 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                         bytes_out += len(raster_body)
                 except SidecarError as exc:
                     LOG.warning("chunk raster failed (continuing): %s", exc.message)
+                    # Attempted but did not complete — left not_completed, never fake 0.
+            else:
+                metrics.mark("raster_ms", METRICS_NOT_APPLICABLE)
 
+            per_page_start = metrics.now()
             per_page_payload = _build_per_page_docling_artifacts(
                 doclingDoc,
                 job_id=req.job_id,
@@ -2405,14 +2567,22 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                 per_page_payload,
                 source="chunk-parse",
             )
+            metrics.record_since("per_page_artifact_ms", per_page_start)
             artifacts["per_page_docling_artifact_version"] = per_page_artifacts.get("per_page_docling_artifact_version")
             artifacts["per_page_docling_manifest_path"] = per_page_artifacts.get("per_page_docling_manifest_path")
             artifacts["per_page_docling_page_count"] = per_page_artifacts.get("per_page_docling_page_count")
             artifacts["per_page_docling_validation"] = per_page_artifacts.get("per_page_docling_validation")
             bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
+            upload_wall_ms = (metrics.now() - upload_start) * 1000
+            metrics.record("artifact_upload_ms", max(0.0, upload_wall_ms - raster_wall_ms))
+
+        metrics.set_counts_from_summary(parse_result.get("summary") or {}, actual_pages)
+        metrics.set_bytes_out(bytes_out)
+        chunk_metrics = metrics.build("succeeded")
+
         duration_ms = int((time.monotonic() - started) * 1000)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2430,10 +2600,14 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "bytes_in": bytes_in,
             "bytes_out": bytes_out,
             "duration_ms": duration_ms,
+            "metrics": chunk_metrics,
         })
+        _log_operational_metrics(chunk_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms)
     except SidecarError as exc:
         LOG.warning("chunk job %s/%d failed: %s", req.job_id, req.chunk_index, exc.message)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2444,10 +2618,14 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "page_start": req.page_start,
             "page_end": req.page_end,
             "duration_ms": int((time.monotonic() - started) * 1000),
+            "metrics": failed_metrics,
         })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code=exc.error_code)
     except MemoryError as exc:
         LOG.exception("chunk job %s/%d OOM", req.job_id, req.chunk_index)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2457,10 +2635,14 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "retryable": True,
             "page_start": req.page_start,
             "page_end": req.page_end,
+            "metrics": failed_metrics,
         })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code="chunk_oom")
     except Exception as exc:
         LOG.exception("chunk job %s/%d unhandled", req.job_id, req.chunk_index)
-        await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
+        metrics.set_bytes_out(bytes_out)
+        failed_metrics = metrics.build("failed")
+        attempts, attempt_ms = await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
             "job_id": req.job_id,
             "chunk_id": req.chunk_id,
             "chunk_index": req.chunk_index,
@@ -2470,7 +2652,9 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "retryable": True,
             "page_start": req.page_start,
             "page_end": req.page_end,
+            "metrics": failed_metrics,
         })
+        _log_operational_metrics(failed_metrics, callback_attempt_count=attempts, callback_attempt_ms=attempt_ms, error_code="chunk_unhandled")
 
 
 def _safe_pdf_text_for_page(page) -> str:

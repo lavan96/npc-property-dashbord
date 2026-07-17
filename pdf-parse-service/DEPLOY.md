@@ -11,6 +11,14 @@ exports, outline + cross-references + per-page language, streaming progress).
 > unchanged. Deploy the sidecar **together with** the `pdf-parse-dispatch` edge
 > function (whose `LANE_POLICY_VERSION` mirror is also bumped to v2) so the C1
 > cache fingerprint never reuses a v1-semantics artifact for a v2 request.
+>
+> **Operational Metrics V1 (`sidecar-operational-metrics-v1`)** — every parse
+> path now emits a truthful, versioned per-invocation metrics object (timings +
+> counts + bytes) documented in [`METRICS.md`](./METRICS.md). It is **additive**
+> (a new `metrics` field on existing callbacks + `/parse` responses, plus an
+> `operational_metrics` block on `/capabilities`), introduces **no new
+> environment variables**, and requires **no Cloud Run sizing change**. Existing
+> callback consumers that ignore the field are unaffected; C11 consumes it later.
 
 The sidecar is called by the `pdf-parse-dispatch` Supabase edge function via
 two secrets stored on the Supabase project:
