@@ -24,6 +24,7 @@ import {
 } from "@/lib/aml/amlTenantApi";
 import { refreshAmlTerminology } from "@/lib/aml/useAmlTerminology";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
 
 function fmtMoney(cents: number, currency = "AUD") {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency }).format((cents ?? 0) / 100);
