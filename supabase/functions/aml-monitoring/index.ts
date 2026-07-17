@@ -160,6 +160,23 @@ Deno.serve(async (req) => {
       if (data?.case_id) await appendCaseEvent(admin, data.case_id, "system", `Alert resolved: ${data.title} → ${data.status}`, { alert_id: data.id, resolution_note: body.resolution_note ?? null }, userId, userLabel);
       return jr({ alert: data });
     }
+    if (op === "assign_alert") {
+      requireWrite();
+      const assignee = body.assigned_to ? String(body.assigned_to) : userId;
+      const nextStatus = String(body.status ?? "investigating");
+      const { data, error } = await aml.from("alerts").update({
+        status: nextStatus,
+        assigned_to: assignee,
+      }).eq("id", String(body.id)).select("*").single();
+      if (error) return jr({ error: error.message }, 400);
+      if (data?.case_id) await appendCaseEvent(admin, data.case_id, "system", `Alert ${nextStatus}: ${data.title}`, { alert_id: data.id, assigned_to: assignee }, userId, userLabel);
+      return jr({ alert: data });
+    }
+    if (op === "run_scans_admin") {
+      if (!isMlro) return jr({ error: "MLRO role required" }, 403);
+      const result = await runScheduledScans(admin);
+      return jr(result);
+    }
 
     // ── EDD ───────────────────────────────────────────
     if (op === "list_edd") {
