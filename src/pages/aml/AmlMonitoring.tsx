@@ -40,6 +40,7 @@ function fmt(d: string | null) { return d ? new Date(d).toLocaleString() : "—"
 
 export default function AmlMonitoring() {
   const { canWrite, isMlro } = useAmlAccess();
+  const { regulatoryHub } = useAmlV3Flags();
   const [summary, setSummary] = useState<AmlMonitoringSummary | null>(null);
   const [tab, setTab] = useState("alerts");
   const [alerts, setAlerts] = useState<AmlAlert[]>([]);
