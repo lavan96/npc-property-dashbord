@@ -267,15 +267,26 @@ function BrandingPanel({ summary, canWrite, onSaved }: { summary: AmlTenantSumma
               </div>
             </AlertDescription>
           </Alert>
-          <Label className="text-xs uppercase text-muted-foreground">JSON map (label → replacement text)</Label>
-          <Textarea
-            className="font-mono text-xs min-h-[160px]"
-            disabled={!canWrite}
-            value={terminologyText}
-            onChange={(e) => setTerminologyText(e.target.value)}
-            placeholder='{\n  "Customer Case": "Client Matter"\n}'
-          />
-          <TerminologyPreview jsonText={terminologyText} lockedKeys={locked} />
+          {terminologyEditor ? (
+            <StructuredTerminologyEditor
+              value={terminologyText}
+              onChange={setTerminologyText}
+              lockedKeys={locked}
+              disabled={!canWrite}
+            />
+          ) : (
+            <>
+              <Label className="text-xs uppercase text-muted-foreground">JSON map (label → replacement text)</Label>
+              <Textarea
+                className="font-mono text-xs min-h-[160px]"
+                disabled={!canWrite}
+                value={terminologyText}
+                onChange={(e) => setTerminologyText(e.target.value)}
+                placeholder={'{\n  "Customer Case": "Client Matter"\n}'}
+              />
+              <TerminologyPreview jsonText={terminologyText} lockedKeys={locked} />
+            </>
+          )}
         </CardContent>
       </Card>
 
