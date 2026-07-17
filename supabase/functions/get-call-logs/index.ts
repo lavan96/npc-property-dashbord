@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
     if (mode === 'live') {
       console.log('[get-call-logs] Fetching live calls');
 
-      const STALE_CUTOFF_MS = 30 * 60 * 1000; // 30 minutes — hard stop
+      const HARD_STOP_MINUTES = Math.max(1, Number(Deno.env.get('LIVE_CALL_HARD_STOP_MINUTES')) || 30);
+      const STALE_CUTOFF_MS = HARD_STOP_MINUTES * 60 * 1000; // hard stop, env-configurable
       const staleBefore = new Date(Date.now() - STALE_CUTOFF_MS).toISOString();
 
 
