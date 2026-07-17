@@ -114,8 +114,9 @@ async function fetchNotesSecure(clientId: string, page: number) {
 export function ClientNotes({ clientId }: ClientNotesProps) {
   const [newNote, setNewNote] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('general');
-  // Per-note visibility picker — no default; user must choose before saving.
-  const [visibility, setVisibility] = useState<Visibility | null>(null);
+  // Per-note visibility picker — defaults to Internal (Command Center only) so
+  // save works immediately; the user can upgrade before saving.
+  const [visibility, setVisibility] = useState<Visibility | null>('internal_npc');
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -194,7 +195,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       }
       const label = visibilityOptions.find(o => o.value === visibility)?.label || 'Note';
       setNewNote('');
-      setVisibility(null);
+      setVisibility('internal_npc');
       setIsAdding(false);
       toast.success(`${label} note saved`);
     },
