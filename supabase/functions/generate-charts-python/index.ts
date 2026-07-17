@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface ChartData {
-  type: 'bar' | 'pie' | 'line';
+  type: 'bar' | 'pie' | 'line' | 'scatter' | 'area' | 'radar' | 'doughnut' | 'donut';
   title: string;
   data: Array<{ label: string; value: number; color?: string }>;
   width?: number;
@@ -110,15 +110,23 @@ function generateOptimizedSVGChart(chart: ChartData): string {
       chartContent = generateEnhancedBarChart(data, chartWidth, chartHeight, padding);
       break;
     case 'pie':
+    case 'doughnut':
+    case 'donut':
       chartContent = generateEnhancedPieChart(data, chartWidth, chartHeight, padding);
       break;
     case 'line':
+    case 'area':
       chartContent = generateEnhancedLineChart(data, chartWidth, chartHeight, padding);
       break;
+    case 'scatter':
+      chartContent = generateScatterChart(data, chartWidth, chartHeight, padding);
+      break;
+    case 'radar':
+      chartContent = generateRadarChart(data, chartWidth, chartHeight, padding);
+      break;
     default:
-      chartContent = `<text x="${width/2}" y="${height/2}" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#666">
-        Unsupported chart type: ${type}
-      </text>`;
+      // Fallback to a bar chart so we always render something meaningful.
+      chartContent = generateEnhancedBarChart(data, chartWidth, chartHeight, padding);
   }
   
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background: white;">
@@ -327,6 +335,72 @@ function generateEnhancedLineChart(data: Array<{ label: string; value: number; c
   });
   
   return gridLines + `<path d="${path}" fill="none" stroke="#3b82f6" stroke-width="3"/>` + points + labels;
+}
+
+function generateScatterChart(data: Array<{ label: string; value: number; color?: string }>, width: number, height: number, padding: number): string {
+  if (data.length === 0) return '';
+  const maxValue = Math.max(...data.map(d => d.value), 1);
+  const minValue = Math.min(...data.map(d => d.value), 0);
+  const valueRange = (maxValue - minValue) || 1;
+
+  let gridLines = '';
+  for (let i = 0; i <= 5; i++) {
+    const y = padding + 60 + (height * i / 5);
+    const value = Math.round(maxValue - (valueRange * i / 5));
+    gridLines += `<line x1="${padding}" y1="${y}" x2="${padding + width}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+    gridLines += `<text x="${padding - 15}" y="${y + 5}" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">${value}</text>`;
+  }
+  gridLines += `<line x1="${padding}" y1="${padding + 60}" x2="${padding}" y2="${padding + 60 + height}" stroke="#374151" stroke-width="2"/>`;
+  gridLines += `<line x1="${padding}" y1="${padding + 60 + height}" x2="${padding + width}" y2="${padding + 60 + height}" stroke="#374151" stroke-width="2"/>`;
+
+  const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+  let dots = '';
+  let labels = '';
+  const step = data.length > 1 ? width / (data.length - 1) : 0;
+  data.forEach((item, i) => {
+    const cx = padding + (data.length > 1 ? i * step : width / 2);
+    const cy = padding + 60 + height - ((item.value - minValue) / valueRange) * height;
+    const color = item.color || palette[i % palette.length];
+    const r = 8 + Math.min(14, item.value / (maxValue || 1) * 12);
+    dots += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" fill-opacity="0.65" stroke="${color}" stroke-width="2"/>`;
+    dots += `<text x="${cx}" y="${cy - r - 6}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#374151">${item.value}</text>`;
+    const displayLabel = item.label.length > 12 ? item.label.substring(0, 12) + '…' : item.label;
+    labels += `<text x="${cx}" y="${padding + 60 + height + 20}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#6b7280" transform="rotate(-25, ${cx}, ${padding + 60 + height + 20})">${displayLabel}</text>`;
+  });
+  return gridLines + dots + labels;
+}
+
+function generateRadarChart(data: Array<{ label: string; value: number; color?: string }>, width: number, height: number, padding: number): string {
+  if (data.length < 3) return generateEnhancedBarChart(data, width, height, padding);
+  const maxValue = Math.max(...data.map(d => d.value), 1);
+  const cx = padding + width / 2;
+  const cy = padding + 60 + height / 2;
+  const radius = Math.min(width, height) / 2 - 40;
+  const n = data.length;
+
+  let rings = '';
+  for (let r = 1; r <= 4; r++) {
+    const rr = (radius * r) / 4;
+    const pts: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 2 * Math.PI - Math.PI / 2;
+      pts.push(`${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`);
+    }
+    rings += `<polygon points="${pts.join(' ')}" fill="none" stroke="#e5e7eb" stroke-width="1"/>`;
+  }
+
+  const shapePts: string[] = [];
+  let labels = '';
+  data.forEach((item, i) => {
+    const a = (i / n) * 2 * Math.PI - Math.PI / 2;
+    const r = (item.value / maxValue) * radius;
+    shapePts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`);
+    const lx = cx + (radius + 18) * Math.cos(a);
+    const ly = cy + (radius + 18) * Math.sin(a);
+    labels += `<text x="${lx}" y="${ly}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#374151">${item.label}</text>`;
+  });
+  const shape = `<polygon points="${shapePts.join(' ')}" fill="#3b82f6" fill-opacity="0.35" stroke="#3b82f6" stroke-width="2"/>`;
+  return rings + shape + labels;
 }
 
 function createFallbackChart(chart: ChartData): string {
