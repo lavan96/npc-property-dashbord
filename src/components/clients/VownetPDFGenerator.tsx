@@ -825,7 +825,7 @@ export function VownetPDFGenerator({
         to: targetContact.email,
       subject: `Client Detail Form - ${clientName}`,
       body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the client detail form for ${clientName}.\n\nKind regards`,
-        senderMailbox: userData.personal_mailbox,
+        senderMailbox,
         attachments: [{
           name: fileName,
           content: base64Data,
