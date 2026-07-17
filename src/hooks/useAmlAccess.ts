@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useAuthenticatedSupabase } from "@/hooks/useAuthenticatedSupabase";
 
 export type AmlRole = "analyst" | "reviewer" | "mlro" | "auditor";
 
@@ -14,22 +15,32 @@ export interface AmlAccess {
 }
 
 export function useAmlAccess(): AmlAccess {
+  const { user, loading: authLoading } = useAuth();
+  const { supabase: authenticatedSupabase, isAuthenticated } = useAuthenticatedSupabase();
   const [loading, setLoading] = useState(true);
   const [flagEnabled, setFlagEnabled] = useState(false);
   const [roles, setRoles] = useState<Set<AmlRole>>(new Set());
 
   const load = useCallback(async () => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const uid = sessionData?.session?.user?.id;
+      const uid = user?.id;
+
+      if (!uid || !isAuthenticated) {
+        setFlagEnabled(false);
+        setRoles(new Set());
+        return;
+      }
 
       const [{ data: flag }, roleResult] = await Promise.all([
-        supabase.from("feature_flags").select("value").eq("key", "aml_ctf").maybeSingle(),
-        uid
-          ? supabase.schema("aml" as any).from("role_assignments" as any)
-              .select("role").eq("user_id", uid).is("revoked_at", null)
-          : Promise.resolve({ data: [] as any[] }),
+        authenticatedSupabase.from("feature_flags").select("value").eq("key", "aml_ctf").maybeSingle(),
+        authenticatedSupabase.schema("aml" as any).from("role_assignments" as any)
+          .select("role").eq("user_id", uid).is("revoked_at", null),
       ]);
 
       const val = (flag?.value ?? {}) as { enabled?: boolean };
@@ -42,7 +53,7 @@ export function useAmlAccess(): AmlAccess {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authLoading, authenticatedSupabase, isAuthenticated, user?.id]);
 
   useEffect(() => { load(); }, [load]);
 
