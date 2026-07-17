@@ -1,9 +1,10 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X, FileImage, FileCode2, ChevronDown } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X, FileImage, FileCode2, ChevronDown, ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
