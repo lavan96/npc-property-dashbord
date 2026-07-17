@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Rocket, ClipboardCheck, ShieldAlert, RefreshCw, ArrowRight, ArrowLeft, Plus, CheckCircle2, XCircle } from "lucide-react";
+import { Rocket, ClipboardCheck, ShieldAlert, RefreshCw, ArrowRight, ArrowLeft, Plus, CheckCircle2, XCircle, Award, Ban } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const STAGES = ["internal_dev_only", "admin_limited", "controlled_team_rollout", "broad_production"] as const;
 type Stage = typeof STAGES[number];
