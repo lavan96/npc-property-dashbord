@@ -1017,6 +1017,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         visualQaSummary={visualQaSummary}
         visualQualitySignedUrls={persistedVisualQuality?.signedUrls ?? null}
         visualQualityArtifactPaths={persistedVisualQuality?.artifactPaths ?? null}
+        visualQualityReport={persistedVisualQuality?.report ?? null}
         onRunRepair={runRepair}
         repairAvailable={repairAvailable}
         repairBusy={repairBusy}
