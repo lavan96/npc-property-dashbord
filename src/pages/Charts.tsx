@@ -79,7 +79,7 @@ export default function Charts() {
         const { data: reportsResult, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
           table: 'generated_reports',
           reportIds,
-          listOptions: { select: 'id, title, created_at, listing_count' }
+          listOptions: { select: 'id, title, created_at' }
         });
         if (!reportsError && reportsResult?.reports) {
           reportsResult.reports.forEach((r: any) => reportsMap.set(r.id, r));
