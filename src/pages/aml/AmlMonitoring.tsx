@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAmlAccess } from "@/hooks/useAmlAccess";
+import { useAmlV3Flags } from "@/lib/aml/useAmlV3Flags";
+import { RegulatoryAssuranceHeader } from "@/components/aml/RegulatoryAssuranceHeader";
 import {
   amlMonitoringApi, type AmlAlert, type AmlAlertSeverity, type AmlAlertStatus,
   type AmlEddCase, type AmlMonitoringRule, type AmlMonitoringSummary, type AmlReview,
