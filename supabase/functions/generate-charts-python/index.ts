@@ -110,15 +110,23 @@ function generateOptimizedSVGChart(chart: ChartData): string {
       chartContent = generateEnhancedBarChart(data, chartWidth, chartHeight, padding);
       break;
     case 'pie':
+    case 'doughnut':
+    case 'donut':
       chartContent = generateEnhancedPieChart(data, chartWidth, chartHeight, padding);
       break;
     case 'line':
+    case 'area':
       chartContent = generateEnhancedLineChart(data, chartWidth, chartHeight, padding);
       break;
+    case 'scatter':
+      chartContent = generateScatterChart(data, chartWidth, chartHeight, padding);
+      break;
+    case 'radar':
+      chartContent = generateRadarChart(data, chartWidth, chartHeight, padding);
+      break;
     default:
-      chartContent = `<text x="${width/2}" y="${height/2}" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#666">
-        Unsupported chart type: ${type}
-      </text>`;
+      // Fallback to a bar chart so we always render something meaningful.
+      chartContent = generateEnhancedBarChart(data, chartWidth, chartHeight, padding);
   }
   
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background: white;">
