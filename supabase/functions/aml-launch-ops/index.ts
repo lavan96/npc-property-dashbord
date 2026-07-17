@@ -54,22 +54,34 @@ Deno.serve(async (req) => {
 
     switch (op) {
       case "summary": {
-        const [{ data: t }, { data: scen }, { data: risks }, { data: history }] = await Promise.all([
+        const [{ data: t }, { data: scen }, { data: risks }, { data: history }, { data: gate }] = await Promise.all([
           aml.from("tenant_settings").select("rollout_stage,rollout_stage_since,rollout_notes").eq("tenant_id", TENANT).maybeSingle(),
-          aml.from("acceptance_scenarios").select("last_status").eq("tenant_id", TENANT),
-          aml.from("risk_register").select("status,likelihood,impact").eq("tenant_id", TENANT),
+          aml.from("acceptance_scenarios").select("code,last_status").eq("tenant_id", TENANT),
+          aml.from("risk_register").select("code,status,impact").eq("tenant_id", TENANT),
           aml.from("rollout_stage_history").select("id,to_stage,from_stage,changed_by_label,reason,created_at")
             .eq("tenant_id", TENANT).order("created_at", { ascending: false }).limit(5),
+          aml.from("release_gates").select("status,ran_at,id").order("ran_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
         const scenariosByStatus: Record<string, number> = {};
         (scen ?? []).forEach((r: any) => scenariosByStatus[r.last_status] = (scenariosByStatus[r.last_status] ?? 0) + 1);
         const risksByStatus: Record<string, number> = {};
         (risks ?? []).forEach((r: any) => risksByStatus[r.status] = (risksByStatus[r.status] ?? 0) + 1);
+        const failingScenarios = (scen ?? []).filter((r: any) => r.last_status === "failed" || r.last_status === "blocked").map((r: any) => r.code);
+        const openCriticalRisks = (risks ?? []).filter((r: any) => r.status === "open" && r.impact === "critical").map((r: any) => r.code);
+        const readiness = {
+          gate_pass: gate?.status === "pass",
+          gate_status: gate?.status ?? "never_run",
+          gate_ran_at: gate?.ran_at ?? null,
+          failing_scenarios: failingScenarios,
+          open_critical_risks: openCriticalRisks,
+          broad_production_ready: gate?.status === "pass" && failingScenarios.length === 0 && openCriticalRisks.length === 0,
+        };
         return jr({
           rollout: t ?? { rollout_stage: "internal_dev_only" },
           scenarios: { total: (scen ?? []).length, by_status: scenariosByStatus },
           risks: { total: (risks ?? []).length, by_status: risksByStatus },
           recent_history: history ?? [],
+          readiness,
           my_role_is_mlro: isMlro,
         });
       }
