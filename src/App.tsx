@@ -394,6 +394,7 @@ const App = () => (
                   <Route path="launch-ops" element={<AmlGuard capability="aml.view"><AmlLaunchOps /></AmlGuard>} />
                   <Route path="configuration" element={<AmlGuard capability="aml.configure"><AmlConfiguration /></AmlGuard>} />
                 </Route>
+                <Route path="admin/aml-v3-cutover" element={<AmlV3Cutover />} />
                 <Route path="agent/memories" element={<AgentMemoryManager />} />
                 <Route path="agent-insights" element={<AgentInsights />} />
                 <Route path="agent/plans" element={<AgentPlans />} />
