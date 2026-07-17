@@ -1349,7 +1349,7 @@ export default function Conversations() {
                             : "",
                           conv.unread_count > 0 &&
                             !isActive &&
-                            "border-brand-200/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.085),rgba(255,255,255,0.026)_60%,rgba(255,255,255,0.018))]",
+                            "border-brand-200/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(255,255,255,0.03)_58%,rgba(245,158,11,0.06))] shadow-[inset_3px_0_0_rgba(251,191,36,0.9),0_0_0_1px_rgba(251,191,36,0.10),0_16px_34px_rgba(245,158,11,0.10)] before:opacity-100",
                         )}
                         onClick={() => handleSelectConversation(conv)}
                         onKeyDown={(e) => {
