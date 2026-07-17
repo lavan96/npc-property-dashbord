@@ -132,9 +132,12 @@ Deno.serve(async (req) => {
         if (insertErr) throw insertErr;
 
         try {
-          const result = await provider.runIdv({
+          const result = await runWithMetrics(admin, {
+            tenantId, capability: "idv", providerKey: provider.name,
+            costCents: resolved?.costCents ?? 0, configId: resolved?.configId ?? null,
+          }, () => provider.runIdv({
             caseId, subjectLabel: caseRow.subject_display_name, method, metadata: body.metadata,
-          });
+          }));
 
           const { data: updated } = await admin.schema("aml").from("identity_checks").update({
             status: result.status,
