@@ -419,6 +419,12 @@ export default function AmlAustracReporting() {
         <DialogContent>
           <DialogHeader><DialogTitle>Record AUSTRAC submission</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {submitReport?.kind === "smr" && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                SMR — tipping-off protections apply. Never disclose to the customer, related parties, or non-AML staff.
+                AUSTRAC lodgement reference is mandatory before this can be marked submitted.
+              </div>
+            )}
             <div>
               <Label>Channel</Label>
               <Select value={submitChannel} onValueChange={(v) => setSubmitChannel(v as AmlSubmissionChannel)}>
@@ -426,15 +432,36 @@ export default function AmlAustracReporting() {
                 <SelectContent>{["austrac_online","manual_upload","api","email","other"].map(c => <SelectItem key={c} value={c}>{c.replace(/_/g," ")}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>External reference</Label><Input value={submitRef} onChange={(e) => setSubmitRef(e.target.value)} placeholder="AUSTRAC lodgement id" /></div>
+            <div>
+              <Label>AUSTRAC external reference {submitReport?.kind === "smr" ? <span className="text-destructive">*</span> : null}</Label>
+              <Input value={submitRef} onChange={(e) => setSubmitRef(e.target.value)} placeholder="AUSTRAC lodgement id" />
+            </div>
+            <div>
+              <Label>Export bundle path (optional)</Label>
+              <Input value={submitBundlePath} onChange={(e) => setSubmitBundlePath(e.target.value)} placeholder="storage://aml-reports/austrac-…json" />
+              <p className="text-[11px] text-muted-foreground mt-1">Provide the archived bundle URL/path if the lodgement reference is not yet available. One evidence source is mandatory.</p>
+            </div>
             <div><Label>Notes</Label><Textarea rows={3} value={submitNotes} onChange={(e) => setSubmitNotes(e.target.value)} /></div>
+            <label className="flex items-start gap-2 rounded-md border p-3 text-xs">
+              <input type="checkbox" className="mt-0.5" checked={submitAttest} onChange={(e) => setSubmitAttest(e.target.checked)} />
+              <span>
+                <strong>MLRO attestation:</strong> I confirm submission evidence has been captured and no tipping-off breach has occurred.
+                This attestation is written to the immutable audit trail.
+              </span>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpenSubmit(false)}>Cancel</Button>
-            <Button onClick={submitNow}><Send className="h-4 w-4 mr-2" /> Record submission</Button>
+            <Button
+              onClick={submitNow}
+              disabled={!submitAttest || (!submitRef.trim() && !submitBundlePath.trim()) || (submitReport?.kind === "smr" && !submitRef.trim())}
+            >
+              <Send className="h-4 w-4 mr-2" /> Record submission
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Receipt dialog */}
       <Dialog open={!!openReceipt} onOpenChange={(o) => !o && setOpenReceipt(null)}>
