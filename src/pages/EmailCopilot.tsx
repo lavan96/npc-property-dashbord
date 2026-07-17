@@ -3453,8 +3453,9 @@ export default function EmailCopilot() {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
-            <div className="space-y-4">
+          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&>[data-radix-scroll-area-viewport]]:!block [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!w-full">
+            <div className="w-full min-w-0 max-w-full space-y-4">
+
               {/* Email Recipients Section */}
               <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-4 shadow-sm">
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
