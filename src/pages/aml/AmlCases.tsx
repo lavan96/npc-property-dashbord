@@ -118,9 +118,14 @@ export default function AmlCasesPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
           </Button>
           {access.canWrite && (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> New case
-            </Button>
+            <>
+              <Button size="sm" onClick={() => setActivateOpen(true)}>
+                <ShieldCheck className="h-4 w-4 mr-2" /> Activate client
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" /> New case
+              </Button>
+            </>
           )}
         </div>
       </div>
