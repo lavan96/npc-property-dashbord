@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getChartTypeConfig, renderChartImage, type ChartData } from './ChartCard';
+import { getDisplayAnalysis } from './chartAnalysis';
 import { canNormaliseChartConfig } from './kernel';
 
 interface ChartLightboxProps {
@@ -27,6 +28,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
   const cfg = chart ? getChartTypeConfig(chart.chart_type) : null;
   const [zoom, setZoom] = useState(100);
   const [fullscreen, setFullscreen] = useState(false);
+  const displayAnalysis = chart ? getDisplayAnalysis(chart) : null;
 
   // Reset zoom when chart changes
   useEffect(() => { setZoom(100); }, [chart?.id]);
@@ -76,7 +78,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
     <Dialog open={!!chart} onOpenChange={() => onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,0.16),transparent_36%),rgba(2,6,23,0.90)] backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex h-[min(94dvh,980px)] max-h-[calc(100dvh-1rem)] w-[min(94vw,1650px)] max-w-[calc(100vw-0.75rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-brand-300/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.99),hsl(var(--background)/0.96))] p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-border backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-h-[calc(100dvh-2rem)] dark:ring-white/10">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex h-[min(94dvh,1040px)] max-h-[calc(100dvh-1rem)] w-[min(96vw,1780px)] max-w-[calc(100vw-0.75rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-brand-300/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.99),hsl(var(--background)/0.96))] p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-border backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-h-[calc(100dvh-2rem)] dark:ring-white/10">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/90 to-transparent" />
           <div className="pointer-events-none absolute -right-24 -top-28 h-56 w-56 rounded-full bg-brand-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-28 bottom-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
@@ -114,7 +116,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
               </div>
             </DialogHeader>
 
-            <div className={`relative mt-4 grid min-h-0 flex-1 w-full min-w-0 gap-4 px-0 sm:mt-5 sm:px-14 ${fullscreen || !chart.analysis_text ? 'grid-rows-[minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)_auto]'}`}>
+            <div className={`relative mt-4 grid min-h-0 flex-1 w-full min-w-0 gap-4 px-0 sm:mt-5 sm:px-8 ${fullscreen || !displayAnalysis ? 'grid-rows-[minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)_auto]'}`}>
               <div className="relative flex min-h-[260px] w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-brand-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-3 lg:p-4">
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/65 to-transparent" />
                 <div className="pointer-events-none absolute -left-24 top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
@@ -184,7 +186,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
               )}
 
             {/* Analysis panel — hidden in fullscreen mode */}
-            {chart.analysis_text && !fullscreen && (
+            {displayAnalysis && !fullscreen && (
               <div
                 data-chart-analysis-scroll
                 tabIndex={0}
@@ -195,7 +197,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                   <Sparkles className="h-3.5 w-3.5 text-brand-500" />
                   <span className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground/80">Analysis</span>
                 </div>
-                <p className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere]">{chart.analysis_text}</p>
+                <p className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere]">{displayAnalysis}</p>
               </div>
             )}
             </div>

@@ -43,18 +43,19 @@ interface LiveChartProps {
     chart_type?: string;
     title?: string;
     chart_config?: any;
+    dataset?: any;
   };
   model?: NormalisedChartModel | null;
   variant?: LiveChartVariant;
   className?: string;
 }
 
-function tickSize(v: LiveChartVariant) { return v === 'card' ? 10 : v === 'export' ? 24 : 13; }
+function tickSize(v: LiveChartVariant) { return v === 'card' ? 11 : v === 'export' ? 24 : 13; }
 function titleSize(v: LiveChartVariant) { return v === 'card' ? 12 : v === 'export' ? 30 : 17; }
 function legendFont(v: LiveChartVariant) { return v === 'export' ? 22 : v === 'card' ? 10 : 13; }
 function marginFor(v: LiveChartVariant) {
   return v === 'card'
-    ? { top: 14, right: 8, left: -12, bottom: 28 }
+    ? { top: 8, right: 10, left: -6, bottom: 18 }
     : v === 'export'
       ? { top: 26, right: 72, left: 44, bottom: 76 }
       : { top: 24, right: 48, left: 18, bottom: 68 };
@@ -71,20 +72,22 @@ export function LiveChart({ chart, model: providedModel, variant = 'card', class
   const isExport = variant === 'export';
   const fontSize = tickSize(variant);
   const labelSize = isExport ? 22 : isCard ? 9 : 12;
-  const tooltipStyle = { borderRadius: 12, border: '1px solid #e2e8f0', fontSize: isExport ? 22 : 13 };
+  const tooltipStyle = { borderRadius: 14, border: '1px solid rgba(245,158,11,0.38)', background: '#0f172a', color: '#f8fafc', boxShadow: '0 18px 42px rgba(2,6,23,.32)', fontSize: isExport ? 22 : 13 };
+  const tooltipLabelStyle = { color: '#fef3c7', fontWeight: 800 };
   const legendStyle = { fontSize: legendFont(variant), paddingTop: isCard ? 4 : 8 };
   const margin = marginFor(variant);
   const containerKey = `${chart?.id || 'live'}-${variant}-${model.kind}`;
 
   const showLegend = !isCard || model.series.length > 1;
-  const barSize = isExport ? 120 : isCard ? 42 : 88;
+  const barSize = isExport ? 120 : isCard ? 56 : 88;
+  const tickInterval = isCard ? Math.max(0, Math.ceil(model.data.length / 7) - 1) : Math.max(0, Math.ceil(model.data.length / 12) - 1);
 
   return (
     <div className={`flex h-full w-full flex-col bg-white text-slate-900 ${className || ''}`}>
-      <div className="shrink-0 text-center font-bold text-slate-800" style={{ fontSize: titleSize(variant), lineHeight: 1.25 }}>
+      {!isCard && <div className="shrink-0 text-center font-bold text-slate-800" style={{ fontSize: titleSize(variant), lineHeight: 1.25 }}>
         {model.title}
-      </div>
-      {model.subtitle ? (
+      </div>}
+      {!isCard && model.subtitle ? (
         <div className="shrink-0 text-center text-slate-500" style={{ fontSize: Math.round(titleSize(variant) * 0.72) }}>
           {model.subtitle}
         </div>
@@ -92,7 +95,7 @@ export function LiveChart({ chart, model: providedModel, variant = 'card', class
 
       <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%" debounce={0} key={containerKey}>
-          {renderInner({ model, variant, isCard, isExport, fontSize, labelSize, tooltipStyle, legendStyle, margin, showLegend, barSize })}
+          {renderInner({ model, variant, isCard, isExport, fontSize, labelSize, tooltipStyle, tooltipLabelStyle, legendStyle, margin, showLegend, barSize, tickInterval })}
         </ResponsiveContainer>
       </div>
     </div>
@@ -107,10 +110,12 @@ interface InnerCtx {
   fontSize: number;
   labelSize: number;
   tooltipStyle: React.CSSProperties;
+  tooltipLabelStyle: React.CSSProperties;
   legendStyle: React.CSSProperties;
   margin: { top: number; right: number; bottom: number; left: number };
   showLegend: boolean;
   barSize: number;
+  tickInterval: number;
 }
 
 function renderInner(ctx: InnerCtx): React.ReactElement {
@@ -154,15 +159,15 @@ function renderBar(ctx: InnerCtx, opts: { stacked?: boolean; horizontal?: boolea
       {horizontal ? (
         <>
           <XAxis type="number" tick={axisTick(fontSize)} allowDecimals={false} />
-          <YAxis type="category" dataKey="name" tick={axisTick(fontSize)} width={isExport ? 180 : 110} />
+          <YAxis type="category" dataKey="name" tick={axisTick(fontSize)} width={isExport ? 220 : isCard ? 132 : 170} />
         </>
       ) : (
         <>
-          <XAxis dataKey="name" interval={0} angle={isCard ? -40 : -34} textAnchor="end" height={isCard ? 42 : isExport ? 102 : 82} tick={axisTick(fontSize)} />
+          <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -28 : -26} textAnchor="end" height={isCard ? 50 : isExport ? 102 : 82} tick={axisTick(fontSize)} />
           <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 46} allowDecimals={false} />
         </>
       )}
-      <Tooltip contentStyle={tooltipStyle} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
       {model.series.map((s) => (
         <Bar
@@ -171,7 +176,7 @@ function renderBar(ctx: InnerCtx, opts: { stacked?: boolean; horizontal?: boolea
           name={s.label}
           fill={s.color}
           stackId={stacked ? 'stack' : undefined}
-          radius={stacked ? 0 : [8, 8, 0, 0]}
+          radius={stacked ? 0 : horizontal ? [0, 8, 8, 0] : [8, 8, 0, 0]}
           maxBarSize={barSize}
           isAnimationActive={false}
         >
@@ -193,9 +198,9 @@ function renderLine(ctx: InnerCtx) {
   return (
     <LineChart data={model.data} margin={margin}>
       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-      <XAxis dataKey="name" interval={0} angle={isCard ? -35 : -28} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
+      <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -24 : -22} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 44} />
-      <Tooltip contentStyle={tooltipStyle} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
       {model.series.map((s) => (
         <Line
@@ -228,9 +233,9 @@ function renderArea(ctx: InnerCtx) {
         ))}
       </defs>
       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-      <XAxis dataKey="name" interval={0} angle={isCard ? -35 : -28} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
+      <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -24 : -22} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 44} />
-      <Tooltip contentStyle={tooltipStyle} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
       {model.series.map((s) => (
         <Area
@@ -255,7 +260,7 @@ function renderPie(ctx: InnerCtx) {
   const innerRadius = model.kind === 'donut' ? (isCard ? '38%' : '48%') : 0;
   return (
     <PieChart margin={isCard ? { top: 4, right: 4, bottom: 4, left: 4 } : { top: 8, right: 20, bottom: 8, left: 20 }}>
-      <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [value, name]} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} formatter={(value: number, name: string, item: any) => { const total = slices.reduce((sum, s) => sum + s.value, 0); const percent = total ? ` (${((Number(value) / total) * 100).toFixed(1)}%)` : ""; return [`${value}${percent}`, item?.payload?.name || name]; }} />
       {!isCard && (
         <Legend
           layout={isExport ? 'vertical' : 'horizontal'}
@@ -290,7 +295,7 @@ function renderScatter(ctx: InnerCtx) {
       <XAxis dataKey="name" tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} />
       <ZAxis range={[60, 240]} />
-      <Tooltip contentStyle={tooltipStyle} cursor={{ strokeDasharray: '3 3' }} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ strokeDasharray: '3 3' }} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
       {model.series.map((s) => (
         <Scatter key={s.key} name={s.label} data={model.data.map((row) => ({ name: row.name, [s.key]: row[s.key] }))} fill={s.color} dataKey={s.key} isAnimationActive={false} />
@@ -306,7 +311,7 @@ function renderRadar(ctx: InnerCtx) {
       <PolarGrid stroke="#e2e8f0" />
       <PolarAngleAxis dataKey="name" tick={axisTick(fontSize)} />
       <PolarRadiusAxis tick={axisTick(fontSize)} />
-      <Tooltip contentStyle={tooltipStyle} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
       {model.series.map((s) => (
         <Radar key={s.key} name={s.label} dataKey={s.key} stroke={s.color} fill={s.color} fillOpacity={0.28} isAnimationActive={false} />
@@ -320,9 +325,9 @@ function renderCombo(ctx: InnerCtx) {
   return (
     <ComposedChart data={model.data} margin={margin}>
       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-      <XAxis dataKey="name" interval={0} angle={isCard ? -35 : -28} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
+      <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -24 : -22} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 44} />
-      <Tooltip contentStyle={tooltipStyle} />
+      <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
       {showLegend && <Legend wrapperStyle={legendStyle} />}
       {model.series.map((s) => {
         const type = s.type || 'bar';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { LiveChart, canNormaliseChartConfig } from './kernel';
+import { getDisplayAnalysis } from './chartAnalysis';
 
 export interface ChartData {
   id: string;
@@ -87,7 +88,7 @@ export function getChartTypeConfig(type: string) {
   return CHART_TYPE_CONFIG[semanticKey] || { ...DEFAULT_TYPE_BADGE, label: type.replace(/[_-]+/g, ' ') };
 }
 
-function ChartImageErrorState({ title = 'Chart preview unavailable', helper = 'The saved chart image could not be rendered.' }: { title?: string; helper?: string }) {
+export function ChartImageErrorState({ title = 'Chart preview unavailable', helper = 'The saved chart image could not be rendered.' }: { title?: string; helper?: string }) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-brand-300/40 bg-brand-500/8 p-6 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-300/30 bg-brand-500/12 text-brand-700 dark:text-brand-200">
@@ -172,14 +173,43 @@ export function renderChartImage(chart: ChartData, variant: 'card' | 'expanded' 
   return <ChartBitmapImage chart={chart} />;
 }
 
-export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
+function LazyChartPreview({ chart }: { chart: ChartData }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || visible) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '520px 0px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [visible]);
+
+  return (
+    <div ref={ref} className="h-full w-full" aria-busy={!visible}>
+      {visible ? renderChartImage(chart, 'card') : (
+        <div className="relative h-full w-full overflow-hidden rounded-xl bg-slate-100">
+          <div className="absolute inset-y-0 -left-1/2 w-1/2 animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-white/80 to-transparent" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChartCardComponent({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
   const cfg = getChartTypeConfig(chart.chart_type);
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
   const isLive = canNormaliseChartConfig(chart);
+  const displayAnalysis = useMemo(() => getDisplayAnalysis(chart), [chart]);
 
   return (
-    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex flex-col h-full min-h-[410px] sm:min-h-[430px] ${selectionMode ? 'border-brand-300/45 ring-1 ring-brand-300/25 hover:ring-brand-300/45' : ''} ${selectionMode && isSelected ? 'border-brand-300/90 bg-gradient-to-b from-brand-500/12 via-card/95 to-card/85 ring-2 ring-brand-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
+    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex flex-col h-full min-h-0 ${selectionMode ? 'border-brand-300/45 ring-1 ring-brand-300/25 hover:ring-brand-300/45' : ''} ${selectionMode && isSelected ? 'border-brand-300/90 bg-gradient-to-b from-brand-500/12 via-card/95 to-card/85 ring-2 ring-brand-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
       {selectionMode && (
         <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-brand-200/60 bg-background/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-brand-700 shadow-lg shadow-brand-950/10 backdrop-blur-md dark:text-brand-200">
           {isSelected ? 'Selected' : 'Selectable'}
@@ -254,7 +284,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         </div>
       </CardHeader>
 
-      <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
         <div
           className={`group/img relative min-w-0 cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-brand-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode ? 'border-brand-300/45 ring-1 ring-brand-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-brand-300/90 ring-2 ring-brand-400/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_34px_rgba(245,158,11,0.22)]' : ''}`}
           onClick={() => onExpand(chart)}
@@ -268,8 +298,8 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             }
           }}
         >
-          <div className="relative flex aspect-[16/10] w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-3 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.006] sm:p-4 dark:border-white/10 dark:bg-white dark:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08),inset_0_12px_28px_rgba(15,23,42,0.035)] [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
-            {renderChartImage(chart, 'card')}
+          <div className="relative flex min-h-[280px] h-[clamp(280px,22vw,330px)] w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-3 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.006] sm:p-4 dark:border-white/10 dark:bg-white dark:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08),inset_0_12px_28px_rgba(15,23,42,0.035)] [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
+            {<LazyChartPreview chart={chart} />}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-border/5 transition-all duration-300 group-hover/img:ring-brand-400/25 dark:ring-white/10" />
           {selectionMode && (
@@ -286,7 +316,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         </div>
 
         {/* Analysis insight */}
-        {chart.analysis_text && (
+        {displayAnalysis && (
           <Collapsible open={showAnalysis} onOpenChange={setShowAnalysis}>
             <CollapsibleTrigger asChild>
               <button
@@ -311,7 +341,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <div className="mt-2 overflow-hidden rounded-2xl border border-brand-500/25 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.36))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_12px_28px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.16))]">
                 <div className="max-h-72 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
                   <p className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere]">
-                    {chart.analysis_text}
+                    {displayAnalysis}
                   </p>
                 </div>
               </div>
@@ -355,3 +385,5 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
     </Card>
   );
 }
+
+export const ChartCard = memo(ChartCardComponent);
