@@ -1,8 +1,75 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { normalizePhone, digitsOnly } from "../_shared/phone.ts";
 
-type TableName = 'call_tags' | 'call_alert_rules' | 'call_alert_history';
+type TableName = 'call_tags' | 'call_alert_rules' | 'call_alert_history' | 'blacklisted_numbers';
 type Operation = 'list' | 'create' | 'update' | 'delete';
+
+const BLACKLIST_CATEGORIES = ['spam', 'scam', 'telemarketer', 'abusive', 'other'];
+const BLACKLIST_KILL_MODES = ['silent', 'announce'];
+
+/**
+ * Whitelist and validate client-supplied blacklist fields. Server-owned
+ * columns (normalized_number, hit_count, last_hit_at, created_by, ...) are
+ * derived here, never accepted from the client.
+ */
+function sanitizeBlacklistData(
+  data: Record<string, any>,
+  isCreate: boolean,
+  userId: string | null,
+  username: string | null,
+): { data?: Record<string, unknown>; error?: string } {
+  const out: Record<string, unknown> = {};
+
+  if (data.phone_number !== undefined) {
+    const phone = String(data.phone_number ?? '').trim();
+    if (digitsOnly(phone).length < 6) {
+      return { error: 'Phone number must contain at least 6 digits' };
+    }
+    out.phone_number = phone;
+    out.normalized_number = normalizePhone(phone);
+  } else if (isCreate) {
+    return { error: 'phone_number is required' };
+  }
+
+  if (data.category !== undefined) {
+    if (!BLACKLIST_CATEGORIES.includes(data.category)) {
+      return { error: `Invalid category. Allowed: ${BLACKLIST_CATEGORIES.join(', ')}` };
+    }
+    out.category = data.category;
+  }
+
+  if (data.kill_mode !== undefined) {
+    if (!BLACKLIST_KILL_MODES.includes(data.kill_mode)) {
+      return { error: `Invalid kill_mode. Allowed: ${BLACKLIST_KILL_MODES.join(', ')}` };
+    }
+    out.kill_mode = data.kill_mode;
+  }
+
+  if (data.announce_message !== undefined) {
+    const message = data.announce_message === null ? '' : String(data.announce_message).trim();
+    if (message.length > 300) {
+      return { error: 'Announce message must be 300 characters or fewer' };
+    }
+    out.announce_message = message.length > 0 ? message : null;
+  }
+
+  if (data.notes !== undefined) {
+    const notes = data.notes === null ? '' : String(data.notes).trim();
+    out.notes = notes.length > 0 ? notes : null;
+  }
+
+  if (data.is_active !== undefined) {
+    out.is_active = !!data.is_active;
+  }
+
+  if (isCreate) {
+    out.created_by = userId;
+    out.created_by_username = username;
+  }
+
+  return { data: out };
+}
 
 interface RequestBody {
   operation: Operation;
@@ -18,7 +85,7 @@ interface RequestBody {
   session_token?: string;
 }
 
-const ALLOWED_TABLES: TableName[] = ['call_tags', 'call_alert_rules', 'call_alert_history'];
+const ALLOWED_TABLES: TableName[] = ['call_tags', 'call_alert_rules', 'call_alert_history', 'blacklisted_numbers'];
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin') || '';
@@ -81,6 +148,8 @@ Deno.serve(async (req) => {
             query = query.order('created_at', { ascending: false });
           } else if (table === 'call_alert_history') {
             query = query.order('triggered_at', { ascending: false });
+          } else if (table === 'blacklisted_numbers') {
+            query = query.order('created_at', { ascending: false });
           }
         }
         
@@ -113,17 +182,32 @@ Deno.serve(async (req) => {
           );
         }
 
+        let insertData: Record<string, any> = data;
+        if (table === 'blacklisted_numbers') {
+          const sanitized = sanitizeBlacklistData(data, true, userId, username);
+          if (sanitized.error) {
+            return new Response(
+              JSON.stringify({ success: false, error: sanitized.error }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          insertData = sanitized.data!;
+        }
+
         const { data: created, error } = await supabase
           .from(table)
-          .insert(data)
+          .insert(insertData)
           .select()
           .single();
 
         if (error) {
           console.error(`[manage-call-settings] Error creating ${table}:`, error);
+          const friendly = table === 'blacklisted_numbers' && error.code === '23505'
+            ? 'This number is already blacklisted.'
+            : error.message;
           return new Response(
-            JSON.stringify({ success: false, error: error.message, code: error.code }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ success: false, error: friendly, code: error.code }),
+            { status: error.code === '23505' ? 409 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -163,18 +247,33 @@ Deno.serve(async (req) => {
 
           result = { updated: true, bulk: true };
         } else {
+          let updateData: Record<string, any> = data;
+          if (table === 'blacklisted_numbers') {
+            const sanitized = sanitizeBlacklistData(data, false, userId, username);
+            if (sanitized.error) {
+              return new Response(
+                JSON.stringify({ success: false, error: sanitized.error }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            updateData = sanitized.data!;
+          }
+
           const { data: updated, error } = await supabase
             .from(table)
-            .update(data)
+            .update(updateData)
             .eq('id', recordId)
             .select()
             .single();
 
           if (error) {
             console.error(`[manage-call-settings] Error updating ${table}:`, error);
+            const friendly = table === 'blacklisted_numbers' && error.code === '23505'
+              ? 'This number is already blacklisted.'
+              : error.message;
             return new Response(
-              JSON.stringify({ success: false, error: error.message }),
-              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              JSON.stringify({ success: false, error: friendly }),
+              { status: error.code === '23505' ? 409 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
 

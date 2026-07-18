@@ -1,11 +1,237 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { logApiUsage } from '../_shared/logApiUsage.ts';
+import { phonesMatch } from '../_shared/phone.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret',
 };
+
+// ---- Blacklist auto-kill configuration ----
+const DEFAULT_BLACKLIST_ANNOUNCE = 'This number has been blocked and cannot use this service. Goodbye.';
+// Clamp so a typo in the env var can never leave blacklisted calls alive for
+// long or outlive the background-task window.
+const rawBlacklistDelay = Number(Deno.env.get('BLACKLIST_KILL_DELAY_MS') ?? '0');
+const BLACKLIST_KILL_DELAY_MS = Number.isFinite(rawBlacklistDelay)
+  ? Math.min(Math.max(rawBlacklistDelay, 0), 15000)
+  : 0;
+const VAPI_FETCH_TIMEOUT_MS = 5000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Fetch the authoritative call state from Vapi. Never throws.
+async function vapiGetCall(
+  vapiCallId: string,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; call: Record<string, any> | null }> {
+  try {
+    const response = await fetch(`https://api.vapi.ai/call/${vapiCallId}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(VAPI_FETCH_TIMEOUT_MS),
+    });
+    const call = response.ok ? await response.json().catch(() => null) : null;
+    return { ok: response.ok, status: response.status, call };
+  } catch (error) {
+    console.error('[Vapi Webhook] Vapi GET /call failed:', error);
+    return { ok: false, status: 0, call: null };
+  }
+}
+
+const asMetadataObject = (value: unknown): Record<string, unknown> =>
+  (value && typeof value === 'object' && !Array.isArray(value)) ? value as Record<string, unknown> : {};
+
+/**
+ * Auto-kill an inbound call from a blacklisted number via Live Call Control.
+ * Runs entirely inside EdgeRuntime.waitUntil after the webhook has responded,
+ * so it adds zero latency to the webhook. Fail-open by design: any error here
+ * lets the call proceed (it is still logged by the normal pipeline).
+ */
+async function handleBlacklistAutoKill(
+  supabase: any,
+  params: { vapiCallId: string; callerNumber: string; controlUrlFromPayload: string | null },
+): Promise<void> {
+  const { vapiCallId, callerNumber, controlUrlFromPayload } = params;
+  try {
+    const { data: entries, error: entriesError } = await supabase
+      .from('blacklisted_numbers')
+      .select('id, normalized_number, kill_mode, announce_message, category')
+      .eq('is_active', true);
+
+    if (entriesError) {
+      console.error('[Vapi Webhook] Blacklist lookup failed (fail-open):', entriesError);
+      return;
+    }
+
+    const match = (entries || []).find((entry: any) => phonesMatch(callerNumber, entry.normalized_number));
+    if (!match) return;
+
+    console.log('[Vapi Webhook] Blacklisted caller detected:', { vapiCallId, category: match.category, entryId: match.id });
+
+    // Double-fire guard: atomically claim the kill on the call row so repeated
+    // status-updates (or concurrent webhook invocations) fire exactly one kill.
+    const { data: row } = await supabase
+      .from('vapi_call_logs')
+      .select('id, metadata')
+      .eq('vapi_call_id', vapiCallId)
+      .maybeSingle();
+    if (!row) {
+      console.warn('[Vapi Webhook] Blacklist kill skipped: call row not found yet:', vapiCallId);
+      return;
+    }
+    const baseMetadata = asMetadataObject(row.metadata);
+    if (baseMetadata.blacklist_kill_initiated) return;
+
+    const { data: claimed, error: claimError } = await supabase
+      .from('vapi_call_logs')
+      .update({
+        metadata: {
+          ...baseMetadata,
+          blacklist_kill_initiated: true,
+          blacklist_entry_id: match.id,
+          blacklist_category: match.category,
+          blacklist_kill_claimed_at: new Date().toISOString(),
+        },
+      })
+      .eq('vapi_call_id', vapiCallId)
+      .is('metadata->blacklist_kill_initiated', null)
+      .select('id');
+
+    if (claimError) {
+      console.error('[Vapi Webhook] Blacklist kill claim failed:', claimError);
+      return;
+    }
+    if (!claimed || claimed.length === 0) return; // another invocation owns the kill
+
+    if (BLACKLIST_KILL_DELAY_MS > 0) {
+      await sleep(BLACKLIST_KILL_DELAY_MS);
+    }
+
+    // Resolve the Live Call Control URL: payload -> stored metadata -> fresh GET
+    const apiKey = Deno.env.get('VAPI_API_KEY') || null;
+    let controlUrl: string | null = controlUrlFromPayload
+      || (typeof baseMetadata.vapi_monitor_control_url === 'string' ? baseMetadata.vapi_monitor_control_url : null);
+    if (!controlUrl && apiKey) {
+      const fetched = await vapiGetCall(vapiCallId, apiKey);
+      controlUrl = fetched.call?.monitor?.controlUrl || null;
+    }
+    if (!controlUrl) {
+      console.error('[Vapi Webhook] Blacklist kill failed: no control URL for call:', vapiCallId);
+      await supabase
+        .from('vapi_call_logs')
+        .update({ metadata: { ...baseMetadata, blacklist_kill_initiated: true, blacklist_entry_id: match.id, blacklist_category: match.category, blacklist_kill_failed: 'no-control-url' } })
+        .eq('vapi_call_id', vapiCallId);
+      return;
+    }
+
+    const postControl = async (body: Record<string, unknown>): Promise<number> => {
+      try {
+        const response = await fetch(controlUrl!, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(VAPI_FETCH_TIMEOUT_MS),
+        });
+        if (!response.ok) {
+          const details = await response.text().catch(() => '');
+          console.error('[Vapi Webhook] Blacklist control POST rejected:', response.status, details);
+        }
+        return response.status;
+      } catch (error) {
+        console.error('[Vapi Webhook] Blacklist control POST failed:', error);
+        return 0;
+      }
+    };
+
+    const announceMessage = (match.announce_message || '').trim() || DEFAULT_BLACKLIST_ANNOUNCE;
+    let killMethod = match.kill_mode === 'announce' ? 'control-url-say-end' : 'control-url-end-call';
+    let controlStatus = await postControl(
+      match.kill_mode === 'announce'
+        ? { type: 'say', content: announceMessage, endCallAfterSpoken: true }
+        : { type: 'end-call' },
+    );
+
+    // If the announce path is rejected, still enforce the block silently.
+    if ((controlStatus < 200 || controlStatus >= 300) && match.kill_mode === 'announce') {
+      killMethod = 'control-url-end-call';
+      controlStatus = await postControl({ type: 'end-call' });
+    }
+
+    if (controlStatus < 200 || controlStatus >= 300) {
+      await supabase
+        .from('vapi_call_logs')
+        .update({
+          metadata: {
+            ...baseMetadata,
+            blacklist_kill_initiated: true,
+            blacklist_entry_id: match.id,
+            blacklist_category: match.category,
+            blacklist_kill_failed: `control-status-${controlStatus}`,
+          },
+        })
+        .eq('vapi_call_id', vapiCallId);
+      return;
+    }
+
+    // Verify termination against Vapi (skippable only when no API key exists).
+    let verified = false;
+    let endedReason: string | null = null;
+    if (apiKey) {
+      for (const delayMs of [1000, 1500, 2000]) {
+        await sleep(delayMs);
+        const check = await vapiGetCall(vapiCallId, apiKey);
+        if (check.status === 404 || check.call?.status === 'ended') {
+          verified = true;
+          endedReason = check.call?.endedReason ?? null;
+          break;
+        }
+      }
+    }
+
+    // Close the row. Re-read metadata so we merge over the claim (and anything
+    // else written meanwhile) instead of the stale pre-claim snapshot.
+    const { data: freshRow } = await supabase
+      .from('vapi_call_logs')
+      .select('metadata')
+      .eq('vapi_call_id', vapiCallId)
+      .maybeSingle();
+    const freshMetadata = asMetadataObject(freshRow?.metadata);
+    const killedAt = new Date().toISOString();
+    const { error: closeError } = await supabase
+      .from('vapi_call_logs')
+      .update({
+        call_status: 'ended',
+        call_outcome: 'blacklisted',
+        ended_at: killedAt,
+        metadata: {
+          ...freshMetadata,
+          kill_source: 'blacklist_auto',
+          blacklist_entry_id: match.id,
+          blacklist_category: match.category,
+          blacklist_kill_mode: match.kill_mode,
+          kill_method: killMethod,
+          kill_verified: verified,
+          kill_delay_ms: BLACKLIST_KILL_DELAY_MS,
+          vapi_control_status: controlStatus,
+          vapi_ended_reason: endedReason,
+          killed_at: killedAt,
+        },
+      })
+      .eq('vapi_call_id', vapiCallId);
+    if (closeError) {
+      console.error('[Vapi Webhook] Blacklist kill: failed to close call row:', closeError);
+    }
+
+    const { error: hitError } = await supabase.rpc('increment_blacklist_hit', { entry_id: match.id });
+    if (hitError) {
+      console.error('[Vapi Webhook] Failed to increment blacklist hit count:', hitError);
+    }
+
+    console.log('[Vapi Webhook] Blacklist auto-kill completed:', { vapiCallId, killMethod, verified, endedReason });
+  } catch (error) {
+    console.error('[Vapi Webhook] Blacklist auto-kill error (fail-open):', error);
+  }
+}
 
 /**
  * Smart capitalization for names - handles edge cases like:
@@ -853,7 +1079,19 @@ Deno.serve(async (req) => {
         } else {
           console.log('[Vapi Webhook] Live call tracking record created/updated for:', call.id);
         }
-        
+
+        // Blacklist auto-kill: only once the call is connected (control
+        // messages need an active call, and connecting guarantees the
+        // end-of-call report so metadata is still captured). Runs after the
+        // response — adds zero webhook latency.
+        if (isInbound && currentStatus.toLowerCase() === 'in-progress' && call.customer?.number) {
+          EdgeRuntime.waitUntil(handleBlacklistAutoKill(supabase, {
+            vapiCallId: call.id,
+            callerNumber: call.customer.number,
+            controlUrlFromPayload: call.monitor?.controlUrl ?? null,
+          }));
+        }
+
         return new Response(JSON.stringify({ success: true, message: 'Live call tracked' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -1304,6 +1542,13 @@ Deno.serve(async (req) => {
         customerNameSource: ghlContactId ? 'gohighlevel' : (customerName ? 'ai_analysis' : 'none'),
       },
     };
+
+    // A blacklist auto-kill already labeled this call; the end-of-call report
+    // must keep flowing metadata in without reverting the outcome to the raw
+    // endedReason.
+    if (existingLogMetadata.kill_source === 'blacklist_auto' || existingLogMetadata.blacklist_kill_initiated === true) {
+      callLogData.call_outcome = 'blacklisted';
+    }
 
     console.log('[Vapi Webhook] Extracted call data:', {
       vapi_call_id: callLogData.vapi_call_id,

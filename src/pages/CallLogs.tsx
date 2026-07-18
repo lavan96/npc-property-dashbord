@@ -32,6 +32,7 @@ import { WeeklyReportConfig } from '@/components/call-logs/WeeklyReportConfig';
 import { CleanupContactNames } from '@/components/call-logs/CleanupContactNames';
 import { CleanupTestCalls } from '@/components/call-logs/CleanupTestCalls';
 import { NegativeCallAnalysis } from '@/components/call-logs/NegativeCallAnalysis';
+import { BlacklistedNumbers } from '@/components/call-logs/BlacklistedNumbers';
 import { CallToolCalls } from '@/components/call-logs/CallToolCalls';
 import { CallTranscriptChat } from '@/components/call-logs/CallTranscriptChat';
 import {
@@ -62,7 +63,8 @@ import {
   Tag,
   SlidersHorizontal,
   AlertTriangle,
-  CalendarIcon
+  CalendarIcon,
+  Ban
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -445,6 +447,7 @@ const CallLogs = () => {
     if (o === 'customer-busy' || o.includes('operator-busy') || o === 'busy') return 'busy';
     if (o === 'silence-timed-out' || o === 'exceeded-max-duration' || o === 'timeout') return 'timeout';
     if (o === 'manually-canceled' || o === 'cancelled') return 'cancelled';
+    if (o === 'blacklisted' || o === 'killed') return 'error';
     if (o.includes('error') || o.includes('failed')) return 'error';
     return 'other';
   };
@@ -466,6 +469,9 @@ const CallLogs = () => {
     'failed': { label: 'Failed', color: 'border border-destructive/35 bg-destructive/15 text-destructive shadow-sm shadow-destructive/10', icon: XCircle },
     'cancelled': { label: 'Cancelled', color: 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-foreground shadow-sm shadow-sm dark:shadow-black/10', icon: XCircle },
     'timeout': { label: 'Timeout', color: 'border border-accent/30 bg-accent/15 text-accent shadow-sm shadow-accent/10', icon: Clock },
+    // Security terminations
+    'blacklisted': { label: 'Blacklisted', color: 'border border-destructive/35 bg-destructive/15 text-destructive shadow-sm shadow-destructive/10', icon: Ban },
+    'killed': { label: 'Killed', color: 'border border-destructive/35 bg-destructive/15 text-destructive shadow-sm shadow-destructive/10', icon: XCircle },
   };
 
   const getOutcomeBadge = (outcome: string | null) => {
@@ -571,6 +577,10 @@ const CallLogs = () => {
               <Radio className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-brand-200 md:h-4 md:w-4" />
               Live
             </TabsTrigger>
+            <TabsTrigger value="blacklist" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Ban className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-brand-200 md:h-4 md:w-4" />
+              Blacklist
+            </TabsTrigger>
             <TabsTrigger value="trends" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
               <LineChart className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-brand-200 md:h-4 md:w-4" />
               Trends
@@ -595,6 +605,12 @@ const CallLogs = () => {
         <TabsContent value="live" className="mt-4 min-w-0 md:mt-6" aria-label="Live calls monitor">
           <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-sm dark:shadow-black/20 md:p-4", premiumScrollbar)}>
             <LiveCallsMonitor />
+          </DashboardThemeFrame>
+        </TabsContent>
+
+        <TabsContent value="blacklist" className="mt-4 min-w-0 md:mt-6" aria-label="Blacklisted numbers">
+          <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-sm dark:shadow-black/20 md:p-4", premiumScrollbar)}>
+            <BlacklistedNumbers canEdit={canEditCalls} canDelete={canDeleteCalls} />
           </DashboardThemeFrame>
         </TabsContent>
 
