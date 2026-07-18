@@ -153,6 +153,10 @@ interface VapiWebhookPayload {
         cost?: number;
       }>;
       webCallUrl?: string;
+      monitor?: {
+        listenUrl?: string;
+        controlUrl?: string;
+      };
     };
   };
 }
@@ -803,7 +807,27 @@ Deno.serve(async (req) => {
         const squadId = isInbound ? INBOUND_SQUAD_ID : (call.squadId || call.squad?.id || null);
         const squadName = isInbound ? INBOUND_SQUAD_NAME : (call.squad?.name || null);
         const agentName = isInbound ? PRIMARY_INBOUND_AGENT : (call.assistant?.name || null);
-        
+
+        // Capture the Live Call Control URL so kill requests can still
+        // terminate the call if a fresh GET /call/{id} fails. Upsert replaces
+        // columns wholesale, so merge over the existing metadata.
+        let liveMetadata: Record<string, unknown> | undefined;
+        if (call.monitor?.controlUrl) {
+          const { data: existingRow } = await supabase
+            .from('vapi_call_logs')
+            .select('metadata')
+            .eq('vapi_call_id', call.id)
+            .maybeSingle();
+          const existingMetadata = (existingRow?.metadata && typeof existingRow.metadata === 'object' && !Array.isArray(existingRow.metadata))
+            ? existingRow.metadata as Record<string, unknown>
+            : {};
+          liveMetadata = {
+            ...existingMetadata,
+            vapi_monitor_control_url: call.monitor.controlUrl,
+            vapi_monitor_listen_url: call.monitor.listenUrl || null,
+          };
+        }
+
         // Upsert minimal call record for live tracking
         const { error: upsertError } = await supabase
           .from('vapi_call_logs')
@@ -818,6 +842,7 @@ Deno.serve(async (req) => {
             is_squad_call: isSquadCall,
             squad_id: squadId,
             squad_name: squadName,
+            ...(liveMetadata ? { metadata: liveMetadata } : {}),
           }, {
             onConflict: 'vapi_call_id',
             ignoreDuplicates: false,
@@ -1219,6 +1244,17 @@ Deno.serve(async (req) => {
     // Force status to 'ended' regardless of what the payload says
     const finalCallStatus = isEndOfCall ? 'ended' : getCallStatus(rawStatus);
 
+    // The upsert replaces metadata wholesale — merge over the existing row's
+    // metadata so kill-audit fields (killed_by, kill_method, ...) survive.
+    const { data: existingLogRow } = await supabase
+      .from('vapi_call_logs')
+      .select('metadata')
+      .eq('vapi_call_id', call.id)
+      .maybeSingle();
+    const existingLogMetadata = (existingLogRow?.metadata && typeof existingLogRow.metadata === 'object' && !Array.isArray(existingLogRow.metadata))
+      ? existingLogRow.metadata as Record<string, unknown>
+      : {};
+
     const callLogData = {
       vapi_call_id: call.id,
       agent_id: agentId,
@@ -1257,6 +1293,7 @@ Deno.serve(async (req) => {
       // Only set resolution_status for negative/mixed calls that need review
       resolution_status: (sentiment === 'negative' || sentiment === 'mixed') ? 'needs_review' : null,
       metadata: {
+        ...existingLogMetadata,
         orgId: call.orgId,
         endedReason: rawEndedReason,
         type: call.type,

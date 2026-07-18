@@ -149,7 +149,7 @@ export const LiveCallsMonitor = () => {
 
   const handleKillCall = async (call: LiveCall) => {
     setKillingCallId(call.id);
-    const { error } = await killLiveCall(call.id);
+    const { data, error } = await killLiveCall(call.id);
     setKillingCallId(null);
 
     if (error) {
@@ -161,10 +161,23 @@ export const LiveCallsMonitor = () => {
       return;
     }
 
-    toast({
-      title: 'Live call killed',
-      description: `${call.customer_name || call.phone_number || 'The active call'} has been ended.`,
-    });
+    const callLabel = call.customer_name || call.phone_number || 'The active call';
+    if (data?.result === 'already-ended') {
+      toast({
+        title: 'Call already ended',
+        description: `${callLabel} had already finished on Vapi. The log has been synced.`,
+      });
+    } else if (data?.verified) {
+      toast({
+        title: 'Live call terminated',
+        description: `${callLabel} has been ended — confirmed by Vapi.`,
+      });
+    } else {
+      toast({
+        title: 'Termination sent',
+        description: `Vapi accepted the kill request for ${callLabel}. End confirmation is pending.`,
+      });
+    }
     fetchLiveCalls();
   };
 

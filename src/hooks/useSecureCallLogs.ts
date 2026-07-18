@@ -152,8 +152,13 @@ export const useSecureCallLogs = () => {
     return { error: null };
   }, []);
 
-  // Kill an active Vapi call and mark the local live row as ended
-  const killLiveCall = useCallback(async (callId: string) => {
+  // Kill an active Vapi call (Live Call Control end-call) and mark the local
+  // live row as ended. Returns the termination result so the UI can tell a
+  // verified kill apart from an unconfirmed or already-ended one.
+  const killLiveCall = useCallback(async (callId: string): Promise<{
+    data: { result: 'terminated' | 'already-ended'; verified: boolean; endedReason: string | null } | null;
+    error: { message: string } | null;
+  }> => {
     const { data, error } = await invokeSecureFunction('manage-call-logs', {
       operation: 'killLiveCall',
       callId
@@ -161,16 +166,23 @@ export const useSecureCallLogs = () => {
 
     if (error) {
       console.error('[useSecureCallLogs] Error killing live call:', error);
-      return { error };
+      return { data: null, error };
     }
 
     if (!data?.success) {
       console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
-      return { error: { message: data?.error || 'Unknown error' } };
+      return { data: null, error: { message: data?.error || 'Unknown error' } };
     }
 
-    console.log('[useSecureCallLogs] Killed live call via secure Edge Function');
-    return { error: null };
+    console.log('[useSecureCallLogs] Killed live call via secure Edge Function:', data.result, 'verified:', data.verified);
+    return {
+      data: {
+        result: data.result === 'already-ended' ? 'already-ended' : 'terminated',
+        verified: !!data.verified,
+        endedReason: data.endedReason ?? null,
+      },
+      error: null,
+    };
   }, []);
 
   // Delete a call
