@@ -1,69 +1,848 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { createCorsHeaders, verifyAuth } from '../_shared/auth.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
+import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const REPORT_BUCKET = Deno.env.get('QUANTITATIVE_REPORT_BUCKET') || 'quantitative-reports';
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const REPORT_BUCKET =
+  Deno.env.get("QUANTITATIVE_REPORT_BUCKET") || "quantitative-reports";
 const REPORT_VERSION = 1;
 
-type Listing = { id?: string; recordId?: string; price?: number|null; suburb?: string|null; propertyType?: string|null; beds?: number|null; bedrooms?: number|null; baths?: number|null; receivedAt?: string|null; createdAt?: string|null; createdTime?: string|null; confidence?: number|null; agencyName?: string|null };
-const json = (body: unknown, status: number, headers: Record<string,string>) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
-const money = (n:number) => `$${Math.round(n).toLocaleString()}`;
-const safe = (s:any) => String(s ?? '').replace(/[<>]/g, '').slice(0, 4000);
-const weekPeriod = (d = new Date()) => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const day = x.getUTCDay() || 7; x.setUTCDate(x.getUTCDate() - day + 1); const start = x.toISOString().slice(0,10); const e = new Date(x); e.setUTCDate(e.getUTCDate() + 6); return { start, end: e.toISOString().slice(0,10) }; };
+type Listing = {
+  id?: string;
+  recordId?: string;
+  price?: number | string | null;
+  suburb?: string | null;
+  propertyType?: string | null;
+  beds?: number | string | null;
+  bedrooms?: number | string | null;
+  baths?: number | string | null;
+  receivedAt?: string | null;
+  createdAt?: string | null;
+  createdTime?: string | null;
+  confidence?: number | string | null;
+  agencyName?: string | null;
+};
+type Stage =
+  | "request_received"
+  | "request_validated"
+  | "user_authenticated"
+  | "workspace_resolved"
+  | "quantitative_data_loaded"
+  | "chart_data_loaded"
+  | "content_normalised"
+  | "pdf_render_started"
+  | "pdf_render_completed"
+  | "storage_upload_started"
+  | "storage_upload_completed"
+  | "report_record_saved"
+  | "chart_links_saved"
+  | "response_returned";
+type ErrorCode =
+  | "AUTH_REQUIRED"
+  | "WORKSPACE_NOT_FOUND"
+  | "INVALID_REPORT_CONFIGURATION"
+  | "NO_REPORT_CONTENT_SELECTED"
+  | "DATA_RETRIEVAL_FAILED"
+  | "CHART_DATA_INVALID"
+  | "PDF_RENDER_FAILED"
+  | "PDF_EMPTY"
+  | "STORAGE_UPLOAD_FAILED"
+  | "REPORT_SAVE_FAILED"
+  | "CHART_LINK_FAILED"
+  | "UNKNOWN_GENERATION_ERROR";
+const json = (body: unknown, status: number, headers: Record<string, string>) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...headers, "Content-Type": "application/json" },
+  });
+const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
+const safe = (s: any, max = 4000) =>
+  String(s ?? "")
+    .replace(/[<>]/g, "")
+    .slice(0, max);
+const num = (v: any) => {
+  const n = Number(String(v ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+};
+const runId = () => crypto.randomUUID();
+const logStage = (
+  generationRunId: string,
+  stage: Stage,
+  meta: Record<string, unknown> = {},
+) =>
+  console.log(
+    JSON.stringify({
+      component: "quantitative-report-pipeline",
+      generationRunId,
+      stage,
+      ...meta,
+    }),
+  );
+class GenerationError extends Error {
+  constructor(
+    public code: ErrorCode,
+    message: string,
+    public stage: Stage,
+    public status = 500,
+    public reportId?: string,
+  ) {
+    super(message);
+  }
+}
+const weekPeriod = (d = new Date()) => {
+  const x = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+  );
+  const day = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() - day + 1);
+  const start = x.toISOString().slice(0, 10);
+  const e = new Date(x);
+  e.setUTCDate(e.getUTCDate() + 6);
+  return { start, end: e.toISOString().slice(0, 10) };
+};
 async function fetchListings() {
-  let records: Listing[] = [], offset = '', pages = 0;
+  let records: Listing[] = [],
+    offset = "",
+    pages = 0;
   do {
-    const r = await fetch(`${SUPABASE_URL}/functions/v1/airtable-proxy`, { method:'POST', headers:{ 'Content-Type':'application/json', apikey:SERVICE_KEY, Authorization:`Bearer ${SERVICE_KEY}` }, body: JSON.stringify({ pageSize:100, offset, sortField:'Created', sortDirection:'desc' }) });
-    if (!r.ok) throw new Error('listing_snapshot_failed');
-    const j = await r.json(); records.push(...(j.records || [])); offset = j.offset || ''; pages++;
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/airtable-proxy`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+      },
+      body: JSON.stringify({
+        pageSize: 100,
+        offset,
+        sortField: "Created",
+        sortDirection: "desc",
+      }),
+    });
+    if (!r.ok) throw new Error("listing_snapshot_failed");
+    const j = await r.json();
+    records.push(...(j.records || []));
+    offset = j.offset || "";
+    pages++;
   } while (offset && pages < 50);
   return records;
 }
-function hash(input: unknown) { const txt = JSON.stringify(input); let h=2166136261; for (let i=0;i<txt.length;i++) { h ^= txt.charCodeAt(i); h = Math.imul(h, 16777619); } return (h>>>0).toString(16); }
-function chart(key:string,title:string,type:string,data:any[],analysis:string,order:number,extra={}) { return { key,title,type,data,analysis,order, config:{ type, data, title, ...extra } }; }
-function build(listings: Listing[]) {
-  const prices = listings.map(l=>Number(l.price||0)).filter(n=>n>0).sort((a,b)=>a-b);
-  const avg = prices.length ? prices.reduce((a,b)=>a+b,0)/prices.length : 0; const median = prices.length ? prices[Math.floor(prices.length/2)] : 0;
-  const by = (fn:(l:Listing)=>string) => Object.entries(listings.reduce((a,l)=>{ const k=fn(l)||'Unknown'; a[k]=(a[k]||0)+1; return a; }, {} as Record<string,number>)).sort((a,b)=>b[1]-a[1]);
-  const suburbs = by(l=>l.suburb || 'Unknown Suburb').slice(0,10).map(([label,value])=>({label,value}));
-  const types = by(l=>l.propertyType || 'Unknown').map(([label,value])=>({label,value, percentage: listings.length ? +(value/listings.length*100).toFixed(1) : 0}));
-  const ranges = [['Under $300k',0,300000],['$300k-$500k',300000,500000],['$500k-$750k',500000,750000],['$750k-$1M',750000,1000000],['$1M-$1.5M',1000000,1500000],['Over $1.5M',1500000,Infinity]].map(([label,min,max])=>({label, value: prices.filter(p=>p>=Number(min)&&p<Number(max)).length})).filter(x=>x.value>0);
-  const dailyMap: Record<string,number> = {}; for (let i=29;i>=0;i--){ const d=new Date(); d.setUTCDate(d.getUTCDate()-i); dailyMap[d.toISOString().slice(0,10)]=0; }
-  listings.forEach(l=>{ const d = new Date(String(l.receivedAt||l.createdAt||l.createdTime||'')); const k = Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0,10); if (k in dailyMap) dailyMap[k]++; });
-  const daily = Object.entries(dailyMap).map(([label,value])=>({label,value}));
-  const topSuburb = suburbs[0]; const topType = types[0];
-  const charts = [
-    chart('suburb_volume','Suburb Volume Distribution','bar',suburbs, topSuburb ? `Key finding: ${topSuburb.label} has the highest listing concentration with ${topSuburb.value} listings. Supporting figures: the chart covers ${suburbs.length} suburbs from ${listings.length} source listings. Implication: prioritise local market monitoring in the most active suburbs. Limitation: this reflects the stored listing snapshot for this report only.` : 'Suburb distribution unavailable because no suburb records were found.',1,{ layout: suburbs.some(s=>s.label.length>14) ? 'horizontal' : 'vertical' }),
-    chart('property_type','Property Type Distribution','pie',types, topType ? `Key finding: ${topType.label} is the leading property type with ${topType.value} listings (${topType.percentage}%). Supporting figures: ${types.length} property categories are represented. Implication: campaign and advisory focus should match the dominant stock mix. Limitation: unknown property types remain grouped as supplied in the snapshot.` : 'Property type distribution unavailable because no property type records were found.',2),
-    chart('price_range','Price Range Distribution','bar',ranges, ranges[0] ? `Key finding: ${ranges[0].label} is the most represented price bracket with ${ranges[0].value} listings. Supporting figures: ${prices.length} listings had valid prices; median price is ${money(median)}. Implication: pricing strategy should be benchmarked against the active inventory bands. Limitation: listings without valid prices are excluded from price calculations.` : 'Pricing distribution unavailable because no valid price records were found.',3),
-    chart('pricing_trends','Pricing Trends','line',daily, `Key finding: recent listing activity is based on ${daily.reduce((a,b)=>a+b.value,0)} dated listings over 30 days. Supporting figures: average price is ${money(avg)} and median price is ${money(median)} across ${prices.length} valid priced listings. Implication: trend interpretation should combine activity and price-validity coverage. Limitation: this is activity by received date, not sale-price movement.`,4),
-  ];
-  return { metrics:{ total_listings:listings.length, average_price:Math.round(avg), median_price:Math.round(median), valid_price_count:prices.length, unique_suburbs:by(l=>l.suburb||'Unknown').length }, charts };
+function hash(input: unknown) {
+  const txt = JSON.stringify(input);
+  let h = 2166136261;
+  for (let i = 0; i < txt.length; i++) {
+    h ^= txt.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
 }
-function pdfBytes(title:string, summary:string, charts:any[]) { const html = `<html><body><h1>${safe(title)}</h1><p>${safe(summary)}</p>${charts.map(c=>`<h2>${safe(c.title)}</h2><p>${safe(c.analysis)}</p>`).join('')}</body></html>`; return new TextEncoder().encode(html); }
+function chart(
+  key: string,
+  title: string,
+  type: string,
+  data: any[],
+  analysis: string,
+  order: number,
+  extra = {},
+) {
+  return {
+    key,
+    title,
+    type,
+    data,
+    analysis,
+    order,
+    config: { type, data, title, ...extra },
+  };
+}
+function build(listings: Listing[]) {
+  const prices = listings
+    .map((l) => num(l.price))
+    .filter((n) => n > 0)
+    .sort((a, b) => a - b);
+  const avg = prices.length
+    ? prices.reduce((a, b) => a + b, 0) / prices.length
+    : 0;
+  const median = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
+  const by = (fn: (l: Listing) => string) =>
+    Object.entries(
+      listings.reduce(
+        (a, l) => {
+          const k = fn(l) || "Unknown";
+          a[k] = (a[k] || 0) + 1;
+          return a;
+        },
+        {} as Record<string, number>,
+      ),
+    ).sort((a, b) => b[1] - a[1]);
+  const suburbs = by((l) => l.suburb || "Unknown Suburb")
+    .slice(0, 10)
+    .map(([label, value]) => ({ label, value }));
+  const types = by((l) => l.propertyType || "Unknown").map(
+    ([label, value]) => ({
+      label,
+      value,
+      percentage: listings.length
+        ? +((value / listings.length) * 100).toFixed(1)
+        : 0,
+    }),
+  );
+  const ranges = [
+    ["Under $300k", 0, 300000],
+    ["$300k-$500k", 300000, 500000],
+    ["$500k-$750k", 500000, 750000],
+    ["$750k-$1M", 750000, 1000000],
+    ["$1M-$1.5M", 1000000, 1500000],
+    ["Over $1.5M", 1500000, Infinity],
+  ]
+    .map(([label, min, max]) => ({
+      label,
+      value: prices.filter((p) => p >= Number(min) && p < Number(max)).length,
+    }))
+    .filter((x) => x.value > 0);
+  const dailyMap: Record<string, number> = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    dailyMap[d.toISOString().slice(0, 10)] = 0;
+  }
+  listings.forEach((l) => {
+    const d = new Date(
+      String(l.receivedAt || l.createdAt || l.createdTime || ""),
+    );
+    const k = Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+    if (k in dailyMap) dailyMap[k]++;
+  });
+  const daily = Object.entries(dailyMap).map(([label, value]) => ({
+    label,
+    value,
+  }));
+  const topSuburb = suburbs[0];
+  const topType = types[0];
+  const beds = by((l) => {
+    const b = num(l.beds ?? l.bedrooms);
+    return b > 5 ? "5+" : b > 0 ? String(b) : "Unknown";
+  }).map(([label, value]) => ({ label, value }));
+  const confidenceDaily = daily.map((d) => ({
+    label: d.label,
+    value: listings.length
+      ? Math.round(
+          listings.reduce((a, l) => a + num(l.confidence), 0) /
+            listings.length || 0,
+        )
+      : 0,
+  }));
+  const suburbMatrix = suburbs.map((s) => ({
+    label: s.label,
+    value: s.value,
+    averagePrice: Math.round(avg),
+  }));
+  const priceVsVolume = suburbs.map((s) => ({
+    label: s.label,
+    value: s.value,
+    price: Math.round(avg),
+  }));
+  const agents = by((l) => l.agencyName || "Unknown Agency")
+    .slice(0, 10)
+    .map(([label, value]) => ({ label, value }));
+  const agencySizes = [
+    ["1 listing", 1, 1],
+    ["2-5 listings", 2, 5],
+    ["6-10 listings", 6, 10],
+    ["10+ listings", 11, Infinity],
+  ]
+    .map(([label, min, max]) => ({
+      label,
+      value: agents.filter(
+        (a) => a.value >= Number(min) && a.value <= Number(max),
+      ).length,
+    }))
+    .filter((x) => x.value > 0);
+  const charts = [
+    chart(
+      "suburb_volume",
+      "Suburb Volume Distribution",
+      "bar",
+      suburbs,
+      topSuburb
+        ? `Key finding: ${topSuburb.label} has the highest listing concentration with ${topSuburb.value} listings. Supporting figures: the chart covers ${suburbs.length} suburbs from ${listings.length} source listings.`
+        : "Insufficient data: no suburb records were found for this chart.",
+      1,
+      {
+        layout: suburbs.some((s) => s.label.length > 14)
+          ? "horizontal"
+          : "vertical",
+      },
+    ),
+    chart(
+      "property_type",
+      "Property Type Distribution",
+      "pie",
+      types,
+      topType
+        ? `Key finding: ${topType.label} is the leading property type with ${topType.value} listings (${topType.percentage}%). Supporting figures: ${types.length} property categories are represented.`
+        : "Insufficient data: no property type records were found for this chart.",
+      2,
+    ),
+    chart(
+      "price_range",
+      "Price Range Distribution",
+      "bar",
+      ranges,
+      ranges[0]
+        ? `Key finding: ${ranges[0].label} is represented with ${ranges[0].value} listings. Supporting figures: ${prices.length} listings had valid prices; median price is ${money(median)}.`
+        : "Insufficient data: no valid price records were found for this chart.",
+      3,
+    ),
+    chart(
+      "bedroom_count",
+      "Bedroom Distribution",
+      "bar",
+      beds,
+      beds.length
+        ? `Key finding: bedroom data is available across ${beds.length} bedroom groupings.`
+        : "Insufficient data: no bedroom records were found for this chart.",
+      4,
+    ),
+    chart(
+      "daily_listing_activity",
+      "Daily Listing Activity",
+      "line",
+      daily,
+      `Key finding: ${daily.reduce((a, b) => a + b.value, 0)} dated listings were received over the last 30 days.`,
+      5,
+    ),
+    chart(
+      "pricing_trends",
+      "Pricing Trends",
+      "line",
+      daily,
+      `Key finding: average price is ${money(avg)} and median price is ${money(median)} across ${prices.length} valid priced listings.`,
+      6,
+    ),
+    chart(
+      "data_confidence",
+      "Data Confidence Trends",
+      "line",
+      confidenceDaily,
+      "Key finding: confidence trend uses available confidence values from the listing snapshot.",
+      7,
+    ),
+    chart(
+      "suburb_performance_matrix",
+      "Suburb Performance Matrix",
+      "bar",
+      suburbMatrix,
+      `Key finding: the matrix compares the top ${suburbMatrix.length} suburbs by listing volume.`,
+      8,
+    ),
+    chart(
+      "suburb_volume_distribution",
+      "Suburb Volume Distribution",
+      "bar",
+      suburbs,
+      topSuburb
+        ? `Key finding: ${topSuburb.label} leads suburb volume.`
+        : "Insufficient data: no suburb volume records were found.",
+      9,
+    ),
+    chart(
+      "price_vs_volume",
+      "Price vs Volume Analysis",
+      "scatter",
+      priceVsVolume,
+      `Key finding: price versus volume analysis covers ${priceVsVolume.length} suburbs.`,
+      10,
+    ),
+    chart(
+      "agent_listing_volume",
+      "Agent Listing Volume",
+      "bar",
+      agents,
+      agents.length
+        ? `Key finding: ${agents[0].label} has ${agents[0].value} listings in the source snapshot.`
+        : "Insufficient data: no agency records were found.",
+      11,
+    ),
+    chart(
+      "agency_distribution",
+      "Agency Size Distribution",
+      "bar",
+      agencySizes,
+      agencySizes.length
+        ? `Key finding: agency size buckets are calculated from ${agents.length} agencies.`
+        : "Insufficient data: no agency distribution could be calculated.",
+      12,
+    ),
+  ];
+  return {
+    metrics: {
+      total_listings: listings.length,
+      average_price: Math.round(avg),
+      median_price: Math.round(median),
+      valid_price_count: prices.length,
+      unique_suburbs: by((l) => l.suburb || "Unknown").length,
+    },
+    charts,
+  };
+}
+async function pdfBytes(
+  title: string,
+  summary: string,
+  charts: any[],
+  customNotes: string,
+) {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const addPage = () => {
+    const page = pdf.addPage([595, 842]);
+    return { page, y: 790 };
+  };
+  let { page, y } = addPage();
+  const write = (text: string, size = 10, isBold = false) => {
+    const words = safe(text, 3000).split(/\s+/);
+    let line = "";
+    for (const w of words) {
+      if ((line + " " + w).length > 92) {
+        if (y < 60) {
+          const n = addPage();
+          page = n.page;
+          y = n.y;
+        }
+        page.drawText(line, {
+          x: 48,
+          y,
+          size,
+          font: isBold ? bold : font,
+          color: rgb(0.08, 0.08, 0.1),
+        });
+        y -= size + 6;
+        line = w;
+      } else line = line ? `${line} ${w}` : w;
+    }
+    if (line) {
+      if (y < 60) {
+        const n = addPage();
+        page = n.page;
+        y = n.y;
+      }
+      page.drawText(line, {
+        x: 48,
+        y,
+        size,
+        font: isBold ? bold : font,
+        color: rgb(0.08, 0.08, 0.1),
+      });
+      y -= size + 8;
+    }
+  };
+  write(title, 22, true);
+  write(summary, 11);
+  if (customNotes) {
+    y -= 8;
+    write("Additional Notes", 14, true);
+    write(customNotes, 10);
+  }
+  for (const c of charts) {
+    y -= 8;
+    write(c.title, 14, true);
+    write(c.analysis, 10);
+    const preview = (c.data || [])
+      .slice(0, 8)
+      .map((d: any) => `${d.label}: ${d.value}`)
+      .join("  •  ");
+    write(preview || "Insufficient data available for this chart.", 9);
+  }
+  return await pdf.save();
+}
 
 Deno.serve(async (req) => {
- const corsHeaders = createCorsHeaders(req.headers.get('origin')); if (req.method==='OPTIONS') return new Response(null,{headers:corsHeaders});
- const supabase = createClient(SUPABASE_URL, SERVICE_KEY); const body = await req.json().catch(()=>({}));
- const auth = await verifyAuth(supabase, req.headers, body); if (auth.error) return json({ error:'Authentication required' },401,corsHeaders);
- try {
-  const source = body.source === 'scheduled' || body.operation === 'weekly' ? 'scheduled' : (body.source || 'manual');
-  const workspaceId = safe(body.workspace_id || body.tenant_id || 'default'); const period = body.period_start && body.period_end ? { start: body.period_start, end: body.period_end } : weekPeriod();
-  const listings: Listing[] = Array.isArray(body.listings) && body.listings.length ? body.listings : await fetchListings();
-  const snapshotIds = listings.map(l=>l.id||l.recordId).filter(Boolean).sort(); const built = build(listings); const generatedAt = new Date().toISOString();
-  const title = body.title || 'Property Listings Report'; const description = body.description || 'Quantitative analysis of property listings'; const summary = `Generated from ${listings.length.toLocaleString()} source listings for ${period.start} to ${period.end}.`;
-  const existing = source === 'scheduled' ? await supabase.from('generated_reports').select('id,status').eq('report_type','quantitative').eq('generation_source','scheduled').eq('workspace_id',workspaceId).eq('period_start',period.start).eq('period_end',period.end).eq('version',REPORT_VERSION).maybeSingle() : { data:null };
-  if (existing.data?.status === 'completed') return json({ success:true, reportId:existing.data.id, reused:true },200,corsHeaders);
-  const base = { title, description, config:{...(body.config||{}), period, workspace_id:workspaceId}, kpis:built.metrics, analytics:{...built.metrics, summary}, insights:[], chart_urls:{}, listing_count:listings.length, generated_by:auth.userId==='service_role'?null:auth.userId, report_type:'quantitative', generation_source:source, status:'generating', workspace_id:workspaceId, period_start:period.start, period_end:period.end, version:REPORT_VERSION, source_record_count:listings.length, source_snapshot:{ ids:snapshotIds, filters:body.filters||{}, fingerprint:hash({period, snapshotIds, metrics:built.metrics}) }, generated_at:generatedAt };
-  const { data: report, error: upsertErr } = existing.data ? await supabase.from('generated_reports').update(base).eq('id',existing.data.id).select('id').single() : await supabase.from('generated_reports').insert(base).select('id').single(); if (upsertErr) throw upsertErr;
-  await supabase.from('charts').delete().eq('report_id', report.id);
-  const bytes = pdfBytes(title, summary, built.charts); const year = period.start.slice(0,4); const path = `${workspaceId}/quantitative/${year}/${period.start}_${period.end}/${report.id}/property-listings-report.pdf`;
-  const up = await supabase.storage.from(REPORT_BUCKET).upload(path, bytes, { contentType:'application/pdf', upsert:true }); if (up.error) throw up.error;
-  const chartRows = built.charts.map(c=>({ report_id:report.id, chart_type:c.type, title:c.title, image_data:'', chart_key:c.key, chart_config:c.config, dataset:c.data, analysis_text:c.analysis, summary_text:c.analysis.split('.')[0]+'.', sort_order:c.order, report_date:period.end, generated_at:generatedAt }));
-  const { data: inserted, error: ce } = await supabase.from('charts').insert(chartRows).select('id,analysis_text'); if (ce) throw ce;
-  await supabase.from('chart_analysis').insert((inserted||[]).map((c:any)=>({ chart_id:c.id, analysis_text:c.analysis_text, analysis_type:'quantitative', confidence_score:0.9 })));
-  const done = await supabase.from('generated_reports').update({ status:'completed', chart_urls:{ stored_chart_count: chartRows.length }, pdf_bucket:REPORT_BUCKET, pdf_path:path, file_name:'property-listings-report.pdf', file_size:bytes.byteLength, generated_at:generatedAt }).eq('id', report.id); if (done.error) throw done.error;
-  return json({ success:true, reportId:report.id, chartCount:chartRows.length, pdf:{ bucket:REPORT_BUCKET, path } },200,corsHeaders);
- } catch(e) { console.error(e); return json({ error:'Quantitative report generation failed' },500,corsHeaders); }
+  const corsHeaders = createCorsHeaders(req.headers.get("origin"));
+  if (req.method === "OPTIONS")
+    return new Response(null, { headers: corsHeaders });
+  const generationRunId = req.headers.get("x-generation-run-id") || runId();
+  const started = Date.now();
+  let stage: Stage = "request_received";
+  let reportId: string | undefined;
+  const fail = (code: ErrorCode, message: string, status = 500) =>
+    json(
+      { success: false, code, message, generationRunId, stage, reportId },
+      status,
+      corsHeaders,
+    );
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  let body: any = {};
+  try {
+    logStage(generationRunId, stage);
+    body = await req.json().catch(() => {
+      throw new GenerationError(
+        "INVALID_REPORT_CONFIGURATION",
+        "The report request was not valid JSON.",
+        "request_validated",
+        400,
+      );
+    });
+    const auth = await verifyAuth(supabase, req.headers, body);
+    stage = "user_authenticated";
+    if (auth.error)
+      return fail(
+        "AUTH_REQUIRED",
+        "Your session has expired. Please sign in again and retry.",
+        401,
+      );
+    logStage(generationRunId, stage, { authMethod: auth.authMethod });
+    const source =
+      body.source === "scheduled" || body.operation === "weekly"
+        ? "scheduled"
+        : body.source || "manual";
+    const workspaceId = safe(
+      body.workspace_id || body.tenant_id || "default",
+      120,
+    );
+    stage = "workspace_resolved";
+    if (!workspaceId)
+      return fail(
+        "WORKSPACE_NOT_FOUND",
+        "The workspace context could not be resolved.",
+        400,
+      );
+    logStage(generationRunId, stage, { workspaceId });
+    const period =
+      body.period_start && body.period_end
+        ? { start: safe(body.period_start, 10), end: safe(body.period_end, 10) }
+        : weekPeriod();
+    const validKeys = new Set([
+      "suburb_volume",
+      "property_type",
+      "price_range",
+      "bedroom_count",
+      "daily_listing_activity",
+      "pricing_trends",
+      "data_confidence",
+      "suburb_performance_matrix",
+      "suburb_volume_distribution",
+      "price_vs_volume",
+      "agent_listing_volume",
+      "agency_distribution",
+    ]);
+    const selectedChartKeys = Array.isArray(body.selectedChartKeys)
+      ? body.selectedChartKeys
+          .map((k: any) => safe(k, 80))
+          .filter((k: string) => validKeys.has(k))
+      : [];
+    const selectedSections = Array.isArray(body.selectedSections)
+      ? body.selectedSections.map((k: any) => safe(k, 80)).filter(Boolean)
+      : [];
+    if (!selectedChartKeys.length && !selectedSections.length)
+      return fail(
+        "NO_REPORT_CONTENT_SELECTED",
+        "Select at least one report section or chart.",
+        400,
+      );
+    stage = "request_validated";
+    logStage(generationRunId, stage, {
+      selectedChartCount: selectedChartKeys.length,
+      selectedSectionCount: selectedSections.length,
+    });
+    stage = "quantitative_data_loaded";
+    const listings: Listing[] =
+      Array.isArray(body.listings) && body.listings.length
+        ? body.listings
+        : await fetchListings();
+    logStage(generationRunId, stage, { listingCount: listings.length });
+    const snapshotIds = listings
+      .map((l) => l.id || l.recordId)
+      .filter(Boolean)
+      .sort();
+    const built = build(listings);
+    stage = "chart_data_loaded";
+    const selectedCharts = built.charts.filter(
+      (c: any) =>
+        !selectedChartKeys.length || selectedChartKeys.includes(c.key),
+    );
+    if (!selectedCharts.length && selectedChartKeys.length)
+      return fail(
+        "CHART_DATA_INVALID",
+        "The selected charts are not available for this report.",
+        400,
+      );
+    logStage(generationRunId, stage, { chartCount: selectedCharts.length });
+    stage = "content_normalised";
+    const generatedAt = new Date().toISOString();
+    const title = safe(body.title || "Property Listings Report", 180);
+    const description = safe(
+      body.description || "Quantitative analysis of property listings",
+      1000,
+    );
+    const customNotes = safe(
+      body.customNotes ?? body.config?.customNotes ?? "",
+      4000,
+    );
+    const summary = `Generated from ${listings.length.toLocaleString()} source listings for ${period.start} to ${period.end}.`;
+    const configHash = hash({
+      workspaceId,
+      period,
+      selectedSections,
+      selectedChartKeys,
+      customNotes,
+      version: REPORT_VERSION,
+    });
+    const existing = await supabase
+      .from("generated_reports")
+      .select("id,status,pdf_path")
+      .eq("report_type", "quantitative")
+      .eq("workspace_id", workspaceId)
+      .eq("period_start", period.start)
+      .eq("period_end", period.end)
+      .eq("version", REPORT_VERSION)
+      .eq("source_snapshot->>config_hash", configHash)
+      .maybeSingle();
+    if (existing.error)
+      throw new GenerationError(
+        "REPORT_SAVE_FAILED",
+        "The report record could not be checked for retry safety.",
+        "report_record_saved",
+        500,
+      );
+    if (existing.data?.status === "completed") {
+      stage = "response_returned";
+      logStage(generationRunId, stage, {
+        reportId: existing.data.id,
+        reused: true,
+        durationMs: Date.now() - started,
+      });
+      return json(
+        {
+          success: true,
+          reportId: existing.data.id,
+          reused: true,
+          generationRunId,
+        },
+        200,
+        corsHeaders,
+      );
+    }
+    const base = {
+      title,
+      description,
+      config: {
+        ...(body.config || {}),
+        selectedSections,
+        selectedChartKeys,
+        customNotes,
+        period,
+        workspace_id: workspaceId,
+      },
+      kpis: built.metrics,
+      analytics: { ...built.metrics, summary },
+      insights: [],
+      chart_urls: {},
+      listing_count: listings.length,
+      generated_by: auth.authMethod === "jwt" ? auth.userId : null,
+      report_type: "quantitative",
+      generation_source: source,
+      status: "generating",
+      workspace_id: workspaceId,
+      period_start: period.start,
+      period_end: period.end,
+      version: REPORT_VERSION,
+      source_record_count: listings.length,
+      source_snapshot: {
+        ids: snapshotIds,
+        filters: body.filters || {},
+        config_hash: configHash,
+        fingerprint: hash({ period, snapshotIds, metrics: built.metrics }),
+      },
+      generated_at: generatedAt,
+      error_details: null,
+    };
+    const saved = existing.data
+      ? await supabase
+          .from("generated_reports")
+          .update(base)
+          .eq("id", existing.data.id)
+          .select("id")
+          .single()
+      : await supabase
+          .from("generated_reports")
+          .insert(base)
+          .select("id")
+          .single();
+    if (saved.error)
+      throw new GenerationError(
+        "REPORT_SAVE_FAILED",
+        "The report record could not be saved.",
+        "report_record_saved",
+        500,
+      );
+    reportId = saved.data.id;
+    stage = "report_record_saved";
+    logStage(generationRunId, stage, { reportId });
+    stage = "pdf_render_started";
+    logStage(generationRunId, stage, { reportId });
+    let bytes: Uint8Array;
+    try {
+      bytes = await pdfBytes(title, summary, selectedCharts, customNotes);
+    } catch (_pdfError) {
+      throw new GenerationError(
+        "PDF_RENDER_FAILED",
+        "The report content was prepared, but the PDF could not be rendered. Please retry.",
+        "pdf_render_started",
+        500,
+        reportId,
+      );
+    }
+    stage = "pdf_render_completed";
+    if (!bytes?.byteLength)
+      throw new GenerationError(
+        "PDF_EMPTY",
+        "The PDF was rendered without content.",
+        "pdf_render_completed",
+        500,
+        reportId,
+      );
+    logStage(generationRunId, stage, { reportId, fileSize: bytes.byteLength });
+    const year = period.start.slice(0, 4);
+    const path = `${workspaceId}/quantitative/${year}/${reportId}/quantitative-report.pdf`;
+    stage = "storage_upload_started";
+    logStage(generationRunId, stage, { reportId, bucket: REPORT_BUCKET });
+    const up = await supabase.storage
+      .from(REPORT_BUCKET)
+      .upload(path, bytes, { contentType: "application/pdf", upsert: true });
+    if (up.error)
+      throw new GenerationError(
+        "STORAGE_UPLOAD_FAILED",
+        "The PDF was created but could not be saved. Please retry.",
+        "storage_upload_started",
+        500,
+        reportId,
+      );
+    stage = "storage_upload_completed";
+    logStage(generationRunId, stage, { reportId, path });
+    const chartRows = selectedCharts.map((c: any) => ({
+      report_id: reportId,
+      chart_type: c.type,
+      title: c.title,
+      image_data: "",
+      chart_key: c.key,
+      chart_config: c.config,
+      dataset: c.data,
+      analysis_text: c.analysis,
+      summary_text: c.analysis.split(".")[0] + ".",
+      sort_order: c.order,
+      report_date: period.end,
+      generated_at: generatedAt,
+    }));
+    await supabase.from("charts").delete().eq("report_id", reportId);
+    const { data: inserted, error: ce } = await supabase
+      .from("charts")
+      .insert(chartRows)
+      .select("id,analysis_text");
+    if (ce)
+      throw new GenerationError(
+        "CHART_LINK_FAILED",
+        "The report was generated but charts could not be linked.",
+        "chart_links_saved",
+        500,
+        reportId,
+      );
+    const analysisRows = (inserted || []).map((c: any) => ({
+      chart_id: c.id,
+      analysis_text: c.analysis_text,
+      analysis_type: "quantitative",
+      confidence_score: 0.9,
+    }));
+    if (analysisRows.length) {
+      const ca = await supabase.from("chart_analysis").insert(analysisRows);
+      if (ca.error)
+        console.warn(
+          JSON.stringify({
+            component: "quantitative-report-pipeline",
+            generationRunId,
+            stage: "chart_links_saved",
+            warning: "chart_analysis_insert_failed",
+            reportId,
+          }),
+        );
+    }
+    stage = "chart_links_saved";
+    logStage(generationRunId, stage, {
+      reportId,
+      chartCount: chartRows.length,
+    });
+    const done = await supabase
+      .from("generated_reports")
+      .update({
+        status: "completed",
+        chart_urls: { stored_chart_count: chartRows.length },
+        pdf_bucket: REPORT_BUCKET,
+        pdf_path: path,
+        file_name: "quantitative-report.pdf",
+        file_size: bytes.byteLength,
+        generated_at: generatedAt,
+        error_details: null,
+      })
+      .eq("id", reportId);
+    if (done.error)
+      throw new GenerationError(
+        "REPORT_SAVE_FAILED",
+        "The completed report record could not be updated.",
+        "report_record_saved",
+        500,
+        reportId,
+      );
+    stage = "response_returned";
+    logStage(generationRunId, stage, {
+      reportId,
+      durationMs: Date.now() - started,
+    });
+    return json(
+      {
+        success: true,
+        reportId,
+        chartCount: chartRows.length,
+        generationRunId,
+        pdf: {
+          bucket: REPORT_BUCKET,
+          path,
+          fileName: "quantitative-report.pdf",
+          fileSize: bytes.byteLength,
+        },
+      },
+      200,
+      corsHeaders,
+    );
+  } catch (e) {
+    const ge =
+      e instanceof GenerationError
+        ? e
+        : new GenerationError(
+            "UNKNOWN_GENERATION_ERROR",
+            "Unable to generate the quantitative report.",
+            stage,
+            500,
+            reportId,
+          );
+    console.error(
+      JSON.stringify({
+        component: "quantitative-report-pipeline",
+        generationRunId,
+        failedStage: ge.stage,
+        code: ge.code,
+        safeMessage: ge.message,
+        reportId: ge.reportId || reportId,
+        durationMs: Date.now() - started,
+        originalError: e instanceof Error ? e.message : String(e),
+      }),
+    );
+    if (ge.reportId || reportId)
+      await supabase
+        .from("generated_reports")
+        .update({ status: "failed", error_details: `${ge.code}:${ge.stage}` })
+        .eq("id", ge.reportId || reportId);
+    stage = ge.stage;
+    return fail(ge.code, ge.message, ge.status);
+  }
 });

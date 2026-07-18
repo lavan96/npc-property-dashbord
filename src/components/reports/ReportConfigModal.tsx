@@ -42,7 +42,7 @@ const reportConfigSchema = z.object({
 export type ReportConfig = z.infer<typeof reportConfigSchema>;
 
 interface ReportConfigModalProps {
-  onGenerateReport: (config: ReportConfig) => void;
+  onGenerateReport: (config: ReportConfig) => void | Promise<unknown>;
   isGenerating: boolean;
   progress?: number;
   currentStep?: string;
@@ -81,8 +81,9 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
     },
   });
 
-  const handleSubmit = (config: ReportConfig) => {
-    onGenerateReport(config);
+  const handleSubmit = async (config: ReportConfig) => {
+    if (isGenerating) return;
+    await onGenerateReport(config);
     // Don't close modal immediately - let it stay open to show progress
   };
 
