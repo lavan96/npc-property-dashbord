@@ -19,6 +19,12 @@ export interface ChartData {
   created_at: string;
   report_id: string;
   chart_config?: any;
+  dataset?: any;
+  chart_key?: string | null;
+  summary_text?: string | null;
+  sort_order?: number | null;
+  report_date?: string | null;
+  generated_at?: string | null;
   analysis_text?: string | null;
   generated_reports: {
     id: string;
@@ -26,6 +32,8 @@ export interface ChartData {
     display_title?: string;
     created_at: string;
     listing_count?: number | null;
+    generated_at?: string | null;
+    period_end?: string | null;
   } | null;
 }
 
