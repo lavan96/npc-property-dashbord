@@ -183,6 +183,7 @@ export async function invokeSecureFunction<T = any>(
           'x-session-token': sessionToken,
           ...(isCommandCentreMessagingFunction ? { 'x-command-centre-session-token': sessionToken } : {}),
         } : {}),
+        ...(typeof body?.generationRunId === 'string' && body.generationRunId.trim() ? { 'x-generation-run-id': body.generationRunId.trim() } : {}),
       },
       credentials: 'omit',
       body: JSON.stringify(requestBody),
