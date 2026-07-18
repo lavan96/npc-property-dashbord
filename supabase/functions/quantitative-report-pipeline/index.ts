@@ -66,6 +66,19 @@ const num = (v: any) => {
   return Number.isFinite(n) ? n : 0;
 };
 const runId = () => crypto.randomUUID();
+const shortReference = (id: string) => id.replace(/-/g, "").slice(0, 8);
+const pdfText = (s: any, max = 3000) =>
+  safe(s, max)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "-")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '\"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "");
+const isValidPdf = (bytes: Uint8Array) =>
+  bytes.byteLength > 4 &&
+  String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]) === "%PDF-";
 const logStage = (
   generationRunId: string,
   stage: Stage,
@@ -392,6 +405,7 @@ async function pdfBytes(
   summary: string,
   charts: any[],
   customNotes: string,
+  metadata: { companyName?: string | null; authorName?: string | null } = {},
 ) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
@@ -402,7 +416,7 @@ async function pdfBytes(
   };
   let { page, y } = addPage();
   const write = (text: string, size = 10, isBold = false) => {
-    const words = safe(text, 3000).split(/\s+/);
+    const words = pdfText(text, 3000).split(/\s+/);
     let line = "";
     for (const w of words) {
       if ((line + " " + w).length > 92) {
@@ -440,6 +454,13 @@ async function pdfBytes(
   };
   write(title, 22, true);
   write(summary, 11);
+  if (metadata.companyName || metadata.authorName) {
+    const parts = [
+      metadata.companyName ? `Company: ${metadata.companyName}` : "",
+      metadata.authorName ? `Author: ${metadata.authorName}` : "",
+    ].filter(Boolean);
+    write(parts.join(" | "), 9);
+  }
   if (customNotes) {
     y -= 8;
     write("Additional Notes", 14, true);
@@ -452,7 +473,7 @@ async function pdfBytes(
     const preview = (c.data || [])
       .slice(0, 8)
       .map((d: any) => `${d.label}: ${d.value}`)
-      .join("  •  ");
+      .join("  -  ");
     write(preview || "Insufficient data available for this chart.", 9);
   }
   return await pdf.save();
@@ -462,13 +483,14 @@ Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
-  const generationRunId = req.headers.get("x-generation-run-id") || runId();
+  const headerRunId = req.headers.get("x-generation-run-id");
+  let generationRunId = headerRunId || runId();
   const started = Date.now();
   let stage: Stage = "request_received";
   let reportId: string | undefined;
   const fail = (code: ErrorCode, message: string, status = 500) =>
     json(
-      { success: false, code, message, generationRunId, stage, reportId },
+      { success: false, code, message, generationRunId, reference: shortReference(generationRunId), stage, reportId },
       status,
       corsHeaders,
     );
@@ -484,6 +506,10 @@ Deno.serve(async (req) => {
         400,
       );
     });
+    if (!headerRunId && typeof body.generationRunId === "string" && body.generationRunId.trim()) {
+      generationRunId = safe(body.generationRunId, 80);
+      logStage(generationRunId, "request_received", { reference: shortReference(generationRunId), source: "body" });
+    }
     const auth = await verifyAuth(supabase, req.headers, body);
     stage = "user_authenticated";
     if (auth.error)
@@ -558,10 +584,9 @@ Deno.serve(async (req) => {
       .sort();
     const built = build(listings);
     stage = "chart_data_loaded";
-    const selectedCharts = built.charts.filter(
-      (c: any) =>
-        !selectedChartKeys.length || selectedChartKeys.includes(c.key),
-    );
+    const selectedCharts = selectedChartKeys.length
+      ? built.charts.filter((c: any) => selectedChartKeys.includes(c.key))
+      : [];
     if (!selectedCharts.length && selectedChartKeys.length)
       return fail(
         "CHART_DATA_INVALID",
@@ -619,6 +644,7 @@ Deno.serve(async (req) => {
           reportId: existing.data.id,
           reused: true,
           generationRunId,
+          reference: shortReference(generationRunId),
         },
         200,
         corsHeaders,
@@ -684,7 +710,9 @@ Deno.serve(async (req) => {
     logStage(generationRunId, stage, { reportId });
     let bytes: Uint8Array;
     try {
-      bytes = await pdfBytes(title, summary, selectedCharts, customNotes);
+      const companyName = safe(body.companyName ?? body.config?.companyName ?? "", 180).trim() || null;
+      const authorName = safe(body.authorName ?? body.config?.authorName ?? "", 180).trim() || null;
+      bytes = await pdfBytes(title, summary, selectedCharts, customNotes, { companyName, authorName });
     } catch (_pdfError) {
       throw new GenerationError(
         "PDF_RENDER_FAILED",
@@ -703,7 +731,15 @@ Deno.serve(async (req) => {
         500,
         reportId,
       );
-    logStage(generationRunId, stage, { reportId, fileSize: bytes.byteLength });
+    if (!isValidPdf(bytes))
+      throw new GenerationError(
+        "PDF_EMPTY",
+        "The PDF renderer returned invalid PDF bytes.",
+        "pdf_render_completed",
+        500,
+        reportId,
+      );
+    logStage(generationRunId, stage, { reportId, fileSize: bytes.byteLength, reference: shortReference(generationRunId) });
     const year = period.start.slice(0, 4);
     const path = `${workspaceId}/quantitative/${year}/${reportId}/quantitative-report.pdf`;
     stage = "storage_upload_started";
@@ -736,11 +772,13 @@ Deno.serve(async (req) => {
       generated_at: generatedAt,
     }));
     await supabase.from("charts").delete().eq("report_id", reportId);
-    const { data: inserted, error: ce } = await supabase
-      .from("charts")
-      .insert(chartRows)
-      .select("id,analysis_text");
-    if (ce)
+    const inserted = chartRows.length
+      ? await supabase
+          .from("charts")
+          .insert(chartRows)
+          .select("id,analysis_text")
+      : { data: [], error: null };
+    if (inserted.error)
       throw new GenerationError(
         "CHART_LINK_FAILED",
         "The report was generated but charts could not be linked.",
@@ -748,7 +786,7 @@ Deno.serve(async (req) => {
         500,
         reportId,
       );
-    const analysisRows = (inserted || []).map((c: any) => ({
+    const analysisRows = (inserted.data || []).map((c: any) => ({
       chart_id: c.id,
       analysis_text: c.analysis_text,
       analysis_type: "quantitative",
@@ -804,6 +842,7 @@ Deno.serve(async (req) => {
         reportId,
         chartCount: chartRows.length,
         generationRunId,
+        reference: shortReference(generationRunId),
         pdf: {
           bucket: REPORT_BUCKET,
           path,
@@ -829,6 +868,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         component: "quantitative-report-pipeline",
         generationRunId,
+        reference: shortReference(generationRunId),
         failedStage: ge.stage,
         code: ge.code,
         safeMessage: ge.message,
