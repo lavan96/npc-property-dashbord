@@ -2848,32 +2848,53 @@ export type Database = {
       }
       charts: {
         Row: {
+          analysis_text: string | null
           chart_config: Json | null
+          chart_key: string | null
           chart_type: string
           created_at: string
+          dataset: Json | null
+          generated_at: string | null
           id: string
           image_data: string
+          report_date: string | null
           report_id: string
+          sort_order: number | null
+          summary_text: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          analysis_text?: string | null
           chart_config?: Json | null
+          chart_key?: string | null
           chart_type: string
           created_at?: string
+          dataset?: Json | null
+          generated_at?: string | null
           id?: string
           image_data: string
+          report_date?: string | null
           report_id: string
+          sort_order?: number | null
+          summary_text?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          analysis_text?: string | null
           chart_config?: Json | null
+          chart_key?: string | null
           chart_type?: string
           created_at?: string
+          dataset?: Json | null
+          generated_at?: string | null
           id?: string
           image_data?: string
+          report_date?: string | null
           report_id?: string
+          sort_order?: number | null
+          summary_text?: string | null
           title?: string
           updated_at?: string
         }
@@ -10284,14 +10305,29 @@ export type Database = {
           config: Json
           created_at: string
           description: string | null
+          error_details: string | null
+          file_name: string | null
+          file_size: number | null
+          generated_at: string | null
           generated_by: string | null
+          generation_source: string | null
           id: string
           insights: Json
           kpis: Json
           listing_count: number
+          pdf_bucket: string | null
+          pdf_path: string | null
+          period_end: string | null
+          period_start: string | null
+          report_type: string | null
+          source_record_count: number | null
+          source_snapshot: Json | null
+          status: string | null
           title: string
+          version: number | null
           webhook_sent: boolean | null
           webhook_url: string | null
+          workspace_id: string | null
         }
         Insert: {
           analytics: Json
@@ -10300,14 +10336,29 @@ export type Database = {
           config: Json
           created_at?: string
           description?: string | null
+          error_details?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          generated_at?: string | null
           generated_by?: string | null
+          generation_source?: string | null
           id?: string
           insights: Json
           kpis: Json
           listing_count: number
+          pdf_bucket?: string | null
+          pdf_path?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          report_type?: string | null
+          source_record_count?: number | null
+          source_snapshot?: Json | null
+          status?: string | null
           title: string
+          version?: number | null
           webhook_sent?: boolean | null
           webhook_url?: string | null
+          workspace_id?: string | null
         }
         Update: {
           analytics?: Json
@@ -10316,14 +10367,29 @@ export type Database = {
           config?: Json
           created_at?: string
           description?: string | null
+          error_details?: string | null
+          file_name?: string | null
+          file_size?: number | null
+          generated_at?: string | null
           generated_by?: string | null
+          generation_source?: string | null
           id?: string
           insights?: Json
           kpis?: Json
           listing_count?: number
+          pdf_bucket?: string | null
+          pdf_path?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          report_type?: string | null
+          source_record_count?: number | null
+          source_snapshot?: Json | null
+          status?: string | null
           title?: string
+          version?: number | null
           webhook_sent?: boolean | null
           webhook_url?: string | null
+          workspace_id?: string | null
         }
         Relationships: []
       }
