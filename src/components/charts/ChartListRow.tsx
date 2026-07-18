@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -6,6 +6,7 @@ import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, CheckCir
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { PREMIUM_CHART_CARD_CLASS, getChartTypeConfig, renderChartImage, type ChartData } from './ChartCard';
+import { getDisplayAnalysis } from './chartAnalysis';
 
 interface ChartListRowProps {
   chart: ChartData;
@@ -21,6 +22,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
   const navigate = useNavigate();
   const cfg = getChartTypeConfig(chart.chart_type);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const displayAnalysis = useMemo(() => getDisplayAnalysis(chart), [chart]);
 
   return (
     <div
@@ -97,7 +99,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
       </div>
 
       <div className="flex w-full flex-wrap items-center justify-end gap-2 self-end shrink-0 sm:w-auto sm:self-center">
-        {chart.analysis_text && (
+        {displayAnalysis && (
           <Button
             variant="ghost"
             size="sm"
@@ -123,10 +125,10 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
         )}
       </div>
 
-      {chart.analysis_text && showAnalysis && (
+      {displayAnalysis && showAnalysis && (
         <div className="w-full rounded-2xl border border-brand-500/25 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.14),transparent_40%),linear-gradient(145deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.32))] p-3 shadow-inner sm:ml-[7.25rem] sm:w-[calc(100%-7.25rem)]" onClick={(e) => e.stopPropagation()}>
           <p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words pr-1 text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere] [scrollbar-width:thin]">
-            {chart.analysis_text}
+            {displayAnalysis}
           </p>
         </div>
       )}

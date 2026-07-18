@@ -17,6 +17,7 @@ import { ChartStats } from '@/components/charts/ChartStats';
 import { useChartExport } from '@/components/charts/useChartExport';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { buildChartReportOptions, type ChartSourceReport } from '@/lib/chartReportLabels';
+import { buildChartInsight, isUsefulAnalysis } from '@/components/charts/chartAnalysis';
 
 const CHARTS_PER_PAGE = 24;
 
@@ -123,18 +124,37 @@ export default function Charts() {
 
       const transformed: ChartData[] = chartsData
         .filter((chart: any) => chart.report_id && reportsMap.has(chart.report_id))
-        .map((chart: any) => ({
-        ...chart,
-        generated_reports: chart.report_id && reportsMap.has(chart.report_id)
-          ? {
-              ...reportsMap.get(chart.report_id),
-              display_title: reportDisplayLabels.get(chart.report_id),
-            }
-          : null,
-        analysis_text: chart.analysis_text || analysisMap.get(chart.id) || null,
-      }));
+        .map((chart: any) => {
+          const next = {
+            ...chart,
+            generated_reports: chart.report_id && reportsMap.has(chart.report_id)
+              ? {
+                  ...reportsMap.get(chart.report_id),
+                  display_title: reportDisplayLabels.get(chart.report_id),
+                }
+              : null,
+            analysis_text: chart.analysis_text || analysisMap.get(chart.id) || null,
+          } as ChartData;
+          if (!isUsefulAnalysis(next.analysis_text)) {
+            const insight = buildChartInsight(next);
+            if (insight) next.analysis_text = insight.fullAnalysis;
+          }
+          return next;
+        });
 
       setCharts(transformed);
+
+      const backfills = transformed
+        .filter((chart) => chart.analysis_text && !isUsefulAnalysis(chartsData.find((raw: any) => raw.id === chart.id)?.analysis_text || analysisMap.get(chart.id)))
+        .slice(0, 12);
+      if (backfills.length > 0) {
+        void Promise.allSettled(backfills.map((chart) => invokeSecureFunction('manage-templates', {
+          operation: 'update',
+          table: 'charts',
+          recordId: chart.id,
+          data: { analysis_text: chart.analysis_text, summary_text: chart.analysis_text?.split('\n')[0]?.replace(/^Key finding:\s*/i, '') ?? null },
+        }))).catch((error) => console.warn('Chart analysis backfill failed', error));
+      }
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load charts');
@@ -532,7 +552,7 @@ export default function Charts() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 lg:gap-5">
+                <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,390px),1fr))] gap-5 lg:gap-6">
                   {group.charts.map(chart => (
                     <ChartCard key={chart.id} {...cardProps(chart)} />
                   ))}
@@ -542,7 +562,7 @@ export default function Charts() {
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 lg:gap-5 2xl:gap-6">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,390px),1fr))] gap-5 lg:gap-6 2xl:gap-6">
           {paginatedCharts.map(chart => (
             <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}

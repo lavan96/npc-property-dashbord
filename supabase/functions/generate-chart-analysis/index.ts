@@ -287,13 +287,12 @@ ANALYSIS FRAMEWORK:
 ${chartSpecificGuidance}
 
 REQUIREMENTS:
-• Write 3-4 professional sentences (150-250 words)
-• Focus on market implications and actionable insights
-• Use real estate terminology appropriately
-• Highlight the most significant finding first
-• End with a practical recommendation for real estate professionals
-• Be specific about numbers and percentages when relevant
-• Avoid generic statements - make it data-driven and insightful
+• Write medium-density analysis of 120-220 words
+• Use this exact structure: Key finding, Evidence, Implication, Consideration
+• Base every value and category only on the structured chart data supplied
+• Do not invent suburbs, property types, causal explanations, or trends not present in the data
+• State a limitation or data-quality consideration when the dataset is sparse, concentrated, or single-period
+• Keep the tone concise, commercial, and data-grounded
 
 Provide your analysis now:`;
 }
@@ -376,8 +375,8 @@ const __chartAnalysisHandler = async (req: Request): Promise<Response> => {
         { role: 'system', content: await getSystemPrompt(chartData.type) },
         { role: 'user', content: prompt },
       ],
-      maxTokens: 300,
-      temperature: 0.7,
+      maxTokens: 520,
+      temperature: 0.35,
     });
 
     if (!openAIResponse.ok) {
@@ -430,6 +429,14 @@ const __chartAnalysisHandler = async (req: Request): Promise<Response> => {
       console.error('Supabase error:', error);
       throw new Error(`Failed to store analysis: ${error.message}`);
     }
+
+    await supabase
+      .from('charts')
+      .update({
+        analysis_text: analysisText,
+        summary_text: analysisText.split('\n')[0]?.replace(/^Key finding:\s*/i, '').slice(0, 500) || null,
+      })
+      .eq('id', chartId);
 
     console.log('Analysis generated and stored successfully');
 

@@ -53,6 +53,7 @@ interface RawChart {
   chart_type?: string;
   title?: string;
   chart_config?: any;
+  dataset?: any;
 }
 
 function coerceKind(cfg: any, chartType: string, seriesCount: number, stacked: boolean, horizontal: boolean): NormalisedChartKind {
@@ -104,6 +105,7 @@ function slugKey(label: string, i: number): string {
  */
 export function normaliseChartConfig(raw: RawChart): NormalisedChartModel | null {
   const cfg = raw?.chart_config || {};
+  const dataset = raw?.dataset || {};
 
   // Producer shape used throughout the app:
   //   { type, title, data: [{ label, value, color? }, ...] }
@@ -123,7 +125,7 @@ export function normaliseChartConfig(raw: RawChart): NormalisedChartModel | null
           backgroundColor: inlinePoints.some((p) => p.color) ? inlinePoints.map((p) => p.color || null) : undefined,
         }],
       }
-    : (cfg.data || cfg);
+    : (cfg.data || (Array.isArray(dataset?.data) ? dataset : dataset?.chart_config) || dataset || cfg);
 
   const labels: any[] = Array.isArray(source.labels)
     ? source.labels
@@ -150,8 +152,10 @@ export function normaliseChartConfig(raw: RawChart): NormalisedChartModel | null
     cfg.options?.scales?.y?.stacked ||
     rawDatasets.some((d) => d?.stack),
   );
+  const longLabelCount = labels.filter((label) => toStringLabel(label, 0).length > 14).length;
   const horizontal = String(cfg.indexAxis || cfg.options?.indexAxis || '').toLowerCase() === 'y'
-    || chartType.includes('horizontal');
+    || chartType.includes('horizontal')
+    || (rawDatasets.length === 1 && labels.length > 5 && longLabelCount / labels.length > 0.35);
 
   const series: NormalisedSeries[] = rawDatasets.map((ds, i) => {
     const label = String(ds?.label || `Series ${i + 1}`);
