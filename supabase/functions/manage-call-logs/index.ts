@@ -1,6 +1,29 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 
+const VAPI_BASE_URL = 'https://api.vapi.ai';
+const VAPI_FETCH_TIMEOUT_MS = 5000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Fetch the authoritative call state from Vapi. Never throws.
+async function vapiGetCall(
+  vapiCallId: string,
+  apiKey: string,
+): Promise<{ ok: boolean; status: number; call: Record<string, any> | null }> {
+  try {
+    const response = await fetch(`${VAPI_BASE_URL}/call/${vapiCallId}`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(VAPI_FETCH_TIMEOUT_MS),
+    });
+    const call = response.ok ? await response.json().catch(() => null) : null;
+    return { ok: response.ok, status: response.status, call };
+  } catch (error) {
+    console.error('[manage-call-logs] Vapi GET /call failed:', error);
+    return { ok: false, status: 0, call: null };
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -143,51 +166,182 @@ Deno.serve(async (req) => {
 
       console.log(`[manage-call-logs] Killing live Vapi call: ${callRow.vapi_call_id}`);
 
-      const vapiResponse = await fetch(`https://api.vapi.ai/call/${callRow.vapi_call_id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${vapiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const baseMetadata = (callRow.metadata && typeof callRow.metadata === 'object' && !Array.isArray(callRow.metadata))
+        ? callRow.metadata as Record<string, unknown>
+        : {};
 
-      if (!vapiResponse.ok && vapiResponse.status !== 404 && vapiResponse.status !== 409) {
-        const details = await vapiResponse.text();
-        console.error('[manage-call-logs] Vapi kill call failed:', vapiResponse.status, details);
-        return new Response(
-          JSON.stringify({ success: false, error: `Vapi rejected kill request (${vapiResponse.status})` }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      // Close the local row and record who killed the call, how, and what Vapi reported
+      const markEnded = async (outcome: string, audit: Record<string, unknown>) => {
+        const endedAt = new Date().toISOString();
+        const { error: updateError } = await supabase
+          .from('vapi_call_logs')
+          .update({
+            call_status: 'ended',
+            call_outcome: outcome,
+            ended_at: endedAt,
+            metadata: {
+              ...baseMetadata,
+              killed_by: userId,
+              killed_by_username: username,
+              killed_at: endedAt,
+              kill_source: 'call_logs_live_monitor',
+              ...audit,
+            },
+          })
+          .eq('id', callRow.id);
+        return updateError;
+      };
 
-      const endedAt = new Date().toISOString();
-      const { error: updateError } = await supabase
-        .from('vapi_call_logs')
-        .update({
-          call_status: 'ended',
-          call_outcome: vapiResponse.ok ? 'killed' : 'ended',
-          ended_at: endedAt,
-          metadata: {
-            ...((callRow.metadata && typeof callRow.metadata === 'object' && !Array.isArray(callRow.metadata)) ? callRow.metadata : {}),
-            killed_by: userId,
-            killed_by_username: username,
-            killed_at: endedAt,
-            kill_source: 'call_logs_live_monitor',
-            vapi_delete_status: vapiResponse.status,
-          },
-        })
-        .eq('id', callRow.id);
-
-      if (updateError) {
+      const dbErrorResponse = (updateError: { message: string }) => {
         console.error('[manage-call-logs] Error marking killed call ended:', updateError);
         return new Response(
           JSON.stringify({ success: false, error: updateError.message }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      };
+
+      // Authoritative state + Live Call Control URL from Vapi. DELETE /call/{id}
+      // only removes the record — a live call can only be ended by POSTing
+      // {"type":"end-call"} to the call's monitor.controlUrl.
+      const initial = await vapiGetCall(callRow.vapi_call_id, vapiApiKey);
+      const initialStatus = typeof initial.call?.status === 'string' ? initial.call.status : null;
+      const controlUrl: string | null = initial.call?.monitor?.controlUrl
+        || (typeof baseMetadata.vapi_monitor_control_url === 'string' ? baseMetadata.vapi_monitor_control_url : null);
+
+      // Idempotent path: the call is already over on Vapi's side
+      if (initial.status === 404 || (initial.ok && initialStatus === 'ended')) {
+        const endedReason = initial.call?.endedReason ?? null;
+        const updateError = await markEnded(endedReason || 'ended', {
+          kill_method: 'already-ended',
+          kill_verified: true,
+          vapi_get_status: initial.status,
+          vapi_ended_reason: endedReason,
+        });
+        if (updateError) return dbErrorResponse(updateError);
+        return new Response(
+          JSON.stringify({ success: true, result: 'already-ended', verified: true, endedReason }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
+      if (!controlUrl) {
+        // A queued call has not connected yet, so unscheduling it via DELETE is
+        // a real termination. For anything in transit we must fail loudly —
+        // reporting success without ending the call defeats the security control.
+        const effectiveStatus = initialStatus ?? callRow.call_status;
+        if (effectiveStatus === 'queued') {
+          const deleteResponse = await fetch(`${VAPI_BASE_URL}/call/${callRow.vapi_call_id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${vapiApiKey}` },
+            signal: AbortSignal.timeout(VAPI_FETCH_TIMEOUT_MS),
+          }).catch((error) => {
+            console.error('[manage-call-logs] Vapi DELETE /call failed:', error);
+            return null;
+          });
+
+          if (deleteResponse && (deleteResponse.ok || deleteResponse.status === 404 || deleteResponse.status === 409)) {
+            const updateError = await markEnded('killed', {
+              kill_method: 'queued-delete',
+              kill_verified: true,
+              vapi_get_status: initial.status,
+              vapi_delete_status: deleteResponse.status,
+            });
+            if (updateError) return dbErrorResponse(updateError);
+            return new Response(
+              JSON.stringify({ success: true, result: 'terminated', verified: true, endedReason: null }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          return new Response(
+            JSON.stringify({ success: false, error: `Vapi rejected the unschedule request (${deleteResponse?.status ?? 'network error'})` }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.error('[manage-call-logs] No control URL available for live call:', callRow.vapi_call_id, 'GET status:', initial.status);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Unable to resolve the Vapi control URL for this call. The call was NOT terminated.' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Send end-call over the Live Call Control channel. The controlUrl is a
+      // capability URL — no Authorization header needed.
+      let controlStatus = 0;
+      try {
+        const controlResponse = await fetch(controlUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'end-call' }),
+          signal: AbortSignal.timeout(VAPI_FETCH_TIMEOUT_MS),
+        });
+        controlStatus = controlResponse.status;
+        if (!controlResponse.ok) {
+          const details = await controlResponse.text().catch(() => '');
+          console.error('[manage-call-logs] Vapi control end-call rejected:', controlResponse.status, details);
+        }
+      } catch (error) {
+        console.error('[manage-call-logs] Vapi control end-call request failed:', error);
+      }
+
+      if (controlStatus < 200 || controlStatus >= 300) {
+        // A dead control channel usually means the call just ended on its own —
+        // recheck before reporting failure.
+        const recheck = await vapiGetCall(callRow.vapi_call_id, vapiApiKey);
+        if (recheck.status === 404 || recheck.call?.status === 'ended') {
+          const endedReason = recheck.call?.endedReason ?? null;
+          const updateError = await markEnded(endedReason || 'ended', {
+            kill_method: 'already-ended',
+            kill_verified: true,
+            vapi_get_status: recheck.status,
+            vapi_control_status: controlStatus,
+            vapi_ended_reason: endedReason,
+          });
+          if (updateError) return dbErrorResponse(updateError);
+          return new Response(
+            JSON.stringify({ success: true, result: 'already-ended', verified: true, endedReason }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: false, error: `Vapi control endpoint rejected end-call (${controlStatus || 'network error'}). The call was NOT terminated.` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify termination against Vapi — the ack alone is not proof for a
+      // security control.
+      let verified = false;
+      let endedReason: string | null = null;
+      let verifyStatus = 0;
+      for (const delayMs of [1000, 1500, 2000]) {
+        await sleep(delayMs);
+        const check = await vapiGetCall(callRow.vapi_call_id, vapiApiKey);
+        verifyStatus = check.status;
+        if (check.status === 404 || check.call?.status === 'ended') {
+          verified = true;
+          endedReason = check.call?.endedReason ?? null;
+          break;
+        }
+      }
+
+      // The end-call command was accepted, so close the row either way; the
+      // Vapi webhook reconciles the final state if verification lagged.
+      const updateError = await markEnded('killed', {
+        kill_method: 'control-url-end-call',
+        kill_verified: verified,
+        vapi_get_status: initial.status,
+        vapi_control_status: controlStatus,
+        vapi_verify_status: verifyStatus,
+        vapi_ended_reason: endedReason,
+      });
+      if (updateError) return dbErrorResponse(updateError);
+
+      console.log(`[manage-call-logs] Kill result for ${callRow.vapi_call_id}: verified=${verified}, endedReason=${endedReason}`);
       return new Response(
-        JSON.stringify({ success: true, vapiStatus: vapiResponse.status }),
+        JSON.stringify({ success: true, result: 'terminated', verified, endedReason }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
