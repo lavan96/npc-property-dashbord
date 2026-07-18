@@ -11,6 +11,40 @@ import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { AURORA_GOLD_PALETTE, colorAt } from '@/components/charts/kernel/palettes';
 
+
+const QUANTITATIVE_CHART_FIELD_TO_KEY: Partial<Record<keyof ReportConfig, string>> = {
+  includeSuburbChart: 'suburb_volume',
+  includePropertyTypeChart: 'property_type',
+  includePriceRangeChart: 'price_range',
+  includeBedroomChart: 'bedroom_count',
+  includeDailyListingActivity: 'daily_listing_activity',
+  includePricingTrends: 'pricing_trends',
+  includeDataConfidence: 'data_confidence',
+  includeSuburbPerformanceMatrix: 'suburb_performance_matrix',
+  includeSuburbVolumeDistribution: 'suburb_volume_distribution',
+  includePriceVsVolumeAnalysis: 'price_vs_volume',
+  includeAgentListingVolume: 'agent_listing_volume',
+  includeAgencyDistribution: 'agency_distribution',
+};
+
+const QUANTITATIVE_SECTION_FIELDS: Array<keyof ReportConfig> = [
+  'includeKPIs',
+  'includeAdvancedAnalytics',
+  'includeExecutiveInsights',
+  'includeTemporalAnalysis',
+  'includeGeographicAnalysis',
+  'includeAgentPerformance',
+];
+
+const quantitativeErrorMessage = (code?: string, message?: string, generationRunId?: string) => {
+  if (message && code && code !== 'UNKNOWN_GENERATION_ERROR') return generationRunId ? `${message} Reference: ${generationRunId.slice(0, 8)}.` : message;
+  if (code === 'AUTH_REQUIRED') return 'Your session has expired. Please sign in again and retry.';
+  if (code === 'NO_REPORT_CONTENT_SELECTED') return 'Select at least one report section or chart.';
+  if (code === 'STORAGE_UPLOAD_FAILED') return 'The PDF was created but could not be saved. Please retry.';
+  if (code === 'PDF_RENDER_FAILED' || code === 'PDF_EMPTY') return 'The report content was prepared, but the PDF could not be rendered. Please retry.';
+  return `Unable to generate the quantitative report.${generationRunId ? ` Reference: ${generationRunId.slice(0, 8)}.` : ''}`;
+};
+
 interface ChartData {
   type: 'bar' | 'pie' | 'line';
   title: string;
@@ -485,6 +519,27 @@ export function useReportGenerator() {
       executiveInsights?: HTMLElement | null;
     }
   ) => {
+    if (isGenerating) {
+      return null;
+    }
+
+    const selectedChartKeys = Object.entries(QUANTITATIVE_CHART_FIELD_TO_KEY)
+      .filter(([field]) => Boolean(config[field as keyof ReportConfig]))
+      .map(([, key]) => key)
+      .filter((key): key is string => Boolean(key));
+    const selectedSections = QUANTITATIVE_SECTION_FIELDS.filter((field) => Boolean(config[field]));
+    const customNotes = (config.customNotes || '').trim().slice(0, 4000);
+    const generationRunId = crypto.randomUUID();
+
+    if (!selectedChartKeys.length && !selectedSections.length) {
+      toast({
+        title: 'Report Configuration Required',
+        description: 'Select at least one report section or chart.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
     setIsGenerating(true);
     setProgress(0);
     setCurrentStep('Initializing report generation...');
@@ -499,15 +554,27 @@ export function useReportGenerator() {
       setCurrentStep('Creating report snapshot...');
       const { data, error } = await invokeSecureFunction('quantitative-report-pipeline', {
         source: 'manual',
+        generationRunId,
+        reportType: 'quantitative',
         title: config.title || 'Property Listings Report',
         description: config.description,
-        config,
+        selectedSections,
+        selectedChartKeys,
+        customNotes,
+        config: {
+          ...config,
+          customNotes,
+          selectedSections,
+          selectedChartKeys,
+        },
         listings: allListings,
         workspace_id: 'default',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       }, { timeoutMs: 120000 });
 
       if (error || !data?.success) {
-        throw new Error('Quantitative report generation failed. Please try again.');
+        const response = data as any;
+        throw new Error(quantitativeErrorMessage(response?.code, response?.message || error?.message, response?.generationRunId || generationRunId));
       }
 
       setProgress(100);
@@ -1912,7 +1979,7 @@ export function useReportGenerator() {
       });
 
     } catch (error) {
-      console.error('Error generating report:', error);
+      console.error('Error generating quantitative report:', { generationRunId, error });
       toast({
         title: "Report Generation Failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
