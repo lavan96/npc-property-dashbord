@@ -96,6 +96,102 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Operation: killLiveCall - end an active Vapi call and close the local live row
+    if (operation === 'killLiveCall') {
+      if (!callId) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'callId is required for killLiveCall' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: callRow, error: callFetchError } = await supabase
+        .from('vapi_call_logs')
+        .select('id, vapi_call_id, call_status, ended_at, metadata')
+        .eq('id', callId)
+        .maybeSingle();
+
+      if (callFetchError) {
+        console.error('[manage-call-logs] Error fetching live call before kill:', callFetchError);
+        return new Response(
+          JSON.stringify({ success: false, error: callFetchError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!callRow) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Call log not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!['in-progress', 'ringing', 'queued'].includes(callRow.call_status)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Only live calls can be killed' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const vapiApiKey = Deno.env.get('VAPI_API_KEY');
+      if (!vapiApiKey) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'VAPI_API_KEY is not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[manage-call-logs] Killing live Vapi call: ${callRow.vapi_call_id}`);
+
+      const vapiResponse = await fetch(`https://api.vapi.ai/call/${callRow.vapi_call_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${vapiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!vapiResponse.ok && vapiResponse.status !== 404 && vapiResponse.status !== 409) {
+        const details = await vapiResponse.text();
+        console.error('[manage-call-logs] Vapi kill call failed:', vapiResponse.status, details);
+        return new Response(
+          JSON.stringify({ success: false, error: `Vapi rejected kill request (${vapiResponse.status})` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const endedAt = new Date().toISOString();
+      const { error: updateError } = await supabase
+        .from('vapi_call_logs')
+        .update({
+          call_status: 'ended',
+          call_outcome: vapiResponse.ok ? 'killed' : 'ended',
+          ended_at: endedAt,
+          metadata: {
+            ...((callRow.metadata && typeof callRow.metadata === 'object' && !Array.isArray(callRow.metadata)) ? callRow.metadata : {}),
+            killed_by: userId,
+            killed_by_username: username,
+            killed_at: endedAt,
+            kill_source: 'call_logs_live_monitor',
+            vapi_delete_status: vapiResponse.status,
+          },
+        })
+        .eq('id', callRow.id);
+
+      if (updateError) {
+        console.error('[manage-call-logs] Error marking killed call ended:', updateError);
+        return new Response(
+          JSON.stringify({ success: false, error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, vapiStatus: vapiResponse.status }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Operation: delete - delete a call log
     if (operation === 'delete') {
       if (!callId) {

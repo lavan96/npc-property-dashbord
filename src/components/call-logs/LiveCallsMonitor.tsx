@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
+import { useModulePermissions } from '@/hooks/useModulePermissions';
+import { useToast } from '@/hooks/use-toast';
 import { callLogBadgeTone } from './badgeStyles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,11 +18,24 @@ import {
   Users,
   Loader2,
   Activity,
-  Zap
+  Zap,
+  PhoneOff,
+  ShieldAlert
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CallStatePanel } from './CallStatePanel';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface LiveCall {
   id: string;
@@ -51,10 +66,13 @@ const getLiveStatusTone = (status: string | null) => {
 };
 
 export const LiveCallsMonitor = () => {
-  const { fetchLiveCalls: fetchLiveCallsSecure } = useSecureCallLogs();
+  const { toast } = useToast();
+  const { canEdit: canControlCalls } = useModulePermissions('call_logs');
+  const { fetchLiveCalls: fetchLiveCallsSecure, killLiveCall } = useSecureCallLogs();
   const [liveCalls, setLiveCalls] = useState<LiveCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
+  const [killingCallId, setKillingCallId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLiveCalls();
@@ -126,6 +144,28 @@ export const LiveCallsMonitor = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+
+  const handleKillCall = async (call: LiveCall) => {
+    setKillingCallId(call.id);
+    const { error } = await killLiveCall(call.id);
+    setKillingCallId(null);
+
+    if (error) {
+      toast({
+        title: 'Unable to kill live call',
+        description: error.message || 'The provider rejected the call termination request.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Live call killed',
+      description: `${call.customer_name || call.phone_number || 'The active call'} has been ended.`,
+    });
+    fetchLiveCalls();
   };
 
   const getStatusBadge = (status: string | null) => {
@@ -281,6 +321,46 @@ export const LiveCallsMonitor = () => {
                           <span className="rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-2.5 py-1 text-xs text-muted-foreground dark:text-muted-foreground">
                             Started {format(new Date(call.started_at), 'h:mm a')}
                           </span>
+                        )}
+                        {canControlCalls && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                disabled={killingCallId === call.id}
+                                className="rounded-full border border-destructive/40 bg-destructive/15 text-destructive shadow-sm shadow-destructive/10 hover:bg-destructive hover:text-destructive-foreground"
+                              >
+                                {killingCallId === call.id ? (
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <PhoneOff className="mr-1.5 h-3.5 w-3.5" />
+                                )}
+                                Kill call
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                  <ShieldAlert className="h-5 w-5 text-destructive" />
+                                  Kill this live call?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This immediately sends a termination request to Vapi for {call.customer_name || call.phone_number || 'this caller'} and closes the live monitor row. Use only when a live agent session must be stopped.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleKillCall(call)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Kill live call
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                   </div>
