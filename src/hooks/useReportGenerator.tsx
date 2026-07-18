@@ -495,6 +495,30 @@ export function useReportGenerator() {
         throw new Error('User not authenticated. Please log in to generate reports.');
       }
 
+      setProgress(20);
+      setCurrentStep('Creating report snapshot...');
+      const { data, error } = await invokeSecureFunction('quantitative-report-pipeline', {
+        source: 'manual',
+        title: config.title || 'Property Listings Report',
+        description: config.description,
+        config,
+        listings: allListings,
+        workspace_id: 'default',
+      }, { timeoutMs: 120000 });
+
+      if (error || !data?.success) {
+        throw new Error('Quantitative report generation failed. Please try again.');
+      }
+
+      setProgress(100);
+      setCurrentStep('Report generation complete!');
+      window.dispatchEvent(new CustomEvent('quantitative-report-generated', { detail: { reportId: data.reportId } }));
+      toast({
+        title: "Report Generated Successfully! 📊",
+        description: "Quantitative report generated and added to Charts.",
+      });
+      return data.reportId;
+
       // Resolve brand name (white-label aware)
       const __brandSettings = await fetchGlobalReportSettings();
       const brandName = (__brandSettings?.contactDetails?.company_name || 'Property Report').trim();

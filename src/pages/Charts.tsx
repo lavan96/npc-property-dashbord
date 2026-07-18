@@ -55,7 +55,7 @@ export default function Charts() {
         operation: 'list',
         table: 'charts',
         listOptions: {
-          select: 'id, chart_type, title, image_data, created_at, report_id, chart_config',
+          select: 'id, chart_type, title, image_data, created_at, report_id, chart_config, dataset, analysis_text, summary_text, chart_key, sort_order, report_date, generated_at',
           orderBy: 'created_at',
           orderAsc: false,
           limit: 100,
@@ -79,10 +79,12 @@ export default function Charts() {
         const { data: reportsResult, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
           table: 'generated_reports',
           reportIds,
-          listOptions: { select: 'id, title, created_at' }
+          listOptions: { select: 'id, title, created_at, generated_at, period_end, report_type, status' }
         });
         if (!reportsError && reportsResult?.reports) {
-          reportsResult.reports.forEach((r: any) => reportsMap.set(r.id, r));
+          reportsResult.reports
+            .filter((r: any) => (r.status ?? 'completed') === 'completed' && (r.report_type ?? 'quantitative') === 'quantitative')
+            .forEach((r: any) => reportsMap.set(r.id, r));
         }
       }
 
@@ -119,7 +121,9 @@ export default function Charts() {
           .map(report => [report.id, report.label]),
       );
 
-      const transformed: ChartData[] = chartsData.map((chart: any) => ({
+      const transformed: ChartData[] = chartsData
+        .filter((chart: any) => chart.report_id && reportsMap.has(chart.report_id))
+        .map((chart: any) => ({
         ...chart,
         generated_reports: chart.report_id && reportsMap.has(chart.report_id)
           ? {
@@ -127,7 +131,7 @@ export default function Charts() {
               display_title: reportDisplayLabels.get(chart.report_id),
             }
           : null,
-        analysis_text: analysisMap.get(chart.id) || null,
+        analysis_text: chart.analysis_text || analysisMap.get(chart.id) || null,
       }));
 
       setCharts(transformed);
@@ -141,6 +145,11 @@ export default function Charts() {
   }, []);
 
   useEffect(() => { fetchCharts(); }, [fetchCharts]);
+  useEffect(() => {
+    const refresh = () => fetchCharts();
+    window.addEventListener('quantitative-report-generated', refresh);
+    return () => window.removeEventListener('quantitative-report-generated', refresh);
+  }, [fetchCharts]);
 
   // Derived data
   const chartTypes = useMemo(() => [...new Set(charts.map(c => c.chart_type))].sort(), [charts]);
@@ -523,7 +532,7 @@ export default function Charts() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-4 min-[520px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-5 xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 lg:gap-5">
                   {group.charts.map(chart => (
                     <ChartCard key={chart.id} {...cardProps(chart)} />
                   ))}
@@ -533,7 +542,7 @@ export default function Charts() {
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid auto-rows-fr grid-cols-1 gap-4 min-[520px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-5 xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] 2xl:gap-6">
+        <div className="grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4 lg:gap-5 2xl:gap-6">
           {paginatedCharts.map(chart => (
             <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}

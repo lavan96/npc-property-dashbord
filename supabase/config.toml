@@ -954,3 +954,6 @@ verify_jwt = false
 
 [functions.agent-models-read]
 verify_jwt = false
+
+[functions.quantitative-report-pipeline]
+verify_jwt = false
