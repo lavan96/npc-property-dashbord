@@ -13,10 +13,13 @@ interface QuantitativeReportCardProps {
 }
 
 export function QuantitativeReportCard({ report, generatorLabel, onView, onDownloadPDF }: QuantitativeReportCardProps) {
-  const averagePrice = report.kpis?.avg_price ? `$${report.kpis.avg_price.toLocaleString()}` : 'N/A';
+  const avgPrice = report.kpis?.avg_price ?? report.kpis?.average_price ?? report.analytics?.average_price;
+  const averagePrice = avgPrice ? `$${Math.round(avgPrice).toLocaleString()}` : 'N/A';
   const dataQuality = report.analytics?.quality?.avg_confidence != null
     ? `${report.analytics.quality.avg_confidence.toFixed(1)}%`
-    : 'N/A';
+    : report.analytics?.valid_price_count != null && report.listing_count
+      ? `${Math.round((report.analytics.valid_price_count / report.listing_count) * 100)}%`
+      : 'N/A';
 
   return (
     <Card className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 dark:bg-background/70">
