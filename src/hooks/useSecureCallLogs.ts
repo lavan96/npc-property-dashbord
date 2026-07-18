@@ -152,6 +152,27 @@ export const useSecureCallLogs = () => {
     return { error: null };
   }, []);
 
+  // Kill an active Vapi call and mark the local live row as ended
+  const killLiveCall = useCallback(async (callId: string) => {
+    const { data, error } = await invokeSecureFunction('manage-call-logs', {
+      operation: 'killLiveCall',
+      callId
+    });
+
+    if (error) {
+      console.error('[useSecureCallLogs] Error killing live call:', error);
+      return { error };
+    }
+
+    if (!data?.success) {
+      console.error('[useSecureCallLogs] Edge function returned error:', data?.error);
+      return { error: { message: data?.error || 'Unknown error' } };
+    }
+
+    console.log('[useSecureCallLogs] Killed live call via secure Edge Function');
+    return { error: null };
+  }, []);
+
   // Delete a call
   const deleteCall = useCallback(async (callId: string) => {
     const { data, error } = await invokeSecureFunction('manage-call-logs', {
@@ -201,6 +222,7 @@ export const useSecureCallLogs = () => {
     fetchCall,
     updateCallTags,
     updateCall,
+    killLiveCall,
     deleteCall,
     cleanupTestCalls
   };
