@@ -10,6 +10,10 @@ export interface GeneratedReport {
   insights: any;
   config: any;
   generated_by?: string | null;
+  pdf_bucket?: string | null;
+  pdf_path?: string | null;
+  file_name?: string | null;
+  file_size?: number | null;
 }
 
 export interface InvestmentReport {

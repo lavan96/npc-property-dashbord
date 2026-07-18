@@ -39,6 +39,7 @@ const QUANTITATIVE_SECTION_FIELDS: Array<keyof ReportConfig> = [
 const quantitativeErrorMessage = (code?: string, message?: string, generationRunId?: string, reference?: string) => {
   const ref = reference || generationRunId?.replace(/-/g, '').slice(0, 8);
   if (message && code && code !== 'UNKNOWN_GENERATION_ERROR') return ref ? `${message} Reference: ${ref}.` : message;
+  if (message && !code) return ref ? `${message} Reference: ${ref}.` : message;
   if (code === 'AUTH_REQUIRED') return 'Your session has expired. Please sign in again and retry.';
   if (code === 'NO_REPORT_CONTENT_SELECTED') return 'Select at least one report section or chart.';
   if (code === 'STORAGE_UPLOAD_FAILED') return 'The PDF was created but could not be saved. Please retry.';

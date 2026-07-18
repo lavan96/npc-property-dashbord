@@ -14,6 +14,7 @@ import html2canvas from 'html2canvas';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { LiveChart, canNormaliseChartConfig } from '@/components/charts/kernel';
+import { fetchPdfBlob, triggerPdfDownload } from '@/lib/pdf/downloadPdf';
 
 interface GeneratedReport {
   id: string;
@@ -27,6 +28,10 @@ interface GeneratedReport {
   insights: any;
   config: any;
   chart_urls: any;
+  pdf_bucket?: string | null;
+  pdf_path?: string | null;
+  file_name?: string | null;
+  file_size?: number | null;
 }
 
 interface ChartData {
@@ -67,7 +72,7 @@ export default function ReportViewer() {
   }, [reportId]);
 
   useEffect(() => {
-    if (shouldAutoDownload && report && charts.length > 0) {
+    if (shouldAutoDownload && report && (report.pdf_path || charts.length > 0)) {
       handleDownloadPDF();
     }
   }, [shouldAutoDownload, report, charts]);
@@ -284,7 +289,7 @@ export default function ReportViewer() {
   };
 
   const handleDownloadPDF = async (options?: { returnBlob?: boolean }): Promise<Blob | void> => {
-    if (!report || !reportRef.current) return;
+    if (!report) return;
 
     logActivityDirect({
       actionType: 'report_pdf_downloaded',
@@ -296,6 +301,29 @@ export default function ReportViewer() {
 
     setDownloading(true);
     try {
+      if (report.pdf_path) {
+        const bucket = report.pdf_bucket || 'quantitative-reports';
+        const fileName = report.file_name || `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(report.created_at), 'yyyy-MM-dd')}.pdf`;
+        const { data: signedResult, error: signedError } = await invokeSecureFunction('secure-storage', {
+          operation: 'signedUrl',
+          bucket,
+          path: report.pdf_path,
+          expires_in: 300,
+        });
+        if (signedError || !signedResult?.success || !signedResult?.data?.signedUrl) {
+          throw new Error(signedResult?.error || signedError?.message || 'Stored PDF could not be prepared for download.');
+        }
+        const blob = await fetchPdfBlob(signedResult.data.signedUrl);
+        if (options?.returnBlob) return blob;
+        triggerPdfDownload(blob, fileName);
+        toast({
+          title: "PDF Downloaded",
+          description: `Report saved as ${fileName}`,
+        });
+        return;
+      }
+
+      if (!reportRef.current) return;
       const __brandSettings = await fetchGlobalReportSettings();
       const brandName = (__brandSettings?.contactDetails?.company_name || 'Property Report').trim();
       const brandUpper = brandName.toUpperCase();

@@ -5,6 +5,7 @@ type StorageBucket =
   | 'client-documents' 
   | 'vownet-forms'
   | 'investment-reports'
+  | 'quantitative-reports'
   | 'report-templates'
   | 'branding-assets'
   | 'qa_exports'
