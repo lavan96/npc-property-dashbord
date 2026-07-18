@@ -83,8 +83,8 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
 
   const handleSubmit = async (config: ReportConfig) => {
     if (isGenerating) return;
-    await onGenerateReport(config);
-    // Don't close modal immediately - let it stay open to show progress
+    const result = await onGenerateReport(config);
+    if (result) setOpen(false);
   };
 
   return (

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PropertyListing } from '@/lib/airtable';
@@ -6,6 +8,7 @@ import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -501,6 +504,8 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
 };
 
 export function useReportGenerator() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
@@ -591,14 +596,71 @@ export function useReportGenerator() {
         throw new Error(quantitativeErrorMessage(response?.code, response?.message || error?.message, response?.generationRunId || generationRunId, response?.reference));
       }
 
+      const reportId = typeof data.reportId === 'string' ? data.reportId.trim() : '';
+      const reportIsCompleted = data.status === 'completed';
+
       setProgress(100);
       setCurrentStep('Report generation complete!');
-      window.dispatchEvent(new CustomEvent('quantitative-report-generated', { detail: { reportId: data.reportId } }));
-      toast({
-        title: "Report Generated Successfully! 📊",
-        description: "Quantitative report generated and added to Charts.",
+      window.dispatchEvent(new CustomEvent('quantitative-report-generated', { detail: { reportId } }));
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['generated-reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['quantitative-reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['charts'] }),
+      ]).catch((refreshError) => {
+        console.warn('Quantitative report generated, but cached report data could not be refreshed:', refreshError);
       });
-      return data.reportId;
+
+      const goToGeneratedReports = () => {
+        try {
+          navigate('/generated-reports?tab=quantitative');
+        } catch (navigationError) {
+          console.error('Unable to open Generated Reports after report generation:', navigationError);
+          toast({
+            title: 'Unable to open Generated Reports',
+            description: 'The report was generated successfully. Please use Generated Reports to access it.',
+            variant: 'destructive',
+          });
+        }
+      };
+
+      const viewGeneratedReport = () => {
+        try {
+          navigate(`/generated-reports/${encodeURIComponent(reportId)}`);
+        } catch (navigationError) {
+          console.error('Unable to open generated report directly:', { reportId, navigationError });
+          toast({
+            title: 'Report generated, but could not be opened',
+            description: 'Open Generated Reports to access it.',
+            variant: 'destructive',
+          });
+        }
+      };
+
+      if (!reportId || !reportIsCompleted) {
+        console.error('Quantitative report generation succeeded without a completed report ID:', {
+          reportId: data.reportId,
+          status: data.status,
+          generationRunId: data.generationRunId || generationRunId,
+        });
+      }
+
+      toast({
+        title: 'Report Generated Successfully',
+        description: 'Your quantitative PDF report has been generated and added to Generated Reports and Charts.',
+        action: (
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[180px]">
+            {reportId && reportIsCompleted && (
+              <ToastAction altText="View the generated report" onClick={viewGeneratedReport} className="w-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary">
+                View Generated Report
+              </ToastAction>
+            )}
+            <ToastAction altText="Go to Generated Reports" onClick={goToGeneratedReports} className="w-full">
+              Go to Generated Reports
+            </ToastAction>
+          </div>
+        ),
+      });
+      return data;
 
       // Resolve brand name (white-label aware)
       const __brandSettings = await fetchGlobalReportSettings();

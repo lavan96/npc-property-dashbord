@@ -840,6 +840,9 @@ Deno.serve(async (req) => {
       {
         success: true,
         reportId,
+        reportTitle: title,
+        reportType: "quantitative",
+        status: "completed",
         chartCount: chartRows.length,
         generationRunId,
         reference: shortReference(generationRunId),
