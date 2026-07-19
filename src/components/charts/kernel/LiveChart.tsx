@@ -84,7 +84,8 @@ export function LiveChart({ chart, model: providedModel, variant = 'card', class
   const margin = marginFor(variant);
   const containerKey = `${chart?.id || 'live'}-${variant}-${model.kind}`;
 
-  const showLegend = !isCard || model.series.length > 1;
+  // Legends removed platform-wide: chart title/subtitle + axis labels convey the series identity.
+  const showLegend = false;
   const barSize = isExport ? 120 : isCard ? 56 : 88;
   const tickInterval = isCard ? Math.max(0, Math.ceil(model.data.length / 7) - 1) : Math.max(0, Math.ceil(model.data.length / 12) - 1);
 
@@ -276,7 +277,7 @@ function renderPie(ctx: InnerCtx) {
   return (
     <PieChart margin={isCard ? { top: 4, right: 4, bottom: 4, left: 4 } : { top: 8, right: 20, bottom: 8, left: 20 }}>
       <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} formatter={(value: number, name: string, item: any) => { const total = slices.reduce((sum, s) => sum + s.value, 0); const percent = total ? ` (${((Number(value) / total) * 100).toFixed(1)}%)` : ""; return [`${value}${percent}`, item?.payload?.name || name]; }} />
-      {!isCard && (
+      {false && (
         <Legend
           layout={isExport ? 'vertical' : 'horizontal'}
           verticalAlign={isExport ? 'middle' : 'bottom'}

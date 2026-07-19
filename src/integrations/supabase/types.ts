@@ -14713,6 +14713,7 @@ export type Database = {
           attempts: Json
           bytes_in: number | null
           bytes_out: number | null
+          cache_contract_fingerprint: string | null
           cache_hit: boolean
           cache_source_job_id: string | null
           callback_received_at: string | null
@@ -14739,6 +14740,7 @@ export type Database = {
           plan_payload: Json
           request_payload: Json
           result_payload: Json
+          service_class: string | null
           source_file_hash: string | null
           source_file_name: string | null
           source_file_path: string
@@ -14749,6 +14751,7 @@ export type Database = {
           started_at: string | null
           status: string
           template_id: string | null
+          template_import_id: string | null
           timed_out_at: string | null
           updated_at: string
           user_id: string
@@ -14757,6 +14760,7 @@ export type Database = {
           attempts?: Json
           bytes_in?: number | null
           bytes_out?: number | null
+          cache_contract_fingerprint?: string | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
           callback_received_at?: string | null
@@ -14783,6 +14787,7 @@ export type Database = {
           plan_payload?: Json
           request_payload?: Json
           result_payload?: Json
+          service_class?: string | null
           source_file_hash?: string | null
           source_file_name?: string | null
           source_file_path: string
@@ -14793,6 +14798,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           template_id?: string | null
+          template_import_id?: string | null
           timed_out_at?: string | null
           updated_at?: string
           user_id: string
@@ -14801,6 +14807,7 @@ export type Database = {
           attempts?: Json
           bytes_in?: number | null
           bytes_out?: number | null
+          cache_contract_fingerprint?: string | null
           cache_hit?: boolean
           cache_source_job_id?: string | null
           callback_received_at?: string | null
@@ -14827,6 +14834,7 @@ export type Database = {
           plan_payload?: Json
           request_payload?: Json
           result_payload?: Json
+          service_class?: string | null
           source_file_hash?: string | null
           source_file_name?: string | null
           source_file_path?: string
@@ -14837,11 +14845,20 @@ export type Database = {
           started_at?: string | null
           status?: string
           template_id?: string | null
+          template_import_id?: string | null
           timed_out_at?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pdf_import_jobs_template_import_id_fkey"
+            columns: ["template_import_id"]
+            isOneToOne: false
+            referencedRelation: "template_imports"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pdf_import_monitoring_events: {
         Row: {
