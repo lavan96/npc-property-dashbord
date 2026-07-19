@@ -47,22 +47,37 @@ Deno.serve(async (req) => {
     const [{ data: client }, { data: contact }, { data: portalUser }] = await Promise.all([
       supabase.from('clients').select('id, finance_contact_id, primary_first_name, primary_surname').eq('id', client_id).maybeSingle(),
       supabase.from('finance_agent_contacts').select('id, name, is_active').eq('id', finance_contact_id).maybeSingle(),
-      supabase.from('finance_portal_users').select('id, is_active, revoked_at').eq('finance_contact_id', finance_contact_id).maybeSingle(),
+      supabase.from('finance_portal_users').select('id, is_active, revoked_at, global_permissions').eq('finance_contact_id', finance_contact_id).maybeSingle(),
     ]);
     if (!client) return json({ error: 'Client was not found' }, 404, corsHeaders);
-    if (!contact?.is_active || client.finance_contact_id !== finance_contact_id) {
-      return json({ error: 'The selected Finance Partner is not authorised for this client' }, 403, corsHeaders);
+    if (!contact?.is_active) {
+      return json({ error: 'The selected Finance Partner is inactive' }, 403, corsHeaders);
     }
     if (!portalUser?.is_active || portalUser.revoked_at) {
       return json({ error: 'This Finance Partner does not currently have an active Finance Portal account' }, 422, corsHeaders);
     }
+    // Assignment is the source of truth for tri-portal authorisation — a partner
+    // may be assigned to a client without being the client's primary
+    // finance_contact_id (auto-link + manual assignments both count).
     const { data: assignment } = await supabase
       .from('finance_portal_client_assignments')
       .select('id, permissions')
       .eq('finance_user_id', portalUser.id)
       .eq('client_id', client_id)
       .maybeSingle();
-    if (!assignment || !assignment.permissions?.documents?.view) {
+    if (!assignment) {
+      return json({ error: 'The selected Finance Partner is not authorised for this client' }, 403, corsHeaders);
+    }
+    // Effective permissions = OR-merge(global baseline, per-client matrix).
+    // The `documents` key is default-allow when both sides omit it (matches
+    // finance-portal-document-requirements and finance-portal-client-tasks).
+    const globalPerms = (portalUser.global_permissions as any) || {};
+    const perClient = (assignment.permissions as any) || {};
+    const gDocs = globalPerms.documents;
+    const pDocs = perClient.documents;
+    const canViewDocs =
+      (!gDocs && !pDocs) || !!(gDocs?.view) || !!(pDocs?.view);
+    if (!canViewDocs) {
       return json({ error: 'The selected Finance Partner is not authorised to view this client’s documents' }, 403, corsHeaders);
     }
 
