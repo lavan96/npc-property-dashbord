@@ -614,24 +614,7 @@ Deno.serve(async (req) => {
       customNotes,
       version: REPORT_VERSION,
     });
-    let generatedByNativeUser: string | null = null;
-    if (auth.userId && auth.authMethod !== "service_role") {
-      try {
-        const native = await supabase.auth.admin.getUserById(auth.userId);
-        generatedByNativeUser = native.data?.user?.id || null;
-      } catch (nativeUserError) {
-        console.warn(
-          JSON.stringify({
-            component: "quantitative-report-pipeline",
-            generationRunId,
-            stage: "content_normalised",
-            warning: "native_generated_by_lookup_failed",
-            authMethod: auth.authMethod,
-            error: nativeUserError instanceof Error ? nativeUserError.message : String(nativeUserError),
-          }),
-        );
-      }
-    }
+    const generatedByUser = auth.userId && auth.authMethod !== "service_role" ? auth.userId : null;
     // A manual run is idempotent only for its own generation run ID. The prior
     // configuration-hash lookup reused an older completed report whenever a user
     // intentionally generated the same configuration, overwriting its history.
@@ -690,10 +673,7 @@ Deno.serve(async (req) => {
       insights: [],
       chart_urls: {},
       listing_count: listings.length,
-      // `generated_by` has an FK to native `auth.users`. Custom command-centre
-      // sessions are authenticated humans, but their IDs live in `custom_users`;
-      // store those in `source_snapshot` instead of violating the FK.
-      generated_by: generatedByNativeUser,
+      generated_by: generatedByUser,
       report_type: "quantitative",
       generation_source: source,
       status: "generating",
