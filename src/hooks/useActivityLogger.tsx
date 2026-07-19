@@ -93,6 +93,10 @@ export type ActivityActionType =
   | 'checklist_deleted'
   // Data actions
   | 'data_imported'
+  // Blacklist actions
+  | 'blacklist_entry_created'
+  | 'blacklist_entry_updated'
+  | 'blacklist_entry_deleted'
   // WhiteLabel extended
   | 'whitelabel_logo_uploaded'
   | 'whitelabel_logo_removed'
