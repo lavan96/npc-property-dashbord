@@ -155,6 +155,8 @@ function renderInner(ctx: InnerCtx): React.ReactElement {
     default:
       return renderBar(ctx, {});
   }
+}
+
 function axisTick(fontSize: number, isExport: boolean) {
   return { fontSize, fill: isExport ? '#334155' : 'hsl(var(--muted-foreground))' };
 }
