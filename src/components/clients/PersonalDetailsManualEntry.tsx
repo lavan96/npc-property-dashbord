@@ -412,8 +412,8 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
               Edit Details
             </Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-2xl">
-            <SheetHeader>
+          <SheetContent className="flex w-full flex-col sm:max-w-3xl">
+            <SheetHeader className="shrink-0">
               <SheetTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Personal Details (All Applicants)
@@ -423,7 +423,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
               </SheetDescription>
             </SheetHeader>
 
-            <ScrollArea className="h-[calc(100vh-180px)] pr-4">
+            <ScrollArea className="min-h-0 flex-1 pr-4">
               <Tabs defaultValue="contacts" className="w-full mt-4">
                 <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
                   <TabsList className="inline-flex w-auto min-w-max">
@@ -582,7 +582,7 @@ export function PersonalDetailsManualEntry({ clientId, clientData, additionalCon
               </Tabs>
             </ScrollArea>
 
-            <SheetFooter className="pt-4">
+            <SheetFooter className="shrink-0 border-t border-border bg-background pt-4">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={handleSubmit} disabled={updateClientMutation.isPending}>
                 {updateClientMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

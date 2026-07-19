@@ -59,6 +59,8 @@ const ALLOWED_TABLES: TableName[] = [
 function normalizeAddressPayload(payload: Record<string, any>) {
   const out = { ...(payload || {}) };
   if (typeof out.address === 'string') out.address = out.address.trim();
+  if (typeof out.current_address === 'string') out.current_address = out.current_address.trim();
+  if (typeof out.secondary_current_address === 'string') out.secondary_current_address = out.secondary_current_address.trim();
   if (typeof out.current_suburb === 'string') out.current_suburb = out.current_suburb.trim();
   if (typeof out.current_state === 'string') out.current_state = out.current_state.trim().toUpperCase();
   if (typeof out.current_postcode === 'string') out.current_postcode = out.current_postcode.trim();
@@ -97,6 +99,32 @@ function normalizeAddressPayload(payload: Record<string, any>) {
     out.secondary_residential_status = out.residential_status ?? out.secondary_residential_status ?? null;
   }
   return out;
+}
+
+async function applyInheritedSecondaryAddress(supabase: any, clientId: string, payload: Record<string, any>) {
+  const primaryAddressChanged = ['current_address', 'current_suburb', 'current_state', 'current_postcode', 'country', 'living_situation', 'residential_status']
+    .some((key) => key in payload);
+  if (!primaryAddressChanged) return payload;
+
+  const { data: client, error } = await supabase
+    .from('clients')
+    .select('current_address, current_suburb, current_state, current_postcode, country, living_situation, residential_status, secondary_same_address_as_primary')
+    .eq('id', clientId)
+    .single();
+  if (error || !client || (payload.secondary_same_address_as_primary ?? client.secondary_same_address_as_primary) !== true) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    secondary_current_address: payload.current_address ?? client.current_address ?? null,
+    secondary_current_suburb: payload.current_suburb ?? client.current_suburb ?? null,
+    secondary_current_state: payload.current_state ?? client.current_state ?? null,
+    secondary_current_postcode: payload.current_postcode ?? client.current_postcode ?? null,
+    secondary_country: payload.country ?? client.country ?? 'Australia',
+    secondary_living_situation: payload.living_situation ?? client.living_situation ?? null,
+    secondary_residential_status: payload.residential_status ?? client.residential_status ?? null,
+  };
 }
 
 function hasAddressFields(payload: Record<string, any> | undefined) {
@@ -439,6 +467,12 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (table === 'clients') {
+          insertData = Array.isArray(insertData)
+            ? insertData.map((item) => normalizeAddressPayload(item))
+            : normalizeAddressPayload(insertData);
+        }
+
         const syncPlans = table === 'client_files' || table === 'client_notes'
           ? await Promise.all((Array.isArray(insertData) ? insertData : [insertData]).map((item) =>
               prepareSharedSyncInsert(supabase, table, clientId!, { ...item }, provenance, { userId: userId || null, username: username || null }),
@@ -587,6 +621,9 @@ Deno.serve(async (req) => {
         let updatePayload = { ...data } as Record<string, any>;
         if (table === 'client_address_history' || (table === 'clients' && hasAddressFields(updatePayload))) {
           updatePayload = normalizeAddressPayload(updatePayload);
+        }
+        if (table === 'clients' && idToUpdate) {
+          updatePayload = await applyInheritedSecondaryAddress(supabase, idToUpdate, updatePayload);
         }
         if (table === 'client_notes' || table === 'client_files') {
           Object.assign(updatePayload, {
