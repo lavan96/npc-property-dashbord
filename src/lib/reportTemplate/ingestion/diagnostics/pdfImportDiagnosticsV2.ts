@@ -104,6 +104,18 @@ export interface DiagnosticsGateSummary {
   pageCount?: number;
   perPage?: Array<{ pageNumber: number; score?: number | null; recommendedAction?: string }>;
   pageDecisions?: Record<string, { finalMode?: string; outputStrategy?: string; decision?: { action?: string; reason?: string; score?: number | null } }>;
+  /** E0 critical-visual-containment-v1 audit (subset), when the gate recorded it. */
+  criticalContainment?: {
+    version?: string;
+    ran?: boolean;
+    nativeSuppressed?: boolean;
+    criticalPageCount?: number;
+    criticalDefectCount?: number;
+    pagesForcedHybrid?: number;
+    pagesForcedPixel?: number;
+    pagesBlockedNoRaster?: number;
+    perPage?: Array<{ pageNumber?: number; action?: string; reason?: string; contentKinds?: string[]; sourceRasterAvailable?: boolean; manualReviewRequired?: boolean; defects?: Array<{ code?: string }> }>;
+  };
 }
 
 export interface DiagnosticsChunkRow {
@@ -219,6 +231,16 @@ export interface DiagnosticsDetail {
   artifacts: DiagnosticsArtifactFlags;
   signedUrls: Record<string, string>;
   error: { code: string | null; text: string | null } | null;
+  /** E0 critical-visual-containment-v1 rollup (null when the gate did not record it). */
+  containment: {
+    version: string | null;
+    nativeSuppressed: boolean;
+    criticalPageCount: number;
+    pagesForcedHybrid: number;
+    pagesForcedPixel: number;
+    pagesBlockedNoRaster: number;
+    pages: Array<{ pageNumber: number | null; action: string | null; reason: string | null; contentKinds: string[]; sourceRasterAvailable: boolean; defectCodes: string[] }>;
+  } | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -568,5 +590,30 @@ export function buildDiagnosticsDetail(input: BuildDiagnosticsDetailInput): Diag
     artifacts: artifactFlags(job),
     signedUrls: input.signedUrls ?? {},
     error: job.error_code || job.error_text ? { code: job.error_code ?? null, text: job.error_text ?? null } : null,
+    containment: buildContainmentDetail(gate),
+  };
+}
+
+/** E0 — shape the persisted critical-containment audit into a compact rollup. */
+function buildContainmentDetail(gate: DiagnosticsGateSummary | null): DiagnosticsDetail['containment'] {
+  const c = gate?.criticalContainment;
+  if (!c || c.ran !== true) return null;
+  return {
+    version: c.version ?? null,
+    nativeSuppressed: Boolean(c.nativeSuppressed),
+    criticalPageCount: finite(c.criticalPageCount) ?? 0,
+    pagesForcedHybrid: finite(c.pagesForcedHybrid) ?? 0,
+    pagesForcedPixel: finite(c.pagesForcedPixel) ?? 0,
+    pagesBlockedNoRaster: finite(c.pagesBlockedNoRaster) ?? 0,
+    pages: (c.perPage ?? [])
+      .filter((p) => (p.action ?? 'allow_native') !== 'allow_native')
+      .map((p) => ({
+        pageNumber: finite(p.pageNumber),
+        action: p.action ?? null,
+        reason: p.reason ?? null,
+        contentKinds: Array.isArray(p.contentKinds) ? p.contentKinds : [],
+        sourceRasterAvailable: Boolean(p.sourceRasterAvailable),
+        defectCodes: Array.isArray(p.defects) ? p.defects.map((d) => d.code ?? '').filter(Boolean) : [],
+      })),
   };
 }

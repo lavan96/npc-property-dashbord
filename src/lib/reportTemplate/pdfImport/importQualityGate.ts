@@ -41,6 +41,18 @@ import type { DoclingRasterByPage } from './docling/doclingTypes';
 import type { DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import { decidePageFidelity, applyPageDecisionsToTemplate } from './pageFidelityDecision';
 import type { PdfImportPagePolicy } from '../rendering/pdfImportPagePolicy';
+import type { PdfImportRasterRef } from './docling/doclingTypes';
+import {
+  runCriticalContainment,
+  type ContainmentPageContext,
+  type CriticalContainmentSummary,
+} from './applyCriticalContainment';
+import type { SourceCriticalEvidence } from './criticalVisualContainmentAdapters';
+import type {
+  CriticalContainmentPolicy,
+  CriticalContainmentQualityCoverage,
+} from './criticalVisualContainment.pure';
+import { pageNumberFromDoclingId } from '../ingestion/visualQuality';
 
 export const IMPORT_QUALITY_GATE_VERSION = 'import-quality-gate-v1';
 
@@ -93,6 +105,8 @@ export interface ImportQualityGateSummary {
   perPage: ImportQualityGatePageVerdict[];
   warningCount: number;
   ranAt: string;
+  /** E0: critical-visual-containment-v1 audit — runs on every path, including fail-open. */
+  criticalContainment?: CriticalContainmentSummary;
 }
 
 export interface RunImportQualityGateResult {
@@ -119,6 +133,14 @@ export interface RunImportQualityGateOptions {
   batchSize?: number;
   /** C3: immutable source-derived expectations built from the source Docling document. */
   sourceExpectations?: VisualSourceExpectationBundle | null;
+  /** E0: per-page source critical evidence (charts/pictures/tables/vectors) from Docling. */
+  criticalSourceEvidenceByPage?: Record<number, SourceCriticalEvidence>;
+  /** E0: durable per-page source-raster references (storage paths) for safe fallback. */
+  sourceRasterRefByPage?: Record<number, PdfImportRasterRef>;
+  /** E0: containment policy overrides (safe defaults are all-false). */
+  containmentPolicy?: Partial<CriticalContainmentPolicy> | null;
+  /** E0: disable containment (tests only; production always runs it). */
+  disableCriticalContainment?: boolean;
   /** Injectable (tests / server): data-URL → ImageData. */
   imageUrlToImageDataImpl?: (url: string, opts?: { maxPixelDim?: number }) => Promise<ImageData>;
   /** Injectable (tests): the visual-repair orchestration. */
@@ -262,9 +284,98 @@ function buildManifest(
   };
 }
 
+interface PageQaState {
+  score: number | null;
+  coverage: CriticalContainmentQualityCoverage;
+  ran: boolean;
+  failed: boolean;
+  unscored: boolean;
+}
+
 /**
- * Run the inline quality gate. Fail-open: on any error or missing prerequisite
- * this returns the original template unchanged with a `ran: false` summary.
+ * E0 — run critical containment over a (possibly score-decided) template and
+ * merge the result into the gate result. Runs on EVERY path (scored, unscored,
+ * and every fail-open branch) so a critical page can never fail open to native.
+ * Fail-closed for native fidelity, but itself resilient: any error leaves the
+ * base result untouched (import processing is never bricked).
+ */
+function finalizeWithContainment(
+  options: RunImportQualityGateOptions,
+  base: RunImportQualityGateResult,
+  qaByPageNumber: Map<number, PageQaState>,
+): RunImportQualityGateResult {
+  if (options.disableCriticalContainment) return base;
+  try {
+    const now = options.now ?? (() => new Date());
+    const rastersByPage = options.rastersByPage ?? {};
+    const contextByPageId = new Map<string, ContainmentPageContext>();
+    base.template.pages.forEach((page, index) => {
+      const pageNumber = pageNumberFromDoclingId(page.id) ?? index + 1;
+      const qa = qaByPageNumber.get(pageNumber)
+        ?? { score: null, coverage: 'unknown' as CriticalContainmentQualityCoverage, ran: false, failed: false, unscored: true };
+      contextByPageId.set(page.id, {
+        pageNumber,
+        source: options.criticalSourceEvidenceByPage?.[pageNumber],
+        score: qa.score,
+        qualityCoverage: qa.coverage,
+        visualQaRanForPage: qa.ran,
+        visualQaFailed: qa.failed,
+        pageUnscored: qa.unscored,
+        rasterRef: options.sourceRasterRefByPage?.[pageNumber] ?? null,
+        rasterDataUrl: rastersByPage[pageNumber]?.dataUrl ?? null,
+      });
+    });
+
+    const contained = runCriticalContainment({
+      template: base.template,
+      contextByPageId,
+      policy: options.containmentPolicy,
+      now,
+    });
+
+    // Refresh the per-page decision map from the FINAL (contained) template so the
+    // summary reflects the authoritative applied policy.
+    const pageDecisions: Record<string, PdfImportPagePolicy> = { ...base.summary.pageDecisions };
+    for (const page of contained.template.pages) {
+      const policy = (page.meta as { pdfImport?: PdfImportPagePolicy } | undefined)?.pdfImport;
+      if (policy) pageDecisions[page.id] = policy;
+    }
+
+    const summary: ImportQualityGateSummary = {
+      ...base.summary,
+      pageDecisions,
+      templateChanged: base.summary.templateChanged || contained.changed,
+      manualReviewRequired: base.summary.manualReviewRequired || contained.manualReviewRequired,
+      criticalContainment: contained.summary,
+    };
+    return {
+      template: contained.template,
+      recommendedFinalMode: base.recommendedFinalMode,
+      repairPassesApplied: base.repairPassesApplied,
+      manualReviewRequired: base.manualReviewRequired || contained.manualReviewRequired,
+      summary,
+    };
+  } catch {
+    // Containment must not brick an import; on failure keep the base result.
+    return base;
+  }
+}
+
+/** Every page unscored — used by the fail-open branches. `failed` marks whether
+ * QA was expected but broke (vs. simply not attempted). */
+function allPagesUnscored(template: ReportTemplate, failed: boolean): Map<number, PageQaState> {
+  const map = new Map<number, PageQaState>();
+  template.pages.forEach((page, index) => {
+    const pageNumber = pageNumberFromDoclingId(page.id) ?? index + 1;
+    map.set(pageNumber, { score: null, coverage: 'unknown', ran: false, failed, unscored: true });
+  });
+  return map;
+}
+
+/**
+ * Run the inline quality gate. Fail-open FOR IMPORT PROCESSING (never throws),
+ * but FAIL-CLOSED FOR NATIVE FIDELITY: E0 critical containment runs on every
+ * path, so a critical page is never finalized as healthy native output.
  */
 export async function runImportQualityGate(
   options: RunImportQualityGateOptions,
@@ -275,13 +386,20 @@ export async function runImportQualityGate(
     const rasterCount = Object.keys(rastersByPage).length;
     const pageCount = options.cdir?.pages?.length ?? 0;
 
-    if (rasterCount === 0) return skippedResult(options, 'no_source_rasters');
-    if (pageCount === 0) return skippedResult(options, 'no_cdir_pages');
+    // E0: even when QA cannot run, containment must still assess every page. With
+    // no source rasters at all, critical pages block for manual review; with
+    // rasters present but QA unavailable, critical pages take a raster fallback.
+    if (rasterCount === 0) {
+      return finalizeWithContainment(options, skippedResult(options, 'no_source_rasters'), allPagesUnscored(options.template, false));
+    }
+    if (pageCount === 0) {
+      return finalizeWithContainment(options, skippedResult(options, 'no_cdir_pages'), allPagesUnscored(options.template, false));
+    }
     // C4: no page-count skip. Large documents are scored in bounded sequential
     // batches so every page receives a verdict or is explicitly listed unscored.
     if (typeof document === 'undefined' && !options.runOrchestrationImpl) {
       // Real capture needs a browser; without an injected impl there is nothing to run.
-      return skippedResult(options, 'no_browser_render_context');
+      return finalizeWithContainment(options, skippedResult(options, 'no_browser_render_context'), allPagesUnscored(options.template, false));
     }
 
     const imageUrlToImageDataImpl = options.imageUrlToImageDataImpl ?? imageUrlToImageData;
@@ -360,22 +478,28 @@ export async function runImportQualityGate(
     // Fail-open: if no batch completed, keep the ORIGINAL template and require
     // manual review — never a silent pass, never a bricked import.
     if (batched.batch.batchesCompleted === 0) {
-      return {
-        template: options.template,
-        recommendedFinalMode: options.requestedMode,
-        repairPassesApplied: 0,
-        manualReviewRequired: true,
-        summary: skippedSummary(options, 'visual_qa_no_batches_completed', {
-          pageCount,
-          coverage: batched.batch.coverage,
-          batchesAttempted: batched.batch.batchesAttempted,
-          batchesCompleted: 0,
-          pagesScored: 0,
-          pagesUnscored: batched.batch.pagesUnscored,
+      // QA was expected but produced no batch → fail-closed for native fidelity:
+      // critical pages take a raster fallback, never silently stay native.
+      return finalizeWithContainment(
+        options,
+        {
+          template: options.template,
+          recommendedFinalMode: options.requestedMode,
+          repairPassesApplied: 0,
           manualReviewRequired: true,
-          error: batched.batch.batchProblems.map((p) => p.message).join(' | ') || undefined,
-        }),
-      };
+          summary: skippedSummary(options, 'visual_qa_no_batches_completed', {
+            pageCount,
+            coverage: batched.batch.coverage,
+            batchesAttempted: batched.batch.batchesAttempted,
+            batchesCompleted: 0,
+            pagesScored: 0,
+            pagesUnscored: batched.batch.pagesUnscored,
+            manualReviewRequired: true,
+            error: batched.batch.batchProblems.map((p) => p.message).join(' | ') || undefined,
+          }),
+        },
+        allPagesUnscored(options.template, true),
+      );
     }
 
     const finalScore = batched.finalScore;
@@ -462,14 +586,39 @@ export async function runImportQualityGate(
       ranAt: now().toISOString(),
     };
 
-    return {
-      template: decided.template,
-      recommendedFinalMode,
-      repairPassesApplied: summary.repairPassesApplied,
-      manualReviewRequired,
-      summary,
-    };
+    // E0: per-page QA state for containment. Scored pages carry their score;
+    // pages the batch left unscored are marked so containment can protect them.
+    const coverageForPages = resolveQualityCoverage(options.sourceExpectations) as CriticalContainmentQualityCoverage;
+    const qaByPageNumber = new Map<number, PageQaState>();
+    for (const report of batched.pageReports) {
+      qaByPageNumber.set(report.pageNumber, {
+        score: report.overallScore, coverage: coverageForPages, ran: true, failed: false, unscored: false,
+      });
+    }
+    for (const pageNumber of batched.batch.pagesUnscored) {
+      if (!qaByPageNumber.has(pageNumber)) {
+        qaByPageNumber.set(pageNumber, { score: null, coverage: coverageForPages, ran: false, failed: false, unscored: true });
+      }
+    }
+
+    return finalizeWithContainment(
+      options,
+      {
+        template: decided.template,
+        recommendedFinalMode,
+        repairPassesApplied: summary.repairPassesApplied,
+        manualReviewRequired,
+        summary,
+      },
+      qaByPageNumber,
+    );
   } catch (error) {
-    return skippedResult(options, 'gate_error', { error: (error as Error).message });
+    // Fail-closed for native fidelity: a QA exception must not keep a known
+    // complex page native. Containment still runs over the original template.
+    return finalizeWithContainment(
+      options,
+      skippedResult(options, 'gate_error', { error: (error as Error).message }),
+      allPagesUnscored(options.template, true),
+    );
   }
 }

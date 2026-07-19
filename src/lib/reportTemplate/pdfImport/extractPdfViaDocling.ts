@@ -29,6 +29,12 @@ import {
 } from '@/lib/reportTemplate/ingestion/visualQuality';
 import { runImportQualityGate } from './importQualityGate';
 import { applyPagePolicyToPage } from '@/lib/reportTemplate/rendering/pdfImportPagePolicy';
+import {
+  buildSourceCriticalEvidenceByPage,
+  buildSourceRasterRefsFromManifest,
+} from './criticalVisualContainmentAdapters';
+import type { RasterManifest } from './docling/doclingTypes';
+import type { CriticalContainmentPolicy } from './criticalVisualContainment.pure';
 import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
 import { fontLookupKey, resolveSourceFontFamily, lookupEmbeddedFamily } from './fontResolver';
 import { recommendFidelityMode } from './recommendFidelityMode';
@@ -50,6 +56,21 @@ const REQUIRED_ARTIFACT_CONTRACT_VERSION = 'raster-manifest-v1';
 const REQUIRED_DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
 const REQUIRED_CHUNK_MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
 const REQUIRED_TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
+
+/**
+ * E0 containment flags. Sourced from optional Vite build env
+ * (VITE_PDF_IMPORT_*_NATIVE_ENABLED); a MISSING flag defaults to the SAFE state
+ * (false), so containment can never be bypassed by an absent variable, and the
+ * browser cannot flip it via a request property.
+ */
+function resolveContainmentPolicyFromEnv(): Partial<CriticalContainmentPolicy> {
+  const env = (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
+  return {
+    complexNativeEnabled: env.VITE_PDF_IMPORT_COMPLEX_NATIVE_ENABLED === 'true',
+    chartNativeEnabled: env.VITE_PDF_IMPORT_CHART_NATIVE_ENABLED === 'true',
+    unverifiedTableNativeEnabled: env.VITE_PDF_IMPORT_UNVERIFIED_TABLE_NATIVE_ENABLED === 'true',
+  };
+}
 
 async function invokeImport(body: any) {
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300_000 });
@@ -739,6 +760,15 @@ export async function extractPdfViaDocling(
     let qualityGateResultSummary: ImportResult['visualQuality'] | undefined;
     if (options.runQualityGate !== false) {
       onProgress({ phase: 'finalizing', message: 'Running visual quality gate…' });
+      // E0 — assemble source critical evidence (charts/tables/pictures/vectors)
+      // and durable raster references so containment can protect complex pages
+      // and guarantee a safe raster fallback (never a blank raster-only page).
+      const criticalSourceEvidenceByPage = buildSourceCriticalEvidenceByPage(doclingDoc);
+      const sourceRasterRefByPage = buildSourceRasterRefsFromManifest(
+        rasterManifestPayload as RasterManifest | null,
+        jobId,
+        job.result_payload?.rasters_manifest_path ?? null,
+      );
       const gate = await runImportQualityGate({
         importId,
         template,
@@ -747,6 +777,9 @@ export async function extractPdfViaDocling(
         rastersByPage: rasters,
         sourceExpectations: sourceExpectationBundle,
         maxPages: options.qualityGateMaxPages,
+        criticalSourceEvidenceByPage,
+        sourceRasterRefByPage,
+        containmentPolicy: resolveContainmentPolicyFromEnv(),
       });
       qualityGateSummary = gate.summary as unknown as Record<string, unknown>;
       qualityGateResultSummary = {
@@ -769,8 +802,10 @@ export async function extractPdfViaDocling(
       // backgrounds), then reconcile the background flags with the policy so a
       // raster-only page actually paints its raster. Untouched pages restore the
       // original background as before, so gate decisions are never clobbered.
-      const shouldStage = gate.summary.ran
-        && gate.summary.templateChanged
+      // E0 — stage whenever the gate changed the template, INCLUDING when only
+      // critical containment changed it on a QA fail-open path (ran === false).
+      // A containment fallback must be persisted, not dropped as "gate skipped".
+      const shouldStage = gate.summary.templateChanged
         && gate.template !== template;
       if (shouldStage) {
         const originalPagesById = new Map(template.pages.map((page) => [page.id, page]));

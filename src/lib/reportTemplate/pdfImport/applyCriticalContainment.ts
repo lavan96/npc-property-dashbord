@@ -1,0 +1,223 @@
+/**
+ * Apply critical-visual-containment-v1 to a candidate template (E0).
+ *
+ * Runs the per-page containment assessment for EVERY page — scored, unscored, and
+ * on every quality-gate fail-open path — merges the hard veto with the existing
+ * score decision, guarantees a durable source raster before claiming a fallback,
+ * applies the authoritative page-output policy, and produces one bounded,
+ * JSON-safe audit summary. Pure (no I/O); the caller supplies raster references.
+ */
+import type { ReportTemplate, Page } from '../templateSchema';
+import type { PdfImportRasterRef } from './docling/doclingTypes';
+import {
+  applyPagePolicyToPage,
+  hybridFallbackPolicy,
+  nativePolicy,
+  pixelFallbackPolicy,
+  type PdfImportPagePolicy,
+} from '../rendering/pdfImportPagePolicy';
+import {
+  assessPageContainment,
+  resolveContainmentPolicy,
+  containmentChangesOutput,
+  CRITICAL_VISUAL_CONTAINMENT_VERSION,
+  type CriticalContainmentPolicy,
+  type CriticalPageContainmentAssessment,
+  type CriticalContainmentQualityCoverage,
+  type CriticalContainmentAction,
+} from './criticalVisualContainment.pure';
+import {
+  buildContainmentPageInput,
+  ensureDurableSourceRasterForPage,
+  type SourceCriticalEvidence,
+} from './criticalVisualContainmentAdapters';
+
+export interface ContainmentPageContext {
+  pageNumber: number;
+  source?: SourceCriticalEvidence;
+  score: number | null;
+  qualityCoverage: CriticalContainmentQualityCoverage;
+  visualQaRanForPage: boolean;
+  visualQaFailed: boolean;
+  pageUnscored: boolean;
+  /** Durable storage-backed raster reference (preferred). */
+  rasterRef?: PdfImportRasterRef | null;
+  /** A self-contained `data:` URL raster (persistable last resort). */
+  rasterDataUrl?: string | null;
+  sourceRasterReadable?: boolean;
+}
+
+export interface CriticalContainmentPerPageSummary {
+  pageId: string;
+  pageNumber: number;
+  contentKinds: string[];
+  defects: Array<{ code: string; severity: string; contentKind: string | null; message: string }>;
+  sourceRasterAvailable: boolean;
+  qualityCoverage: CriticalContainmentQualityCoverage;
+  score: number | null;
+  action: CriticalContainmentAction;
+  reason: string;
+  manualReviewRequired: boolean;
+}
+
+export interface CriticalContainmentSummary {
+  version: typeof CRITICAL_VISUAL_CONTAINMENT_VERSION;
+  ran: boolean;
+  policy: CriticalContainmentPolicy;
+  criticalPageCount: number;
+  criticalDefectCount: number;
+  pagesAllowedNative: number;
+  pagesForcedHybrid: number;
+  pagesForcedPixel: number;
+  pagesBlockedNoRaster: number;
+  nativeSuppressed: boolean;
+  perPage: CriticalContainmentPerPageSummary[];
+}
+
+export interface RunCriticalContainmentArgs {
+  template: ReportTemplate;
+  /** Per-page context keyed by page.id. Pages without an entry are treated as no-critical-content. */
+  contextByPageId: Map<string, ContainmentPageContext>;
+  policy?: Partial<CriticalContainmentPolicy> | null;
+  now?: () => Date;
+}
+
+export interface RunCriticalContainmentResult {
+  template: ReportTemplate;
+  summary: CriticalContainmentSummary;
+  changed: boolean;
+  manualReviewRequired: boolean;
+}
+
+function rasterAvailable(ctx: ContainmentPageContext | undefined): boolean {
+  if (!ctx) return false;
+  if (ctx.rasterRef?.path) return true;
+  return typeof ctx.rasterDataUrl === 'string' && ctx.rasterDataUrl.length > 0;
+}
+
+function decoratePolicy(
+  policy: PdfImportPagePolicy,
+  assessment: CriticalPageContainmentAssessment,
+  decidedAt: string,
+): PdfImportPagePolicy {
+  return {
+    ...policy,
+    decision: {
+      score: assessment.score,
+      action: assessment.action,
+      reason: assessment.reason,
+      decidedAt,
+      decidedBy: 'quality-gate',
+    },
+  };
+}
+
+/**
+ * Run E0 containment across a template. Deterministic; never mutates the input
+ * template (returns a new one when a policy is applied).
+ */
+export function runCriticalContainment(args: RunCriticalContainmentArgs): RunCriticalContainmentResult {
+  const policy = resolveContainmentPolicy(args.policy);
+  const now = args.now ?? (() => new Date());
+  const decidedAt = now().toISOString();
+
+  const perPage: CriticalContainmentPerPageSummary[] = [];
+  let criticalPageCount = 0;
+  let criticalDefectCount = 0;
+  let pagesAllowedNative = 0;
+  let pagesForcedHybrid = 0;
+  let pagesForcedPixel = 0;
+  let pagesBlockedNoRaster = 0;
+  let changed = false;
+  let manualReviewRequired = false;
+
+  const pages: Page[] = args.template.pages.map((page, index) => {
+    const ctx = args.contextByPageId.get(page.id);
+    const pageNumber = ctx?.pageNumber ?? index + 1;
+    const input = buildContainmentPageInput({
+      page,
+      pageNumber,
+      source: ctx?.source,
+      score: ctx?.score ?? null,
+      qualityCoverage: ctx?.qualityCoverage ?? 'unknown',
+      visualQaRanForPage: ctx?.visualQaRanForPage ?? false,
+      visualQaFailed: ctx?.visualQaFailed ?? false,
+      pageUnscored: ctx?.pageUnscored ?? false,
+      sourceRasterAvailable: rasterAvailable(ctx),
+      sourceRasterReadable: ctx?.sourceRasterReadable,
+    });
+    const assessment = assessPageContainment(input, policy);
+
+    if (assessment.containsCriticalContent) criticalPageCount += 1;
+    criticalDefectCount += assessment.defects.filter((d) => d.severity === 'critical').length;
+    if (assessment.manualReviewRequired) manualReviewRequired = true;
+
+    perPage.push({
+      pageId: assessment.pageId,
+      pageNumber: assessment.pageNumber,
+      contentKinds: assessment.contentKinds,
+      defects: assessment.defects.map((d) => ({ code: d.code, severity: d.severity, contentKind: d.contentKind, message: d.message })),
+      sourceRasterAvailable: assessment.sourceRasterAvailable,
+      qualityCoverage: assessment.qualityCoverage,
+      score: assessment.score,
+      action: assessment.action,
+      reason: assessment.reason,
+      manualReviewRequired: assessment.manualReviewRequired,
+    });
+
+    let action = assessment.action;
+
+    if (action === 'force_hybrid_fallback' || action === 'force_pixel_fallback') {
+      const ensured = ensureDurableSourceRasterForPage(page, ctx?.rasterRef ?? null, ctx?.rasterDataUrl ?? null);
+      if (!ensured.available) {
+        // Raster turned out to be unusable for persistence → block instead of a
+        // false fallback claim (never a blank raster-only page).
+        action = 'block_manual_review';
+      } else {
+        const basePolicy = action === 'force_pixel_fallback' ? pixelFallbackPolicy() : hybridFallbackPolicy();
+        changed = true;
+        if (action === 'force_pixel_fallback') pagesForcedPixel += 1;
+        else pagesForcedHybrid += 1;
+        return applyPagePolicyToPage(ensured.page, decoratePolicy(basePolicy, assessment, decidedAt));
+      }
+    }
+
+    if (action === 'block_manual_review') {
+      pagesBlockedNoRaster += 1;
+      changed = true;
+      // Keep native output (nothing better is possible) but persist the decision
+      // so the import is flagged for manual review — never a silent healthy-native claim.
+      return applyPagePolicyToPage(
+        page,
+        decoratePolicy(nativePolicy('semantic'), { ...assessment, action: 'block_manual_review' }, decidedAt),
+      );
+    }
+
+    // allow_native → defer to the existing score-based decision (unchanged here).
+    pagesAllowedNative += 1;
+    return page;
+  });
+
+  const summary: CriticalContainmentSummary = {
+    version: CRITICAL_VISUAL_CONTAINMENT_VERSION,
+    ran: true,
+    policy,
+    criticalPageCount,
+    criticalDefectCount,
+    pagesAllowedNative,
+    pagesForcedHybrid,
+    pagesForcedPixel,
+    pagesBlockedNoRaster,
+    nativeSuppressed: pagesForcedHybrid + pagesForcedPixel > 0,
+    perPage,
+  };
+
+  return {
+    template: changed ? ({ ...args.template, pages } as ReportTemplate) : args.template,
+    summary,
+    changed,
+    manualReviewRequired,
+  };
+}
+
+export { containmentChangesOutput };

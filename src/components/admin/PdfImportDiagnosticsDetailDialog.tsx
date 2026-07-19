@@ -66,6 +66,14 @@ function ms(value: number | null): string {
   return `${Math.floor(value / 60_000)}m ${Math.floor((value % 60_000) / 1000)}s`;
 }
 
+const CONTAINMENT_ACTION_LABEL: Record<string, string> = {
+  force_hybrid_fallback: 'Chart protected — source page',
+  force_pixel_fallback: 'Unsafe/critical — source page',
+  block_manual_review: 'Blocked — review (no source raster)',
+  native_review: 'Native — review',
+  allow_native: 'Native',
+};
+
 const METRIC_STATE_COPY: Record<string, string> = {
   measured: '',
   not_applicable: 'n/a',
@@ -249,6 +257,40 @@ export function PdfImportDiagnosticsDetailDialog({ jobId, open, onOpenChange }: 
                   <div className="mt-2 text-[10px] italic text-muted-foreground/70" title={metrics.callbackLimitationNote}>
                     {metrics.callbackLimitationNote}
                   </div>
+                </Card>
+              )}
+
+              {detail.containment && (
+                <Card className="p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Critical containment (E0)
+                    <Badge variant={detail.containment.nativeSuppressed ? 'warning' : 'success'}>
+                      {detail.containment.nativeSuppressed ? 'native suppressed' : 'no suppression'}
+                    </Badge>
+                    <span className="font-normal normal-case text-muted-foreground">{detail.containment.version ?? ''}</span>
+                  </div>
+                  <div className="mb-2 flex flex-wrap gap-1 text-[11px]">
+                    <Badge variant="outline">critical pages: {detail.containment.criticalPageCount}</Badge>
+                    {detail.containment.pagesForcedHybrid > 0 && <Badge variant="secondary">hybrid ×{detail.containment.pagesForcedHybrid}</Badge>}
+                    {detail.containment.pagesForcedPixel > 0 && <Badge variant="secondary">pixel ×{detail.containment.pagesForcedPixel}</Badge>}
+                    {detail.containment.pagesBlockedNoRaster > 0 && <Badge variant="destructive">blocked ×{detail.containment.pagesBlockedNoRaster}</Badge>}
+                  </div>
+                  {detail.containment.pages.length > 0 ? (
+                    <div className="space-y-1">
+                      {detail.containment.pages.map((p, i) => (
+                        <div key={i} className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1 text-[11px]">
+                          <span>Page {p.pageNumber ?? '—'} · {CONTAINMENT_ACTION_LABEL[p.action ?? ''] ?? p.action}</span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {p.contentKinds.map((k) => <Badge key={k} variant="outline">{k}</Badge>)}
+                            {!p.sourceRasterAvailable && <Badge variant="destructive">no source raster</Badge>}
+                            <span className="font-mono text-muted-foreground">{p.defectCodes.slice(0, 3).join(', ')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground">No pages required containment.</div>
+                  )}
                 </Card>
               )}
 
