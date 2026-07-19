@@ -622,6 +622,7 @@ The Team`
                 }))}
                 onComplete={() => refetchClient()} 
               />
+              <AddressHistoryManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
             </TabsContent>
 
             <TabsContent value="properties" className={cn("space-y-4 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
@@ -843,7 +844,6 @@ The Team`
 
             <TabsContent value="employment" className={cn("space-y-4 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
               <EmploymentManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
-              <AddressHistoryManualEntry clientId={client.id} contacts={contacts} onComplete={() => refetchClient()} />
             </TabsContent>
 
             <TabsContent value="financials" className={cn("space-y-6 mt-4", !isMobile && "max-w-3xl mx-auto w-full")}>
