@@ -601,12 +601,12 @@ export function useReportGenerator() {
       }
 
       const reportId = typeof data.reportId === 'string' ? data.reportId.trim() : '';
-      const reportIsCompleted = data.status === 'completed';
-
-      if (!reportId || !reportIsCompleted) {
+      // Trust the server's success envelope: if the pipeline returned success:true
+      // with a reportId, the row has been written. Only fail when reportId is missing.
+      if (!reportId) {
         throw new Error(quantitativeErrorMessage(
           'REPORT_SAVE_FAILED',
-          'The report was generated but its completed record could not be confirmed.',
+          'The report was generated but no report ID was returned. Please retry.',
           data.generationRunId || generationRunId,
           data.reference,
         ));
