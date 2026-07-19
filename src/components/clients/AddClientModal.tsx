@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import {
@@ -57,6 +56,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     primary_mobile: '',
     secondary_first_name: '',
     secondary_surname: '',
+    secondary_email: '',
+    secondary_mobile: '',
     current_address: '',
   });
 
@@ -115,6 +116,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
         primary_mobile: formData.primary_mobile.trim() || null,
         secondary_first_name: formData.secondary_first_name.trim() || null,
         secondary_surname: formData.secondary_surname.trim() || null,
+        secondary_email: formData.secondary_email.trim() || null,
+        secondary_mobile: formData.secondary_mobile.trim() || null,
         current_address: formData.current_address.trim() || null,
         ghl_sync_status: syncToGHL ? 'pending' : null,
         total_portfolio_value: 0,
@@ -137,19 +140,11 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
           newClient = data.result;
         }
       } catch (err) {
-        console.warn('Edge function failed, falling back to direct query:', err);
+        console.warn('Secure client creation failed:', err);
       }
       
-      // Fallback to direct query if Edge Function failed
       if (!newClient) {
-        const { data, error } = await supabase
-          .from('clients')
-          .insert(clientData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        newClient = data;
+        throw new Error('Unable to create the client securely. Please try again.');
       }
 
       // Sync to GHL if enabled
@@ -212,6 +207,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       primary_mobile: '',
       secondary_first_name: '',
       secondary_surname: '',
+      secondary_email: '',
+      secondary_mobile: '',
       current_address: '',
     });
     setSyncToGHL(true);
@@ -225,6 +222,16 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       toast.error('First name and surname are required');
       return;
     }
+    const secondaryHasDetails = [
+      formData.secondary_first_name,
+      formData.secondary_surname,
+      formData.secondary_email,
+      formData.secondary_mobile,
+    ].some((value) => value.trim());
+    if (secondaryHasDetails && (!formData.secondary_first_name.trim() || !formData.secondary_surname.trim())) {
+      toast.error("Enter the Secondary Contact's name before saving their contact details.");
+      return;
+    }
     createClientMutation.mutate();
   };
 
@@ -233,9 +240,9 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="w-[95vw] overflow-hidden rounded-3xl border-brand-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-0 shadow-2xl shadow-sm dark:shadow-black/40 sm:max-w-[560px]">
+      <DialogContent className="flex max-h-[90vh] w-[92vw] flex-col overflow-hidden rounded-3xl border-brand-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-0 shadow-2xl shadow-sm dark:shadow-black/40 sm:max-w-[680px]">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
-        <DialogHeader className="border-b border-border dark:border-white/10 px-5 pb-4 pt-5 sm:px-6">
+        <DialogHeader className="shrink-0 border-b border-border dark:border-white/10 px-5 pb-4 pt-5 sm:px-6">
           <DialogTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-foreground dark:text-white">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-300/15 text-brand-100 shadow-lg shadow-brand-950/20">
               <UserPlus className="h-5 w-5" />
@@ -247,7 +254,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="max-h-[75vh] space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="space-y-5 px-5 py-5 sm:px-6">
           {/* Primary Contact */}
           <div className="space-y-3 rounded-2xl border border-border dark:border-white/10 bg-white/[0.035] p-4">
             <h4 className="text-sm font-semibold text-brand-100">Primary Contact</h4>
@@ -316,6 +324,28 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
                   value={formData.secondary_surname}
                   onChange={(e) => setFormData(prev => ({ ...prev, secondary_surname: e.target.value }))}
                   placeholder="Smith"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="secondary_email">Email</Label>
+                <Input
+                  id="secondary_email"
+                  type="email"
+                  value={formData.secondary_email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, secondary_email: e.target.value }))}
+                  placeholder="jane@example.com"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="secondary_mobile">Mobile</Label>
+                <Input
+                  id="secondary_mobile"
+                  type="tel"
+                  value={formData.secondary_mobile}
+                  onChange={(e) => setFormData(prev => ({ ...prev, secondary_mobile: e.target.value }))}
+                  placeholder="0400 000 000"
                 />
               </div>
             </div>
@@ -415,7 +445,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
             </div>
           )}
 
-          <DialogFooter className="gap-2 border-t border-border dark:border-white/10 pt-4 sm:gap-2">
+          </div>
+          <DialogFooter className="sticky bottom-0 mt-auto shrink-0 gap-2 border-t border-border bg-background/95 px-5 py-4 backdrop-blur dark:border-white/10 sm:gap-2 sm:px-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-2xl border-border dark:border-white/15 bg-white/[0.03] hover:bg-white/[0.07]">
               Cancel
             </Button>
