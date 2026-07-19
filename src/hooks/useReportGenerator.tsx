@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
@@ -8,7 +8,7 @@ import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
-import { ToastAction } from '@/components/ui/toast';
+import { CheckCircle2, Clock3, ExternalLink, FolderOpen } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -509,6 +509,9 @@ export function useReportGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
+  // Retain a run ID after a recoverable failure so retrying does not create a
+  // second report record or storage object. It is cleared only on completion.
+  const generationRunIdRef = useRef<string | null>(null);
 
   const generateReport = async (
     config: ReportConfig, 
@@ -540,7 +543,8 @@ export function useReportGenerator() {
       return trimmed || null;
     };
     const customNotes = (config.customNotes || '').trim().slice(0, 4000);
-    const generationRunId = crypto.randomUUID();
+    const generationRunId = generationRunIdRef.current || crypto.randomUUID();
+    generationRunIdRef.current = generationRunId;
 
     if (!selectedChartKeys.length && !selectedSections.length) {
       toast({
@@ -599,6 +603,16 @@ export function useReportGenerator() {
       const reportId = typeof data.reportId === 'string' ? data.reportId.trim() : '';
       const reportIsCompleted = data.status === 'completed';
 
+      if (!reportId || !reportIsCompleted) {
+        throw new Error(quantitativeErrorMessage(
+          'REPORT_SAVE_FAILED',
+          'The report was generated but its completed record could not be confirmed.',
+          data.generationRunId || generationRunId,
+          data.reference,
+        ));
+      }
+      generationRunIdRef.current = null;
+
       setProgress(100);
       setCurrentStep('Report generation complete!');
       window.dispatchEvent(new CustomEvent('quantitative-report-generated', { detail: { reportId } }));
@@ -612,7 +626,7 @@ export function useReportGenerator() {
 
       const goToGeneratedReports = () => {
         try {
-          navigate('/generated-reports?tab=quantitative');
+          navigate(`/generated-reports?tab=quantitative&focus=${encodeURIComponent(reportId)}`);
         } catch (navigationError) {
           console.error('Unable to open Generated Reports after report generation:', navigationError);
           toast({
@@ -636,27 +650,37 @@ export function useReportGenerator() {
         }
       };
 
-      if (!reportId || !reportIsCompleted) {
-        console.error('Quantitative report generation succeeded without a completed report ID:', {
-          reportId: data.reportId,
-          status: data.status,
-          generationRunId: data.generationRunId || generationRunId,
-        });
-      }
-
       toast({
-        title: 'Report Generated Successfully',
-        description: 'Your quantitative PDF report has been generated and added to Generated Reports and Charts.',
-        action: (
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[180px]">
-            {reportId && reportIsCompleted && (
-              <ToastAction altText="View the generated report" onClick={viewGeneratedReport} className="w-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary">
-                View Generated Report
-              </ToastAction>
-            )}
-            <ToastAction altText="Go to Generated Reports" onClick={goToGeneratedReports} className="w-full">
-              Go to Generated Reports
-            </ToastAction>
+        duration: 15000,
+        className: 'quantitative-report-success-toast border-emerald-400/40 bg-card/98 p-0 text-foreground shadow-2xl shadow-primary/20 backdrop-blur-md',
+        description: (
+          <div className="space-y-4 p-5 pr-11">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-400">
+                <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Report Generated Successfully</p>
+                <p className="mt-1 truncate text-sm font-medium text-foreground">{data.reportTitle || normalisedConfig.title}</p>
+              </div>
+            </div>
+            <div className="space-y-1 text-xs leading-5 text-muted-foreground">
+              <p>Your quantitative PDF report has been generated and saved to Generated Reports.</p>
+              <p>Associated chart data has also been prepared.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium">
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-emerald-300">Completed</span>
+              <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-primary">Quantitative</span>
+              <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock3 className="h-3 w-3" aria-hidden="true" />{new Date(data.generatedAt || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={viewGeneratedReport} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> View Generated Report
+              </button>
+              <button type="button" onClick={goToGeneratedReports} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background/60 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" /> Go to Generated Reports
+              </button>
+            </div>
           </div>
         ),
       });

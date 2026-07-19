@@ -614,15 +614,15 @@ Deno.serve(async (req) => {
       customNotes,
       version: REPORT_VERSION,
     });
+    // A manual run is idempotent only for its own generation run ID. The prior
+    // configuration-hash lookup reused an older completed report whenever a user
+    // intentionally generated the same configuration, overwriting its history.
     const existing = await supabase
       .from("generated_reports")
-      .select("id,status,pdf_path")
+      .select("id,status,pdf_path,generated_at")
       .eq("report_type", "quantitative")
       .eq("workspace_id", workspaceId)
-      .eq("period_start", period.start)
-      .eq("period_end", period.end)
-      .eq("version", REPORT_VERSION)
-      .eq("source_snapshot->>config_hash", configHash)
+      .eq("source_snapshot->>generation_run_id", generationRunId)
       .maybeSingle();
     if (existing.error)
       throw new GenerationError(
@@ -642,6 +642,12 @@ Deno.serve(async (req) => {
         {
           success: true,
           reportId: existing.data.id,
+          reportTitle: title,
+          reportType: "quantitative",
+          status: "completed",
+          generatedAt: existing.data.generated_at || generatedAt,
+          storageAvailable: Boolean(existing.data.pdf_path),
+          chartCount: 0,
           reused: true,
           generationRunId,
           reference: shortReference(generationRunId),
@@ -666,7 +672,9 @@ Deno.serve(async (req) => {
       insights: [],
       chart_urls: {},
       listing_count: listings.length,
-      generated_by: auth.authMethod === "jwt" ? auth.userId : null,
+      // Custom-session users are authenticated humans too; keeping their ID
+      // prevents completed cards from rendering as "Unknown user".
+      generated_by: auth.authMethod === "service_role" ? null : auth.userId,
       report_type: "quantitative",
       generation_source: source,
       status: "generating",
@@ -679,6 +687,7 @@ Deno.serve(async (req) => {
         ids: snapshotIds,
         filters: body.filters || {},
         config_hash: configHash,
+        generation_run_id: generationRunId,
         fingerprint: hash({ period, snapshotIds, metrics: built.metrics }),
       },
       generated_at: generatedAt,
@@ -843,6 +852,8 @@ Deno.serve(async (req) => {
         reportTitle: title,
         reportType: "quantitative",
         status: "completed",
+        generatedAt,
+        storageAvailable: true,
         chartCount: chartRows.length,
         generationRunId,
         reference: shortReference(generationRunId),

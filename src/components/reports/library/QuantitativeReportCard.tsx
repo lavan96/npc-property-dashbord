@@ -33,7 +33,7 @@ export function QuantitativeReportCard({ report, generatorLabel, onView, onDownl
           </Badge>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
-            {format(new Date(report.created_at), 'PPp')}
+            {format(new Date(report.generated_at || report.created_at), 'PPp')}
           </div>
         </div>
 
