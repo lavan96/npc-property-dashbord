@@ -108,6 +108,9 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('client_id', client_id)
         .is('deleted_at', null)
+        // Command Centre shares can be addressed to one Finance Portal user.
+        // Legacy/unscoped documents remain visible to any authorised assignee.
+        .or(`shared_with_finance_user_id.is.null,shared_with_finance_user_id.eq.${portalUser.id}`)
         .order('created_at', { ascending: false });
       if (error) throw error;
       await audit('list_documents', null, { count: data?.length || 0 });
@@ -255,6 +258,7 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('id', document_id)
         .eq('client_id', client_id)
+        .or(`shared_with_finance_user_id.is.null,shared_with_finance_user_id.eq.${portalUser.id}`)
         .maybeSingle();
       if (!doc) return jsonResponse({ error: 'Document not found' }, 404);
 
@@ -322,11 +326,12 @@ Deno.serve(async (req) => {
         .eq('id', document_id)
         .eq('client_id', client_id)
         .is('deleted_at', null)
+        .or(`shared_with_finance_user_id.is.null,shared_with_finance_user_id.eq.${portalUser.id}`)
         .maybeSingle();
       if (!doc) return jsonResponse({ error: 'Document not found' }, 404);
 
       const { data: signed, error: sErr } = await supabase.storage
-        .from(BUCKET)
+        .from(doc.storage_bucket || BUCKET)
         .createSignedUrl(doc.storage_path, SIGNED_URL_TTL, {
           download: doc.original_filename,
         });
@@ -382,6 +387,7 @@ Deno.serve(async (req) => {
         .update(updates)
         .eq('id', document_id)
         .eq('client_id', client_id)
+        .or(`shared_with_finance_user_id.is.null,shared_with_finance_user_id.eq.${portalUser.id}`)
         .select()
         .maybeSingle();
       if (error) throw error;
@@ -400,6 +406,7 @@ Deno.serve(async (req) => {
         .select('*')
         .eq('id', document_id)
         .eq('client_id', client_id)
+        .or(`shared_with_finance_user_id.is.null,shared_with_finance_user_id.eq.${portalUser.id}`)
         .maybeSingle();
       if (!doc) return jsonResponse({ error: 'Document not found' }, 404);
 
@@ -414,7 +421,8 @@ Deno.serve(async (req) => {
         .from('finance_portal_documents')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', document_id)
-        .eq('client_id', client_id);
+        .eq('client_id', client_id)
+        .or(`shared_with_finance_user_id.is.null,shared_with_finance_user_id.eq.${portalUser.id}`);
       if (delErr) throw delErr;
 
       await audit('delete_document', document_id, { filename: doc.original_filename });

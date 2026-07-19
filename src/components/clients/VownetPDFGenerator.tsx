@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { FlattenPdfMenuItem } from '@/components/common/FlattenPdfMenuItem';
 import { Download, FileText, Home, Loader2, Mail, Send, Users, Calculator } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import html2canvas from 'html2canvas';
@@ -32,8 +31,6 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useFinanceContacts } from '@/hooks/useFinanceContacts';
-import { useAuth } from '@/hooks/useAuth';
-import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface ClientData {
   id: string;
@@ -379,8 +376,6 @@ export function VownetPDFGenerator({
   const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(false);
   const { settings: brand } = useBrand();
   const { contacts, defaultContact, hasContacts } = useFinanceContacts();
-  const { user } = useAuth();
-  const { addNotification } = useNotifications();
 
   // Persist Vownet PDF to storage + client_files in background
   const persistVownetPdf = async (blob: Blob, fileName: string, clientIdVal: string) => {
@@ -796,59 +791,19 @@ export function VownetPDFGenerator({
       reader.readAsDataURL(pdfBlob);
       const base64Data = await base64Promise;
 
-      // Get current user's mailbox (session-scoped, matches ClientEmailCompose pattern)
-      let senderMailbox: string | null = null;
-      if (user?.id) {
-        const { data: userData } = await supabase
-          .from('custom_users')
-          .select('personal_mailbox')
-          .eq('id', user.id)
-          .not('personal_mailbox', 'is', null)
-          .maybeSingle();
-        senderMailbox = userData?.personal_mailbox ?? null;
-      }
-
-      // Fallback: let the edge function resolve the authenticated user's mailbox
-      // server-side when the client-side lookup is blocked by RLS.
-      if (!senderMailbox) {
-        try {
-          const { data: meData } = await invokeSecureFunction('get-client-data', {
-            operation: 'get_current_user_mailbox',
-          });
-          senderMailbox = (meData as any)?.personal_mailbox ?? null;
-        } catch {
-          /* ignore — handled below */
-        }
-      }
-
-      if (!senderMailbox) {
-        toast.error('Please configure your personal mailbox in Settings first');
-        return;
-      }
-
-      // Send email via edge function
-      const { error } = await invokeSecureFunction('send-email-reply', {
-        to: targetContact.email,
-      subject: `Client Detail Form - ${clientName}`,
-      body: `Hi ${targetContact.name.split(' ')[0]},\n\nPlease find attached the client detail form for ${clientName}.\n\nKind regards`,
-        senderMailbox,
-        attachments: [{
-          name: fileName,
-          content: base64Data,
-          contentType: 'application/pdf',
-        }],
+      // Quick Send is a Finance Portal delivery channel. It deliberately does
+      // not call the personal-mailbox email service; Compose Email remains the
+      // explicit action for sending from a user's connected mailbox.
+      const { data: shareResult, error } = await invokeSecureFunction('share-report-with-finance', {
+        client_id: data.client.id,
+        finance_contact_id: targetContact.id,
+        filename: fileName,
+        content_base64: base64Data,
+        mime_type: 'application/pdf',
       });
+      if (error || !shareResult?.success) throw new Error(error?.message || shareResult?.error || 'Finance Portal share failed');
 
-      if (error) throw error;
-
-      toast.success(`Client detail form sent to ${targetContact.name}`);
-      
-      addNotification({
-        type: 'finance_agent_notified',
-        title: 'Finance Agent Notified',
-        message: `Client detail form for ${clientName} sent to ${targetContact.name}`,
-        entityId: data.client.id
-      });
+      toast.success(`Report securely shared with ${targetContact.name} through the Finance Portal`);
       
       onQuickSendComplete?.();
       
