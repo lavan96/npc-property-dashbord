@@ -133,30 +133,45 @@ Deno.serve(async (req) => {
       const engineVersion = typeof body.engineVersion === 'string' ? body.engineVersion : null;
       const limit = Math.min(Math.max(Number(body.limit) || 50, 1), 200);
 
-      let q = admin
-        .from('pdf_import_jobs')
-        .select(
-          // C8: template_import_id/service_class/source_file_hash/plan_payload feed
-          // the diagnostics-v2 correlation + the gate-summary join below.
-          // C11: operational_metrics/cache_hit/cache_source_job_id feed the
-          // sidecar-metrics summary (shaped client-side in pdfImportDiagnosticsV2).
-          'id,user_id,template_id,template_import_id,service_class,source_file_hash,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,plan_payload,operational_metrics,cache_hit,cache_source_job_id,created_at,updated_at',
-        )
-        .order('created_at', { ascending: false })
-        .limit(limit);
+      const runList = async (columns: string) => {
+        let q = admin
+          .from('pdf_import_jobs')
+          .select(columns)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+        if (status) q = q.eq('status', status);
+        if (engine) q = q.eq('engine', engine);
+        if (engineVersion) q = q.eq('engine_version', engineVersion);
+        return await q;
+      };
 
-      if (status) q = q.eq('status', status);
-      if (engine) q = q.eq('engine', engine);
-      if (engineVersion) q = q.eq('engine_version', engineVersion);
+      // C8 fix — resilience to schema drift. Base columns are always present; the
+      // C1/C8/C11 additions below can be absent on an un-migrated environment.
+      // A single missing column previously 500'd the ENTIRE diagnostics surface
+      // (Postgres 42703). Now: try the full projection, and on a missing-column
+      // error degrade to the base projection with a `degraded` flag so the page
+      // still renders (the frontend already treats these fields as optional).
+      const BASE_COLS = 'id,user_id,template_id,source_file_hash,source_file_name,source_file_size_bytes,engine,engine_version,mode,status,stage,started_at,finished_at,duration_ms,cloud_run_ms,bytes_in,bytes_out,page_count,chunked,chunks_total,chunks_completed,chunks_failed,ssim_score,error_code,error_text,diagnostics_path,result_payload,plan_payload,created_at,updated_at';
+      const OPTIONAL_COLS = ['template_import_id', 'service_class', 'operational_metrics', 'cache_hit', 'cache_source_job_id'];
 
-      const { data, error } = await q;
+      let degraded = false;
+      let missingColumns: string[] = [];
+      let { data, error } = await runList(`${BASE_COLS},${OPTIONAL_COLS.join(',')}`);
+      if (error && /column .* does not exist/i.test(error.message)) {
+        console.warn('[pdf-import-diagnostics] list degraded — optional column(s) absent (schema drift):', error.message);
+        degraded = true;
+        missingColumns = OPTIONAL_COLS; // dropped all optionals to guarantee the page renders
+        ({ data, error } = await runList(BASE_COLS));
+      }
       if (error) return json({ error: error.message }, 500);
       const rows = data ?? [];
 
       // C8 — batch-fetch the linked imports' quality-gate summaries so the list
-      // can render the visual/quality columns without an N+1 per row.
+      // can render the visual/quality columns without an N+1 per row. This joins
+      // on template_import_id; when that column was dropped, jobs simply have no
+      // gate (the map is empty) — never an error.
       const gates = await loadGateSummaries(admin, rows as any[]);
-      return json({ rows, gates });
+      return json({ rows, gates, degraded, missingColumns });
     }
 
     if (operation === 'get') {
@@ -196,14 +211,19 @@ Deno.serve(async (req) => {
         .order('chunk_index', { ascending: true });
       const chunks = chunkRows ?? [];
 
-      // Best-effort: pages beyond the count of persisted page rasters are missing
-      // their per-page artifacts.
-      const rasterCount = Array.isArray((job as any).result_payload?.page_raster_paths)
-        ? (job as any).result_payload.page_raster_paths.length
-        : 0;
+      // C8 fix — pages missing their per-page SOURCE artifacts are derived from
+      // per-page-manifest coverage, NOT raster count (a semantic-mode import
+      // produces no rasters yet every page has docling/blocks artifacts). The
+      // frontend `buildDiagnosticsDetail` recomputes this authoritatively from
+      // `result_payload.per_page_docling_page_count`; we mirror it here so the raw
+      // response is already correct. Unknown coverage → empty (never fabricated).
+      const rp = (job as any).result_payload ?? {};
       const pageCount = Number((job as any).page_count) || 0;
+      const perPageCovered = typeof rp.per_page_docling_page_count === 'number' ? rp.per_page_docling_page_count : null;
       const missingArtifactPages: number[] = [];
-      for (let p = rasterCount + 1; p <= pageCount; p += 1) missingArtifactPages.push(p);
+      if (pageCount > 0 && perPageCovered !== null && perPageCovered < pageCount) {
+        for (let p = Math.max(0, perPageCovered) + 1; p <= pageCount; p += 1) missingArtifactPages.push(p);
+      }
 
       // Short-lived signed URLs for the key per-job artifacts (never persisted).
       const expiresIn = 300;
