@@ -170,7 +170,7 @@ function renderBar(ctx: InnerCtx, opts: { stacked?: boolean; horizontal?: boolea
 
   return (
     <BarChart data={model.data} margin={margin} layout={layout} barCategoryGap={isCard ? '22%' : '14%'}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={horizontal} horizontal={!horizontal} />
+      <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={horizontal} horizontal={!horizontal} />
       {horizontal ? (
         <>
           <XAxis type="number" tick={axisTick(fontSize)} allowDecimals={false} />
@@ -212,7 +212,7 @@ function renderLine(ctx: InnerCtx) {
   const { model, fontSize, tooltipStyle, legendStyle, margin, showLegend, isCard, isExport } = ctx;
   return (
     <LineChart data={model.data} margin={margin}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
       <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -24 : -22} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 44} />
       <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
@@ -247,7 +247,7 @@ function renderArea(ctx: InnerCtx) {
           </linearGradient>
         ))}
       </defs>
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
       <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -24 : -22} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 44} />
       <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
@@ -306,7 +306,7 @@ function renderScatter(ctx: InnerCtx) {
   const { model, fontSize, tooltipStyle, legendStyle, margin, showLegend } = ctx;
   return (
     <ScatterChart margin={margin}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
       <XAxis dataKey="name" tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} />
       <ZAxis range={[60, 240]} />
@@ -323,7 +323,7 @@ function renderRadar(ctx: InnerCtx) {
   const { model, tooltipStyle, legendStyle, showLegend, fontSize } = ctx;
   return (
     <RadarChart data={model.data} outerRadius="72%">
-      <PolarGrid stroke="#e2e8f0" />
+      <PolarGrid stroke={GRID_STROKE} />
       <PolarAngleAxis dataKey="name" tick={axisTick(fontSize)} />
       <PolarRadiusAxis tick={axisTick(fontSize)} />
       <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
@@ -339,7 +339,7 @@ function renderCombo(ctx: InnerCtx) {
   const { model, fontSize, tooltipStyle, legendStyle, margin, showLegend, isCard, isExport, barSize } = ctx;
   return (
     <ComposedChart data={model.data} margin={margin}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
       <XAxis dataKey="name" interval={ctx.tickInterval} angle={isCard ? -24 : -22} textAnchor="end" height={isCard ? 38 : isExport ? 92 : 74} tick={axisTick(fontSize)} />
       <YAxis tick={axisTick(fontSize)} width={isExport ? 72 : 44} />
       <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} cursor={{ fill: 'rgba(245,158,11,0.10)' }} />
