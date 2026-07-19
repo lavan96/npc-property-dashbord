@@ -51,6 +51,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { PdfImportDiagnosticsDetailDialog } from '@/components/admin/PdfImportDiagnosticsDetailDialog';
 import {
   buildDiagnosticsListRow,
+  formatPageRanges,
+  expandChunkRanges,
   type DiagnosticsGateSummary,
 } from '@/lib/reportTemplate/ingestion/diagnostics/pdfImportDiagnosticsV2';
 
@@ -187,6 +189,11 @@ export default function PdfImportDiagnostics() {
   // C8 — per-job quality-gate summaries (from the linked import) + detail drill-down.
   const [gates, setGates] = useState<Record<string, DiagnosticsGateSummary>>({});
   const [detailJobId, setDetailJobId] = useState<string | null>(null);
+  // C8 fix — when the list degrades past missing (drift) columns, surface it
+  // instead of a silent 500 / silently-blank columns.
+  const [degradedColumns, setDegradedColumns] = useState<string[]>([]);
+  // C8 fix — real failed page ranges per job (batch-fetched by the edge list op).
+  const [failedChunkRanges, setFailedChunkRanges] = useState<Record<string, Array<{ page_start: number; page_end: number }>>>({});
 
   const loadStats = useCallback(async () => {
     const res = await invokeSecureFunction<StatsResponse>('pdf-import-diagnostics', {
@@ -204,7 +211,7 @@ export default function PdfImportDiagnostics() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await invokeSecureFunction<{ rows: JobRow[]; gates?: Record<string, DiagnosticsGateSummary> }>('pdf-import-diagnostics', {
+      const res = await invokeSecureFunction<{ rows: JobRow[]; gates?: Record<string, DiagnosticsGateSummary>; degraded?: boolean; missingColumns?: string[]; failedChunkRanges?: Record<string, Array<{ page_start: number; page_end: number }>> }>('pdf-import-diagnostics', {
         operation: 'list',
         status: statusFilter === 'all' ? null : statusFilter,
         engine: engineFilter === 'all' ? null : engineFilter,
@@ -220,6 +227,8 @@ export default function PdfImportDiagnostics() {
       }
       setRows(res.data?.rows ?? []);
       setGates(res.data?.gates ?? {});
+      setDegradedColumns(res.data?.degraded ? (res.data.missingColumns ?? []) : []);
+      setFailedChunkRanges(res.data?.failedChunkRanges ?? {});
     } finally {
       setLoading(false);
     }
@@ -567,6 +576,13 @@ export default function PdfImportDiagnostics() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {degradedColumns.length > 0 && (
+            <div className="mx-4 mb-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning" role="status">
+              Diagnostics is running in a degraded mode — the database is missing expected column(s)
+              ({degradedColumns.join(', ')}), so correlation/lane/metrics fields are blank. Apply the
+              pending PDF-import migrations to restore full detail.
+            </div>
+          )}
           <div className="overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
             <Table className="min-w-[1320px]">
               <TableHeader>
@@ -681,7 +697,15 @@ export default function PdfImportDiagnostics() {
                           <span>
                             {row.chunks_completed ?? 0}/{row.chunks_total ?? '—'}
                             {(row.chunks_failed ?? 0) > 0 ? (
-                              <span className="text-destructive"> · {row.chunks_failed} failed</span>
+                              <span className="text-destructive">
+                                {' · '}{row.chunks_failed} failed
+                                {failedChunkRanges[row.id]?.length ? (
+                                  // C8 fix — show the REAL failed page ranges, not just a count.
+                                  <span className="ml-1 text-[10px] text-muted-foreground">
+                                    (pp {formatPageRanges(expandChunkRanges(failedChunkRanges[row.id]))})
+                                  </span>
+                                ) : null}
+                              </span>
                             ) : null}
                           </span>
                         ) : (

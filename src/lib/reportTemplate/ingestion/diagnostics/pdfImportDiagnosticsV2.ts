@@ -34,6 +34,8 @@ export interface DiagnosticsResultPayload {
   rasters_manifest_path?: string | null;
   page_raster_paths?: string[] | null;
   per_page_docling_manifest_path?: string | null;
+  /** Count of pages that actually have per-page source artifacts (docling/blocks). */
+  per_page_docling_page_count?: number | null;
   artifact_contract_version?: string | null;
   selected_lane?: string | null;
 }
@@ -276,6 +278,37 @@ export function expandChunkRanges(ranges: Array<{ page_start?: number | null; pa
   return uniqueSortedPages(pages);
 }
 
+/**
+ * Pages that are genuinely missing their per-page SOURCE artifacts.
+ *
+ * C8 fix — the earlier heuristic derived this from `page_raster_paths.length`,
+ * which wrongly flagged EVERY page of a semantic-mode import (which produces no
+ * rasters) — and of any job that wrote a single `rasters.json` rather than
+ * per-page rasters — as "missing artifacts". Per-page source artifacts
+ * (docling/blocks) exist for every parsed page regardless of raster mode, so the
+ * authoritative coverage signal is `per_page_docling_page_count`, not rasters.
+ *
+ * Contract:
+ *  - `perPageDoclingPageCount` null/undefined → coverage is UNKNOWN (a legacy job
+ *    that never recorded it): return `[]` rather than fabricate missing pages.
+ *  - coverage ≥ page count → nothing missing.
+ *  - coverage < page count → the trailing `[coverage+1 … pageCount]` pages
+ *    (per-page artifacts are written sequentially from page 1) are missing.
+ */
+export function computeMissingArtifactPages(args: {
+  pageCount?: number | null;
+  perPageDoclingPageCount?: number | null;
+}): number[] {
+  const total = finite(args.pageCount);
+  if (total === null || total <= 0) return [];
+  const covered = finite(args.perPageDoclingPageCount);
+  if (covered === null) return []; // unknown coverage → never fabricate
+  if (covered >= total) return [];
+  const pages: number[] = [];
+  for (let p = Math.max(0, covered) + 1; p <= total; p += 1) pages.push(p);
+  return uniqueSortedPages(pages);
+}
+
 /** Compress a sorted page list into a compact "1-5, 8, 11-12" range string. */
 export function formatPageRanges(pages: number[]): string {
   const sorted = uniqueSortedPages(pages);
@@ -365,16 +398,22 @@ export function categorizeFailedPages(input: CategorizeFailedPagesInput): Failed
 export function buildDiagnosticsListRow(
   job: DiagnosticsRawJob,
   gate?: DiagnosticsGateSummary | null,
+  /** This job's failed/fatal chunk rows (batch-fetched by the edge), for real ranges. */
+  failedChunkRanges?: Array<{ page_start?: number | null; page_end?: number | null }>,
 ): DiagnosticsListRow {
   const rp = job.result_payload ?? null;
   const plan = job.plan_payload ?? null;
   const chunksFailed = finite(job.chunks_failed);
 
-  // "Failed leaf ranges": prefer explicit gate/unscored data; otherwise fall
-  // back to a count-based hint when chunk ranges aren't on the row.
-  const failedLeafRanges = chunksFailed && chunksFailed > 0
-    ? `${chunksFailed} chunk${chunksFailed === 1 ? '' : 's'}`
-    : null;
+  // C8 fix — surface the REAL failed page ranges (the plan's "failed leaf ranges"
+  // column) when the caller supplies the failed chunk rows; only fall back to a
+  // compact "N chunks" count when those rows aren't available (e.g. legacy list).
+  const realRanges = failedChunkRanges && failedChunkRanges.length > 0
+    ? formatPageRanges(expandChunkRanges(failedChunkRanges))
+    : '';
+  const failedLeafRanges = realRanges
+    ? realRanges
+    : (chunksFailed && chunksFailed > 0 ? `${chunksFailed} chunk${chunksFailed === 1 ? '' : 's'}` : null);
 
   return {
     jobId: job.id,
@@ -453,13 +492,21 @@ export function buildDiagnosticsDetail(input: BuildDiagnosticsDetailInput): Diag
   const rp = job.result_payload ?? null;
   const plan = job.plan_payload ?? null;
 
+  // C8 fix — derive missing per-page artifacts from per-page-manifest coverage.
+  // For a job that recorded coverage we ALWAYS trust that (ignoring any legacy
+  // raster-based value the edge may still send); only a job with no coverage
+  // signal at all falls back to an explicitly-supplied value.
+  const missingArtifactPages = rp?.per_page_docling_page_count != null
+    ? computeMissingArtifactPages({ pageCount: job.page_count, perPageDoclingPageCount: rp.per_page_docling_page_count })
+    : (input.missingArtifactPages ?? []);
+
   const failedChunkRanges = (input.chunks ?? []).filter((c) => c.status === 'failed');
   const failedPages = categorizeFailedPages({
     jobStatus: job.status,
     pageCount: job.page_count,
     gate,
     failedChunkRanges,
-    missingArtifactPages: input.missingArtifactPages,
+    missingArtifactPages,
   });
 
   const chunks: DiagnosticsDetailChunk[] = [...(input.chunks ?? [])]

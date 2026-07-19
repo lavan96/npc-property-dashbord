@@ -12,6 +12,7 @@ import {
   buildDiagnosticsDetail,
   categorizeFailedPages,
   computeOcrRatio,
+  computeMissingArtifactPages,
   formatPageRanges,
   expandChunkRanges,
   pageNumberFromDecisionId,
@@ -143,9 +144,22 @@ describe('buildDiagnosticsListRow', () => {
     expect(row.manualReviewRequired).toBeNull();
   });
 
-  it('summarizes failed chunk counts', () => {
+  it('summarizes failed chunk counts when no ranges are supplied', () => {
     expect(buildDiagnosticsListRow(job({ chunks_failed: 2 })).failedLeafRanges).toBe('2 chunks');
     expect(buildDiagnosticsListRow(job({ chunks_failed: 0 })).failedLeafRanges).toBeNull();
+  });
+
+  it('surfaces REAL failed page ranges when the failed chunk rows are supplied', () => {
+    const row = buildDiagnosticsListRow(
+      job({ chunks_failed: 2 }),
+      undefined,
+      [{ page_start: 6, page_end: 10 }, { page_start: 21, page_end: 21 }],
+    );
+    expect(row.failedLeafRanges).toBe('6-10, 21'); // real ranges, not "2 chunks"
+  });
+
+  it('falls back to the count when the supplied ranges are empty', () => {
+    expect(buildDiagnosticsListRow(job({ chunks_failed: 3 }), undefined, []).failedLeafRanges).toBe('3 chunks');
   });
 });
 
@@ -235,5 +249,65 @@ describe('buildDiagnosticsDetail', () => {
     expect(detail.quality.finalScore).toBe(0.88); // ssim fallback
     expect(detail.failedPages.infra_failure).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(detail.perPage).toEqual([]);
+  });
+});
+
+// C8 fix — missing per-page artifacts come from per-page-manifest coverage, not
+// raster count (the old heuristic flagged every page of a raster-free semantic
+// import as "missing artifacts").
+describe('computeMissingArtifactPages', () => {
+  it('returns [] when per-page coverage is unknown (legacy job) — never fabricates', () => {
+    expect(computeMissingArtifactPages({ pageCount: 10, perPageDoclingPageCount: null })).toEqual([]);
+    expect(computeMissingArtifactPages({ pageCount: 10, perPageDoclingPageCount: undefined })).toEqual([]);
+  });
+
+  it('returns [] when coverage meets or exceeds the page count', () => {
+    expect(computeMissingArtifactPages({ pageCount: 10, perPageDoclingPageCount: 10 })).toEqual([]);
+    expect(computeMissingArtifactPages({ pageCount: 10, perPageDoclingPageCount: 12 })).toEqual([]);
+  });
+
+  it('returns the trailing uncovered pages when coverage is partial', () => {
+    expect(computeMissingArtifactPages({ pageCount: 10, perPageDoclingPageCount: 7 })).toEqual([8, 9, 10]);
+    expect(computeMissingArtifactPages({ pageCount: 3, perPageDoclingPageCount: 0 })).toEqual([1, 2, 3]);
+  });
+
+  it('returns [] for non-positive / missing page counts', () => {
+    expect(computeMissingArtifactPages({ pageCount: 0, perPageDoclingPageCount: 0 })).toEqual([]);
+    expect(computeMissingArtifactPages({ pageCount: null, perPageDoclingPageCount: 5 })).toEqual([]);
+  });
+});
+
+describe('buildDiagnosticsDetail — missing-artifacts uses per-page coverage', () => {
+  it('does NOT flag pages of a raster-free semantic import as missing artifacts', () => {
+    // 10-page semantic import: no rasters, but full per-page docling coverage.
+    const detail = buildDiagnosticsDetail({
+      job: job({
+        mode: 'semantic',
+        result_payload: {
+          summary: { text_chars: 1000 },
+          page_raster_paths: [], // semantic → no rasters
+          per_page_docling_page_count: 10, // every page HAS docling/blocks
+        },
+      }),
+      // Even if the edge still sent the old raster-based value, coverage wins:
+      missingArtifactPages: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    });
+    expect(detail.failedPages.missing_artifacts).toEqual([]);
+    expect(detail.failedPageCounts.missing_artifacts).toBe(0);
+  });
+
+  it('flags only the genuinely-uncovered trailing pages', () => {
+    const detail = buildDiagnosticsDetail({
+      job: job({ page_count: 10, result_payload: { page_raster_paths: [], per_page_docling_page_count: 8 } }),
+    });
+    expect(detail.failedPages.missing_artifacts).toEqual([9, 10]);
+  });
+
+  it('falls back to the supplied value for a legacy job with no coverage signal', () => {
+    const detail = buildDiagnosticsDetail({
+      job: job({ result_payload: { page_raster_paths: ['job-1/pages/page-001.png'] } }), // no per_page_docling_page_count
+      missingArtifactPages: [10],
+    });
+    expect(detail.failedPages.missing_artifacts).toEqual([10]);
   });
 });
