@@ -1268,7 +1268,14 @@ export default function ReportViewer() {
         description: `Premium report saved as ${fileName}`,
       });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('Error generating PDF, attempting stored fallback:', error);
+      try {
+        const fallback = await downloadStoredFallback();
+        if (fallback && options?.returnBlob) return fallback;
+        if (fallback) return;
+      } catch (fallbackErr) {
+        console.error('Stored PDF fallback also failed:', fallbackErr);
+      }
       toast({
         title: "Download failed",
         description: "Could not generate PDF download",
@@ -1277,6 +1284,7 @@ export default function ReportViewer() {
     } finally {
       setDownloading(false);
     }
+
   };
 
   // Helper: Extract chart data from stored chart info for programmatic rendering
