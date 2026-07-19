@@ -398,16 +398,22 @@ export function categorizeFailedPages(input: CategorizeFailedPagesInput): Failed
 export function buildDiagnosticsListRow(
   job: DiagnosticsRawJob,
   gate?: DiagnosticsGateSummary | null,
+  /** This job's failed/fatal chunk rows (batch-fetched by the edge), for real ranges. */
+  failedChunkRanges?: Array<{ page_start?: number | null; page_end?: number | null }>,
 ): DiagnosticsListRow {
   const rp = job.result_payload ?? null;
   const plan = job.plan_payload ?? null;
   const chunksFailed = finite(job.chunks_failed);
 
-  // "Failed leaf ranges": prefer explicit gate/unscored data; otherwise fall
-  // back to a count-based hint when chunk ranges aren't on the row.
-  const failedLeafRanges = chunksFailed && chunksFailed > 0
-    ? `${chunksFailed} chunk${chunksFailed === 1 ? '' : 's'}`
-    : null;
+  // C8 fix — surface the REAL failed page ranges (the plan's "failed leaf ranges"
+  // column) when the caller supplies the failed chunk rows; only fall back to a
+  // compact "N chunks" count when those rows aren't available (e.g. legacy list).
+  const realRanges = failedChunkRanges && failedChunkRanges.length > 0
+    ? formatPageRanges(expandChunkRanges(failedChunkRanges))
+    : '';
+  const failedLeafRanges = realRanges
+    ? realRanges
+    : (chunksFailed && chunksFailed > 0 ? `${chunksFailed} chunk${chunksFailed === 1 ? '' : 's'}` : null);
 
   return {
     jobId: job.id,

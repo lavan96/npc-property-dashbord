@@ -74,6 +74,33 @@ async function loadGateSummaries(
 }
 
 /**
+ * C8 fix — batch-fetch the FAILED/FATAL chunk page ranges for a page of jobs,
+ * keyed by jobId, so the list can show the real "failed leaf ranges" (e.g.
+ * "6-10, 21") instead of a bare chunk count — without an N+1 per row. Only
+ * chunked jobs have chunk rows; the rest simply have no entry.
+ */
+async function loadFailedChunkRanges(
+  admin: ReturnType<typeof createClient>,
+  jobs: Array<{ id: string; chunked?: boolean | null }>,
+): Promise<Record<string, Array<{ page_start: number; page_end: number }>>> {
+  const jobIds = jobs.filter((j) => j.chunked).map((j) => j.id);
+  if (jobIds.length === 0) return {};
+
+  const { data, error } = await admin
+    .from('pdf_import_chunks')
+    .select('job_id,page_start,page_end,status')
+    .in('job_id', jobIds)
+    .in('status', ['failed', 'fatal']);
+  if (error || !data) return {};
+
+  const ranges: Record<string, Array<{ page_start: number; page_end: number }>> = {};
+  for (const row of data as Array<{ job_id: string; page_start: number; page_end: number }>) {
+    (ranges[row.job_id] ??= []).push({ page_start: row.page_start, page_end: row.page_end });
+  }
+  return ranges;
+}
+
+/**
  * C8 — resolve a job's linked import + gate summary. Prefers the C1
  * `template_import_id`; falls back to the reverse correlation stored at
  * `template_imports.meta.import_manifests.pdf_import_job.job_id`.
@@ -171,7 +198,9 @@ Deno.serve(async (req) => {
       // on template_import_id; when that column was dropped, jobs simply have no
       // gate (the map is empty) — never an error.
       const gates = await loadGateSummaries(admin, rows as any[]);
-      return json({ rows, gates, degraded, missingColumns });
+      // C8 fix — real failed page ranges for the list (batched, chunked jobs only).
+      const failedChunkRanges = await loadFailedChunkRanges(admin, rows as any[]);
+      return json({ rows, gates, degraded, missingColumns, failedChunkRanges });
     }
 
     if (operation === 'get') {
@@ -292,7 +321,10 @@ Deno.serve(async (req) => {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await admin
         .from('pdf_import_jobs')
-        .select('status,engine,engine_version,duration_ms,cloud_run_ms,bytes_in,bytes_out,ssim_score,page_count,source_file_size_bytes,user_id,result_payload,created_at')
+        // C8 fix — project only result_payload->summary (small nested object) instead
+        // of the entire result_payload (docling paths, page arrays, manifests, …) for
+        // up to 1000 rows; the rollup only ever reads `.summary`.
+        .select('status,engine,engine_version,duration_ms,cloud_run_ms,bytes_in,bytes_out,ssim_score,page_count,source_file_size_bytes,user_id,summary:result_payload->summary,created_at')
         .gte('created_at', since)
         .limit(1000);
       if (error) return json({ error: error.message }, 500);

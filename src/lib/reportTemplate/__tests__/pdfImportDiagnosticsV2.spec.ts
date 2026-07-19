@@ -144,9 +144,22 @@ describe('buildDiagnosticsListRow', () => {
     expect(row.manualReviewRequired).toBeNull();
   });
 
-  it('summarizes failed chunk counts', () => {
+  it('summarizes failed chunk counts when no ranges are supplied', () => {
     expect(buildDiagnosticsListRow(job({ chunks_failed: 2 })).failedLeafRanges).toBe('2 chunks');
     expect(buildDiagnosticsListRow(job({ chunks_failed: 0 })).failedLeafRanges).toBeNull();
+  });
+
+  it('surfaces REAL failed page ranges when the failed chunk rows are supplied', () => {
+    const row = buildDiagnosticsListRow(
+      job({ chunks_failed: 2 }),
+      undefined,
+      [{ page_start: 6, page_end: 10 }, { page_start: 21, page_end: 21 }],
+    );
+    expect(row.failedLeafRanges).toBe('6-10, 21'); // real ranges, not "2 chunks"
+  });
+
+  it('falls back to the count when the supplied ranges are empty', () => {
+    expect(buildDiagnosticsListRow(job({ chunks_failed: 3 }), undefined, []).failedLeafRanges).toBe('3 chunks');
   });
 });
 
