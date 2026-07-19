@@ -84,7 +84,8 @@ export function LiveChart({ chart, model: providedModel, variant = 'card', class
   const margin = marginFor(variant);
   const containerKey = `${chart?.id || 'live'}-${variant}-${model.kind}`;
 
-  const showLegend = !isCard || model.series.length > 1;
+  // Legends removed platform-wide: chart title/subtitle + axis labels convey the series identity.
+  const showLegend = false;
   const barSize = isExport ? 120 : isCard ? 56 : 88;
   const tickInterval = isCard ? Math.max(0, Math.ceil(model.data.length / 7) - 1) : Math.max(0, Math.ceil(model.data.length / 12) - 1);
 
