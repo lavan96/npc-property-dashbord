@@ -1423,38 +1423,36 @@ export default function ReportViewer() {
 
       {/* Report Content */}
       <div ref={reportRef} className="space-y-6">
-        {/* Metadata */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Report Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Generated</p>
-              <p className="font-medium">{format(new Date(report.created_at), 'PPp')}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Listings Analyzed</p>
-              <p className="font-medium">{report.listing_count.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Charts Generated</p>
-              <p className="font-medium">{charts.length}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <Badge variant="default">Complete</Badge>
-            </div>
-          </CardContent>
-        </Card>
+        {/* IMR helper: numbered section chip */}
+        {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
+        {(() => null)()}
 
-        {/* KPIs */}
+        {/* ── 1.0 Executive Summary ── */}
+        {report.insights && Array.isArray(report.insights) && report.insights.length > 0 && (
+          <Card className="border-brand-300/30">
+            <CardHeader>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-500">1.0 · Executive Summary</div>
+              <CardTitle>Key Findings at a Glance</CardTitle>
+              <CardDescription>Top-line takeaways derived from the underlying dataset.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {report.insights.slice(0, 3).map((insight: string, index: number) => (
+                  <li key={`exec-${index}`} className="flex items-start gap-2">
+                    <span className="text-brand-500 mt-1">◆</span>
+                    <span>{insight}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── 2.0 Portfolio Snapshot (KPIs) ── */}
         {report.kpis && (
           <Card>
             <CardHeader>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-500">2.0 · Portfolio Snapshot</div>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
                 Key Performance Indicators
@@ -1485,11 +1483,13 @@ export default function ReportViewer() {
           </Card>
         )}
 
-        {/* Analytics Summary */}
+        {/* ── 3.0 Market Context ── */}
         {report.analytics && (
           <Card>
             <CardHeader>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-500">3.0 · Market Context</div>
               <CardTitle>Analytics Summary</CardTitle>
+              <CardDescription>Contextual signals that frame the findings below.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {report.analytics.velocity && (
@@ -1516,24 +1516,41 @@ export default function ReportViewer() {
           </Card>
         )}
 
-        {/* Charts */}
+        {/* ── 4.0 Findings — Interactive Data Visualisations ── */}
         {charts.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Generated Charts</CardTitle>
-              <CardDescription>Visual analysis from your data</CardDescription>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-500">4.0 · Findings</div>
+              <CardTitle>Interactive Data Visualisations</CardTitle>
+              <CardDescription>Hover for series values · click a chart to expand with zoom &amp; fullscreen controls.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2">
                 {charts.map((chart) => (
                   <div key={chart.id} className="space-y-2">
-                    <h4 className="font-medium">{chart.title}</h4>
-                    <div className="bg-white p-4 rounded-lg border">
-                      <div className="w-full h-64 overflow-hidden flex items-center justify-center">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-medium">{chart.title}</h4>
+                      {canNormaliseChartConfig(chart as any) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setExpandedChart(chart as any)}
+                          aria-label={`Expand ${chart.title}`}
+                        >
+                          <Maximize2 className="h-3.5 w-3.5 mr-1" />
+                          Expand
+                        </Button>
+                      )}
+                    </div>
+                    <div
+                      className={`rounded-lg border ${canNormaliseChartConfig(chart as any) ? 'bg-card p-2' : 'bg-white p-4'}`}
+                    >
+                      <div className={`w-full ${canNormaliseChartConfig(chart as any) ? 'h-[22rem]' : 'h-64 overflow-hidden flex items-center justify-center'}`}>
                         {canNormaliseChartConfig(chart as any) ? (
                           <LiveChart chart={chart as any} variant="expanded" />
                         ) : chart.image_data?.startsWith('data:image/svg+xml;base64,') ? (
-                          <div 
+                          <div
                             dangerouslySetInnerHTML={{
                               __html: (() => {
                                 try {
@@ -1585,26 +1602,95 @@ export default function ReportViewer() {
           </Card>
         )}
 
-        {/* Insights */}
-        {report.insights && Array.isArray(report.insights) && report.insights.length > 0 && (
+        {/* ── 5.0 Risks, Watchlist & Recommendations ── */}
+        {report.insights && Array.isArray(report.insights) && report.insights.length > 3 && (
           <Card>
             <CardHeader>
-              <CardTitle>Key Insights</CardTitle>
-              <CardDescription>Generated insights from the analysis</CardDescription>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-500">5.0 · Risks &amp; Recommendations</div>
+              <CardTitle>Watchlist and Suggested Next Steps</CardTitle>
+              <CardDescription>Additional insights split into cautionary signals and forward actions.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2">
-                {report.insights.map((insight: string, index: number) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span className="text-muted-foreground mt-1">•</span>
-                    <span>{insight}</span>
-                  </li>
-                ))}
-              </ul>
+              {(() => {
+                const rest = report.insights.slice(3) as string[];
+                const riskKeywords = /(risk|decline|drop|caution|watch|volatil|slow|soften|warning|overheat|correction)/i;
+                const risks = rest.filter(i => riskKeywords.test(i));
+                const recs = rest.filter(i => !riskKeywords.test(i));
+                return (
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div>
+                      <h4 className="text-sm font-semibold text-warning mb-2">Risks &amp; Watchlist</h4>
+                      {risks.length > 0 ? (
+                        <ul className="space-y-2">
+                          {risks.map((insight, idx) => (
+                            <li key={`risk-${idx}`} className="flex items-start gap-2 text-sm">
+                              <span className="text-warning mt-1">▲</span>
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No risk signals detected in this dataset.</p>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-success mb-2">Recommendations</h4>
+                      {recs.length > 0 ? (
+                        <ul className="space-y-2">
+                          {recs.map((insight, idx) => (
+                            <li key={`rec-${idx}`} className="flex items-start gap-2 text-sm">
+                              <span className="text-success mt-1">→</span>
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No additional recommendations.</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         )}
+
+        {/* ── 6.0 Appendix — Report Metadata ── */}
+        <Card className="bg-muted/30">
+          <CardHeader>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-500">6.0 · Appendix</div>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Report Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Generated</p>
+              <p className="font-medium">{format(new Date(report.created_at), 'PPp')}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Listings Analyzed</p>
+              <p className="font-medium">{report.listing_count.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Charts Generated</p>
+              <p className="font-medium">{charts.length}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Status</p>
+              <Badge variant="default">Complete</Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Interactive chart lightbox (Recharts-based, matches Charts page parity) */}
+      <ChartLightbox
+        chart={expandedChart}
+        onClose={() => setExpandedChart(null)}
+        onExport={() => { /* export handled from Charts page; noop here to keep viewer read-only */ }}
+      />
     </div>
   );
 }
