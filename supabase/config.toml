@@ -66,6 +66,9 @@ verify_jwt = false
 [functions.finance-email-track-pixel]
 verify_jwt = false
 
+[functions.share-report-with-finance]
+verify_jwt = false
+
 [functions.template-share]
 verify_jwt = false
 request_timeout = 1500
