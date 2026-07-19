@@ -14,6 +14,8 @@ import html2canvas from 'html2canvas';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { LiveChart, canNormaliseChartConfig } from '@/components/charts/kernel';
+import { ChartLightbox } from '@/components/charts/ChartLightbox';
+import { Maximize2 } from 'lucide-react';
 import { fetchPdfBlob, triggerPdfDownload } from '@/lib/pdf/downloadPdf';
 
 interface GeneratedReport {
