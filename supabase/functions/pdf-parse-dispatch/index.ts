@@ -1107,7 +1107,6 @@ async function recoverStuckJobs(admin: Admin): Promise<{ requeued: number; faile
     }
     // C1.6: redispatch on the job's persisted effective mode + lane, not the raw
     // requested mode / a hard-coded 'unplanned' lane.
-    const plan = ((job as any)?.plan_payload ?? {}) as Record<string, unknown>;
     const mode = String(plan.dispatch_effective_mode ?? (job as any)?.mode ?? 'semantic');
     const selectedLane = String(plan.selected_lane ?? plan.recommended_lane ?? 'unplanned');
     const requestPayload = ((job as any)?.request_payload ?? {}) as Record<string, unknown>;
