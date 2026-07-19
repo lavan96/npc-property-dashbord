@@ -32,6 +32,7 @@ import { applyPagePolicyToPage } from '@/lib/reportTemplate/rendering/pdfImportP
 import {
   buildSourceCriticalEvidenceByPage,
   buildSourceRasterRefsFromManifest,
+  chooseSourceCriticalEvidence,
 } from './criticalVisualContainmentAdapters';
 import type { RasterManifest } from './docling/doclingTypes';
 import type { CriticalContainmentPolicy } from './criticalVisualContainment.pure';
@@ -763,7 +764,13 @@ export async function extractPdfViaDocling(
       // E0 — assemble source critical evidence (charts/tables/pictures/vectors)
       // and durable raster references so containment can protect complex pages
       // and guarantee a safe raster fallback (never a blank raster-only page).
-      const criticalSourceEvidenceByPage = buildSourceCriticalEvidenceByPage(doclingDoc);
+      // E1 — prefer Source Scene Graph V2 evidence (durable region crops) when a
+      // valid V3 scene is supplied; otherwise fall back to the legacy Docling
+      // adapter. A missing / invalid / region-less V3 can never weaken E0.
+      const criticalSourceEvidenceByPage = chooseSourceCriticalEvidence({
+        sourceSceneGraph: (options as { sourceSceneGraph?: unknown }).sourceSceneGraph ?? null,
+        doclingDoc,
+      }).byPage;
       const sourceRasterRefByPage = buildSourceRasterRefsFromManifest(
         rasterManifestPayload as RasterManifest | null,
         jobId,
