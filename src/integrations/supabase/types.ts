@@ -10442,7 +10442,15 @@ export type Database = {
           webhook_url?: string | null
           workspace_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "generated_reports_generated_by_custom_users_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "custom_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ghl_account_config: {
         Row: {
@@ -14354,6 +14362,7 @@ export type Database = {
           job_id: string
           last_event_at: string
           max_attempts: number
+          operational_metrics: Json | null
           page_count: number | null
           page_end: number
           page_start: number
@@ -14376,6 +14385,7 @@ export type Database = {
           job_id: string
           last_event_at?: string
           max_attempts?: number
+          operational_metrics?: Json | null
           page_count?: number | null
           page_end: number
           page_start: number
@@ -14398,6 +14408,7 @@ export type Database = {
           job_id?: string
           last_event_at?: string
           max_attempts?: number
+          operational_metrics?: Json | null
           page_count?: number | null
           page_end?: number
           page_start?: number
@@ -14721,6 +14732,7 @@ export type Database = {
           id: string
           idempotency_key: string | null
           mode: string
+          operational_metrics: Json | null
           page_count: number | null
           pages_completed: number | null
           pages_total: number | null
@@ -14764,6 +14776,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           mode?: string
+          operational_metrics?: Json | null
           page_count?: number | null
           pages_completed?: number | null
           pages_total?: number | null
@@ -14807,6 +14820,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           mode?: string
+          operational_metrics?: Json | null
           page_count?: number | null
           pages_completed?: number | null
           pages_total?: number | null
