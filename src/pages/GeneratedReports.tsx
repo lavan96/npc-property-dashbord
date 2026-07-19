@@ -399,6 +399,10 @@ export default function GeneratedReports() {
       const { data, error } = await supabase
         .from('generated_reports')
         .select('*')
+        .eq('report_type', 'quantitative')
+        .eq('status', 'completed')
+        .eq('workspace_id', 'default')
+        .order('generated_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) {

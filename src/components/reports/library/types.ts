@@ -14,6 +14,10 @@ export interface GeneratedReport {
   pdf_path?: string | null;
   file_name?: string | null;
   file_size?: number | null;
+  generated_at?: string | null;
+  report_type?: string | null;
+  status?: string | null;
+  workspace_id?: string | null;
 }
 
 export interface InvestmentReport {
