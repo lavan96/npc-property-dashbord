@@ -155,9 +155,10 @@ function renderInner(ctx: InnerCtx): React.ReactElement {
     default:
       return renderBar(ctx, {});
   }
+function axisTick(fontSize: number, isExport: boolean) {
+  return { fontSize, fill: isExport ? '#334155' : 'hsl(var(--muted-foreground))' };
 }
-
-function axisTick(fontSize: number) { return { fontSize, fill: '#334155' }; }
+function gridStroke(isExport: boolean) { return isExport ? '#e2e8f0' : 'hsl(var(--border))'; }
 
 function renderBar(ctx: InnerCtx, opts: { stacked?: boolean; horizontal?: boolean }) {
   const { model, isCard, isExport, fontSize, labelSize, tooltipStyle, legendStyle, margin, showLegend, barSize } = ctx;
