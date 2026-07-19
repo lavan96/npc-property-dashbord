@@ -277,7 +277,7 @@ function renderPie(ctx: InnerCtx) {
   return (
     <PieChart margin={isCard ? { top: 4, right: 4, bottom: 4, left: 4 } : { top: 8, right: 20, bottom: 8, left: 20 }}>
       <Tooltip contentStyle={tooltipStyle} labelStyle={ctx.tooltipLabelStyle} formatter={(value: number, name: string, item: any) => { const total = slices.reduce((sum, s) => sum + s.value, 0); const percent = total ? ` (${((Number(value) / total) * 100).toFixed(1)}%)` : ""; return [`${value}${percent}`, item?.payload?.name || name]; }} />
-      {!isCard && (
+      {false && (
         <Legend
           layout={isExport ? 'vertical' : 'horizontal'}
           verticalAlign={isExport ? 'middle' : 'bottom'}
