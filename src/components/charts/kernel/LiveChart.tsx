@@ -72,9 +72,15 @@ export function LiveChart({ chart, model: providedModel, variant = 'card', class
   const isExport = variant === 'export';
   const fontSize = tickSize(variant);
   const labelSize = isExport ? 22 : isCard ? 9 : 12;
-  const tooltipStyle = { borderRadius: 14, border: '1px solid rgba(245,158,11,0.38)', background: '#0f172a', color: '#f8fafc', boxShadow: '0 18px 42px rgba(2,6,23,.32)', fontSize: isExport ? 22 : 13 };
-  const tooltipLabelStyle = { color: '#fef3c7', fontWeight: 800 };
-  const legendStyle = { fontSize: legendFont(variant), paddingTop: isCard ? 4 : 8 };
+  // Export variant keeps hard-coded high-contrast styles so downloaded PNGs
+  // remain legible against any viewer background. Card/expanded variants
+  // use semantic tokens so they inherit the app's dark-gold theme and stay
+  // transparent over the parent gradient surface (Overview parity).
+  const tooltipStyle = isExport
+    ? { borderRadius: 14, border: '1px solid rgba(245,158,11,0.38)', background: '#0f172a', color: '#f8fafc', boxShadow: '0 18px 42px rgba(2,6,23,.32)', fontSize: 22 }
+    : { borderRadius: 14, border: '1px solid hsl(var(--border))', background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', boxShadow: '0 18px 42px hsl(var(--foreground) / 0.18)', fontSize: 13, backdropFilter: 'blur(8px)' };
+  const tooltipLabelStyle = isExport ? { color: '#fef3c7', fontWeight: 800 } : { color: 'hsl(var(--primary))', fontWeight: 700 };
+  const legendStyle = { fontSize: legendFont(variant), paddingTop: isCard ? 4 : 8, color: 'hsl(var(--muted-foreground))' };
   const margin = marginFor(variant);
   const containerKey = `${chart?.id || 'live'}-${variant}-${model.kind}`;
 
@@ -82,13 +88,19 @@ export function LiveChart({ chart, model: providedModel, variant = 'card', class
   const barSize = isExport ? 120 : isCard ? 56 : 88;
   const tickInterval = isCard ? Math.max(0, Math.ceil(model.data.length / 7) - 1) : Math.max(0, Math.ceil(model.data.length / 12) - 1);
 
+  const surfaceClass = isExport
+    ? 'bg-white text-slate-900'
+    : 'bg-transparent text-foreground';
+  const titleClass = isExport ? 'text-slate-800' : 'text-foreground';
+  const subtitleClass = isExport ? 'text-slate-500' : 'text-muted-foreground';
+
   return (
-    <div className={`flex h-full w-full flex-col bg-white text-slate-900 ${className || ''}`}>
-      {!isCard && <div className="shrink-0 text-center font-bold text-slate-800" style={{ fontSize: titleSize(variant), lineHeight: 1.25 }}>
+    <div className={`flex h-full w-full flex-col ${surfaceClass} ${className || ''}`}>
+      {!isCard && <div className={`shrink-0 text-center font-bold ${titleClass}`} style={{ fontSize: titleSize(variant), lineHeight: 1.25 }}>
         {model.title}
       </div>}
       {!isCard && model.subtitle ? (
-        <div className="shrink-0 text-center text-slate-500" style={{ fontSize: Math.round(titleSize(variant) * 0.72) }}>
+        <div className={`shrink-0 text-center ${subtitleClass}`} style={{ fontSize: Math.round(titleSize(variant) * 0.72) }}>
           {model.subtitle}
         </div>
       ) : null}
