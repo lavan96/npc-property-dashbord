@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -153,6 +153,26 @@ export default function GeneratedReports() {
     return searchParams.get('reportId') ? 'investment' : 'quantitative';
   });
   const [lastHandledReportId, setLastHandledReportId] = useState<string | null>(null);
+  const focusedQuantitativeReportRef = useRef<HTMLDivElement | null>(null);
+  const focusedQuantitativeReportId = (searchParams.get('focus') || '').trim();
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if ((tabParam === 'investment' || tabParam === 'comparisons' || tabParam === 'quantitative') && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'quantitative' || !focusedQuantitativeReportId || reports.length === 0) return;
+    if (!reports.some((report) => report.id === focusedQuantitativeReportId)) return;
+
+    const timer = window.setTimeout(() => {
+      focusedQuantitativeReportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, focusedQuantitativeReportId, reports]);
 
   // Helper function to get grade color classes
   const getGradeColor = (grade: string): string => {
@@ -942,13 +962,15 @@ export default function GeneratedReports() {
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {reports.map((report) => (
-                <QuantitativeReportCard
-                  key={report.id}
-                  report={report}
-                  generatorLabel={generatorLabel}
-                  onView={handleViewReport}
-                  onDownloadPDF={handleDownloadPDF}
-                />
+                <div key={report.id} ref={report.id === focusedQuantitativeReportId ? focusedQuantitativeReportRef : undefined}>
+                  <QuantitativeReportCard
+                    report={report}
+                    generatorLabel={generatorLabel}
+                    onView={handleViewReport}
+                    onDownloadPDF={handleDownloadPDF}
+                    isFocused={report.id === focusedQuantitativeReportId}
+                  />
+                </div>
               ))}
             </div>
           )}

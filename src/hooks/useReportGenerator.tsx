@@ -8,7 +8,7 @@ import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Clock3, ExternalLink, FolderOpen } from 'lucide-react';
+import { BarChart3, CheckCircle2, Clock3, ExternalLink, FolderOpen, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
@@ -651,35 +651,42 @@ export function useReportGenerator() {
       };
 
       toast({
-        duration: 15000,
-        className: 'quantitative-report-success-toast border-emerald-400/40 bg-card/98 p-0 text-foreground shadow-2xl shadow-primary/20 backdrop-blur-md',
+        duration: 18000,
+        className: 'quantitative-report-success-toast overflow-hidden border-primary/35 bg-card/95 p-0 text-foreground shadow-2xl shadow-primary/25 backdrop-blur-xl',
         description: (
-          <div className="space-y-4 p-5 pr-11">
+          <div className="relative p-5 pr-11">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" aria-hidden="true" />
+            <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/20 blur-2xl" aria-hidden="true" />
+            <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-400">
+              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-success/35 bg-success/10 text-success shadow-lg shadow-success/10">
                 <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">Report Generated Successfully</p>
+                <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  Report Generated Successfully <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                </p>
                 <p className="mt-1 truncate text-sm font-medium text-foreground">{data.reportTitle || normalisedConfig.title}</p>
               </div>
             </div>
             <div className="space-y-1 text-xs leading-5 text-muted-foreground">
-              <p>Your quantitative PDF report has been generated and saved to Generated Reports.</p>
-              <p>Associated chart data has also been prepared.</p>
+              <p>Your quantitative PDF has been saved to Generated Reports.</p>
+              <p>Interactive chart records are linked and ready on the Charts page.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium">
-              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-emerald-300">Completed</span>
+              <span className="rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-success">Completed</span>
               <span className="rounded-full border border-primary/35 bg-primary/10 px-2.5 py-1 text-primary">Quantitative</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background/50 px-2.5 py-1 text-muted-foreground"><BarChart3 className="h-3 w-3" aria-hidden="true" />{Number((data as any).chartCount || selectedChartKeys.length || 0).toLocaleString()} charts</span>
               <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock3 className="h-3 w-3" aria-hidden="true" />{new Date(data.generatedAt || Date.now()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <button type="button" onClick={viewGeneratedReport} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> View Generated Report
               </button>
-              <button type="button" onClick={goToGeneratedReports} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-background/60 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+              <button type="button" onClick={goToGeneratedReports} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                 <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" /> Go to Generated Reports
               </button>
+            </div>
             </div>
           </div>
         ),

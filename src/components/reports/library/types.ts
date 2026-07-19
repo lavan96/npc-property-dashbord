@@ -10,6 +10,7 @@ export interface GeneratedReport {
   insights: any;
   config: any;
   generated_by?: string | null;
+  source_snapshot?: any;
   pdf_bucket?: string | null;
   pdf_path?: string | null;
   file_name?: string | null;

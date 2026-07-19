@@ -614,6 +614,7 @@ Deno.serve(async (req) => {
       customNotes,
       version: REPORT_VERSION,
     });
+    const generatedByUser = auth.userId && auth.authMethod !== "service_role" ? auth.userId : null;
     // A manual run is idempotent only for its own generation run ID. The prior
     // configuration-hash lookup reused an older completed report whenever a user
     // intentionally generated the same configuration, overwriting its history.
@@ -672,9 +673,7 @@ Deno.serve(async (req) => {
       insights: [],
       chart_urls: {},
       listing_count: listings.length,
-      // Custom-session users are authenticated humans too; keeping their ID
-      // prevents completed cards from rendering as "Unknown user".
-      generated_by: auth.authMethod === "service_role" ? null : auth.userId,
+      generated_by: generatedByUser,
       report_type: "quantitative",
       generation_source: source,
       status: "generating",
@@ -688,6 +687,9 @@ Deno.serve(async (req) => {
         filters: body.filters || {},
         config_hash: configHash,
         generation_run_id: generationRunId,
+        requested_by_user_id: auth.userId,
+        requested_by_username: auth.username,
+        requested_by_auth_method: auth.authMethod,
         fingerprint: hash({ period, snapshotIds, metrics: built.metrics }),
       },
       generated_at: generatedAt,
@@ -705,13 +707,25 @@ Deno.serve(async (req) => {
           .insert(base)
           .select("id")
           .single();
-    if (saved.error)
+    if (saved.error) {
+      console.error(
+        JSON.stringify({
+          component: "quantitative-report-pipeline",
+          generationRunId,
+          stage: "report_record_saved",
+          code: "generated_reports_upsert_failed",
+          message: saved.error.message,
+          details: saved.error.details,
+          hint: saved.error.hint,
+        }),
+      );
       throw new GenerationError(
         "REPORT_SAVE_FAILED",
         "The report record could not be saved.",
         "report_record_saved",
         500,
       );
+    }
     reportId = saved.data.id;
     stage = "report_record_saved";
     logStage(generationRunId, stage, { reportId });
