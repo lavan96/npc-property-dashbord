@@ -29,6 +29,7 @@ import Calendar from "./pages/Calendar";
 import MarketUpdates from "./pages/MarketUpdates";
 import Sources from "./pages/Sources";
 import Reports from "./pages/Reports";
+import QuantitativeReports from "./pages/QuantitativeReports";
 import Charts from "./pages/Charts";
 import GeneratedReports from "./pages/GeneratedReports";
 import ReportViewer from "./pages/ReportViewer";
@@ -336,6 +337,8 @@ const App = () => (
                 />
                 <Route path="sources" element={<ModuleGuard moduleKey="sources"><Sources /></ModuleGuard>} />
                 <Route path="reports" element={<ModuleGuard moduleKey="reports"><Reports /></ModuleGuard>} />
+                <Route path="quantitative-reports" element={<ModuleGuard moduleKey="reports"><QuantitativeReports /></ModuleGuard>} />
+                <Route path="quantitative-reports/:reportId" element={<ModuleGuard moduleKey="reports"><ReportViewer /></ModuleGuard>} />
                 <Route path="charts" element={<ModuleGuard moduleKey="charts"><Charts /></ModuleGuard>} />
                 <Route path="generated-reports" element={<ModuleGuard moduleKey="generated_reports"><GeneratedReports /></ModuleGuard>} />
                 <Route path="generated-reports/:reportId" element={<ModuleGuard moduleKey="generated_reports"><ReportViewer /></ModuleGuard>} />

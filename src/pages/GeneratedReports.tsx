@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Archive, BarChart3, FileText, MapPin, Search, TrendingUp } from 'lucide-react';
+import { Archive, FileText, MapPin, Search, TrendingUp } from 'lucide-react';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
@@ -22,12 +22,11 @@ import { ReportLibraryTabs } from '@/components/reports/library/ReportLibraryTab
 import { ReportLibraryToolbar, type ReportLibraryViewMode } from '@/components/reports/library/ReportLibraryToolbar';
 import { InvestmentReportCard } from '@/components/reports/library/InvestmentReportCard';
 import { InvestmentReportTable } from '@/components/reports/library/InvestmentReportTable';
-import { QuantitativeReportCard } from '@/components/reports/library/QuantitativeReportCard';
 import { ComparisonReportCard } from '@/components/reports/library/ComparisonReportCard';
 import { ReportLibraryEmptyState } from '@/components/reports/library/ReportLibraryEmptyState';
 import { ReportLibrarySkeleton } from '@/components/reports/library/ReportLibrarySkeleton';
 import { ReportLibraryPagination } from '@/components/reports/library/ReportLibraryPagination';
-import type { ComparisonAnalysis, GeneratedReport, InvestmentReport } from '@/components/reports/library/types';
+import type { ComparisonAnalysis, InvestmentReport } from '@/components/reports/library/types';
 
 // UI Refactor Safety Checklist (Phase 0):
 // - Preserve Supabase table names, secure edge function names, route paths, and permission guards.
@@ -61,7 +60,6 @@ const ModalLoader = () => (
 
 export default function GeneratedReports() {
   const { canEdit: canEditReports } = useModulePermissions('generated_reports');
-  const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
   const [comparisons, setComparisons] = useState<ComparisonAnalysis[]>([]);
   const [selectedInvestmentReport, setSelectedInvestmentReport] = useState<InvestmentReport | null>(null);
@@ -141,38 +139,24 @@ export default function GeneratedReports() {
   const allGeneratorIds = useMemo(() => {
     const ids: (string | null | undefined)[] = [];
     investmentReports.forEach((r) => ids.push(r.generated_by));
-    reports.forEach((r) => ids.push(r.generated_by));
     comparisons.forEach((c) => ids.push(c.created_by));
     return ids.filter((v): v is string => typeof v === 'string' && v.length > 0);
-  }, [investmentReports, reports, comparisons]);
+  }, [investmentReports, comparisons]);
   const { labelFor: generatorLabel } = useUserNames(allGeneratorIds);
 
-  const [activeTab, setActiveTab] = useState<'quantitative' | 'investment' | 'comparisons'>(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam === 'investment' || tabParam === 'comparisons' || tabParam === 'quantitative') return tabParam;
-    return searchParams.get('reportId') ? 'investment' : 'quantitative';
-  });
+  const [activeTab, setActiveTab] = useState<'investment' | 'comparisons'>(() => searchParams.get('tab') === 'comparisons' ? 'comparisons' : 'investment');
   const [lastHandledReportId, setLastHandledReportId] = useState<string | null>(null);
-  const focusedQuantitativeReportRef = useRef<HTMLDivElement | null>(null);
-  const focusedQuantitativeReportId = (searchParams.get('focus') || '').trim();
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if ((tabParam === 'investment' || tabParam === 'comparisons' || tabParam === 'quantitative') && tabParam !== activeTab) {
-      setActiveTab(tabParam);
+    if (tabParam === 'quantitative' || searchParams.get('type') === 'quantitative') {
+      const params = new URLSearchParams(searchParams);
+      params.delete('tab'); params.delete('type');
+      navigate(`/quantitative-reports${params.toString() ? `?${params}` : ''}`, { replace: true });
+      return;
     }
-  }, [searchParams, activeTab]);
-
-  useEffect(() => {
-    if (activeTab !== 'quantitative' || !focusedQuantitativeReportId || reports.length === 0) return;
-    if (!reports.some((report) => report.id === focusedQuantitativeReportId)) return;
-
-    const timer = window.setTimeout(() => {
-      focusedQuantitativeReportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 80);
-
-    return () => window.clearTimeout(timer);
-  }, [activeTab, focusedQuantitativeReportId, reports]);
+    if ((tabParam === 'investment' || tabParam === 'comparisons') && tabParam !== activeTab) setActiveTab(tabParam);
+  }, [searchParams, activeTab, navigate]);
 
   // Helper function to get grade color classes
   const getGradeColor = (grade: string): string => {
@@ -275,10 +259,8 @@ export default function GeneratedReports() {
   );
 
   useEffect(() => {
-    fetchReports();
-    fetchInvestmentReports();
-    fetchComparisons();
-    fetchAutoGeneratedReportIds();
+    void Promise.all([fetchInvestmentReports(), fetchComparisons(), fetchAutoGeneratedReportIds()])
+      .finally(() => setLoading(false));
 
     // Listen for custom event to refresh comparisons
     const handleRefreshComparisons = () => {
@@ -287,15 +269,8 @@ export default function GeneratedReports() {
     };
 
     window.addEventListener('refreshComparisons', handleRefreshComparisons);
-    const handleQuantitativeReportGenerated = () => {
-      fetchReports();
-      fetchAutoGeneratedReportIds();
-    };
-
-    window.addEventListener('quantitative-report-generated', handleQuantitativeReportGenerated);
     return () => {
       window.removeEventListener('refreshComparisons', handleRefreshComparisons);
-      window.removeEventListener('quantitative-report-generated', handleQuantitativeReportGenerated);
     };
   }, []);
 
@@ -413,40 +388,6 @@ export default function GeneratedReports() {
       window.removeEventListener('openReport', handleOpenReport as EventListener);
     };
   }, [investmentReports]); // Keep this separate for event handling
-
-  const fetchReports = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('generated_reports')
-        .select('*')
-        .eq('report_type', 'quantitative')
-        .eq('status', 'completed')
-        .eq('workspace_id', 'default')
-        .order('generated_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching reports:', error);
-        toast({
-          title: "Error fetching reports",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setReports(data || []);
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch reports",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchInvestmentReports = async () => {
     try {
@@ -869,7 +810,7 @@ export default function GeneratedReports() {
     ].filter(Boolean).length;
   }, [investmentSearchQuery, scopeFilter, gradeFilter, tierFilter, sourceFilter, scoreRange, showArchived, dateRange, customFrom, customTo]);
 
-  const visibleLibraryReportsCount = reports.length + filteredInvestmentReports.length + filteredComparisons.length;
+  const visibleLibraryReportsCount = filteredInvestmentReports.length + filteredComparisons.length;
 
 
   const clearInvestmentFilters = () => {
@@ -884,31 +825,6 @@ export default function GeneratedReports() {
     setCustomFrom('');
     setCustomTo('');
     setInvestmentPage(1);
-  };
-
-  const handleViewReport = (reportId: string) => {
-    navigate(`/generated-reports/${reportId}`);
-  };
-
-  const handleDownloadPDF = async (report: GeneratedReport) => {
-    try {
-      logActivityDirect({
-        actionType: 'report_pdf_downloaded',
-        entityType: 'investment_report',
-        entityId: report.id,
-        entityName: report.title,
-        metadata: { source: 'generated_reports_list' }
-      });
-      // Navigate to the report view with a download flag
-      navigate(`/generated-reports/${report.id}?download=true`);
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast({
-        title: "Download failed",
-        description: "Could not generate PDF download",
-        variant: "destructive",
-      });
-    }
   };
 
   if (loading) {
@@ -932,7 +848,6 @@ export default function GeneratedReports() {
       {comparisonOverlay}
 
       <ReportLibraryHero
-        quantitativeCount={reports.length}
         investmentCount={investmentReports.length}
         comparisonCount={comparisons.length}
         visibleCount={visibleLibraryReportsCount}
@@ -941,40 +856,12 @@ export default function GeneratedReports() {
         selectedComparisonCount={selectedReports.length}
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'quantitative' | 'investment' | 'comparisons')} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'investment' | 'comparisons')} className="w-full">
         <ReportLibraryTabs
           isMobile={isMobile}
-          quantitativeCount={reports.length}
           investmentCount={filteredInvestmentReports.length}
           comparisonCount={filteredComparisons.length}
         />
-
-        <TabsContent value="quantitative" className="space-y-4">
-          {reports.length === 0 ? (
-            <ReportLibraryEmptyState
-              icon={BarChart3}
-              title="No quantitative reports yet"
-              description="Generate your first market charts, KPI, and listing analytics report from the Reports page."
-              actionLabel="Go to Reports"
-              actionIcon={<FileText className="h-4 w-4" />}
-              onAction={() => navigate('/reports')}
-            />
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {reports.map((report) => (
-                <div key={report.id} ref={report.id === focusedQuantitativeReportId ? focusedQuantitativeReportRef : undefined}>
-                  <QuantitativeReportCard
-                    report={report}
-                    generatorLabel={generatorLabel}
-                    onView={handleViewReport}
-                    onDownloadPDF={handleDownloadPDF}
-                    isFocused={report.id === focusedQuantitativeReportId}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
 
         <TabsContent value="investment" className="space-y-4">
           <ReportLibraryToolbar
