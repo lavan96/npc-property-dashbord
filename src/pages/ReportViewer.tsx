@@ -1687,7 +1687,7 @@ export default function ReportViewer() {
 
       {/* Interactive chart lightbox (Recharts-based, matches Charts page parity) */}
       <ChartLightbox
-        chart={expandedChart}
+        chart={expandedChart as any}
         onClose={() => setExpandedChart(null)}
         onExport={() => { /* export handled from Charts page; noop here to keep viewer read-only */ }}
       />
