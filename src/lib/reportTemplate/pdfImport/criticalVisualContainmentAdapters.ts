@@ -65,6 +65,114 @@ export interface SourceCriticalEvidence {
   hasNumericLabels: boolean;
 }
 
+// ─── E1: prefer Source Scene Graph V2 evidence when available ────────────────
+
+import type {
+  SourceSceneGraphV2,
+  SourcePageSceneV2,
+  SourceRegionV2,
+} from './sourceSceneGraphV2.pure';
+import { validateSourceSceneGraphV2 } from './sourceSceneGraphV2.pure';
+
+function evidenceRegionFromV3(region: SourceRegionV2): ContainmentSourceRegion | null {
+  const bbox = region.bbox
+    ? { x: region.bbox.x, y: region.bbox.y, width: region.bbox.width, height: region.bbox.height }
+    : undefined;
+  // A V3 durable crop path is the authoritative crop-availability signal.
+  const hasCrop = Boolean(region.sourceCrop?.path);
+  switch (region.type) {
+    case 'chart':
+      return { id: region.id, kind: 'chart', pageNumber: region.pageNumber, hasCrop, chartLike: true,
+        classification: region.chart?.chartType ?? null, captionTerms: region.chart?.caption ? [region.chart.caption] : [], bbox };
+    case 'picture':
+      return { id: region.id, kind: 'picture', pageNumber: region.pageNumber, hasCrop, bbox };
+    case 'logo':
+      return { id: region.id, kind: 'logo', pageNumber: region.pageNumber, hasCrop, bbox };
+    case 'vector-cluster':
+      return { id: region.id, kind: 'dense-vector', pageNumber: region.pageNumber, hasCrop, bbox };
+    case 'table':
+      return {
+        id: region.id, kind: 'table', pageNumber: region.pageNumber, hasCrop, bbox,
+        tableRowCount: region.table?.numRows ?? 0,
+        tableColCount: region.table?.numCols ?? 0,
+        tableHasHeaderCells: (region.table?.headerRowCount ?? 0) > 0 || (region.table?.headerColumnCount ?? 0) > 0,
+        tableCellCount: region.table?.cells?.length ?? 0,
+      };
+    default:
+      return null; // text / background are not critical source regions
+  }
+}
+
+/**
+ * Build E0 source critical evidence from a VALID Source Scene Graph V2 whose page
+ * scenes carry `regions`. Crop availability comes from durable V3 crop paths (the
+ * exact "does this critical region have a source crop" answer E0 needs). Returns a
+ * page-number-keyed map in the same shape the classifier already consumes.
+ */
+export function buildSourceCriticalEvidenceFromSceneGraph(
+  scene: SourceSceneGraphV2 | null | undefined,
+): Record<number, SourceCriticalEvidence> {
+  const byPage: Record<number, SourceCriticalEvidence> = {};
+  const ensure = (page: number): SourceCriticalEvidence => (
+    byPage[page] ??= { regions: [], pageTitleChartTerms: [], hasNumericLabels: false }
+  );
+  for (const page of scene?.pages ?? []) {
+    for (const region of page.regions ?? []) {
+      const ev = evidenceRegionFromV3(region);
+      if (ev) ensure(region.pageNumber).regions.push(ev);
+      if (region.type === 'text' && region.text) {
+        const label = region.text.label;
+        if (label === 'title' || label === 'section_header' || label === 'caption') {
+          if (region.text.raw) ensure(region.pageNumber).pageTitleChartTerms.push(region.text.raw);
+        }
+        if ((region.text.numericTokens?.length ?? 0) > 0) ensure(region.pageNumber).hasNumericLabels = true;
+      }
+      if (region.chart?.caption) ensure(region.pageNumber).pageTitleChartTerms.push(region.chart.caption);
+    }
+  }
+  return byPage;
+}
+
+export interface ChooseSourceCriticalEvidenceArgs {
+  /** A candidate V3 scene (from the lazy loader). May be invalid/legacy/missing. */
+  sourceSceneGraph?: SourceSceneGraphV2 | unknown | null;
+  /** The immutable source Docling document (always available inline). */
+  doclingDoc?: DoclingDocument | null;
+}
+
+export interface ChosenSourceCriticalEvidence {
+  byPage: Record<number, SourceCriticalEvidence>;
+  source: 'source-scene-graph-v2' | 'docling-legacy';
+  v3State: 'valid_v2' | 'legacy_missing' | 'unknown_version' | 'invalid_v2' | 'no_regions';
+}
+
+/**
+ * E0 evidence source selection (Phase 14). Prefers a VALID V3 scene that actually
+ * carries per-page regions; otherwise falls back to the legacy Docling adapter.
+ * An invalid, unknown-version or region-less V3 can NEVER weaken E0 — it silently
+ * falls back to legacy evidence, so containment behaviour is unchanged for old V2
+ * jobs and for any job whose V3 fetch failed.
+ */
+export function chooseSourceCriticalEvidence(args: ChooseSourceCriticalEvidenceArgs): ChosenSourceCriticalEvidence {
+  const validation = validateSourceSceneGraphV2(args.sourceSceneGraph ?? null);
+  if (validation.state === 'valid_v2' && validation.scene) {
+    const hasRegions = validation.scene.pages.some((p) => (p.regions?.length ?? 0) > 0);
+    if (hasRegions) {
+      return {
+        byPage: buildSourceCriticalEvidenceFromSceneGraph(validation.scene),
+        source: 'source-scene-graph-v2',
+        v3State: 'valid_v2',
+      };
+    }
+    return { byPage: buildSourceCriticalEvidenceByPage(args.doclingDoc), source: 'docling-legacy', v3State: 'no_regions' };
+  }
+  return {
+    byPage: buildSourceCriticalEvidenceByPage(args.doclingDoc),
+    source: 'docling-legacy',
+    v3State: validation.state,
+  };
+}
+
 /**
  * Extract per-page source critical evidence from the Docling document: tables,
  * pictures (with chart/logo classification + caption), dense vector clusters, and
