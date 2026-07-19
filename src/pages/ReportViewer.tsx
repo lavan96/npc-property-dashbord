@@ -303,28 +303,31 @@ export default function ReportViewer() {
     });
 
     setDownloading(true);
-    try {
-      if (report.pdf_path) {
-        const bucket = report.pdf_bucket || 'quantitative-reports';
-        const fileName = report.file_name || `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(report.created_at), 'yyyy-MM-dd')}.pdf`;
-        const { data: signedResult, error: signedError } = await invokeSecureFunction('secure-storage', {
-          operation: 'signedUrl',
-          bucket,
-          path: report.pdf_path,
-          expires_in: 300,
-        });
-        if (signedError || !signedResult?.success || !signedResult?.data?.signedUrl) {
-          throw new Error(signedResult?.error || signedError?.message || 'Stored PDF could not be prepared for download.');
-        }
-        const blob = await fetchPdfBlob(signedResult.data.signedUrl);
-        if (options?.returnBlob) return blob;
-        triggerPdfDownload(blob, fileName);
-        toast({
-          title: "PDF Downloaded",
-          description: `Report saved as ${fileName}`,
-        });
-        return;
+    // Fallback closure: only used if the rich client-side composer throws.
+    // The stored PDF (produced by the pipeline edge function) is intentionally
+    // basic — we prefer the fully-composed IMR report with charts.
+    const downloadStoredFallback = async (): Promise<Blob | void> => {
+      if (!report.pdf_path) return;
+      const bucket = report.pdf_bucket || 'quantitative-reports';
+      const fileName = report.file_name || `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(report.created_at), 'yyyy-MM-dd')}.pdf`;
+      const { data: signedResult, error: signedError } = await invokeSecureFunction('secure-storage', {
+        operation: 'signedUrl',
+        bucket,
+        path: report.pdf_path,
+        expires_in: 300,
+      });
+      if (signedError || !signedResult?.success || !signedResult?.data?.signedUrl) {
+        throw new Error(signedResult?.error || signedError?.message || 'Stored PDF could not be prepared for download.');
       }
+      const blob = await fetchPdfBlob(signedResult.data.signedUrl);
+      if (options?.returnBlob) return blob;
+      triggerPdfDownload(blob, fileName);
+      toast({ title: "PDF Downloaded", description: `Report saved as ${fileName}` });
+      return blob;
+    };
+
+    try {
+
 
       if (!reportRef.current) return;
       const __brandSettings = await fetchGlobalReportSettings();
