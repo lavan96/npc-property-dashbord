@@ -2150,6 +2150,57 @@ export type Database = {
           },
         ]
       }
+      blacklisted_numbers: {
+        Row: {
+          announce_message: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          created_by_username: string | null
+          hit_count: number
+          id: string
+          is_active: boolean
+          kill_mode: string
+          last_hit_at: string | null
+          normalized_number: string
+          notes: string | null
+          phone_number: string
+          updated_at: string
+        }
+        Insert: {
+          announce_message?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_username?: string | null
+          hit_count?: number
+          id?: string
+          is_active?: boolean
+          kill_mode?: string
+          last_hit_at?: string | null
+          normalized_number: string
+          notes?: string | null
+          phone_number: string
+          updated_at?: string
+        }
+        Update: {
+          announce_message?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_username?: string | null
+          hit_count?: number
+          id?: string
+          is_active?: boolean
+          kill_mode?: string
+          last_hit_at?: string | null
+          normalized_number?: string
+          notes?: string | null
+          phone_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       borrowing_capacity_assessments: {
         Row: {
           assessment_rate: number | null
@@ -2615,57 +2666,6 @@ export type Database = {
           started_at?: string | null
           status?: string
           total_reports?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      blacklisted_numbers: {
-        Row: {
-          announce_message: string | null
-          category: string
-          created_at: string
-          created_by: string | null
-          created_by_username: string | null
-          hit_count: number
-          id: string
-          is_active: boolean
-          kill_mode: string
-          last_hit_at: string | null
-          normalized_number: string
-          notes: string | null
-          phone_number: string
-          updated_at: string
-        }
-        Insert: {
-          announce_message?: string | null
-          category?: string
-          created_at?: string
-          created_by?: string | null
-          created_by_username?: string | null
-          hit_count?: number
-          id?: string
-          is_active?: boolean
-          kill_mode?: string
-          last_hit_at?: string | null
-          normalized_number: string
-          notes?: string | null
-          phone_number: string
-          updated_at?: string
-        }
-        Update: {
-          announce_message?: string | null
-          category?: string
-          created_at?: string
-          created_by?: string | null
-          created_by_username?: string | null
-          hit_count?: number
-          id?: string
-          is_active?: boolean
-          kill_mode?: string
-          last_hit_at?: string | null
-          normalized_number?: string
-          notes?: string | null
-          phone_number?: string
           updated_at?: string
         }
         Relationships: []
@@ -20305,6 +20305,10 @@ export type Database = {
       }
       heartbeat_migration_job: {
         Args: { p_job_id: string; p_lease_seconds?: number }
+        Returns: undefined
+      }
+      increment_blacklist_hit: {
+        Args: { entry_id: string }
         Returns: undefined
       }
       invoke_pdf_parse_recover_stuck_jobs: { Args: never; Returns: undefined }
