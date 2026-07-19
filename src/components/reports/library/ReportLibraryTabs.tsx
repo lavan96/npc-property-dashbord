@@ -1,29 +1,21 @@
-import { BarChart3, ChevronRight, MapPin, TrendingUp, type LucideIcon } from 'lucide-react';
+import { ChevronRight, MapPin, TrendingUp, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface ReportLibraryTabsProps {
   isMobile: boolean;
-  quantitativeCount: number;
   investmentCount: number;
   comparisonCount: number;
 }
 
 const workspaceTabs: Array<{
-  value: 'quantitative' | 'investment' | 'comparisons';
+  value: 'investment' | 'comparisons';
   label: string;
   mobileLabel: string;
   description: string;
   icon: LucideIcon;
 }> = [
-  {
-    value: 'quantitative',
-    label: 'Quantitative',
-    mobileLabel: 'Quant.',
-    description: 'Market charts, KPIs, and listing analytics',
-    icon: BarChart3,
-  },
   {
     value: 'investment',
     label: 'Investment',
@@ -40,9 +32,8 @@ const workspaceTabs: Array<{
   },
 ];
 
-export function ReportLibraryTabs({ isMobile, quantitativeCount, investmentCount, comparisonCount }: ReportLibraryTabsProps) {
+export function ReportLibraryTabs({ isMobile, investmentCount, comparisonCount }: ReportLibraryTabsProps) {
   const counts = {
-    quantitative: quantitativeCount,
     investment: investmentCount,
     comparisons: comparisonCount,
   };
@@ -53,7 +44,7 @@ export function ReportLibraryTabs({ isMobile, quantitativeCount, investmentCount
         variant="toolbar"
         className="min-w-max rounded-[1.6rem] border-white/10 bg-[radial-gradient(circle_at_18%_0%,rgba(168,85,247,0.16),transparent_34%),linear-gradient(135deg,rgba(0,0,0,0.52),rgba(15,23,42,0.74))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_18px_52px_rgba(0,0,0,0.28)] md:min-w-0 md:p-4"
       >
-        <TabsList className={isMobile ? 'inline-flex h-auto w-auto min-w-full gap-3 bg-transparent p-0' : 'grid h-auto w-full grid-cols-3 gap-4 bg-transparent p-0 lg:gap-5'}>
+        <TabsList className={isMobile ? 'inline-flex h-auto w-auto min-w-full gap-3 bg-transparent p-0' : 'grid h-auto w-full grid-cols-2 gap-4 bg-transparent p-0 lg:gap-5'}>
           {workspaceTabs.map(({ value, label, mobileLabel, description, icon: Icon }) => (
             <TabsTrigger
               key={value}

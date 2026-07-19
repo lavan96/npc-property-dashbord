@@ -1,9 +1,8 @@
-import { Archive, BarChart3, CheckSquare, FileText, Filter, Layers3, TrendingUp } from 'lucide-react';
+import { Archive, CheckSquare, FileText, Filter, Layers3, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface ReportLibraryHeroProps {
-  quantitativeCount: number;
   investmentCount: number;
   comparisonCount: number;
   visibleCount: number;
@@ -13,7 +12,6 @@ interface ReportLibraryHeroProps {
 }
 
 export function ReportLibraryHero({
-  quantitativeCount,
   investmentCount,
   comparisonCount,
   visibleCount,
@@ -21,10 +19,9 @@ export function ReportLibraryHero({
   showArchived,
   selectedComparisonCount,
 }: ReportLibraryHeroProps) {
-  const totalReports = quantitativeCount + investmentCount + comparisonCount;
+  const totalReports = investmentCount + comparisonCount;
   const metrics = [
     { label: 'Total reports', value: totalReports, icon: Layers3 },
-    { label: 'Quantitative reports', value: quantitativeCount, icon: BarChart3 },
     { label: 'Investment reports', value: investmentCount, icon: TrendingUp },
     { label: 'Comparison analyses', value: comparisonCount, icon: FileText },
     { label: 'Currently visible', value: visibleCount, icon: Archive },
@@ -62,7 +59,7 @@ export function ReportLibraryHero({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {metrics.map(({ label, value, icon: Icon }) => (
             <div
               key={label}

@@ -60,6 +60,8 @@ export default function ReportViewer() {
   const [expandedChart, setExpandedChart] = useState<ChartData | null>(null);
 
   const shouldAutoDownload = searchParams.get('download') === 'true';
+  const isQuantitativeRoute = location.pathname.startsWith('/quantitative-reports');
+  const reportLibraryPath = isQuantitativeRoute ? '/quantitative-reports' : '/generated-reports';
 
   useEffect(() => {
     if (reportId) {
@@ -1382,7 +1384,7 @@ export default function ReportViewer() {
         <div className="text-center py-8">
           <h2 className="text-2xl font-bold">Report not found</h2>
           <p className="text-muted-foreground mt-2">The requested report could not be found.</p>
-          <Button onClick={() => navigate('/generated-reports')} className="mt-4">
+          <Button onClick={() => navigate(reportLibraryPath)} className="mt-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Reports
           </Button>
@@ -1399,7 +1401,7 @@ export default function ReportViewer() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => navigate('/generated-reports')}
+            onClick={() => navigate(reportLibraryPath)}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back

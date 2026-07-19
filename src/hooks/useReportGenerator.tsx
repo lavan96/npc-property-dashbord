@@ -626,12 +626,12 @@ export function useReportGenerator() {
 
       const goToGeneratedReports = () => {
         try {
-          navigate(`/generated-reports?tab=quantitative&focus=${encodeURIComponent(reportId)}`);
+          navigate(`/quantitative-reports?focus=${encodeURIComponent(reportId)}`);
         } catch (navigationError) {
-          console.error('Unable to open Generated Reports after report generation:', navigationError);
+          console.error('Unable to open Quantitative Reports after report generation:', navigationError);
           toast({
-            title: 'Unable to open Generated Reports',
-            description: 'The report was generated successfully. Please use Generated Reports to access it.',
+            title: 'Unable to open Quantitative Reports',
+            description: 'The report was generated successfully. Please use Quantitative Reports to access it.',
             variant: 'destructive',
           });
         }
@@ -639,12 +639,12 @@ export function useReportGenerator() {
 
       const viewGeneratedReport = () => {
         try {
-          navigate(`/generated-reports/${encodeURIComponent(reportId)}`);
+          navigate(`/quantitative-reports/${encodeURIComponent(reportId)}`);
         } catch (navigationError) {
           console.error('Unable to open generated report directly:', { reportId, navigationError });
           toast({
             title: 'Report generated, but could not be opened',
-            description: 'Open Generated Reports to access it.',
+            description: 'Open Quantitative Reports to access it.',
             variant: 'destructive',
           });
         }
@@ -670,7 +670,7 @@ export function useReportGenerator() {
               </div>
             </div>
             <div className="space-y-1 text-xs leading-5 text-muted-foreground">
-              <p>Your quantitative PDF has been saved to Generated Reports.</p>
+              <p>Your quantitative PDF has been saved to Quantitative Reports.</p>
               <p>Interactive chart records are linked and ready on the Charts page.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium">
@@ -684,7 +684,7 @@ export function useReportGenerator() {
                 <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" /> View Generated Report
               </button>
               <button type="button" onClick={goToGeneratedReports} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" /> Go to Generated Reports
+                <FolderOpen className="h-3.5 w-3.5" aria-hidden="true" /> Go to Quantitative Reports
               </button>
             </div>
             </div>
