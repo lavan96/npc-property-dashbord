@@ -138,7 +138,8 @@ export type ActivityEntityType =
   | 'checklist'
   | 'data_import'
   | 'portfolio_report'
-  | 'agency_agreement';
+  | 'agency_agreement'
+  | 'blacklisted_number';
 
 interface LogActivityParams {
   actionType: ActivityActionType;
