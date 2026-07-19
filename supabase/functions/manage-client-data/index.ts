@@ -649,10 +649,15 @@ Deno.serve(async (req) => {
           }
         }
 
-        const { data: updated, error: updateError } = await supabase
+        let updateQuery = supabase
           .from(table)
           .update(updatePayload)
-          .eq('id', idToUpdate)
+          .eq('id', idToUpdate);
+        // Address and employment records are client-owned: never mutate them by ID alone.
+        if ((table === 'client_address_history' || table === 'client_employment') && clientId) {
+          updateQuery = updateQuery.eq('client_id', clientId);
+        }
+        const { data: updated, error: updateError } = await updateQuery
           .select()
           .single();
 
@@ -745,10 +750,15 @@ Deno.serve(async (req) => {
 
         // When deleting employment, the linked income source is auto-deleted via ON DELETE CASCADE on employment_id FK
 
-        const { error: deleteError } = await supabase
+        let deleteQuery = supabase
           .from(table)
           .delete()
           .eq('id', idToDelete);
+        // Address and employment records are client-owned: never delete them by ID alone.
+        if ((table === 'client_address_history' || table === 'client_employment') && clientId) {
+          deleteQuery = deleteQuery.eq('client_id', clientId);
+        }
+        const { error: deleteError } = await deleteQuery;
 
         result = { deleted: true, id: idToDelete };
         error = deleteError;

@@ -41,6 +41,12 @@ const defaultFormData: EmploymentFormData = {
   overtime_non_essential: 0,
   allowance: 0,
   other_taxable_income: 0,
+  workplace_address_line_1: '',
+  workplace_suburb: '',
+  workplace_state: '',
+  workplace_postcode: '',
+  workplace_country: '',
+  work_arrangement: '',
 };
 
 async function fetchEmploymentSecure(clientId: string) {
@@ -115,6 +121,12 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
       overtime_non_essential: employment.overtime_non_essential || 0,
       allowance: employment.allowance || 0,
       other_taxable_income: employment.other_taxable_income || 0,
+      workplace_address_line_1: employment.workplace_address_line_1 || '',
+      workplace_suburb: employment.workplace_suburb || '',
+      workplace_state: employment.workplace_state || '',
+      workplace_postcode: employment.workplace_postcode || '',
+      workplace_country: employment.workplace_country || '',
+      work_arrangement: employment.work_arrangement || '',
     });
     setEditingId(employment.id);
     // Switch to the right tab
@@ -145,6 +157,12 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
         overtime_non_essential: formData.overtime_non_essential,
         allowance: formData.allowance,
         other_taxable_income: formData.other_taxable_income,
+        workplace_address_line_1: formData.workplace_address_line_1.trim() || null,
+        workplace_suburb: formData.workplace_suburb.trim() || null,
+        workplace_state: formData.workplace_state.trim().toUpperCase() || null,
+        workplace_postcode: formData.workplace_postcode.trim() || null,
+        workplace_country: formData.workplace_country.trim() || null,
+        work_arrangement: formData.work_arrangement || null,
       };
 
       const { data, error } = await invokeSecureFunction('manage-client-data', {
@@ -197,6 +215,18 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
   const handleSubmit = () => {
     if (!formData.employer_name.trim()) {
       toast.error('Employer name is required');
+      return;
+    }
+    const workplaceValues = [
+      formData.workplace_address_line_1,
+      formData.workplace_suburb,
+      formData.workplace_state,
+      formData.workplace_postcode,
+      formData.workplace_country,
+      formData.work_arrangement,
+    ];
+    if (workplaceValues.some(value => value.trim()) && !formData.workplace_address_line_1.trim()) {
+      toast.error('Workplace address is required when employer location details are entered');
       return;
     }
     saveMutation.mutate();

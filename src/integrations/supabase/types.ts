@@ -3744,6 +3744,12 @@ export type Database = {
           id: string
           is_current: boolean | null
           occupation_role: string | null
+          workplace_address_line_1: string | null
+          workplace_suburb: string | null
+          workplace_state: string | null
+          workplace_postcode: string | null
+          workplace_country: string | null
+          work_arrangement: string | null
           other_taxable_income: number | null
           overtime_essential: number | null
           overtime_non_essential: number | null
@@ -3766,6 +3772,12 @@ export type Database = {
           id?: string
           is_current?: boolean | null
           occupation_role?: string | null
+          workplace_address_line_1?: string | null
+          workplace_suburb?: string | null
+          workplace_state?: string | null
+          workplace_postcode?: string | null
+          workplace_country?: string | null
+          work_arrangement?: string | null
           other_taxable_income?: number | null
           overtime_essential?: number | null
           overtime_non_essential?: number | null
@@ -3788,6 +3800,12 @@ export type Database = {
           id?: string
           is_current?: boolean | null
           occupation_role?: string | null
+          workplace_address_line_1?: string | null
+          workplace_suburb?: string | null
+          workplace_state?: string | null
+          workplace_postcode?: string | null
+          workplace_country?: string | null
+          work_arrangement?: string | null
           other_taxable_income?: number | null
           overtime_essential?: number | null
           overtime_non_essential?: number | null

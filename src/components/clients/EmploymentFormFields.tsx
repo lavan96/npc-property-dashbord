@@ -46,6 +46,13 @@ export interface EmploymentFormData {
   overtime_non_essential: number;
   allowance: number;
   other_taxable_income: number;
+  // Optional employer location. These fields are stored on client_employment, never in residential address history.
+  workplace_address_line_1: string;
+  workplace_suburb: string;
+  workplace_state: string;
+  workplace_postcode: string;
+  workplace_country: string;
+  work_arrangement: string;
 }
 
 interface EmploymentFormFieldsProps {
@@ -66,6 +73,7 @@ export function EmploymentFormFields({
   isEditing,
 }: EmploymentFormFieldsProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showWorkplaceAddress, setShowWorkplaceAddress] = useState(Boolean(formData.workplace_address_line_1 || formData.workplace_suburb || formData.workplace_state || formData.workplace_postcode || formData.workplace_country || formData.work_arrangement));
 
   const grossAnnual = formData.gross_annual_salary || convertToAnnual(formData.salary_amount || 0, formData.salary_frequency || 'annual');
   const totalAnnual = grossAnnual + (formData.bonus || 0) + (formData.commission || 0) + 
@@ -138,6 +146,31 @@ export function EmploymentFormFields({
             onChange={(e) => updateField('start_date', e.target.value)}
           />
         </div>
+
+        <Collapsible open={showWorkplaceAddress} onOpenChange={setShowWorkplaceAddress}>
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="outline" size="sm" className="w-full justify-between" aria-expanded={showWorkplaceAddress}>
+              <span>Add workplace address — optional</span>
+              {showWorkplaceAddress ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-3 pt-3">
+            <p className="text-xs text-muted-foreground">Employer location only. This is not part of residential address history.</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Workplace Address</Label>
+              <Input value={formData.workplace_address_line_1} onChange={(event) => updateField('workplace_address_line_1', event.target.value)} placeholder="123 Business Street" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5"><Label className="text-xs">Suburb / City</Label><Input value={formData.workplace_suburb} onChange={(event) => updateField('workplace_suburb', event.target.value)} placeholder="Sydney" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">State</Label><Input value={formData.workplace_state} onChange={(event) => updateField('workplace_state', event.target.value.toUpperCase())} placeholder="NSW" maxLength={3} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Postcode</Label><Input value={formData.workplace_postcode} onChange={(event) => updateField('workplace_postcode', event.target.value)} placeholder="2000" maxLength={4} /></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label className="text-xs">Country</Label><Input value={formData.workplace_country} onChange={(event) => updateField('workplace_country', event.target.value)} placeholder="Australia" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Work Arrangement</Label><Select value={formData.work_arrangement} onValueChange={(value) => updateField('work_arrangement', value)}><SelectTrigger><SelectValue placeholder="Select (optional)" /></SelectTrigger><SelectContent><SelectItem value="on_site">On-site</SelectItem><SelectItem value="hybrid">Hybrid</SelectItem><SelectItem value="remote">Remote</SelectItem></SelectContent></Select></div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Salary / Income Section */}
         <div className="border-t pt-4 space-y-3">

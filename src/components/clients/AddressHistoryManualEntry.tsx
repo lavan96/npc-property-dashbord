@@ -195,41 +195,55 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
     return calculateCoverage(getAddressesForContact(activeContact));
   }, [activeTab, contacts, getAddressesForContact]);
 
-  // Overall coverage across all contacts (for the summary card outside the sheet)
-  const primaryCoverage = useMemo(() => {
-    const primary = contacts.find(c => c.contactType === 'primary');
-    if (!primary) return calculateCoverage([]);
-    return calculateCoverage(getAddressesForContact(primary));
-  }, [contacts, getAddressesForContact]);
+  const activeContact = contacts.find(contact => contact.id === activeTab) || contacts[0];
+  const activeAddresses = activeContact ? getAddressesForContact(activeContact) : [];
 
   return (
-    <div className="space-y-4">
-      {/* Summary outside sheet */}
-      <ThreeYearCoverageWarning coverage={primaryCoverage} label="Address History" />
+    <section className="space-y-4" aria-labelledby="address-residency-heading">
+      <div className="space-y-1">
+        <h3 id="address-residency-heading" className="text-lg font-semibold flex items-center gap-2">
+          <MapPin className="h-5 w-5" />
+          Address & Residency
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Manage current and previous residential addresses for each applicant and maintain the address history required for lending and compliance.
+        </p>
+      </div>
 
-      {addressHistory.length > 0 && (
+      {contacts.length > 1 && (
+        <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); resetForm(); }}>
+          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${contacts.length}, minmax(0, 1fr))` }} aria-label="Select applicant address history">
+            {contacts.map(contact => <TabsTrigger key={contact.id} value={contact.id}>{getContactTabLabel(contact)}</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
+      )}
+
+      <ThreeYearCoverageWarning coverage={activeCoverage} label={`${activeContact?.name || 'Applicant'} Address History`} />
+
+      {activeAddresses.length > 0 ? (
         <div className="space-y-2">
-          {addressHistory.map((addr: any) => (
+          {activeAddresses.map((addr: any) => (
             <Card key={addr.id} className="group">
               <CardContent className="pt-4">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="font-medium text-sm truncate">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'No address'}</span>
+                      <span className="font-medium text-sm">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'No address'}</span>
                       {addr.is_current && <span className="text-[10px] bg-success/15 text-success dark:bg-success/30 dark:text-success px-2 py-0.5 rounded">Current</span>}
-                      {!addr.is_current && <span className="text-[10px] bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 px-2 py-0.5 rounded">Previous</span>}
-                      <span className="text-xs text-muted-foreground capitalize">({addr.contact_type})</span>
+                      <span className="text-xs text-muted-foreground">({getContactTabLabel(activeContact!)})</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {addr.living_situation?.replace(/_/g, ' ')} • {addr.start_date || 'N/A'}{addr.end_date ? ` → ${addr.end_date}` : ' → Present'}
+                    <p className="text-xs text-muted-foreground">
+                      {[addr.living_situation?.replace(/_/g, ' '), addr.residential_status?.replace(/_/g, ' ')].filter(Boolean).join(' • ')}
+                      {(addr.living_situation || addr.residential_status) && ' • '}
+                      {addr.start_date || 'Start date required'}{addr.end_date ? ` → ${addr.end_date}` : ' → Present'}
                     </p>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { startEdit(addr); setOpen(true); }}>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit address" onClick={() => { startEdit(addr); setOpen(true); }}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMutation.mutate(addr.id)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label="Delete address" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(addr.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -238,13 +252,20 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
             </Card>
           ))}
         </div>
+      ) : (
+        <Card>
+          <CardContent className="py-6 text-center space-y-2">
+            <p className="font-medium">No address history recorded</p>
+            <p className="text-sm text-muted-foreground">Add the applicant’s current and previous residential addresses to complete their lending history.</p>
+          </CardContent>
+        </Card>
       )}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="sm" className="w-full">
             <Plus className="h-4 w-4 mr-2" />
-            {addressHistory.length > 0 ? 'Manage Address History' : 'Add Address History'}
+            Add Address
           </Button>
         </SheetTrigger>
         <SheetContent className="w-full sm:max-w-lg">
@@ -419,6 +440,6 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
           </SheetFooter>
         </SheetContent>
       </Sheet>
-    </div>
+    </section>
   );
 }
