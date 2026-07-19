@@ -57,6 +57,7 @@ export default function ReportViewer() {
   const [chartAnalysis, setChartAnalysis] = useState<{[key: string]: string}>({});
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<ChartData | null>(null);
 
   const shouldAutoDownload = searchParams.get('download') === 'true';
 
