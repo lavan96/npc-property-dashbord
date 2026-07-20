@@ -9,6 +9,9 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+// E1 — Source Scene Graph V2 / Page Artifact Contract V3 lazy signed delivery.
+import { validatePageArtifactContractV3 } from '../_shared/pageArtifactContractV3.pure.ts';
+import { isSafeArtifactPath } from '../_shared/sourceSceneGraphV2.pure.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -361,6 +364,54 @@ async function signPdfDiagnosticsArtifactPaths(
   }
 
   return signed;
+}
+
+// E1 — collect the durable Source Scene Graph V2 paths to sign, LAZILY (only the
+// requested pages / regions / kinds) and ONLY from the trusted V3 manifest — a
+// client-supplied path is never signed. Bounded so an 80-page doc cannot request
+// hundreds of crops in one call.
+const SOURCE_SCENE_MAX_SIGN = 300;
+
+function collectSourceSceneV3PathsToSign(
+  jobId: string | null,
+  manifest: any,
+  req: { pageNumbers?: unknown; regionIds?: unknown; kinds?: unknown },
+): { paths: string[]; state: string; contractVersion: string | null } {
+  const validation = validatePageArtifactContractV3(manifest, jobId ? { jobId } : {});
+  if (!validation.manifest || (validation.state !== 'valid_v3' && validation.state !== 'invalid_v3')) {
+    return { paths: [], state: validation.state, contractVersion: null };
+  }
+  const wantPages = Array.isArray(req.pageNumbers)
+    ? new Set((req.pageNumbers as unknown[]).map(Number).filter((n) => Number.isFinite(n)))
+    : null;
+  const wantRegions = Array.isArray(req.regionIds) ? new Set((req.regionIds as unknown[]).map(String)) : null;
+  const kinds = Array.isArray(req.kinds) ? new Set((req.kinds as unknown[]).map(String)) : null;
+  const wantKind = (k: string): boolean => !kinds || kinds.has(k);
+
+  const out: string[] = [];
+  const push = (p: string | null | undefined): void => {
+    if (typeof p === 'string' && p && isSafeArtifactPath(p) && out.length < SOURCE_SCENE_MAX_SIGN && !out.includes(p)) {
+      out.push(p);
+    }
+  };
+
+  const topScene = typeof manifest?.source_scene_path === 'string' ? manifest.source_scene_path : null;
+  if (wantKind('scene') && (!wantPages || wantPages.size === 0)) push(topScene);
+
+  for (const page of validation.manifest.pages) {
+    if (wantPages && wantPages.size > 0 && !wantPages.has(page.pageNumber)) continue;
+    if (wantKind('regions')) push(page.regionsPath);
+    if (wantKind('source_spans')) push(page.sourceSpansPath);
+    if (wantKind('foreground')) push(page.foregroundPath);
+    if (wantKind('source')) push(page.sourcePath);
+    if (wantKind('region_crop')) {
+      for (const [rid, cropPath] of Object.entries(page.regionCropPaths)) {
+        if (wantRegions && !wantRegions.has(rid)) continue;
+        push(cropPath);
+      }
+    }
+  }
+  return { paths: out, state: validation.state, contractVersion: validation.manifest.artifactContractVersion };
 }
 
 function buildPdfPageArtifactSignedUrls(
@@ -1217,6 +1268,14 @@ Deno.serve(async (req) => {
       const pdfDiagnosticsSignedByPath = await signPdfDiagnosticsArtifactPaths(admin, pdfDiagnosticsPathsToSign);
       const pdfPageArtifactSignedUrls = buildPdfPageArtifactSignedUrls(pdfPageContexts, pdfDiagnosticsSignedByPath);
 
+      // E1 — additionally sign Source Scene Graph V2 artifacts, lazily and only
+      // for the requested pages/regions/kinds, derived solely from the trusted V3
+      // manifest. Legacy V2 imports return an empty map + a `legacy` state.
+      const sourceSceneV3 = collectSourceSceneV3PathsToSign(pdfJobId ?? null, pdfPageManifest, body);
+      const sourceSceneSignedByPath = sourceSceneV3.paths.length
+        ? await signPdfDiagnosticsArtifactPaths(admin, sourceSceneV3.paths)
+        : {};
+
       return json({
         record,
         cdir,
@@ -1232,6 +1291,11 @@ Deno.serve(async (req) => {
         // are short-lived and never persisted.
         pdfDiagnosticsSignedByPath,
         pdfPageArtifactSignedUrls,
+        // E1 — Source Scene Graph V2 lazy signed delivery (durable path → short-lived
+        // signed URL). Empty for legacy V2 imports; never persisted anywhere.
+        sourceSceneSignedByPath,
+        sourceSceneContractVersion: sourceSceneV3.contractVersion,
+        sourceSceneManifestState: sourceSceneV3.state,
         pdfDiagnosticsSignedUrlTtlSeconds: PDF_DIAGNOSTICS_SIGNED_URL_TTL_SECONDS,
         pageContextEntrypoint: {
           available: Boolean(pdfPageManifestPath && pdfPageManifest && pdfPageContexts.length > 0),

@@ -16,6 +16,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createTokenAuthCorsHeaders } from '../_shared/auth.ts';
 import { validateSidecarOperationalMetricsV1 } from '../_shared/sidecarOperationalMetricsV1.pure.ts';
+// E1 — Source Scene Graph V2 / Page Artifact Contract V3 versions.
+import { SOURCE_SCENE_GRAPH_VERSION } from '../_shared/sourceSceneGraphV2.pure.ts';
+import { PAGE_ARTIFACT_CONTRACT_VERSION as SOURCE_SCENE_PAGE_ARTIFACT_CONTRACT_VERSION } from '../_shared/pageArtifactContractV3.pure.ts';
 import {
   buildInvocationEnvelope,
   buildEdgeObservation,
@@ -544,6 +547,12 @@ async function copyParentGlobalPerPageArtifacts(
     // parent manifest never references soon-deleted chunk-local paths.
     { key: 'ocr_path', file: 'ocr.json', required: false },
     { key: 'vectors_path', file: 'vectors.json', required: false },
+    // E1: source-scene sibling JSON. `source_spans` / `foreground` carry no
+    // internal crop paths, so a straight re-home is safe. `regions.json` DOES
+    // reference chunk-local crop paths, so it is rehomed + rewritten separately
+    // in copyParentGlobalSourceSceneCrops (never via this straight copy).
+    { key: 'source_spans_path', file: 'source-spans.json', required: false },
+    { key: 'foreground_path', file: 'foreground.json', required: false },
   ];
 
   for (const rawPage of parentPages) {
@@ -678,6 +687,93 @@ async function copyParentGlobalPerPageArtifacts(
     copied_count: copiedCount,
     problems,
   };
+}
+
+/**
+ * E1 — parent-global copy of Source Scene Graph V2 region crops + regions.json.
+ *
+ * Region IDs are already parent-global (the sidecar rebases them), so this only
+ * re-homes the PNG crops to `${jobId}/pages/page-NNN/regions/<id>.png`, rewrites
+ * every internal `sourceCrop.path` inside regions.json, and rewrites each page's
+ * `region_crop_paths` map. The parent-preferred manifest therefore never points
+ * at a soon-deleted chunk-local crop path. Mutates `parentPages` in place.
+ */
+async function copyParentGlobalSourceSceneCrops(
+  admin: Admin,
+  jobId: string,
+  parentPages: any[],
+): Promise<{ copied_count: number; total_crop_count: number; total_region_count: number; total_critical_region_count: number; problems: string[] }> {
+  const problems: string[] = [];
+  let copiedCount = 0;
+  let totalCrops = 0;
+  let totalRegions = 0;
+  let totalCritical = 0;
+
+  const stripBucket = (p: string): string =>
+    p.startsWith(`${DIAGNOSTICS_BUCKET}/`) ? p.slice(DIAGNOSTICS_BUCKET.length + 1) : p;
+
+  for (const page of parentPages) {
+    const pageNo = Number(page?.page_no ?? 0);
+    if (!Number.isFinite(pageNo) || pageNo <= 0) continue;
+    const pagePrefix = `${jobId}/pages/page-${String(pageNo).padStart(3, '0')}`;
+
+    const chunkCropPaths = (page?.region_crop_paths && typeof page.region_crop_paths === 'object')
+      ? page.region_crop_paths as Record<string, string>
+      : {};
+    const globalCropPaths: Record<string, string> = {};
+
+    for (const [regionId, chunkPath] of Object.entries(chunkCropPaths)) {
+      if (typeof chunkPath !== 'string' || !chunkPath) continue;
+      // Deterministic global crop path derived from the (parent-global) region ID.
+      const destPath = `${pagePrefix}/regions/${regionId}.png`;
+      totalCrops += 1;
+      try {
+        const { error } = await admin.storage.from(DIAGNOSTICS_BUCKET).copy(stripBucket(chunkPath), destPath);
+        const msg = error ? String(error.message ?? error).toLowerCase() : '';
+        if (!error || msg.includes('already exists') || msg.includes('duplicate')) {
+          globalCropPaths[regionId] = destPath;
+          copiedCount += 1;
+          continue;
+        }
+      } catch { /* fall through to download/upload */ }
+      try {
+        const { data, error: dErr } = await admin.storage.from(DIAGNOSTICS_BUCKET).download(stripBucket(chunkPath));
+        if (dErr || !data) { problems.push(`page_${pageNo}_crop_${regionId}_download_failed`); continue; }
+        const { error: uErr } = await admin.storage.from(DIAGNOSTICS_BUCKET).upload(destPath, data, { contentType: 'image/png', upsert: true });
+        if (uErr) { problems.push(`page_${pageNo}_crop_${regionId}_upload_failed`); continue; }
+        globalCropPaths[regionId] = destPath;
+        copiedCount += 1;
+      } catch { problems.push(`page_${pageNo}_crop_${regionId}_copy_exception`); }
+    }
+    page.region_crop_paths = globalCropPaths;
+
+    // Re-home + rewrite regions.json so its internal sourceCrop.path values are global.
+    const chunkRegionsPath = typeof page?.regions_path === 'string' ? page.regions_path : '';
+    if (chunkRegionsPath) {
+      const destRegionsPath = `${pagePrefix}/regions.json`;
+      try {
+        const { data, error } = await admin.storage.from(DIAGNOSTICS_BUCKET).download(stripBucket(chunkRegionsPath));
+        if (error || !data) {
+          problems.push(`page_${pageNo}_regions_download_failed`);
+        } else {
+          const parsed = JSON.parse(await data.text());
+          const regions = Array.isArray(parsed?.regions) ? parsed.regions : [];
+          totalRegions += regions.length;
+          for (const region of regions) {
+            if (region?.type && region.type !== 'text' && region.type !== 'background') totalCritical += 1;
+            const rid = region?.id;
+            if (rid && globalCropPaths[rid] && region.sourceCrop) region.sourceCrop.path = globalCropPaths[rid];
+          }
+          const body = new TextEncoder().encode(JSON.stringify(parsed));
+          const { error: uErr } = await admin.storage.from(DIAGNOSTICS_BUCKET).upload(destRegionsPath, body, { contentType: 'application/json', upsert: true });
+          if (uErr) problems.push(`page_${pageNo}_regions_upload_failed`);
+          else page.regions_path = destRegionsPath;
+        }
+      } catch { problems.push(`page_${pageNo}_regions_rewrite_exception`); }
+    }
+  }
+
+  return { copied_count: copiedCount, total_crop_count: totalCrops, total_region_count: totalRegions, total_critical_region_count: totalCritical, problems };
 }
 
 
@@ -1034,19 +1130,41 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
 
   const parentGlobalPerPagePages = parentGlobalPerPageArtifacts.pages;
 
+  // E1 — re-home + rewrite the Source Scene Graph V2 crops + regions.json so the
+  // parent-preferred manifest never references chunk-local crop paths.
+  const sceneCropCopy = await copyParentGlobalSourceSceneCrops(admin, jobId, parentGlobalPerPagePages);
+  const anySceneGraph = parentGlobalPerPagePages.some(
+    (p: any) => typeof p?.scene_graph_version === 'string' && p.scene_graph_version,
+  );
+
   const perPageDoclingValidation = validateParentPerPageDoclingManifest(
     parentGlobalPerPagePages,
     finalPageCount,
     [
       ...perPageDoclingProblems,
       ...parentGlobalPerPageArtifacts.problems,
+      ...sceneCropCopy.problems,
     ],
   );
 
   const perPageDoclingManifestPath = parentGlobalPerPagePages.length
     ? await uploadJson(admin, `${jobId}/pages-manifest.json`, {
         version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
-        artifact_contract_version: PDF_PAGE_ARTIFACT_CONTRACT_VERSION,
+        // E1: promote the merged parent manifest to V3 only when every chunk
+        // produced a scene graph; otherwise keep the V2 contract marker so a
+        // partial merge can never masquerade as a complete V3.
+        artifact_contract_version: anySceneGraph
+          ? SOURCE_SCENE_PAGE_ARTIFACT_CONTRACT_VERSION
+          : PDF_PAGE_ARTIFACT_CONTRACT_VERSION,
+        ...(anySceneGraph
+          ? {
+              scene_graph_version: SOURCE_SCENE_GRAPH_VERSION,
+              source_scene_path: `${jobId}/source-scene.json`,
+              total_region_count: sceneCropCopy.total_region_count,
+              total_critical_region_count: sceneCropCopy.total_critical_region_count,
+              total_crop_count: sceneCropCopy.total_crop_count,
+            }
+          : {}),
         parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
         global_artifact_copy_version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
         source: 'chunk-merge-global-artifacts',
@@ -1058,7 +1176,8 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         global_per_page_artifact_copy: {
           version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
           copied_artifact_count: parentGlobalPerPageArtifacts.copied_count,
-          problems: parentGlobalPerPageArtifacts.problems,
+          source_scene_crops_copied: sceneCropCopy.copied_count,
+          problems: [...parentGlobalPerPageArtifacts.problems, ...sceneCropCopy.problems],
         },
         validation: perPageDoclingValidation,
       })

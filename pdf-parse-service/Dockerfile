@@ -31,13 +31,15 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Pre-download Docling models at build time so cold start ≈ container start (no first-request 30s download).
 RUN python -c "import importlib.util; spec=importlib.util.find_spec('docling.utils.model_downloader'); print('Docling model predownload skipped: downloader module unavailable') if spec is None else __import__('docling.utils.model_downloader', fromlist=['download_models']).download_models()"
 
-# Runtime application and G1/G2 support modules.
-COPY app.py lane_policy.py operational_metrics.py ./
+# Runtime application and G1/G2/E1 support modules. Explicit file list (never a
+# broad `COPY *.py`) so a new runtime dependency is a deliberate, reviewable change.
+COPY app.py lane_policy.py operational_metrics.py source_scene_graph.py ./
 
 # Catch missing runtime modules and syntax errors during image build rather than
-# after Cloud Run creates a revision.
-RUN python -m py_compile app.py lane_policy.py operational_metrics.py \
-    && python -c "import lane_policy, operational_metrics"
+# after Cloud Run creates a revision. `source_scene_graph` must import WITHOUT
+# initialising Docling models or Pillow (Pillow is imported lazily at runtime).
+RUN python -m py_compile app.py lane_policy.py operational_metrics.py source_scene_graph.py \
+    && python -c "import lane_policy, operational_metrics, source_scene_graph"
 
 # Cloud Run expects the container to listen on $PORT.
 EXPOSE 8080

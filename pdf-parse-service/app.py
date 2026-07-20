@@ -38,6 +38,7 @@ Required additional env for callback uploads:
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import importlib.metadata as importlib_metadata
 import json
@@ -86,6 +87,8 @@ from operational_metrics import (
     SIDECAR_OPERATIONAL_METRICS_VERSION,
     NOT_APPLICABLE as METRICS_NOT_APPLICABLE,
 )
+# E1 — source-scene-graph-v2 pure producer (no Docling model init on import).
+import source_scene_graph as ssg
 
 REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")
 
@@ -123,6 +126,11 @@ MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 RASTER_ARTIFACT_MODE = os.environ.get("DOCLING_RASTER_ARTIFACT_MODE", "manifest").lower()
 WRITE_LEGACY_RASTERS_JSON = os.environ.get("DOCLING_WRITE_LEGACY_RASTERS_JSON", "false").lower() == "true"
 RASTER_FORMAT = os.environ.get("DOCLING_RASTER_FORMAT", "png").lower()
+# E1 — Source Scene Graph V2. Additive to V2 artifacts; disabled → the pipeline is
+# byte-identical to pre-E1. Critical-region crops render at their own high DPI so
+# the full-page raster keeps its current DPI.
+ENABLE_SOURCE_SCENE_GRAPH = os.environ.get("DOCLING_ENABLE_SOURCE_SCENE_GRAPH", "true").lower() == "true"
+SOURCE_SCENE_CROP_DPI = int(os.environ.get("DOCLING_SOURCE_SCENE_CROP_DPI", "300"))
 # Phase 2: raise the default reference-raster DPI for a crisper builder underlay.
 # (Cloud Run memory/time scales with DPI^2 — override down if cold-starts regress.)
 RASTER_DPI = int(os.environ.get("DOCLING_RASTER_DPI", "300"))
@@ -1682,10 +1690,25 @@ async def _upload_per_page_docling_artifacts(
     per_page_payload: dict,
     *,
     source: str = "cloud-run-sidecar",
+    source_scene: Optional[dict] = None,
 ) -> dict:
-    """Upload per-page Docling artifacts and a pages-manifest.json file."""
+    """Upload per-page Docling artifacts and a pages-manifest.json file.
+
+    When `source_scene` (E1) is present and not skipped, the manifest is enriched
+    ADDITIVELY to `pdf-page-artifact-contract-v3`: per-page regions/spans/foreground
+    paths + region-crop map + counts, and top-level scene-graph version + totals.
+    Without it the manifest stays byte-compatible with V2 consumers.
+    """
     manifest_pages: list[dict] = []
     bytes_out = 0
+    scene_pages_by_no: dict[int, dict] = {}
+    scene_active = bool(source_scene) and not source_scene.get("skipped")
+    if scene_active:
+        for sp in source_scene.get("pages") or []:
+            try:
+                scene_pages_by_no[int(sp.get("page_no") or 0)] = sp
+            except Exception:
+                continue
 
     artifacts_by_page = per_page_payload.get("artifacts_by_page") or {}
     pages = per_page_payload.get("pages") or []
@@ -1731,7 +1754,7 @@ async def _upload_per_page_docling_artifacts(
                 + len(summary_body)
             )
 
-            manifest_pages.append({
+            entry = {
                 "page_no": page_no,
                 "width": page.get("width"),
                 "height": page.get("height"),
@@ -1745,7 +1768,24 @@ async def _upload_per_page_docling_artifacts(
                 "raster_path": page.get("raster_path"),
                 "source_chunk_index": page.get("source_chunk_index"),
                 "source_chunk_page_no": page.get("source_chunk_page_no"),
-            })
+            }
+            sp = scene_pages_by_no.get(page_no)
+            if sp:
+                # E1 — additive V3 fields for this page.
+                entry.update({
+                    "source_path": sp.get("source_path") or page.get("raster_path"),
+                    "source_sha256": sp.get("source_sha256"),
+                    "regions_path": sp.get("regions_path"),
+                    "source_spans_path": sp.get("source_spans_path"),
+                    "foreground_path": sp.get("foreground_path"),
+                    "region_crop_paths": sp.get("region_crop_paths") or {},
+                    "region_count": sp.get("region_count") or 0,
+                    "critical_region_count": sp.get("critical_region_count") or 0,
+                    "scene_graph_version": sp.get("scene_graph_version"),
+                    "complete": bool(sp.get("complete")),
+                    "problems": sp.get("problems") or [],
+                })
+            manifest_pages.append(entry)
         except Exception as exc:
             LOG.error("Failed to upload per-page Docling artifacts prefix=%s page=%s error=%s", prefix, page, exc)
 
@@ -1760,6 +1800,17 @@ async def _upload_per_page_docling_artifacts(
         "pages": manifest_pages,
         "validation": validation,
     }
+    if scene_active:
+        manifest.update({
+            "artifact_contract_version": ssg.PAGE_ARTIFACT_CONTRACT_VERSION,
+            "scene_graph_version": source_scene.get("source_scene_graph_version"),
+            "source_scene_path": source_scene.get("source_scene_path"),
+            "total_region_count": source_scene.get("total_region_count") or 0,
+            "total_critical_region_count": source_scene.get("total_critical_region_count") or 0,
+            "total_crop_count": source_scene.get("total_crop_count") or 0,
+            "source_scene_complete": bool(source_scene.get("complete")),
+            "source_scene_problems": source_scene.get("problems") or [],
+        })
 
     manifest_body = json.dumps(manifest).encode("utf-8")
     manifest_path = await _storage_upload(
@@ -1799,6 +1850,269 @@ async def _upload_per_page_docling_artifacts(
         "per_page_docling_manifest": manifest,
         "bytes_out": bytes_out,
     }
+
+
+def _sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _render_page_bitmap(pdf: "pdfium.PdfDocument", local_index: int, dpi: int):
+    """Render one (0-based local) PDF page to a PIL RGB image at `dpi`. Returns None
+    on failure so a single bad page never aborts the source-scene pass."""
+    try:
+        page = pdf[local_index]
+        bitmap = page.render(scale=dpi / 72.0)
+        return bitmap.to_pil().convert("RGB")
+    except Exception as exc:  # pragma: no cover — defensive
+        LOG.warning("source-scene page render failed local_index=%s: %s", local_index, exc)
+        return None
+
+
+def _png_bytes(pil_img) -> bytes:
+    buf = io.BytesIO()
+    # optimize=False keeps the encoder deterministic (stable crop SHA-256).
+    pil_img.save(buf, format="PNG", optimize=False)
+    return buf.getvalue()
+
+
+async def _build_and_upload_source_scene_artifacts(
+    client: httpx.AsyncClient,
+    prefix: str,
+    pdf_bytes: bytes,
+    per_page_payload: dict,
+    raster_manifest: Optional[dict],
+    *,
+    source_sha256: Optional[str],
+    lane_policy_version: Optional[str],
+    source_chunk: Optional[dict] = None,
+    crop_dpi: int = SOURCE_SCENE_CROP_DPI,
+) -> dict:
+    """E1 — assemble + upload Source Scene Graph V2 artifacts (additive over V2).
+
+    Per page: build regions + spans from the per-page Docling evidence, render an
+    exact source crop for every critical visual region from the ORIGINAL PDF (not
+    the reconstruction), compute a bounded foreground summary, and upload
+    `regions.json`, `source-spans.json`, `foreground.json` and `regions/<id>.png`.
+    Then assemble + upload a compact document `source-scene.json`. Never raises —
+    a failure marks the scene incomplete so E0 page-level fallback still applies.
+    """
+    if not ENABLE_SOURCE_SCENE_GRAPH:
+        return {"skipped": True, "reason": "disabled"}
+
+    artifacts_by_page = per_page_payload.get("artifacts_by_page") or {}
+    pages = per_page_payload.get("pages") or []
+    raster_by_global: dict[int, dict] = {}
+    manifest_dpi = None
+    if isinstance(raster_manifest, dict):
+        manifest_dpi = raster_manifest.get("dpi")
+        for rp in raster_manifest.get("pages") or []:
+            if not isinstance(rp, dict):
+                continue
+            try:
+                gno = int(rp.get("global_page_no") or rp.get("page_no") or 0)
+            except Exception:
+                continue
+            if gno > 0:
+                raster_by_global[gno] = rp
+
+    bytes_out = 0
+    v3_pages: list[dict] = []
+    page_scenes: list[dict] = []
+    total_regions = 0
+    total_critical = 0
+    total_crops = 0
+    problems: list[str] = []
+
+    try:
+        pdf = pdfium.PdfDocument(pdf_bytes)
+    except Exception as exc:
+        LOG.warning("source-scene: could not open PDF: %s", exc)
+        return {"skipped": True, "reason": "pdf_open_failed", "problems": [str(exc)[:120]]}
+
+    try:
+        for page in pages:
+            try:
+                global_page_no = int(page.get("page_no") or 0)
+            except Exception:
+                continue
+            if global_page_no <= 0:
+                continue
+            local_page_no = int(page.get("source_chunk_page_no") or global_page_no)
+            page_id = f"docling-page-{global_page_no}"
+            artifacts = artifacts_by_page.get(global_page_no) or artifacts_by_page.get(str(global_page_no)) or {}
+            docling = artifacts.get("docling") or {}
+            texts = docling.get("texts") or []
+            tables = docling.get("tables") or []
+            pictures = docling.get("pictures") or []
+            vectors = docling.get("vectors") or []
+
+            width_pt = float(page.get("width") or 0.0) or _mediabox_pt(pdf, local_page_no - 1, 0)
+            height_pt = float(page.get("height") or 0.0) or _mediabox_pt(pdf, local_page_no - 1, 1)
+
+            regions, page_problems = ssg.build_page_regions(
+                global_page=global_page_no, page_id=page_id,
+                page_width=width_pt, page_height=height_pt,
+                texts=texts, tables=tables, pictures=pictures, vectors=vectors,
+            )
+            spans, span_problems = ssg.build_source_spans(
+                texts, global_page=global_page_no, page_width=width_pt, page_height=height_pt,
+            )
+
+            page_prefix = f"{prefix}/pages/page-{global_page_no:03d}"
+            region_crop_paths: dict[str, str] = {}
+            page_bitmap = None  # rendered lazily only when a crop is needed
+            crop_count = 0
+
+            for region in regions:
+                if region["type"] not in ssg.CROP_REQUIRED_TYPES:
+                    continue
+                if crop_count >= ssg.MAX_CROPS_PER_PAGE:
+                    page_problems.append("region_crops_truncated")
+                    break
+                if page_bitmap is None:
+                    page_bitmap = _render_page_bitmap(pdf, local_page_no - 1, crop_dpi)
+                    if page_bitmap is None:
+                        page_problems.append("page_render_failed")
+                        break
+                px = ssg.crop_bbox_pixels(region["bbox"], height_pt, crop_dpi, ssg.CROP_PADDING_PT, width_pt)
+                if not px:
+                    region["problems"].append("crop_geometry_invalid")
+                    continue
+                try:
+                    crop_img = page_bitmap.crop((px["left"], px["top"], px["left"] + px["width"], px["top"] + px["height"]))
+                    crop_bytes = _png_bytes(crop_img)
+                except Exception as exc:  # pragma: no cover — defensive
+                    region["problems"].append("crop_render_failed")
+                    LOG.warning("crop render failed region=%s: %s", region["id"], exc)
+                    continue
+                crop_path = f"{page_prefix}/regions/{region['id']}.png"
+                uploaded = await _storage_upload(client, crop_path, crop_bytes, "image/png")
+                if not uploaded:
+                    region["problems"].append("crop_upload_failed")
+                    continue
+                foreground = ssg.build_foreground_summary(crop_bytes)
+                ssg.attach_crop(
+                    region, path=crop_path, sha256=_sha256_hex(crop_bytes), mime="image/png",
+                    width_px=crop_img.width, height_px=crop_img.height, source_dpi=crop_dpi,
+                    padding_pt=ssg.CROP_PADDING_PT, foreground=foreground,
+                )
+                if region["sourceCrop"].get("path"):
+                    region_crop_paths[region["id"]] = crop_path
+                    crop_count += 1
+                    bytes_out += len(crop_bytes)
+
+            # Bounded page foreground summary from the page raster / rendered bitmap.
+            page_foreground = None
+            if page_bitmap is not None:
+                page_foreground = ssg.build_foreground_summary(_png_bytes(page_bitmap))
+
+            regions_body = json.dumps({
+                "version": ssg.SOURCE_REGION_VERSION,
+                "page_no": global_page_no,
+                "regions": regions,
+            }).encode("utf-8")
+            regions_path = await _storage_upload(client, f"{page_prefix}/regions.json", regions_body, "application/json")
+            bytes_out += len(regions_body)
+
+            spans_body = json.dumps({
+                "version": "source-spans-v1", "page_no": global_page_no, "spans": spans,
+            }).encode("utf-8")
+            spans_path = await _storage_upload(client, f"{page_prefix}/source-spans.json", spans_body, "application/json")
+            bytes_out += len(spans_body)
+
+            foreground_path = None
+            if page_foreground is not None:
+                fg_body = json.dumps(page_foreground).encode("utf-8")
+                foreground_path = await _storage_upload(client, f"{page_prefix}/foreground.json", fg_body, "application/json")
+                bytes_out += len(fg_body)
+
+            raster_info = raster_by_global.get(global_page_no) or {}
+            source_raster = {
+                "path": raster_info.get("path") or page.get("raster_path"),
+                "sha256": None,
+                "widthPx": raster_info.get("width"),
+                "heightPx": raster_info.get("height"),
+                "dpi": manifest_dpi,
+                "mime": raster_info.get("mime") or ("image/png" if (raster_info.get("path") or page.get("raster_path")) else None),
+            }
+
+            chunk_meta = None
+            if source_chunk is not None:
+                chunk_meta = {**source_chunk, "localPageNumber": local_page_no, "parentPageNumber": global_page_no}
+
+            page_scene = ssg.assemble_page_scene(
+                global_page=global_page_no, page_id=page_id,
+                width_pt=width_pt, height_pt=height_pt, rotation=0,
+                regions=regions, source_raster=source_raster, foreground=page_foreground,
+                regions_path=regions_path or f"{page_prefix}/regions.json",
+                source_spans_path=spans_path, source_chunk=chunk_meta,
+                problems=page_problems + span_problems,
+            )
+            page_scenes.append(page_scene)
+
+            critical = [r for r in regions if r["type"] in ssg.CROP_REQUIRED_TYPES]
+            total_regions += len(regions)
+            total_critical += len(critical)
+            total_crops += len(region_crop_paths)
+            v3_pages.append({
+                "page_no": global_page_no,
+                "page_id": page_id,
+                "width": width_pt,
+                "height": height_pt,
+                "source_path": source_raster["path"],
+                "source_sha256": source_raster["sha256"],
+                "regions_path": regions_path,
+                "source_spans_path": spans_path,
+                "foreground_path": foreground_path,
+                "region_crop_paths": region_crop_paths,
+                "region_count": len(regions),
+                "critical_region_count": len(critical),
+                "scene_graph_version": ssg.SOURCE_SCENE_GRAPH_VERSION,
+                "source_chunk_index": (source_chunk or {}).get("chunkIndex"),
+                "source_chunk_page_no": local_page_no,
+                "complete": bool(page_scene.get("complete")),
+                "problems": page_scene.get("problems") or [],
+            })
+    finally:
+        try:
+            pdf.close()
+        except Exception:
+            pass
+
+    generated_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    scene_graph = ssg.assemble_scene_graph(
+        source_sha256=source_sha256,
+        page_count=int(per_page_payload.get("page_count") or len(page_scenes)),
+        page_scenes=page_scenes,
+        engine="docling", engine_version=ENGINE_VERSION,
+        lane_policy_version=lane_policy_version, generated_at=generated_at,
+    )
+    scene_body = json.dumps(scene_graph).encode("utf-8")
+    scene_path = await _storage_upload(client, f"{prefix}/source-scene.json", scene_body, "application/json")
+    bytes_out += len(scene_body)
+    problems.extend(scene_graph.get("problems") or [])
+
+    return {
+        "source_scene_graph_version": ssg.SOURCE_SCENE_GRAPH_VERSION,
+        "artifact_contract_version": ssg.PAGE_ARTIFACT_CONTRACT_VERSION,
+        "source_scene_path": scene_path,
+        "pages": v3_pages,
+        "total_region_count": total_regions,
+        "total_critical_region_count": total_critical,
+        "total_crop_count": total_crops,
+        "complete": bool(scene_graph.get("complete")),
+        "problems": problems,
+        "bytes_out": bytes_out,
+    }
+
+
+def _mediabox_pt(pdf: "pdfium.PdfDocument", local_index: int, axis: int) -> float:
+    """Fallback page dimension (0=width, 1=height) in PDF points from pdfium."""
+    try:
+        size = pdf[local_index].get_size()
+        return float(size[axis])
+    except Exception:
+        return 0.0
 
 
 def _parse_data_uri(uri: str) -> Optional[tuple[str, bytes, str]]:
@@ -2007,11 +2321,19 @@ async def _run_async_job(req: ParseRequest) -> None:
                 global_page_offset=0,
                 raster_manifest=raster_manifest_payload,
             )
+            # E1 — assemble + upload Source Scene Graph V2 (additive; never raises).
+            source_scene = await _build_and_upload_source_scene_artifacts(
+                client, job_id, pdf_bytes, per_page_payload, raster_manifest_payload,
+                source_sha256=_sha256_hex(pdf_bytes),
+                lane_policy_version=LANE_ENFORCEMENT_VERSION,
+            )
+            bytes_out += int(source_scene.get("bytes_out") or 0)
             per_page_artifacts = await _upload_per_page_docling_artifacts(
                 client,
                 job_id,
                 per_page_payload,
                 source="monolithic-parse",
+                source_scene=source_scene,
             )
             metrics.record_since("per_page_artifact_ms", per_page_start)
             per_page_docling_manifest_path = per_page_artifacts.get("per_page_docling_manifest_path")
@@ -2056,6 +2378,14 @@ async def _run_async_job(req: ParseRequest) -> None:
                     "per_page_docling_manifest_path": per_page_docling_manifest_path,
                     "per_page_docling_page_count": per_page_docling_page_count,
                     "per_page_docling_validation": per_page_docling_validation,
+                    # E1 — Source Scene Graph V2 (additive; absent/skipped for legacy).
+                    "source_scene_graph_version": source_scene.get("source_scene_graph_version"),
+                    "page_artifact_contract_version": source_scene.get("artifact_contract_version"),
+                    "source_scene_path": source_scene.get("source_scene_path"),
+                    "source_scene_region_count": source_scene.get("total_region_count"),
+                    "source_scene_critical_region_count": source_scene.get("total_critical_region_count"),
+                    "source_scene_crop_count": source_scene.get("total_crop_count"),
+                    "source_scene_complete": source_scene.get("complete"),
                     "doctags_path": doctags_path,
                     "markdown_path": markdown_path,
                     "outline_path": outline_path,
@@ -2561,17 +2891,31 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                 global_page_offset=req.page_start - 1,
                 raster_manifest=raster_manifest_payload,
             )
+            # E1 — chunk-local Source Scene Graph V2. Crops render from the chunk
+            # PDF (local page index); region IDs are parent-global (rebased), so
+            # the parent-global copy in the callback keeps identical IDs.
+            source_scene = await _build_and_upload_source_scene_artifacts(
+                client, prefix, chunk_pdf, per_page_payload, raster_manifest_payload,
+                source_sha256=_sha256_hex(pdf_bytes),
+                lane_policy_version=LANE_ENFORCEMENT_VERSION,
+                source_chunk={"chunkId": req.chunk_id, "chunkIndex": req.chunk_index},
+            )
+            bytes_out += int(source_scene.get("bytes_out") or 0)
             per_page_artifacts = await _upload_per_page_docling_artifacts(
                 client,
                 prefix,
                 per_page_payload,
                 source="chunk-parse",
+                source_scene=source_scene,
             )
             metrics.record_since("per_page_artifact_ms", per_page_start)
             artifacts["per_page_docling_artifact_version"] = per_page_artifacts.get("per_page_docling_artifact_version")
             artifacts["per_page_docling_manifest_path"] = per_page_artifacts.get("per_page_docling_manifest_path")
             artifacts["per_page_docling_page_count"] = per_page_artifacts.get("per_page_docling_page_count")
             artifacts["per_page_docling_validation"] = per_page_artifacts.get("per_page_docling_validation")
+            artifacts["source_scene_graph_version"] = source_scene.get("source_scene_graph_version")
+            artifacts["source_scene_path"] = source_scene.get("source_scene_path")
+            artifacts["source_scene_complete"] = source_scene.get("complete")
             bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
             upload_wall_ms = (metrics.now() - upload_start) * 1000
