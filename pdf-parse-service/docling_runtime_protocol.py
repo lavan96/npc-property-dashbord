@@ -92,6 +92,11 @@ class RuntimeConversionResult:
     `status` ∈ {'success','partial_success','failure','timeout'}. A partial
     conversion is NEVER reported as success; usable pages/artifacts are preserved
     and problems recorded so E0 containment / manual review still apply.
+
+    `document` is the normalized, JSON-safe dict. `raw_document` is a NON-serialized
+    handle to the provider document object (e.g. a DoclingDocument) so the sidecar
+    can still call provider export methods (doctags/markdown/outline) — it is never
+    put into JSON, logs or callbacks.
     """
     status: str
     document: Optional[dict]
@@ -101,6 +106,7 @@ class RuntimeConversionResult:
     problems: tuple[str, ...] = ()
     timings: dict[str, float] = field(default_factory=dict)
     engine_identity: dict[str, Any] = field(default_factory=dict)
+    raw_document: Any = None
 
     @property
     def ok(self) -> bool:

@@ -31,6 +31,7 @@ class DoclingVNextRuntime:
         self.options = options or VNextBuildOptions()
         self._docling_version = docling_version
         self._converters: dict[str, Any] = {}
+        self._last_applied: dict = {}
         self._probe = introspect_installed()
 
     def profile_name(self) -> str:
@@ -58,45 +59,127 @@ class DoclingVNextRuntime:
         key = converter_key(profile)
         if key in self._converters:
             return self._converters[key]
-        converter = self._construct_converter(profile)
+        converter, self._last_applied = self._construct_converter(profile)
         self._converters[key] = converter
         return converter
 
-    def _construct_converter(self, profile: VNextConverterProfile) -> Any:  # pragma: no cover - needs docling
-        # Real construction runs only inside the vnext image. Kept in one place so
-        # no version conditionals leak into app_vnext.py. Uses PUBLIC APIs only.
-        from docling.document_converter import DocumentConverter, PdfFormatOption
-        from docling.datamodel.base_models import InputFormat
-        from docling.datamodel.pipeline_options import PdfPipelineOptions
-
+    def build_pipeline_options(self, profile: VNextConverterProfile) -> tuple[Any, dict]:
+        """Apply every profile field to a real `PdfPipelineOptions` against the
+        INSTALLED docling API, returning `(options, applied_report)`. The report
+        records per field: applied | unsupported | disabled — so a configured field
+        that cannot be applied is visible (not silently dropped). Requires docling."""
+        self.require_docling()
+        from docling.datamodel.pipeline_options import (
+            PdfPipelineOptions, TableFormerMode, AcceleratorOptions, AcceleratorDevice,
+        )
         opts = PdfPipelineOptions()
-        _safe_public_set(opts, "do_ocr", profile.do_ocr)
-        _safe_public_set(opts, "force_full_page_ocr", profile.force_full_page_ocr)
-        _safe_public_set(opts, "do_table_structure", profile.do_table_structure)
-        _safe_public_set(opts, "do_picture_classification", profile.do_picture_classification)
-        _safe_public_set(opts, "do_picture_description", profile.do_picture_description)
-        _safe_public_set(opts, "do_formula_enrichment", profile.do_formula_enrichment)
-        _safe_public_set(opts, "do_code_enrichment", profile.do_code_enrichment)
-        _safe_public_set(opts, "generate_page_images", profile.generate_page_images)
-        _safe_public_set(opts, "generate_picture_images", profile.generate_picture_images)
-        _safe_public_set(opts, "generate_table_images", profile.generate_table_images)
-        _safe_public_set(opts, "images_scale", profile.images_scale)
-        _safe_public_set(opts, "force_backend_text", profile.force_backend_text)
-        _safe_public_set(opts, "enable_remote_services", False)  # security invariant
-        _safe_public_set(opts, "allow_external_plugins", False)  # security invariant
+        applied: dict[str, str] = {}
+
+        def apply(field: str, value: Any) -> None:
+            applied[field] = "applied" if _safe_public_set(opts, field, value) else "unsupported"
+
+        apply("do_ocr", profile.do_ocr)
+        apply("do_table_structure", profile.do_table_structure)
+        apply("do_picture_classification", profile.do_picture_classification)
+        apply("do_picture_description", profile.do_picture_description)
+        apply("do_formula_enrichment", profile.do_formula_enrichment)
+        apply("do_code_enrichment", profile.do_code_enrichment)
+        apply("do_chart_extraction", profile.do_chart_extraction)
+        apply("generate_page_images", profile.generate_page_images)
+        apply("generate_picture_images", profile.generate_picture_images)
+        apply("generate_table_images", profile.generate_table_images)
+        apply("generate_parsed_pages", profile.generate_parsed_pages)
+        apply("images_scale", profile.images_scale)
+        apply("force_backend_text", profile.force_backend_text)
+        # Security invariants — always forced off, regardless of profile.
+        applied["enable_remote_services"] = "applied" if _safe_public_set(opts, "enable_remote_services", False) else "unsupported"
+        applied["allow_external_plugins"] = "applied" if _safe_public_set(opts, "allow_external_plugins", False) else "unsupported"
         if profile.document_timeout:
-            _safe_public_set(opts, "document_timeout", profile.document_timeout)
-        # Accurate table mode + cell matching via the public table options object.
+            apply("document_timeout", profile.document_timeout)
+        # Threaded batch/queue knobs (present on 2.113 PdfPipelineOptions).
+        apply("layout_batch_size", profile.layout_batch_size)
+        apply("ocr_batch_size", profile.ocr_batch_size)
+        apply("table_batch_size", profile.table_batch_size)
+        apply("queue_max_size", profile.queue_max_size)
+        apply("batch_polling_interval_seconds", profile.batch_polling_interval)
+
+        # Accelerator (device + threads) — a nested public model.
+        try:
+            device = {
+                "cpu": AcceleratorDevice.CPU, "cuda": AcceleratorDevice.CUDA,
+                "auto": AcceleratorDevice.AUTO,
+            }.get(profile.device, AcceleratorDevice.CPU)
+            opts.accelerator_options = AcceleratorOptions(device=device, num_threads=profile.num_threads)
+            applied["accelerator_options"] = "applied"
+        except Exception:
+            applied["accelerator_options"] = "unsupported"
+
+        # OCR engine + force-full-page live on the OCR options object (NOT top-level).
+        if profile.do_ocr:
+            try:
+                from docling.datamodel.pipeline_options import EasyOcrOptions
+                ocr = EasyOcrOptions()
+                _safe_public_set(ocr, "force_full_page_ocr", profile.force_full_page_ocr)
+                _safe_public_set(ocr, "lang", list(profile.ocr_languages))
+                opts.ocr_options = ocr
+                applied["ocr_options.force_full_page_ocr"] = "applied"
+            except Exception:
+                applied["ocr_options.force_full_page_ocr"] = "unsupported"
+        else:
+            applied["ocr_options.force_full_page_ocr"] = "disabled"
+
+        # Table mode + cell matching.
         table_opts = getattr(opts, "table_structure_options", None)
         if table_opts is not None:
-            from docling.datamodel.pipeline_options import TableFormerMode
             mode = TableFormerMode.ACCURATE if profile.table_mode == "accurate" else TableFormerMode.FAST
-            _safe_public_set(table_opts, "mode", mode)
-            _safe_public_set(table_opts, "do_cell_matching", profile.table_cell_matching)
-        return DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)})
+            applied["table_structure_options.mode"] = "applied" if _safe_public_set(table_opts, "mode", mode) else "unsupported"
+            applied["table_structure_options.do_cell_matching"] = "applied" if _safe_public_set(table_opts, "do_cell_matching", profile.table_cell_matching) else "unsupported"
+
+        # Chart extraction outputs live on the chart options object.
+        if profile.do_chart_extraction:
+            chart_opts = getattr(opts, "chart_extraction_options", None)
+            if chart_opts is not None:
+                _safe_public_set(chart_opts, "chart2csv", profile.chart_to_csv)
+                _safe_public_set(chart_opts, "chart2code", profile.chart_to_code)
+                _safe_public_set(chart_opts, "chart2summary", profile.chart_to_summary)
+                applied["chart_extraction_options"] = "applied"
+            else:
+                applied["chart_extraction_options"] = "unsupported"
+        else:
+            applied["chart_extraction_options"] = "disabled"
+
+        return opts, applied
+
+    def _construct_converter(self, profile: VNextConverterProfile) -> tuple[Any, dict]:
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        from docling.datamodel.base_models import InputFormat
+
+        opts, applied = self.build_pipeline_options(profile)
+        fmt_kwargs: dict[str, Any] = {"pipeline_options": opts}
+        # Pipeline family selects the actual pipeline class (standard is default).
+        if profile.pipeline_family == "threaded_standard":
+            try:
+                from docling.pipeline.threaded_standard_pdf_pipeline import ThreadedStandardPdfPipeline
+                fmt_kwargs["pipeline_cls"] = ThreadedStandardPdfPipeline
+                applied["pipeline_family"] = "threaded_standard"
+            except Exception:
+                applied["pipeline_family"] = "standard_fallback_threaded_unavailable"
+        elif profile.pipeline_family == "vlm":
+            try:
+                from docling.pipeline.vlm_pipeline import VlmPipeline
+                fmt_kwargs["pipeline_cls"] = VlmPipeline
+                applied["pipeline_family"] = "vlm"
+            except Exception:
+                applied["pipeline_family"] = "standard_fallback_vlm_unavailable"
+        else:
+            applied["pipeline_family"] = "standard"
+        converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(**fmt_kwargs)})
+        return converter, applied
 
     def convert(self, source: Any, profile: VNextConverterProfile,
-                page_range: Optional[tuple[int, int]] = None) -> RuntimeConversionResult:  # pragma: no cover - needs docling
+                page_range: Optional[tuple[int, int]] = None) -> RuntimeConversionResult:
+        """THE vNext conversion entry point. Every vNext parse path routes here so
+        the executing engine is unambiguously vNext. Requires docling."""
         self.require_docling()
         converter = self.build_converter(profile)
         try:
@@ -110,19 +193,25 @@ class DoclingVNextRuntime:
                 errors=(f"{type(exc).__name__}: {str(exc)[:200]}",),
                 engine_identity=self.engine_identity(profile),
             )
+        raw_doc = getattr(result, "document", result)
         doc = self.export_document(result)
         pages_total = len(doc.get("pages") or {})
         errors = [str(e)[:200] for e in (getattr(result, "errors", None) or [])]
-        status = normalize_conversion_status(getattr(result, "status", None),
+        status = normalize_conversion_status(getattr(getattr(result, "status", None), "name", getattr(result, "status", None)),
                                              pages_total=pages_total, pages_failed=len(errors))
         return RuntimeConversionResult(
             status=status, document=doc, pages_processed=pages_total, pages_failed=len(errors),
-            errors=tuple(errors), engine_identity=self.engine_identity(profile),
+            errors=tuple(errors), engine_identity=self.engine_identity(profile), raw_document=raw_doc,
         )
 
-    def export_document(self, result: Any) -> dict:  # pragma: no cover - needs docling
+    def export_document(self, result: Any) -> dict:
         doc = getattr(result, "document", result)
-        raw = doc.model_dump(mode="json") if hasattr(doc, "model_dump") else dict(doc)
+        if hasattr(doc, "export_to_dict"):
+            raw = doc.export_to_dict()
+        elif hasattr(doc, "model_dump"):
+            raw = doc.model_dump(mode="json")
+        else:
+            raw = dict(doc)
         return normalize_document(raw)
 
     def engine_identity(self, profile: VNextConverterProfile) -> dict:
@@ -139,6 +228,7 @@ class DoclingVNextRuntime:
             "device": profile.device,
             "converter_key": converter_key(profile),
             "build_profile": self.options.build_profile,
+            "applied_fields": dict(self._last_applied),
         }
 
 
