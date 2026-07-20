@@ -1085,6 +1085,45 @@ def _extract_fitz_fonts(pdf_bytes: bytes) -> list[dict]:
     return out
 
 
+# ── J1: explicit runtime selection (legacy | vnext) ─────────────────────────
+# `_do_parse` is the ONE conversion boundary shared by every parse path. Under
+# DOCLING_RUNTIME_PROFILE=vnext it routes through the vNext runtime adapter so a
+# vNext image can never silently run the legacy converter. Absent/legacy leaves
+# the production path byte-identical. `_RUNTIME_OVERRIDE` is a test seam (an
+# injected fake runtime) used by the invocation-spy / poisoned-legacy tests.
+_RUNTIME_INSTANCE: Any = None
+_RUNTIME_OVERRIDE: Any = None
+
+
+def _get_runtime():
+    global _RUNTIME_INSTANCE
+    if _RUNTIME_OVERRIDE is not None:
+        return _RUNTIME_OVERRIDE
+    if _RUNTIME_INSTANCE is None:
+        from docling_runtime_legacy import select_docling_runtime
+        _RUNTIME_INSTANCE = select_docling_runtime()
+    return _RUNTIME_INSTANCE
+
+
+def build_vnext_options_from_env():
+    """Build the vNext capability ceiling from env (shared by app.py + app_vnext)."""
+    from docling_vnext_profiles import VNextBuildOptions
+    return VNextBuildOptions(
+        build_profile=os.environ.get("DOCLING_VNEXT_BUILD_PROFILE", "vnext-cpu-standard"),
+        device=os.environ.get("DOCLING_VNEXT_DEVICE", "cpu"),
+        num_threads=int(os.environ.get("OMP_NUM_THREADS", "4")),
+        ocr_engine=os.environ.get("DOCLING_VNEXT_OCR_ENGINE", "easyocr"),
+        allow_picture_classification=_env_bool("DOCLING_VNEXT_ALLOW_PICTURE_CLASSIFICATION", True),
+        allow_picture_description=_env_bool("DOCLING_VNEXT_ALLOW_PICTURE_DESCRIPTION", False),
+        allow_chart_extraction=_env_bool("DOCLING_VNEXT_ALLOW_CHART_EXTRACTION", False),
+        allow_chart_to_csv=_env_bool("DOCLING_VNEXT_ALLOW_CHART_TO_CSV", False),
+        allow_formula_enrichment=_env_bool("DOCLING_VNEXT_ALLOW_FORMULA", False),
+        allow_code_enrichment=_env_bool("DOCLING_VNEXT_ALLOW_CODE", False),
+        allow_threaded_pipeline=_env_bool("DOCLING_VNEXT_ALLOW_THREADED", False),
+        allow_vlm=_env_bool("DOCLING_VNEXT_ALLOW_VLM", False),
+    )
+
+
 def _do_parse(
     pdf_bytes: bytes,
     *,
@@ -1102,12 +1141,33 @@ def _do_parse(
 
     t0 = time.monotonic()
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
-    converter, converter_support = _get_converter(policy.converter_profile())
-    try:
-        result = converter.convert(stream)
-    except Exception as exc:
-        raise SidecarError(500, "docling_convert_failed", f"Docling conversion failed: {exc}", retryable=True) from exc
-    doc = result.document
+
+    runtime = _get_runtime()
+    vnext_engine_identity: Optional[dict] = None
+    if runtime is not None and runtime.profile_name() == "vnext":
+        # J1 — vNext path: conversion goes THROUGH the vNext runtime adapter.
+        from docling_vnext_profiles import resolve_vnext_converter_profile
+        vprofile = resolve_vnext_converter_profile(
+            policy.as_dict(), runtime.capabilities(), build_vnext_options_from_env())
+        conv_result = runtime.convert(stream, vprofile)
+        if conv_result.raw_document is None or conv_result.status == "failure":
+            raise SidecarError(
+                500, "docling_vnext_convert_failed",
+                f"vNext conversion failed: {'; '.join(conv_result.errors)[:200] or conv_result.status}",
+                retryable=True,
+            )
+        doc = conv_result.raw_document
+        doc_dict = conv_result.document  # already normalized (annotation back-fill + vnext section)
+        vnext_engine_identity = conv_result.engine_identity
+        converter_support = {"runtime_profile": "vnext", "applied_fields": (vnext_engine_identity or {}).get("applied_fields", {})}
+    else:
+        converter, converter_support = _get_converter(policy.converter_profile())
+        try:
+            result = converter.convert(stream)
+        except Exception as exc:
+            raise SidecarError(500, "docling_convert_failed", f"Docling conversion failed: {exc}", retryable=True) from exc
+        doc = result.document
+        doc_dict = None  # exported below for the legacy path
 
     pages_meta: list[dict] = []
     for page_no, page in (doc.pages or {}).items():
@@ -1115,7 +1175,8 @@ def _do_parse(
         pages_meta.append({"page_no": page_no, "width": size.width, "height": size.height})
     pages_meta.sort(key=lambda p: p["page_no"])
 
-    doc_dict = doc.export_to_dict()
+    if doc_dict is None:  # legacy path exports here; vNext already normalized it.
+        doc_dict = doc.export_to_dict()
     pii_redactions = _redact_docling_pii(doc_dict) if redact_pii else 0
 
     # Phase 2: augment with PyMuPDF vector graphics + reconciled span typography.
@@ -1174,8 +1235,16 @@ def _do_parse(
         summary["picture_count"], fitz_vectors, len(summary["ocr_pages"]),
     )
 
+    # J1 — engine identity: under vNext, report the actual vNext engine that ran,
+    # never the legacy production string. Additive; legacy behaviour unchanged.
+    engine_version = ENGINE_VERSION
+    if vnext_engine_identity is not None:
+        dv = vnext_engine_identity.get("docling_version")
+        engine_version = f"docling-{dv}+{vnext_engine_identity.get('adapter_version')}" if dv else engine_version
+
     return {
-        "engine_version": ENGINE_VERSION,
+        "engine_version": engine_version,
+        "engine_identity": vnext_engine_identity,
         "parsed_ms": parsed_ms,
         "page_count": len(pages_meta),
         "pages": pages_meta,

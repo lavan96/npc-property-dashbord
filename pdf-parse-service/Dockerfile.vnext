@@ -45,29 +45,27 @@ ENV DOCLING_RUNTIME_PROFILE=vnext \
 COPY vnext/pyproject.toml vnext/uv.lock ./vnext/
 RUN cd vnext && uv sync --locked --no-dev --extra standard --python /usr/local/bin/python
 
-# Download required models at build time so the container runs offline. The image
-# build MUST fail if a required model cannot be fetched (verify current official
-# CLI/API — do NOT assume docling.utils.model_downloader is unchanged).
-COPY vnext/model-manifest.json ./vnext/
-RUN cd vnext && (.venv/bin/python -m docling.cli.tools models download 2>/dev/null \
-      || .venv/bin/python -c "import importlib,sys; \
-m=importlib.util.find_spec('docling.utils.model_downloader'); \
-sys.exit(0) if m is None else __import__('docling.utils.model_downloader', fromlist=['download_models']).download_models()") \
-    && echo "vNext model download step completed (verify manifest at build)"
+# Download + VERIFY required models at build time so the container runs offline.
+# FAIL-CLOSED: download_models.py exits nonzero when a required model is missing —
+# no exit-0 / "verify later" fallback. artifacts_path must point to this populated
+# dir at runtime (docling rejects an empty DOCLING_ARTIFACTS_PATH).
+COPY vnext/model-manifest.json vnext/download_models.py ./vnext/
+RUN vnext/.venv/bin/python vnext/download_models.py \
+        --profile vnext-cpu-standard --out /app/.docling-models
 
 # Explicit runtime module list (never a broad COPY *.py) so a new runtime module
 # is a deliberate, reviewable packaging change.
-COPY app.py app_vnext.py lane_policy.py operational_metrics.py \
+COPY app.py app_vnext.py lane_policy.py operational_metrics.py source_scene_graph.py \
      docling_runtime_protocol.py docling_runtime_legacy.py docling_runtime_vnext.py \
      docling_vnext_profiles.py docling_vnext_adapter.py docling_capabilities.py ./
 
 # Fail the build on missing runtime modules / syntax errors, and prove the pure
 # vNext modules import WITHOUT initialising docling models.
 RUN cd vnext && .venv/bin/python -m py_compile \
-        ../app.py ../app_vnext.py ../lane_policy.py ../operational_metrics.py \
+        ../app.py ../app_vnext.py ../lane_policy.py ../operational_metrics.py ../source_scene_graph.py \
         ../docling_runtime_protocol.py ../docling_runtime_legacy.py ../docling_runtime_vnext.py \
         ../docling_vnext_profiles.py ../docling_vnext_adapter.py ../docling_capabilities.py \
-    && cd .. && vnext/.venv/bin/python -c "import docling_runtime_vnext, docling_vnext_adapter, docling_capabilities, docling_vnext_profiles" \
+    && cd .. && vnext/.venv/bin/python -c "import source_scene_graph, docling_runtime_vnext, docling_vnext_adapter, docling_capabilities, docling_vnext_profiles" \
     && vnext/.venv/bin/python -c "import docling; from importlib.metadata import version; print('docling', version('docling'))"
 
 # Non-root runtime user with writable model/cache/temp paths.
@@ -99,8 +97,9 @@ ENV DOCLING_RUNTIME_PROFILE=vnext \
 COPY vnext/pyproject.toml vnext/uv.lock ./vnext/
 RUN cd vnext && uv sync --locked --no-dev --extra vlm --python /usr/local/bin/python
 COPY vnext/model-manifest.json ./vnext/
-RUN cd vnext && (.venv/bin/python -m docling.cli.tools models download --all 2>/dev/null || echo "verify vlm model download at build")
-COPY app.py app_vnext.py lane_policy.py operational_metrics.py \
+COPY vnext/download_models.py ./vnext/
+RUN vnext/.venv/bin/python vnext/download_models.py --profile vnext-vlm --out /app/.docling-models
+COPY app.py app_vnext.py lane_policy.py operational_metrics.py source_scene_graph.py \
      docling_runtime_protocol.py docling_runtime_legacy.py docling_runtime_vnext.py \
      docling_vnext_profiles.py docling_vnext_adapter.py docling_capabilities.py ./
 RUN vnext/.venv/bin/python -c "import docling_runtime_vnext, docling_vnext_adapter"
