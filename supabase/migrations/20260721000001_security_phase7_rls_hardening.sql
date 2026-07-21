@@ -2,6 +2,23 @@
 -- Deny-by-default RLS for priority tables. Service-role-specific policies for
 -- these tables already exist and are unchanged; this migration removes
 -- world-open access paths.
+--
+-- NOTE: this migration was applied to production incrementally via MCP
+-- (notifications+document_chunks, then email_copilot after the frontend fix).
+-- The guards below make it idempotent so a later `supabase db push` re-run is
+-- a safe no-op instead of failing on already-existing policies.
+DROP POLICY IF EXISTS notifications_select_own_or_broadcast ON public.notifications;
+DROP POLICY IF EXISTS notifications_update_own_or_broadcast ON public.notifications;
+DROP POLICY IF EXISTS notifications_delete_own_or_broadcast ON public.notifications;
+DROP POLICY IF EXISTS notifications_insert_authenticated ON public.notifications;
+DROP POLICY IF EXISTS notifications_service_role_all ON public.notifications;
+DROP POLICY IF EXISTS document_chunks_select_authenticated ON public.document_chunks;
+DROP POLICY IF EXISTS email_copilot_emails_select_scoped ON public.email_copilot_emails;
+DROP POLICY IF EXISTS email_copilot_emails_update_scoped ON public.email_copilot_emails;
+DROP POLICY IF EXISTS email_copilot_emails_delete_scoped ON public.email_copilot_emails;
+DROP POLICY IF EXISTS email_copilot_sent_replies_select_scoped ON public.email_copilot_sent_replies;
+DROP POLICY IF EXISTS email_copilot_sent_replies_update_scoped ON public.email_copilot_sent_replies;
+DROP POLICY IF EXISTS email_copilot_sent_replies_delete_scoped ON public.email_copilot_sent_replies;
 
 -- ── password_reset_tokens ─────────────────────────────────────────────────
 -- The legacy "Service role can manage password reset tokens" policy was
