@@ -289,14 +289,19 @@ export function OutlookCalendarPanel({
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="user@yourcompany.com"
               className="h-8 text-xs"
+              disabled={!!accountEmail && accountRole !== 'superadmin'}
+              readOnly={!!accountEmail && accountRole !== 'superadmin'}
             />
             <Button size="sm" className="h-8" onClick={handleSaveEmail}>
               <Check className="h-3 w-3" />
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            This links your Outlook calendar. Events will appear as an overlay on the calendar.
+            {accountEmail && accountRole !== 'superadmin'
+              ? 'Locked to your account email for security. A superadmin can link a different address on your behalf.'
+              : 'This links your Outlook calendar. Events will appear as an overlay on the calendar.'}
           </p>
+
           <Button 
             size="sm" 
             variant="outline" 
