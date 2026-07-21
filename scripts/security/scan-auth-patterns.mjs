@@ -9,6 +9,11 @@
  *      credentials — finding F-06).
  *  R3: wildcard Access-Control-Allow-Origin in a function that also sets or
  *      reads session cookies (credentialed wildcard CORS).
+ *  R4: a service/trust decision derived from a request-body field
+ *      (body.source etc.) — body fields are attacker-controlled and must never
+ *      confer service identity (Criticals 5/6, second-round audit).
+ *  R5: getPublicUrl() on the sensitive email-attachments bucket — persisting a
+ *      permanent public URL for private content (EC-5). Use signed URLs.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
@@ -58,6 +63,21 @@ for (const file of files) {
   // CORS helper; the dangerous combination is a single function using both.
   if (!rel.startsWith('_shared/') && /['"]Access-Control-Allow-Origin['"]\s*:\s*['"]\*['"]/.test(src) && /Set-Cookie|session_token=/.test(src)) {
     errors.push(`[R3] ${rel}: wildcard Access-Control-Allow-Origin combined with session cookies — use the origin allowlist (createCorsHeaders).`);
+  }
+
+  // R4: service/trust decision derived from a request-body field. Matches a
+  // trust-intent variable (isService/isInternal/isScheduled/trusted/...)
+  // assigned from body.source (or body.<x>). A plain `const source = body.source`
+  // label is NOT flagged — only trust-named sinks.
+  if (/\b(is[A-Z]\w*|trusted|authorized|isServiceCall|isScheduled|isInternal|isAdmin)\s*=\s*[^;\n]*\bbody\.(source|user_id|role|is_admin|scheduled)\b/.test(src)) {
+    errors.push(`[R4] ${rel}: a trust/service decision is derived from a request-body field. Body fields are attacker-controlled — derive service identity from verifyInternal()/verified auth method, never from body.`);
+  }
+
+  // R5: permanent public URL for private email attachments. secure-storage is
+  // the central proxy: its publicUrl op is policy-gated and email-attachments
+  // is NOT an allowPublicUrl bucket, so its generic getPublicUrl is safe.
+  if (rel !== 'secure-storage/index.ts' && /getPublicUrl\s*\(/.test(src) && /['"]email-attachments['"]/.test(src)) {
+    errors.push(`[R5] ${rel}: getPublicUrl() on the email-attachments bucket persists a permanent public URL for private content. Store the object path and issue short-lived signed URLs (see EC-5).`);
   }
 }
 

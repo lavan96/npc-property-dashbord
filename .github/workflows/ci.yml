@@ -68,8 +68,29 @@ jobs:
       - name: Edge Function security registry check (EDGE-001)
         run: node scripts/security/check-function-registry.mjs
 
-      - name: Static auth-pattern scan (F-01/F-06/CORS rules)
+      - name: Static auth-pattern scan (F-01/F-06/CORS/body-trust/public-URL rules)
         run: node scripts/security/scan-auth-patterns.mjs
+
+      # Type-check the shared trust libraries with Deno. A type error in these
+      # (auth, authz, permissions, notify, reset tokens) breaks the whole
+      # function fleet at runtime and can escape the frontend-only build — the
+      # exact class the second-round audit flagged (e.g. a missing import
+      # surfacing only at Edge runtime).
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deno type-check shared trust modules
+        run: |
+          deno check \
+            supabase/functions/_shared/auth.ts \
+            supabase/functions/_shared/auth_v2.ts \
+            supabase/functions/_shared/authz.ts \
+            supabase/functions/_shared/permissions.ts \
+            supabase/functions/_shared/notify.ts \
+            supabase/functions/_shared/resetTokens.ts \
+            supabase/functions/_shared/jwt.ts
 
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2

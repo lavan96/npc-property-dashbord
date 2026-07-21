@@ -24,11 +24,17 @@ const registry = JSON.parse(readFileSync(REGISTRY_PATH, 'utf8')).functions;
 // Parse config.toml [functions.<name>] sections
 const config = readFileSync(CONFIG_PATH, 'utf8');
 const declared = new Map();
+const duplicateDeclarations = [];
 for (const section of config.split(/(?=^\[functions\.)/m)) {
   const header = section.match(/^\[functions\.([A-Za-z0-9_-]+)\]/);
   if (!header) continue;
+  const name = header[1];
   const vj = section.match(/^verify_jwt\s*=\s*(true|false)/m);
-  declared.set(header[1], vj ? vj[1] === 'true' : true);
+  // Duplicate [functions.<name>] sections silently overwrite earlier ones when
+  // parsed into a Map — including a stricter verify_jwt being clobbered by a
+  // laxer later block. Flag them as an error rather than losing the declaration.
+  if (declared.has(name)) duplicateDeclarations.push(name);
+  declared.set(name, vj ? vj[1] === 'true' : true);
 }
 
 const onDisk = readdirSync(FUNC_DIR).filter((d) => {
@@ -37,6 +43,10 @@ const onDisk = readdirSync(FUNC_DIR).filter((d) => {
 });
 
 const errors = [];
+
+for (const dup of duplicateDeclarations) {
+  errors.push(`Function "${dup}" is declared more than once in config.toml — duplicate [functions.${dup}] sections silently overwrite each other (a later verify_jwt can weaken an earlier one). Keep exactly one declaration.`);
+}
 
 for (const fn of onDisk) {
   if (!registry[fn]) {
