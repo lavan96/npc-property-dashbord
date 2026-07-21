@@ -277,6 +277,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // SECURITY: validate the subscription clientState on every notification.
+    // Microsoft Graph echoes the clientState set at subscription time; a caller
+    // forging notifications will not know it. Prefer a high-entropy secret
+    // (OUTLOOK_WEBHOOK_CLIENT_STATE); fall back to the legacy constant so
+    // existing subscriptions keep working until they are recreated. Reject the
+    // whole batch if any notification's clientState does not match.
+    const expectedClientState = (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || 'npc-email-copilot-webhook').trim();
+    const clientStateOk = body.value.every(
+      (n: any) => (n?.clientState ?? '') === expectedClientState,
+    );
+    if (!clientStateOk) {
+      console.warn('[Outlook Webhook] Rejected: clientState mismatch');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
       console.error('[Outlook Webhook] Missing Microsoft credentials');
       return new Response(JSON.stringify({ error: 'Missing Microsoft credentials' }), {

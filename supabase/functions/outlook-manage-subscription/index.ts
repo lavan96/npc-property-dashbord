@@ -94,7 +94,9 @@ Deno.serve(async (req) => {
         notificationUrl: webhookUrl,
         resource: `/users/${MICROSOFT_MAILBOX_EMAIL}/messages`,
         expirationDateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days max
-        clientState: 'npc-email-copilot-webhook'
+        // Prefer a high-entropy secret so the receiving webhook can authenticate
+        // notifications via clientState; fall back to the legacy constant.
+        clientState: (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || 'npc-email-copilot-webhook').trim(),
       };
 
       console.log('Creating subscription:', subscription);

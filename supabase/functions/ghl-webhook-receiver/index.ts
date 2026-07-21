@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
+import { verifyWebhookSecret } from '../_shared/auth_v2.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -714,16 +715,17 @@ Deno.serve(async (req) => {
       hasCustomFields: !!body.customFields,
     }));
 
-    // Optional: verify webhook secret if configured
-    if (webhookSecret) {
-      const headerSecret = req.headers.get('x-ghl-webhook-secret');
-      if (headerSecret !== webhookSecret) {
-        console.warn('[ghl-webhook] Invalid webhook secret');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    // FAIL CLOSED: this webhook mutates CRM/pipeline data with the service role.
+    // It must refuse to run unless a strong GHL_WEBHOOK_SECRET is configured AND
+    // the caller presents it (constant-time compare). The previous check only
+    // validated the secret "if configured", so an unset secret let anyone post
+    // arbitrary webhook payloads.
+    if (!verifyWebhookSecret(webhookSecret, req.headers.get('x-ghl-webhook-secret'))) {
+      console.warn('[ghl-webhook] Rejected: missing/invalid webhook secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // ── Detect event type ──
