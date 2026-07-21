@@ -1,0 +1,1626 @@
+{
+  "$comment": "Edge Function security registry (EDGE-001). Every function must be listed with its exposure class. CI fails when a function on disk or in config.toml is missing here, or when verify_jwt drifts from this record. Exposure classes: public-auth | human-authenticated | portal-authenticated | internal-service | webhook | cron-worker | public | needs-review.",
+  "functions": {
+    "abs-data-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "abs-employment-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "abs-seifa-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "admin-password-reset": {
+      "verify_jwt": true,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "admin-user-management": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "agent-insights-runner": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "agent-models-read": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "agent-planner": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "agent-skill-marketplace": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "agent-task-runner": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ai-dashboard-agent": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "airtable-proxy": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "aml-access": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-ai-guardrail": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-cases": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-client-portal": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-entities": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-finance": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-launch-ops": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-monitoring": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-provider-webhook": {
+      "verify_jwt": false,
+      "exposure_class": "webhook",
+      "owner": "security-remediation-program"
+    },
+    "aml-records": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-release-gate": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-reporting": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-resilience": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-risk": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-step-up": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-tenant": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-transactions": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "aml-verification": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program"
+    },
+    "analytics-query": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "analyze-meta-ads": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "analyze-meta-ads-phase2": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "analyze-meta-ads-phase3": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "analyze-meta-ads-phase4": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "analyze-meta-ads-phase5": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "archive-old-reports": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "auto-report-sync": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "auto-report-webhook": {
+      "verify_jwt": false,
+      "exposure_class": "webhook",
+      "owner": "security-remediation-program"
+    },
+    "backfill-investment-scores": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "backfill-lead-attributions": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "backfill-message-directions": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "backfill-notes-to-ghl": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "backfill-opportunity-mappings": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "bc-scenario-agent": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "build-conversations-export-worker": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "calculate-borrowing-capacity": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "cdr-lending-rates-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "check-integration-secrets": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "check-model-availability": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "clean-note-transcript": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "cleanup-call-log-names": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "cleanup-stale-calls": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "client-portal-accept-invite": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "client-portal-batch6": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "client-portal-comms": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "client-portal-finance-hub": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "client-portal-forgot-password": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "client-portal-invite": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "client-portal-login": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "client-portal-logout": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "client-portal-reset-password": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "client-portal-verify": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "climate-data-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "cloudflare-proxy": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "commercial-bc-scenario-agent": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "compare-cash-flow-reports": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "compare-investment-reports": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "condense-investment-report": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "conversation-sync-cron": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "cotality-service": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "crime-statistics-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "custom-auth-login": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "custom-auth-logout": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "custom-auth-verify": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "data-conflict-resolver": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "diagnose-ghl-attribution": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "dispatch-marketing-reports": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "domain-data-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "email-body-backfill": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "email-copilot": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "email-copilot-extras": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "email-sync-cron": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "enrich-lead-attributions": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "estimate-commercial-caprate": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "estimate-commercial-noi": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "estimate-property-expenses": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "feature-flags-admin": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "fetch-meta-ads": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "figma-template-sync": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-email-track-pixel": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-accept-invite": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-admin": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-ai-copilot": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-audit-timeline": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-automations": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-batch6": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-batch7": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-batch8": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-batch9-10": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-briefing-runner": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-broker-kpis": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-bulk-actions": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-change-password": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-client-comms": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-client-data": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-client-mirror": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-client-tasks": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-commissions": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-dashboard-metrics": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-deal-trackers": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-document-requirements": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-documents": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-engagement": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-forecasting": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-forgot-password": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "finance-portal-handoff-create": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-handoff-redeem": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-invite": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-lender-intelligence": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-lender-packet": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-login": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "finance-portal-logout": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-messages": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-notifications": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-nudges": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-pipeline": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-purchase-files": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-reset-password": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "finance-portal-saved-views": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-settings": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-settlement-runway": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-snoozes": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-templates": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-tri-portal-health": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "finance-portal-verify": {
+      "verify_jwt": false,
+      "exposure_class": "public-auth",
+      "owner": "security-remediation-program"
+    },
+    "financial-calculator-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "financial-validation-service": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "fix-report-status": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "fork-investment-report": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "format-comparison-report": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-bulk-reports": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-chart-analysis": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-chart-images": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-charts-python": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-commission-payout": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-investment-report": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-market-intelligence-report": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "generate-portfolio-analysis": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-activity-logs": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-api-usage-stats": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-call-logs": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-client-data": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-email-data": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "get-investment-reports": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-portal-client-data": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-system-logs": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-token-event-trail": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-user-names": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "get-vapid-public-key": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-account-preview": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-calendar": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-calendar-proxy": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-calendar-test": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-conversations-cron": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-legacy-backfill-gaps": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-legacy-wipe-orchestrator": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-legacy-wipe-worker": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-marketing-dump-enqueue": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-marketing-dump-export": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-marketing-dump-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-marketing-raw-dump": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-bookings-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-calendar-groups-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-calendars-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-contacts-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-conversations-replay-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-conversations-reset-phantoms": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-conversations-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-notes-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-opportunities-worker": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-workflow-enrollments-worker": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-workflow-reenroll-worker": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-migrate-workflows-snapshot-worker": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "ghl-test-credentials": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "ghl-webhook-receiver": {
+      "verify_jwt": false,
+      "exposure_class": "webhook",
+      "owner": "security-remediation-program"
+    },
+    "ghl-workflow-visualizer": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "google-places-autocomplete": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "hero-image-studio": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "import-clients-from-ghl": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "import-from-url": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "import-schools-data": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "import-suburb-directory": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "investment-scoring-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "list-token-audit": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "list-token-usage": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "location-intelligence-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "log-activity": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-agency-agreements": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-agent-models": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-automation-settings": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-bc-scenarios": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-call-logs": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-call-settings": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-client-data": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-commercial-data": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-commission-ledger": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-compliance-records": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-data-import": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-generated-documents": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-industrial-data": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-investment-reports": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-lead-magnets": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-lender-favourites": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-lender-rate-alerts": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-lender-submissions": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-portal-client-data": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-report-preferences": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manage-templates": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "manychat-proxy": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-qa-digest-runner": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-qa-quality-report": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-qa-quality-snapshot": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-qa-share": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-qa-subscriptions": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-updates-digest": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-updates-embed-backfill": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "market-updates-ingest": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "market-updates-qa": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-updates-source-admin": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "market-updates-voice-transcribe": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mcp": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "message-governance": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "migrate-comparison-scores": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "migration-dispatcher": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "migration-job-control": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "migration-job-status": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "migration-orchestrator": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "migration-upload-source": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-balance": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-catalog": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-devices": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-handoff": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-key-info": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-packs": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-purchases": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-rotate-key": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-seats": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "mission-control-webhook": {
+      "verify_jwt": false,
+      "exposure_class": "webhook",
+      "owner": "security-remediation-program"
+    },
+    "one-time-bulk-conversation-sync": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "outlook-calendar": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "outlook-email-sync": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "outlook-email-webhook": {
+      "verify_jwt": false,
+      "exposure_class": "webhook",
+      "owner": "security-remediation-program"
+    },
+    "outlook-manage-subscription": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "parse-property-pdf": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "parse-template-document": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "parse-vownet-pdf": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-import-client-report": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-import-diagnostics": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-import-monitoring": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-import-retention": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-import-ssim-score": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-parse-callback": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-parse-chunk-callback": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "pdf-parse-dispatch": {
+      "verify_jwt": false,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "pdf-parse-recover-stuck-jobs": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "phase6-quality-ops": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "portal-book-appointment": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "portal-upload-file": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "prepare-report-hero-images": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "process-scheduled-emails": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "public-transport-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "push-subscribe": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "push-unsubscribe": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "quantitative-report-pipeline": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "rba-data-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "reclassify-property": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "regenerate-report-qualitative": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "render-investment-report-pdf": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "render-source": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "render-template-pdf": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "report-engine-agent": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "report-engine-inspector": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "report-qa": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "report-schema-validator": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "request-lead-magnet": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "resume-bulk-generation": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "retrieve-template-context": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "risk-assessment-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "school-data-service": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "scrape-property-listing": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "secure-storage": {
+      "verify_jwt": true,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "send-appointment-notification": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "send-call-alert-email": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "send-email-reply": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true
+    },
+    "send-ghl-message": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "send-web-push": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "send-weekly-call-report": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "share-report-with-finance": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "sqm-rent-service": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "staff-client-portal-handoff-create": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "staff-client-portal-messages": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "start-conversations-export": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "sync-client-to-ghl": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "sync-ghl-conversations": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "sync-ghl-marketing-assets": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "sync-ghl-pipelines": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "sync-notes-to-ghl": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "template-ai-author": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "template-analytics": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "template-design-agent": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "template-import-finalize-worker": {
+      "verify_jwt": true,
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program"
+    },
+    "template-import-pdf": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "template-share": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "update-ghl-opportunity-stage": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "update-integration-secret": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "update-stamp-duty-rates": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "user-guide-assistant": {
+      "verify_jwt": true,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    },
+    "vapi-call-webhook": {
+      "verify_jwt": false,
+      "exposure_class": "webhook",
+      "owner": "security-remediation-program"
+    },
+    "voice-to-text": {
+      "verify_jwt": false,
+      "exposure_class": "needs-review",
+      "owner": "security-remediation-program"
+    }
+  }
+}
