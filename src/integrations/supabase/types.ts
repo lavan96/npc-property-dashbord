@@ -4681,13 +4681,16 @@ export type Database = {
           client_id: string
           created_at: string
           email: string
+          failed_login_attempts: number
           has_accepted_terms: boolean
           has_completed_onboarding: boolean
           id: string
           invite_expires_at: string | null
           invite_token: string | null
           last_login_at: string | null
+          locked_until: string | null
           password_hash: string
+          password_reset_attempts: number
           password_reset_expires_at: string | null
           password_reset_token: string | null
           status: string
@@ -4698,13 +4701,16 @@ export type Database = {
           client_id: string
           created_at?: string
           email: string
+          failed_login_attempts?: number
           has_accepted_terms?: boolean
           has_completed_onboarding?: boolean
           id?: string
           invite_expires_at?: string | null
           invite_token?: string | null
           last_login_at?: string | null
+          locked_until?: string | null
           password_hash: string
+          password_reset_attempts?: number
           password_reset_expires_at?: string | null
           password_reset_token?: string | null
           status?: string
@@ -4715,13 +4721,16 @@ export type Database = {
           client_id?: string
           created_at?: string
           email?: string
+          failed_login_attempts?: number
           has_accepted_terms?: boolean
           has_completed_onboarding?: boolean
           id?: string
           invite_expires_at?: string | null
           invite_token?: string | null
           last_login_at?: string | null
+          locked_until?: string | null
           password_hash?: string
+          password_reset_attempts?: number
           password_reset_expires_at?: string | null
           password_reset_token?: string | null
           status?: string
@@ -6352,9 +6361,11 @@ export type Database = {
           deleted_at: string | null
           email: string
           email_signature: string | null
+          failed_login_attempts: number
           id: string
           is_active: boolean
           last_login_at: string | null
+          locked_until: string | null
           microsoft_email: string | null
           outlook_auto_prep_enabled: boolean | null
           outlook_follow_up_blocking: boolean | null
@@ -6372,9 +6383,11 @@ export type Database = {
           deleted_at?: string | null
           email: string
           email_signature?: string | null
+          failed_login_attempts?: number
           id?: string
           is_active?: boolean
           last_login_at?: string | null
+          locked_until?: string | null
           microsoft_email?: string | null
           outlook_auto_prep_enabled?: boolean | null
           outlook_follow_up_blocking?: boolean | null
@@ -6392,9 +6405,11 @@ export type Database = {
           deleted_at?: string | null
           email?: string
           email_signature?: string | null
+          failed_login_attempts?: number
           id?: string
           is_active?: boolean
           last_login_at?: string | null
+          locked_until?: string | null
           microsoft_email?: string | null
           outlook_auto_prep_enabled?: boolean | null
           outlook_follow_up_blocking?: boolean | null
@@ -7330,6 +7345,7 @@ export type Database = {
           linked_property_address: string | null
           linked_report_id: string | null
           mailbox_source: string | null
+          owner_user_id: string | null
           received_at: string | null
           sender: string
           status: string
@@ -7356,6 +7372,7 @@ export type Database = {
           linked_property_address?: string | null
           linked_report_id?: string | null
           mailbox_source?: string | null
+          owner_user_id?: string | null
           received_at?: string | null
           sender: string
           status?: string
@@ -7382,6 +7399,7 @@ export type Database = {
           linked_property_address?: string | null
           linked_report_id?: string | null
           mailbox_source?: string | null
+          owner_user_id?: string | null
           received_at?: string | null
           sender?: string
           status?: string
@@ -7482,6 +7500,7 @@ export type Database = {
           id: string
           mailbox_source: string | null
           original_email_id: string | null
+          owner_user_id: string | null
           recipient: string
           sent_at: string
           subject: string
@@ -7495,6 +7514,7 @@ export type Database = {
           id?: string
           mailbox_source?: string | null
           original_email_id?: string | null
+          owner_user_id?: string | null
           recipient: string
           sent_at?: string
           subject: string
@@ -7508,6 +7528,7 @@ export type Database = {
           id?: string
           mailbox_source?: string | null
           original_email_id?: string | null
+          owner_user_id?: string | null
           recipient?: string
           sent_at?: string
           subject?: string
@@ -9817,6 +9838,7 @@ export type Database = {
           must_change_password: boolean
           password_hash: string | null
           reset_token: string | null
+          reset_token_attempts: number
           reset_token_expires_at: string | null
           revoked_at: string | null
           revoked_by: string | null
@@ -9849,6 +9871,7 @@ export type Database = {
           must_change_password?: boolean
           password_hash?: string | null
           reset_token?: string | null
+          reset_token_attempts?: number
           reset_token_expires_at?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
@@ -9881,6 +9904,7 @@ export type Database = {
           must_change_password?: boolean
           password_hash?: string | null
           reset_token?: string | null
+          reset_token_attempts?: number
           reset_token_expires_at?: string | null
           revoked_at?: string | null
           revoked_by?: string | null
@@ -11794,6 +11818,24 @@ export type Database = {
           key_name?: string
           key_value?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      internal_request_nonces: {
+        Row: {
+          caller_function: string | null
+          nonce: string
+          seen_at: string
+        }
+        Insert: {
+          caller_function?: string | null
+          nonce: string
+          seen_at?: string
+        }
+        Update: {
+          caller_function?: string | null
+          nonce?: string
+          seen_at?: string
         }
         Relationships: []
       }
@@ -14273,6 +14315,7 @@ export type Database = {
       }
       password_reset_tokens: {
         Row: {
+          attempts: number
           created_at: string
           expires_at: string
           id: string
@@ -14281,6 +14324,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempts?: number
           created_at?: string
           expires_at: string
           id?: string
@@ -14289,6 +14333,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempts?: number
           created_at?: string
           expires_at?: string
           id?: string
@@ -18778,6 +18823,48 @@ export type Database = {
           student_count?: number | null
           suburb?: string
           website_url?: string | null
+        }
+        Relationships: []
+      }
+      security_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_type: string
+          correlation_id: string | null
+          decision: string
+          id: string
+          metadata_redacted: Json
+          occurred_at: string
+          reason_code: string | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_type?: string
+          correlation_id?: string | null
+          decision: string
+          id?: string
+          metadata_redacted?: Json
+          occurred_at?: string
+          reason_code?: string | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_type?: string
+          correlation_id?: string | null
+          decision?: string
+          id?: string
+          metadata_redacted?: Json
+          occurred_at?: string
+          reason_code?: string | null
+          target_id?: string | null
+          target_type?: string | null
         }
         Relationships: []
       }
