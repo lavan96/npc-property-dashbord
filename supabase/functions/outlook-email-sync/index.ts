@@ -226,16 +226,22 @@ async function uploadAttachmentToStorage(
       return null;
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
+    // SECURITY (EC-5): persist the object PATH and a short-lived SIGNED URL
+    // instead of a permanent public URL. The path lets the frontend refresh a
+    // signed URL on demand (EmailAttachmentsList) so the email-attachments
+    // bucket can be made private without losing access. Legacy records that
+    // only carry storageUrl keep working via fallback.
+    const { data: signed } = await supabase.storage
       .from('email-attachments')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days
 
     return {
       name: attachment.name,
       contentType: attachment.contentType,
       size: attachment.size,
-      storageUrl: urlData.publicUrl
+      storagePath: filePath,
+      storageBucket: 'email-attachments',
+      storageUrl: signed?.signedUrl ?? null,
     };
   } catch (error) {
     console.error('[Outlook Sync] Error uploading attachment:', error);

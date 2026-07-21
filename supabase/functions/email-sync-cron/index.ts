@@ -294,15 +294,19 @@ Deno.serve(async (req) => {
                     });
 
                   if (!uploadError) {
-                    const { data: urlData } = supabase.storage
+                    // EC-5: store path + short-lived signed URL (not a permanent
+                    // public URL) so the bucket can go private; frontend refreshes.
+                    const { data: signed } = await supabase.storage
                       .from('email-attachments')
-                      .getPublicUrl(filePath);
+                      .createSignedUrl(filePath, 60 * 60 * 24 * 7);
 
                     storedAttachments.push({
                       name: fullAtt.name,
                       contentType: fullAtt.contentType,
                       size: fullAtt.size,
-                      storageUrl: urlData.publicUrl
+                      storagePath: filePath,
+                      storageBucket: 'email-attachments',
+                      storageUrl: signed?.signedUrl ?? null,
                     });
                   }
                 }
