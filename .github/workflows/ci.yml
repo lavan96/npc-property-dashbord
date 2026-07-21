@@ -75,3 +75,42 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Security Remediation Phase 11 (SUPPLY-001): supply-chain visibility.
+  # Fails on unaccepted critical dependency vulnerabilities and publishes a
+  # CycloneDX SBOM artifact for each build.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm install` (not `npm ci`) to match the verify job — the committed
+      # lockfile is intentionally out of sync on main (see verify job note).
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Blocks on unaccepted `critical` advisories by default; lower-severity
+      # findings are reported but non-blocking. Tune via SECURITY_AUDIT_LEVEL.
+      - name: Dependency vulnerability gate (SUPPLY-001)
+        env:
+          SECURITY_AUDIT_LEVEL: critical
+        run: node scripts/security/dependency-audit.mjs
+
+      # CycloneDX SBOM for the installed dependency graph. Uploaded as an
+      # artifact so releases have a machine-readable bill of materials.
+      - name: Generate SBOM (CycloneDX)
+        run: npx --yes @cyclonedx/cyclonedx-npm@^1 --output-file sbom.cdx.json --output-format json || echo "SBOM generation skipped (non-fatal)"
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: warn

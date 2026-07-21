@@ -1,0 +1,4 @@
+{
+  "_comment": "SUPPLY-001: accepted dependency advisories. Each entry suppresses a finding from the CI dependency-audit gate (scripts/security/dependency-audit.mjs). Add an entry ONLY with a documented reason and a review date; re-evaluate on each audit. `id` matches an advisory URL, GHSA/CVE id, or a package name to accept all of its advisories.",
+  "advisories": []
+}
