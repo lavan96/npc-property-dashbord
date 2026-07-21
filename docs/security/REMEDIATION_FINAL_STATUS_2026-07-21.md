@@ -38,7 +38,7 @@ Both were exploitable with the publishable anon key (which ships in the public b
 | Advisor | Count | Disposition |
 |---------|-------|-------------|
 | rls_policy_always_true | 80 | Policy *shape* lint — exploitable write/read paths already closed by grant revokes; drop the now-moot permissive policies for cosmetic cleanup. |
-| anon/authenticated_security_definer_function_executable | 116 | Phase 7 §12.4 follow-up: revoke EXECUTE from anon/authenticated on privileged SECURITY DEFINER functions after per-function frontend-RPC review. |
+| anon/authenticated_security_definer_function_executable | 116 → **9** | ✅ Closed (DB-004, `20260721180000`). EXECUTE revoked from PUBLIC/anon/authenticated on all privileged SECURITY DEFINER functions except a reviewed keep-list (5 frontend RPCs + 4 RLS-policy helpers); service_role retains EXECUTE. |
 | public_bucket_allows_listing | 2 | `branding-assets`, `lead-magnets` — intentionally public. |
 | extension_in_public / materialized_view_in_api | 3 | Hygiene; low risk. |
 | vulnerable_postgres_version | 1 | **Owner action**: Postgres security upgrade (Supabase dashboard). |
@@ -46,8 +46,23 @@ Both were exploitable with the publishable anon key (which ships in the public b
 
 Advisor: https://supabase.com/docs/guides/database/database-linter
 
+## Follow-up backlog items closed after final status
+
+- **DB-004** — SECURITY DEFINER `EXECUTE` tightening: done (`20260721180000`), 116 → 9.
+- **SUPPLY-001** — supply-chain gate: CI `supply-chain` job runs a dependency
+  vulnerability gate (`scripts/security/dependency-audit.mjs`, blocks unaccepted
+  criticals, allowlist-configurable) and publishes a CycloneDX SBOM artifact. The
+  gate surfaced and fixed a real critical (`jspdf` <=4.2.0 → ^4.2.1; golden-render
+  byte-stability verified unchanged).
+- **OPS-001** — operational runbooks: `docs/security/runbooks/` (incident
+  response + key/secret rotation, with the project's real secret inventory and
+  auth model).
+
 ## Remaining work (assurance phase — owner-run)
 
 - **Independent penetration test + launch-gate sign-off** (Phase 13).
 - **Platform settings**: Postgres upgrade; enable Auth leaked-password protection.
-- **Optional further hardening**: SECURITY DEFINER `EXECUTE`-grant tightening (116 functions, needs per-function RPC review); Phase 5 cookie-only sessions + MFA/step-up; drop now-moot always-true policies; ownership-predicate SELECT scoping if portal users later get a dedicated DB role.
+- **Optional further hardening**: Phase 5 cookie-only sessions + MFA/step-up;
+  drop now-moot always-true policies; ownership-predicate SELECT scoping if portal
+  users later get a dedicated DB role; remediate remaining high/moderate
+  dependency advisories (now visible via the SUPPLY-001 gate).
