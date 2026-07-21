@@ -3,6 +3,10 @@ import { verifyPassword, isLegacyPassword, hashPassword } from "../_shared/passw
 import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
 import { generateSupabaseJWT } from "../_shared/jwt.ts"
 
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -27,8 +31,17 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify Turnstile CAPTCHA token
+    // Verify Turnstile CAPTCHA token.
+    // ABUSE-002: with REQUIRE_TURNSTILE=true the login fails closed when the
+    // secret is missing instead of silently skipping CAPTCHA.
     const turnstileSecret = Deno.env.get('TURNSTILE_SECRET_KEY')
+    if (!turnstileSecret && Deno.env.get('REQUIRE_TURNSTILE') === 'true') {
+      console.error('TURNSTILE_SECRET_KEY missing while REQUIRE_TURNSTILE=true — failing closed')
+      return new Response(
+        JSON.stringify({ error: 'Security verification is unavailable. Please try again later.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     if (turnstileSecret) {
       if (!turnstile_token) {
         return new Response(
@@ -66,9 +79,20 @@ Deno.serve(async (req) => {
       .single()
 
     if (userError || !user) {
+      // Timing normalization: hash a dummy password so unknown accounts take
+      // roughly as long as wrong-password attempts (Phase 6 / 11.4).
+      await verifyPassword(password, '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy').catch(() => {});
       return new Response(
         JSON.stringify({ error: 'Invalid username or password' }), 
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Lockout check (ABUSE-001 / F-05: parity with the finance portal)
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      return new Response(
+        JSON.stringify({ error: 'Too many failed attempts. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -77,6 +101,15 @@ Deno.serve(async (req) => {
     
     if (!isValid) {
       console.log(`Login failed for user ${username}: incorrect password`);
+      const newAttempts = (user.failed_login_attempts || 0) + 1;
+      const updates: Record<string, unknown> = { failed_login_attempts: newAttempts };
+      if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+        const lockUntil = new Date();
+        lockUntil.setMinutes(lockUntil.getMinutes() + LOCKOUT_MINUTES);
+        updates.locked_until = lockUntil.toISOString();
+        updates.failed_login_attempts = 0;
+      }
+      await supabase.from('custom_users').update(updates).eq('id', user.id);
       return new Response(
         JSON.stringify({ error: 'Invalid username or password' }), 
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -98,10 +131,10 @@ Deno.serve(async (req) => {
 
     console.log(`Login successful for user ${username}`);
 
-    // Update last_login_at timestamp
+    // Update last_login_at and clear lockout counters
     await supabase
       .from('custom_users')
-      .update({ last_login_at: new Date().toISOString() })
+      .update({ last_login_at: new Date().toISOString(), failed_login_attempts: 0, locked_until: null })
       .eq('id', user.id);
 
     // Generate session token

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { generateOtp, hashResetToken } from "../_shared/resetTokens.ts"
 import { getBrandConfig } from "../_shared/brand-config.ts"
 
 Deno.serve(async (req) => {
@@ -42,15 +43,16 @@ Deno.serve(async (req) => {
     }
 
     // Generate 6-digit OTP
-    const resetToken = String(Math.floor(100000 + Math.random() * 900000));
+    const resetToken = generateOtp();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
     await supabase
       .from('finance_portal_users')
       .update({
-        reset_token: resetToken,
+        reset_token: await hashResetToken(resetToken),
         reset_token_expires_at: expiresAt.toISOString(),
+        reset_token_attempts: 0,
       })
       .eq('id', portalUser.id)
 
@@ -88,7 +90,8 @@ Deno.serve(async (req) => {
         console.error('[finance-portal-forgot-password] Email send error:', err);
       }
     } else {
-      console.warn(`[finance-portal-forgot-password] RESEND_API_KEY not configured. OTP for ${normalizedEmail}: ${resetToken}`)
+      // SECURITY: never log the OTP itself.
+      console.warn('[finance-portal-forgot-password] RESEND_API_KEY not configured - OTP generated but email not sent')
     }
 
     await supabase.from('finance_portal_activity_log').insert({

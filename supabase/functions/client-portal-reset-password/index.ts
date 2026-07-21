@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { hashPassword } from "../_shared/password.ts"
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { verifyResetToken, MAX_RESET_ATTEMPTS } from "../_shared/resetTokens.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -26,6 +27,49 @@ Deno.serve(async (req) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    /**
+     * Load the portal user and verify the OTP with attempt limiting
+     * (ABUSE-003): failed attempts increment a counter; once the limit is
+     * reached the token is invalidated and the caller must request a new one.
+     * OTP comparison supports hashed-at-rest tokens with legacy plaintext
+     * dual-read during the migration window.
+     */
+    const checkOtp = async (): Promise<{ ok: boolean; userId?: string; error?: string }> => {
+      const { data: portalUser } = await supabase
+        .from('client_portal_users')
+        .select('id, password_reset_token, password_reset_expires_at, password_reset_attempts')
+        .eq('email', normalizedEmail)
+        .maybeSingle()
+
+      if (!portalUser || !portalUser.password_reset_token) {
+        return { ok: false, error: 'Invalid code' }
+      }
+
+      if ((portalUser.password_reset_attempts || 0) >= MAX_RESET_ATTEMPTS) {
+        // Too many attempts: burn the token
+        await supabase
+          .from('client_portal_users')
+          .update({ password_reset_token: null, password_reset_expires_at: null })
+          .eq('id', portalUser.id)
+        return { ok: false, error: 'Too many attempts. Please request a new code.' }
+      }
+
+      if (new Date(portalUser.password_reset_expires_at) < new Date()) {
+        return { ok: false, error: 'Code has expired. Please request a new one.' }
+      }
+
+      const valid = await verifyResetToken(portalUser.password_reset_token, otp)
+      if (!valid) {
+        await supabase
+          .from('client_portal_users')
+          .update({ password_reset_attempts: (portalUser.password_reset_attempts || 0) + 1 })
+          .eq('id', portalUser.id)
+        return { ok: false, error: 'Invalid code' }
+      }
+
+      return { ok: true, userId: portalUser.id }
+    }
+
     if (action === 'verify_otp') {
       if (!otp) {
         return new Response(
@@ -34,22 +78,10 @@ Deno.serve(async (req) => {
         )
       }
 
-      const { data: portalUser } = await supabase
-        .from('client_portal_users')
-        .select('id, password_reset_token, password_reset_expires_at')
-        .eq('email', normalizedEmail)
-        .maybeSingle()
-
-      if (!portalUser || portalUser.password_reset_token !== otp) {
+      const result = await checkOtp()
+      if (!result.ok) {
         return new Response(
-          JSON.stringify({ error: 'Invalid code', success: false }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      if (new Date(portalUser.password_reset_expires_at) < new Date()) {
-        return new Response(
-          JSON.stringify({ error: 'Code has expired. Please request a new one.', success: false }),
+          JSON.stringify({ error: result.error, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -76,27 +108,16 @@ Deno.serve(async (req) => {
         )
       }
 
-      const { data: portalUser } = await supabase
-        .from('client_portal_users')
-        .select('id, password_reset_token, password_reset_expires_at')
-        .eq('email', normalizedEmail)
-        .maybeSingle()
-
-      if (!portalUser || portalUser.password_reset_token !== otp) {
+      const result = await checkOtp()
+      if (!result.ok) {
         return new Response(
-          JSON.stringify({ error: 'Invalid code', success: false }),
+          JSON.stringify({ error: result.error, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      if (new Date(portalUser.password_reset_expires_at) < new Date()) {
-        return new Response(
-          JSON.stringify({ error: 'Code has expired', success: false }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      // Hash new password and update
+      // Hash new password, consume the token atomically-enough (token is
+      // cleared in the same update as the password change)
       const hashedPassword = await hashPassword(new_password);
       await supabase
         .from('client_portal_users')
@@ -104,14 +125,17 @@ Deno.serve(async (req) => {
           password_hash: hashedPassword,
           password_reset_token: null,
           password_reset_expires_at: null,
+          password_reset_attempts: 0,
+          failed_login_attempts: 0,
+          locked_until: null,
         })
-        .eq('id', portalUser.id)
+        .eq('id', result.userId)
 
       // Invalidate all existing sessions for security
       await supabase
         .from('client_portal_sessions')
         .delete()
-        .eq('user_id', portalUser.id)
+        .eq('user_id', result.userId)
 
       return new Response(
         JSON.stringify({ success: true }),

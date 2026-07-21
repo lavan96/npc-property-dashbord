@@ -56,6 +56,10 @@ ALTER TABLE public.client_portal_users
 ALTER TABLE public.password_reset_tokens
   ADD COLUMN IF NOT EXISTS attempts integer NOT NULL DEFAULT 0;
 
+-- Finance portal OTP reset attempt limiting
+ALTER TABLE public.finance_portal_users
+  ADD COLUMN IF NOT EXISTS reset_token_attempts integer NOT NULL DEFAULT 0;
+
 -- Owner binding for synced emails (personal mailbox isolation)
 ALTER TABLE public.email_copilot_emails
   ADD COLUMN IF NOT EXISTS owner_user_id uuid;

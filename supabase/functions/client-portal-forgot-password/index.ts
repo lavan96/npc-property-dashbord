@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { generateOtp, hashResetToken } from "../_shared/resetTokens.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -42,17 +43,18 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Generate reset token (6-digit OTP)
-    const resetToken = String(Math.floor(100000 + Math.random() * 900000));
+    // Generate reset token (6-digit OTP, crypto-random) and store only its
+    // hash (ABUSE-003). Attempt counter resets with each new token.
+    const resetToken = generateOtp();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 min expiry
 
-    // Store reset token
     await supabase
       .from('client_portal_users')
       .update({
-        password_reset_token: resetToken,
-        password_reset_expires_at: expiresAt.toISOString()
+        password_reset_token: await hashResetToken(resetToken),
+        password_reset_expires_at: expiresAt.toISOString(),
+        password_reset_attempts: 0
       })
       .eq('id', portalUser.id)
 
@@ -95,8 +97,8 @@ Deno.serve(async (req) => {
         console.error('Failed to send reset email:', emailErr);
       }
     } else {
+      // SECURITY: never log the token/OTP itself.
       console.warn('RESEND_API_KEY not configured - reset token generated but email not sent');
-      console.log(`Reset token for ${normalizedEmail}: ${resetToken}`);
     }
 
     return new Response(

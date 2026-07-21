@@ -28,8 +28,17 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Optional Turnstile verification
+    // Turnstile verification.
+    // ABUSE-002: with REQUIRE_TURNSTILE=true the login fails closed when the
+    // secret is missing instead of silently skipping CAPTCHA.
     const turnstileSecret = Deno.env.get('TURNSTILE_SECRET_KEY')
+    if (!turnstileSecret && Deno.env.get('REQUIRE_TURNSTILE') === 'true') {
+      console.error('TURNSTILE_SECRET_KEY missing while REQUIRE_TURNSTILE=true — failing closed')
+      return new Response(
+        JSON.stringify({ error: 'Security verification is unavailable. Please try again later.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
     if (turnstileSecret) {
       if (!turnstile_token) {
         return new Response(
