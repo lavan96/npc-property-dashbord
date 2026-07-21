@@ -51,6 +51,46 @@ async function resolveMicrosoftEmail(
   return data?.microsoft_email || data?.email || null;
 }
 
+// ── Mailbox ownership guard ──────────────────────────────────────────
+// SECURITY: A user may only bind their own account email as their Microsoft
+// mailbox. Without this, any authenticated user could point the app-only
+// Graph token at another tenant user's mailbox / calendar.
+async function loadCallerAccount(
+  supabase: any,
+  userId: string,
+): Promise<{ email: string | null; role: string | null } | null> {
+  if (!userId || userId === 'service_role') return null;
+  const { data } = await supabase
+    .from('custom_users')
+    .select('email, role')
+    .eq('id', userId)
+    .maybeSingle();
+  return data ? { email: data.email || null, role: data.role || null } : null;
+}
+
+function normaliseEmail(v: string | null | undefined): string {
+  return (v || '').trim().toLowerCase();
+}
+
+function assertMailboxOwnership(
+  requested: string | null | undefined,
+  account: { email: string | null; role: string | null } | null,
+): { ok: true } | { ok: false; error: string } {
+  const req = normaliseEmail(requested);
+  if (!req) return { ok: true }; // clearing is always allowed
+  if (!account) return { ok: false, error: 'User context required' };
+  if (account.role === 'superadmin') return { ok: true };
+  const own = normaliseEmail(account.email);
+  if (!own) return { ok: false, error: 'Your account has no email on file — contact an administrator.' };
+  if (req !== own) {
+    return {
+      ok: false,
+      error: `You can only connect your own mailbox (${account.email}). Ask a superadmin to link a different address on your behalf.`,
+    };
+  }
+  return { ok: true };
+}
+
 // ── Action handlers ──────────────────────────────────────────────────
 
 async function listEvents(
