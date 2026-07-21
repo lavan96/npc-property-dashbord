@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 import type { Json } from '@/integrations/supabase/types';
 import {
   BRAND_THEME_STORAGE_KEY,
@@ -140,6 +141,10 @@ function applyResolvedTheme(themeMode: ThemeMode, resolvedTokens: ReturnType<typ
 }
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
+  // Branding is READ anonymously (login/portal pages before auth), but WRITES
+  // must carry the staff JWT so the deny-by-default RLS (Phase 7) can gate
+  // them to admins. Reads stay on the anon client below.
+  const { supabase: authedSupabase } = useAuthenticatedSupabase();
   const [settings, setSettings] = useState<WhiteLabelSettings>(defaultBrandConfig);
   const [isLoading, setIsLoading] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => getInitialThemeMode(defaultBrandConfig.darkModeDefault));
@@ -280,7 +285,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
       const saveToSupabase = async () => {
         try {
-          const { error } = await supabase
+          const { error } = await authedSupabase
             .from('whitelabel_settings')
             .update({
               auth_logo: updated.authLogo,

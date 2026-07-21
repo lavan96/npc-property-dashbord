@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Building2, Phone, Mail, Globe, MapPin, FileText, Save, Loader2, Type } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 import { toast } from 'sonner';
 
 interface ContactDetails {
@@ -27,6 +28,8 @@ interface ProfessionalDisclaimer {
 }
 
 export function GlobalReportSettings() {
+  // Writes carry the staff JWT so Phase 7 RLS can gate them to admins.
+  const { supabase: authedSupabase } = useAuthenticatedSupabase();
   const [contactDetails, setContactDetails] = useState<ContactDetails>({
     company_name: '',
     phone: '',
@@ -76,7 +79,7 @@ export function GlobalReportSettings() {
     setIsSaving(true);
     try {
       // Update contact details
-      const { error: contactError } = await supabase
+      const { error: contactError } = await authedSupabase
         .from('global_report_settings')
         .update({ setting_value: JSON.parse(JSON.stringify(contactDetails)) })
         .eq('setting_key', 'contact_details');
@@ -84,7 +87,7 @@ export function GlobalReportSettings() {
       if (contactError) throw contactError;
 
       // Update disclaimer
-      const { error: disclaimerError } = await supabase
+      const { error: disclaimerError } = await authedSupabase
         .from('global_report_settings')
         .update({ setting_value: JSON.parse(JSON.stringify(disclaimer)) })
         .eq('setting_key', 'professional_disclaimer');

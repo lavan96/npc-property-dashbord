@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Component as ComponentIcon, Plus, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 import { useAuth } from '@/hooks/useAuth';
 import type { Block, Page, ReportTemplate } from '@/lib/reportTemplate/templateSchema';
 
@@ -43,6 +44,8 @@ interface Props {
 
 export function ComponentLibraryDialog({ open, onOpenChange, template, activePage, selectedBlockId, onInsertBlocks }: Props) {
   const { user } = useAuth();
+  // Component-library writes carry the staff JWT for Phase 7 RLS.
+  const { supabase: authedSupabase } = useAuthenticatedSupabase();
   const [tab, setTab] = useState<'browse'|'save'>('browse');
   const [rows, setRows] = useState<TplComponent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,7 +92,7 @@ export function ComponentLibraryDialog({ open, onOpenChange, template, activePag
       blocks = activePage.blocks;
     }
     setSaving(true);
-    const { error } = await (supabase as any).from('template_components').insert({
+    const { error } = await (authedSupabase as any).from('template_components').insert({
       name: name.trim(),
       description: description.trim() || null,
       tags: tagsText.split(',').map(t => t.trim()).filter(Boolean),
@@ -116,7 +119,7 @@ export function ComponentLibraryDialog({ open, onOpenChange, template, activePag
   }
 
   async function handleDelete(id: string) {
-    const { error } = await (supabase as any).from('template_components').delete().eq('id', id);
+    const { error } = await (authedSupabase as any).from('template_components').delete().eq('id', id);
     if (error) { toast.error(error.message); return; }
     toast.success('Deleted');
     load();

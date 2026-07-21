@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,8 @@ export function TemplateCommentsPanel({
   onRowsChange,
   onJumpToAnchor,
 }: TemplateCommentsPanelProps) {
+  // Comment writes carry the staff JWT for Phase 7 RLS (author-scoped).
+  const { supabase: authedSupabase } = useAuthenticatedSupabase();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState('');
@@ -112,7 +115,7 @@ export function TemplateCommentsPanel({
         overlay_id: parent?.overlay_id ?? null,
       };
 
-      const { error } = await supabase.from('template_comments').insert({
+      const { error } = await authedSupabase.from('template_comments').insert({
         template_id: templateId,
         thread_id: threadId,
         parent_id: parent?.id ?? null,
@@ -136,7 +139,7 @@ export function TemplateCommentsPanel({
     const root = thread[0];
     const target = !root.resolved;
     const ids = thread.map(r => r.id);
-    await supabase
+    await authedSupabase
       .from('template_comments')
       .update({
         resolved: target,
@@ -147,7 +150,7 @@ export function TemplateCommentsPanel({
   };
 
   const remove = async (id: string) => {
-    await supabase.from('template_comments').delete().eq('id', id);
+    await authedSupabase.from('template_comments').delete().eq('id', id);
   };
 
   return (
@@ -215,7 +218,7 @@ export function TemplateCommentsPanel({
                     </Button>
                     <ReplyBox onSubmit={async (body) => {
                       if (!body.trim()) return;
-                      await supabase.from('template_comments').insert({
+                      await authedSupabase.from('template_comments').insert({
                         template_id: templateId,
                         thread_id: root.thread_id,
                         parent_id: root.id,
