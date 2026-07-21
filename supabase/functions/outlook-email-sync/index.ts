@@ -1,6 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { isSuperadmin, logSecurityEvent } from "../_shared/auth_v2.ts";
+import { checkPermission } from "../_shared/permissions.ts";
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const MICROSOFT_CLIENT_ID = Deno.env.get('MICROSOFT_CLIENT_ID');
@@ -413,12 +415,49 @@ Deno.serve(async (req) => {
     // Determine mailbox source for tagging emails
     const mailboxSource = requestedMailbox ? 'personal' : 'admin';
 
+    // SECURITY (Phase 0 containment): syncing the shared admin mailbox writes
+    // its contents into the shared inbox — gate it by the email_copilot module
+    // permission matrix (superadmins and service calls bypass inside
+    // checkPermission) instead of letting any authenticated user trigger it.
+    if (mailboxSource === 'admin' && action !== 'clear' && userId && userId !== 'service_role') {
+      const perm = await checkPermission(supabase, userId, 'email_copilot_emails', 'create', 'session');
+      if (!perm.allowed) {
+        await logSecurityEvent(supabase, {
+          action: 'email.sync_admin_mailbox', decision: 'deny', reason_code: 'module_permission_denied',
+          actor_type: 'human', actor_id: userId,
+        });
+        return new Response(
+          JSON.stringify({ error: 'You do not have permission to sync the shared mailbox' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}, Mailbox: ${targetMailbox}, Source: ${mailboxSource}`);
 
     // Handle clear action
     if (action === 'clear') {
+      // SECURITY (MAIL-004 / Phase 0 containment): clearing deletes EVERY
+      // synced email and attachment for all users — superadmin maintenance
+      // only. Internal service calls are also rejected: this is a human,
+      // deliberate operation.
+      const clearAllowed = userId && userId !== 'service_role' && (await isSuperadmin(supabase, userId));
+      if (!clearAllowed) {
+        await logSecurityEvent(supabase, {
+          action: 'email.clear', decision: 'deny', reason_code: 'superadmin_required',
+          actor_type: userId === 'service_role' ? 'internal_service' : 'human',
+          actor_id: userId,
+        });
+        return new Response(
+          JSON.stringify({ error: 'Clearing synced emails requires superadmin' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      await logSecurityEvent(supabase, {
+        action: 'email.clear', decision: 'allow', actor_type: 'human', actor_id: userId,
+      });
       console.log('[Outlook Sync] Clearing all emails from database...');
-      
+
       // First, get all email IDs to delete their attachments
       const { data: emails } = await supabase
         .from('email_copilot_emails')
@@ -531,7 +570,10 @@ Deno.serve(async (req) => {
             attachments: [],
             mailbox_source: mailboxSource,
             folder: effectiveFolder,
-            conversation_id: email.conversationId || null
+            conversation_id: email.conversationId || null,
+            // Bind personal-mailbox emails to the syncing user (MAIL-003)
+            owner_user_id: mailboxSource === 'personal' && userId !== 'service_role' ? userId : null,
+            created_by: userId !== 'service_role' ? userId : null
           })
           .select('id')
           .single();
