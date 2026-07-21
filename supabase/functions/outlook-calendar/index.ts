@@ -545,10 +545,16 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'setMicrosoftEmail') {
-      // Allow user to update their own microsoft_email
+      // Allow user to update their own microsoft_email — must equal their account email.
       const { microsoftEmail } = body;
       if (!userId || userId === 'service_role') {
         return jsonResponse({ error: 'User context required' }, corsHeaders, 400);
+      }
+      const caller = await loadCallerAccount(supabase, userId);
+      const ownershipCheck = assertMailboxOwnership(microsoftEmail, caller);
+      if (!ownershipCheck.ok) {
+        console.log(`[outlook-calendar] Rejected setMicrosoftEmail for ${userId}: ${ownershipCheck.error}`);
+        return jsonResponse({ error: ownershipCheck.error }, corsHeaders, 403);
       }
       const { error: updateError } = await supabase
         .from('custom_users')
