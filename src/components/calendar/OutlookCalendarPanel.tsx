@@ -86,6 +86,8 @@ export function OutlookCalendarPanel({
   const [showTeam, setShowTeam] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [accountRole, setAccountRole] = useState<string | null>(null);
 
   // Event creation form
   const [newSubject, setNewSubject] = useState('');
@@ -107,6 +109,28 @@ export function OutlookCalendarPanel({
       if (email) setEmailInput(email);
     });
   }, []);
+
+  // Pull the caller's account email so we can lock the mailbox input to it —
+  // mirrors the server-side ownership guard in outlook-calendar.setMicrosoftEmail.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+        const { data } = await invokeSecureFunction('admin-user-management', { action: 'get_own_profile' });
+        if (cancelled) return;
+        if (data?.success) {
+          setAccountEmail(data.user?.email || null);
+          setAccountRole(data.user?.role || null);
+          if (data.user?.email && data.user?.role !== 'superadmin') {
+            setEmailInput(data.user.email);
+          }
+        }
+      } catch { /* non-fatal */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   useEffect(() => {
     if (selectedDate) {
