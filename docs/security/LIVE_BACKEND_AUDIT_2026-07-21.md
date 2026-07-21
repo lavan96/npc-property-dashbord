@@ -77,8 +77,13 @@ proxy will do, but direct URL access to already-public objects remains.
 Per the remediation plan §21.2, deploy in this order:
 
 1. **Migration `20260721000000`** (additive: nonce/security-event tables,
-   lockout + attempt columns, `owner_user_id` + backfill). Safe to apply
-   ahead of function deploys.
+   lockout + attempt columns, `owner_user_id` + backfill).
+   ✅ **APPLIED to production 2026-07-21** (as
+   `security_phase1_auth_infrastructure`), together with
+   `20260721000002_personal_email_owner_backfill` which attributed 111 of
+   340 legacy personal-mailbox emails to their owners by exact mailbox
+   match (10 ambiguous and 219 unmatched rows remain shared, preserving
+   current visibility until the next attribution pass).
 2. **Edge functions** (auth.ts fix + hardened functions):
    `secure-storage`, `get-email-data`, `outlook-email-sync`,
    `send-email-reply`, `custom-auth-login`, `client-portal-login`,
