@@ -3,6 +3,7 @@ import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/b
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
 import { isSuperadmin, logSecurityEvent } from "../_shared/auth_v2.ts";
 import { checkPermission } from "../_shared/permissions.ts";
+import { insertTargetedNotification } from "../_shared/notify.ts";
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const MICROSOFT_CLIENT_ID = Deno.env.get('MICROSOFT_CLIENT_ID');
@@ -624,19 +625,24 @@ Deno.serve(async (req) => {
             }
           }
 
-        // Create bell notification for new inbox emails (never for self-sent copies)
+        // Create bell notification for new inbox emails (never for self-sent copies).
+        // Target the recipient explicitly instead of broadcasting: a PERSONAL
+        // mailbox sync notifies only its owner; a central/admin sync notifies
+        // users who can view the email_copilot module (+ superadmins).
         if (effectiveFolder === 'inbox' && insertedEmail) {
           const senderName = (email.from?.emailAddress?.name || email.from?.emailAddress?.address || 'Unknown').split('<')[0].trim();
           const subject = email.subject || 'No subject';
-          await supabase
-            .from('notifications')
-            .insert({
-              type: 'email_received',
-              title: `Email from ${senderName}`,
-              message: subject,
-              entity_id: insertedEmail.id,
-              read: false
-            });
+          const notification = {
+            type: 'email_received',
+            title: `Email from ${senderName}`,
+            message: subject,
+            entity_id: insertedEmail.id,
+          };
+          if (mailboxSource === 'personal' && userId && userId !== 'service_role') {
+            await insertTargetedNotification(supabase, { targetUserId: userId, notification });
+          } else {
+            await insertTargetedNotification(supabase, { moduleKey: 'email_copilot', notification });
+          }
         }
 
         insertedCount++;

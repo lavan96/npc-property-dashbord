@@ -37,15 +37,25 @@ async function sha256Hex(data: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+const MIN_PEPPER_LENGTH = 16;
+
 function pepper(): string {
-  // Optional server-side pepper; hashing alone already protects tokens at
-  // rest against database reads.
-  return Deno.env.get('RESET_TOKEN_PEPPER') || '';
+  return (Deno.env.get('RESET_TOKEN_PEPPER') || '').trim();
 }
 
-/** Hash a token for storage. */
+/**
+ * Hash a token for storage. REQUIRES a high-entropy RESET_TOKEN_PEPPER: a
+ * 6-digit OTP has only ~1e6 possible values, so an unpeppered SHA-256 is
+ * trivially reversible from a single database read. When the pepper is missing
+ * or too short we FAIL CLOSED (throw) rather than persist a weakly-hashed
+ * token. Configure RESET_TOKEN_PEPPER (>=32 random chars recommended).
+ */
 export async function hashResetToken(token: string): Promise<string> {
-  return HASH_PREFIX + (await sha256Hex(token + pepper()));
+  const p = pepper();
+  if (p.length < MIN_PEPPER_LENGTH) {
+    throw new Error('RESET_TOKEN_PEPPER is not configured (min 16 chars) — refusing to issue a weakly-hashed reset token.');
+  }
+  return HASH_PREFIX + (await sha256Hex(token + p));
 }
 
 function constantTimeEqual(a: string, b: string): boolean {

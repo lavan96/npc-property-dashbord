@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { verifyInternal, logSecurityEvent } from "../_shared/auth_v2.ts";
+import { insertTargetedNotification } from "../_shared/notify.ts";
 
 /**
  * Background email sync cron function.
@@ -325,17 +326,19 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Create bell notification for new inbox emails
+      // Create bell notification for new inbox emails. This is the CENTRAL
+      // mailbox, so target users who can view the email_copilot module (+
+      // superadmins) rather than broadcasting sender/subject to all staff.
       const senderName = (email.from?.emailAddress?.name || email.from?.emailAddress?.address || 'Unknown').split('<')[0].trim();
-      await supabase
-        .from('notifications')
-        .insert({
+      await insertTargetedNotification(supabase, {
+        moduleKey: 'email_copilot',
+        notification: {
           type: 'email_received',
           title: `Email from ${senderName}`,
           message: email.subject || 'No subject',
           entity_id: insertedEmail.id,
-          read: false
-        });
+        },
+      });
 
       insertedCount++;
     }

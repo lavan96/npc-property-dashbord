@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { logSecurityEvent } from '../_shared/auth_v2.ts';
 import { checkPermission } from '../_shared/permissions.ts';
+import { insertTargetedNotification } from '../_shared/notify.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const clientId = Deno.env.get('MICROSOFT_CLIENT_ID');
@@ -343,6 +344,25 @@ Deno.serve(async (req) => {
 
     console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Source: ${source || 'user'}, Attachments: ${attachments?.length || 0}`);
 
+    // Outbound attachment ceiling (email send policy): cap count and aggregate
+    // decoded size before shipping to Graph. Prevents a single request from
+    // pushing very large / many attachments through the shared mailbox.
+    if (attachments && attachments.length > 0) {
+      const MAX_ATTACHMENTS = 20;
+      const MAX_TOTAL_BYTES = 25 * 1024 * 1024; // 25 MB aggregate (Graph simple-send limit)
+      if (attachments.length > MAX_ATTACHMENTS) {
+        return new Response(JSON.stringify({ success: false, error: `Too many attachments (max ${MAX_ATTACHMENTS})` }), {
+          status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const totalBytes = attachments.reduce((sum, a) => sum + Math.floor(((a.contentBytes || '').length) * 3 / 4), 0);
+      if (totalBytes > MAX_TOTAL_BYTES) {
+        return new Response(JSON.stringify({ success: false, error: 'Attachments exceed the 25 MB total size limit' }), {
+          status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Get access token and signature in parallel
     const [accessToken, signature] = await Promise.all([
       getAccessToken(),
@@ -518,18 +538,22 @@ Deno.serve(async (req) => {
       // Don't throw - email was still sent successfully
     }
 
-    // Add notification for email sent
+    // Add notification for email sent — target the sender (or, for
+    // service/agent sends, the email_copilot module viewers) instead of
+    // broadcasting the recipient + subject to every authenticated user.
     if (!dbError) {
       const recipientName = to.split('@')[0];
-      await supabase
-        .from('notifications')
-        .insert({
-          type: 'email_reply_sent',
-          title: 'Email Sent',
-          message: `Reply sent to ${recipientName}: ${subject}`,
-          entity_id: sentReply?.id || null,
-          read: false
-        });
+      const notification = {
+        type: 'email_reply_sent',
+        title: 'Email Sent',
+        message: `Reply sent to ${recipientName}: ${subject}`,
+        entity_id: sentReply?.id || null,
+      };
+      if (userId && userId !== 'service_role') {
+        await insertTargetedNotification(supabase, { targetUserId: userId, notification });
+      } else {
+        await insertTargetedNotification(supabase, { moduleKey: 'email_copilot', notification });
+      }
     }
 
     // ─── Persist outbound email in GHL conversation thread ───
