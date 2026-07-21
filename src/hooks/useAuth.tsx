@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { logActivity } from '@/hooks/useActivityLogger';
 import { resetAuthFailures } from '@/lib/secureInvoke';
 import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import {
   registerCurrentDevice,
@@ -186,6 +187,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Super admin check
   const isSuperadmin = roles.includes('superadmin') || user?.role === 'super_admin';
   const isAdmin = roles.includes('admin') || isSuperadmin || user?.role === 'sub_admin';
+
+  // Authenticate the shared realtime connection with the staff JWT so
+  // postgres_changes subscriptions run as `authenticated` (Phase 7). Tables
+  // whose anon SELECT grant is revoked (report_qa_*, agent_messages,
+  // client_portal_*) only deliver realtime events to staff after this.
+  useEffect(() => {
+    try {
+      supabase.realtime.setAuth(accessToken ?? SUPABASE_ANON_KEY);
+    } catch { /* non-fatal */ }
+  }, [accessToken]);
 
   // Check for existing session on mount
   useEffect(() => {
