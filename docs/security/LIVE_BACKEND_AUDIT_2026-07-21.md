@@ -111,16 +111,41 @@ plan forbids returning to).
 
 **Applied live:**
 - ✅ Additive migration `20260721000000` + `20260721000002` owner backfill (see §5.1).
-- ✅ `custom-auth-login` redeployed via MCP → **version 928**, `verify_jwt=false`.
-  Smoke-tested: missing fields → 400; bogus login → 400 "Security verification
-  required" (confirms new code path live and `TURNSTILE_SECRET_KEY` is set in
-  production, so CAPTCHA is active).
 - ✅ **Critical live DB fix applied ahead of the rest:** dropped the
   `password_reset_tokens` `{public}` `ALL qual=true` policy
   (`security_phase7_drop_password_reset_public_policy`). Verified: 0 public
   policies remain (4 service_role policies intact). Plaintext-OTP exposure to
   anon/authenticated PostgREST callers is closed. This statement is
   idempotent-compatible with the full `20260721000001` migration.
+- ✅ **Six hardened edge functions redeployed via MCP** (all smoke-tested;
+  each preserved its prior `verify_jwt` setting):
+  | function | version | finding | smoke test |
+  |----------|---------|---------|------------|
+  | `custom-auth-login` | 928 | F-05 lockout + F-01 auth.ts | 400 missing / 400 turnstile ✓ |
+  | `secure-storage` | 582 | F-02 Critical bucket policy | anon → 401 ✓ |
+  | `get-email-data` | 474 | F-03 Critical email IDOR | anon → 401 ✓ |
+  | `client-portal-reset-password` | 390 | F-06 hashed OTP + attempt limit | 400 email required ✓ |
+  | `finance-portal-login` | 243 | F-05 lockout | 400 missing ✓ |
+  | `finance-portal-reset-password` | 243 | F-06 hashed OTP + attempt limit | deployed ✓ |
+
+  The redeployed `custom-auth-login` smoke test confirmed `TURNSTILE_SECRET_KEY`
+  is set in production (CAPTCHA active).
+
+  Note: the deployed reset-password functions dual-read plaintext tokens, so
+  they keep working while the *forgot-password* generators still write
+  plaintext OTPs. The hashing benefit fully engages once the forgot-password
+  functions are also deployed (below).
+
+**Remaining hardened functions — deploy via CLI/Lovable pipeline (exact source, no transcription risk):**
+- `outlook-email-sync` (Critical F-03: clear=superadmin, admin-sync gate, owner stamp) — ~680 lines
+- `send-email-reply` (High MAIL-005: central-mailbox send gate) — ~590 lines
+- `get-email-data` is done, but the *write* side above is not.
+- `outlook-calendar` (F-03 targetEmail guard), `admin-user-management` (role canonicalization)
+- `admin-password-reset` (F-06 hashed OTP) — pulls brand/passwordValidation deps
+- `client-portal-login` (F-05 lockout) — pulls portal email dep
+- `client-portal-forgot-password`, `finance-portal-forgot-password` (F-06: hashed token generation, no OTP logging)
+- `market-updates-ingest` (F-01 inline verify) — already committed to `main`
+- Plus the ~300-function fleet that bundles `_shared/auth.ts` for the F-01 fix.
 
 **Blocked in the current environment (needs the Lovable/CLI pipeline):**
 - ⛔ **Full edge-function fleet redeploy.** The F-01 `_shared/auth.ts` fix is
