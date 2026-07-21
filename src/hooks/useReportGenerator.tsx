@@ -10,6 +10,7 @@ import { ReportConfig } from '@/components/reports/ReportConfigModal';
 import { toast } from '@/hooks/use-toast';
 import { BarChart3, CheckCircle2, Clock3, ExternalLink, FolderOpen, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 import { invokeSecureFunction, hasActiveSession } from '@/lib/secureInvoke';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { AURORA_GOLD_PALETTE, colorAt } from '@/components/charts/kernel/palettes';
@@ -506,6 +507,9 @@ const generateChartImages = async (listings: PropertyListing[], config: ReportCo
 export function useReportGenerator() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // generated_reports / charts writes carry the staff JWT so Phase 7 RLS
+  // (TO authenticated) accepts them once anon writes are revoked.
+  const { supabase: authedSupabase } = useAuthenticatedSupabase();
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
@@ -1663,7 +1667,7 @@ export function useReportGenerator() {
         };
 
         // Store report in Supabase
-        const { data: reportData, error: reportError } = await supabase
+        const { data: reportData, error: reportError } = await authedSupabase
           .from('generated_reports')
           .insert({
             title: config.title,
@@ -1766,7 +1770,7 @@ export function useReportGenerator() {
 
           console.log('Chart records to insert:', chartRecords.length);
           
-          const { data: insertedCharts, error: chartsError } = await supabase
+          const { data: insertedCharts, error: chartsError } = await authedSupabase
             .from('charts')
             .insert(chartRecords)
             .select();
@@ -2065,7 +2069,7 @@ export function useReportGenerator() {
 
         // Update webhook status if report was stored successfully
         if (reportData) {
-          await supabase
+          await authedSupabase
             .from('generated_reports')
             .update({ webhook_sent: true })
             .eq('id', reportData.id);
