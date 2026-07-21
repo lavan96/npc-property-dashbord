@@ -460,10 +460,36 @@ Deno.serve(async (req: Request) => {
 
       const { personal_mailbox } = body;
 
+      // SECURITY: a user can only bind their own account email as their
+      // personal Microsoft mailbox. Otherwise any authenticated user could
+      // point the shared app-only Graph token at another tenant user's
+      // mailbox and read their email. Superadmins may set on behalf of others
+      // via the `update_mailbox` action, not this one.
+      const requested = (personal_mailbox || '').trim();
+      if (requested) {
+        const own = (currentUser.email || '').trim().toLowerCase();
+        if (!own) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Your account has no email on file — contact an administrator.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        if (requested.toLowerCase() !== own && currentUser.role !== 'superadmin') {
+          console.log(`[admin-user-management] Rejected update_own_mailbox for ${currentUser.username}: attempted to bind ${requested} (own=${own})`);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: `You can only connect your own mailbox (${currentUser.email}). Ask a superadmin to link a different address on your behalf.`,
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       const { error } = await supabase
         .from('custom_users')
         .update({ 
-          personal_mailbox: personal_mailbox || null,
+          personal_mailbox: requested || null,
           updated_at: new Date().toISOString() 
         })
         .eq('id', currentUser.id);

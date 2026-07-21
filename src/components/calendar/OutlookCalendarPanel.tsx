@@ -86,6 +86,8 @@ export function OutlookCalendarPanel({
   const [showTeam, setShowTeam] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [accountRole, setAccountRole] = useState<string | null>(null);
 
   // Event creation form
   const [newSubject, setNewSubject] = useState('');
@@ -107,6 +109,28 @@ export function OutlookCalendarPanel({
       if (email) setEmailInput(email);
     });
   }, []);
+
+  // Pull the caller's account email so we can lock the mailbox input to it —
+  // mirrors the server-side ownership guard in outlook-calendar.setMicrosoftEmail.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { invokeSecureFunction } = await import('@/lib/secureInvoke');
+        const { data } = await invokeSecureFunction('admin-user-management', { action: 'get_own_profile' });
+        if (cancelled) return;
+        if (data?.success) {
+          setAccountEmail(data.user?.email || null);
+          setAccountRole(data.user?.role || null);
+          if (data.user?.email && data.user?.role !== 'superadmin') {
+            setEmailInput(data.user.email);
+          }
+        }
+      } catch { /* non-fatal */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
 
   useEffect(() => {
     if (selectedDate) {
@@ -265,14 +289,19 @@ export function OutlookCalendarPanel({
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="user@yourcompany.com"
               className="h-8 text-xs"
+              disabled={!!accountEmail && accountRole !== 'superadmin'}
+              readOnly={!!accountEmail && accountRole !== 'superadmin'}
             />
             <Button size="sm" className="h-8" onClick={handleSaveEmail}>
               <Check className="h-3 w-3" />
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            This links your Outlook calendar. Events will appear as an overlay on the calendar.
+            {accountEmail && accountRole !== 'superadmin'
+              ? 'Locked to your account email for security. A superadmin can link a different address on your behalf.'
+              : 'This links your Outlook calendar. Events will appear as an overlay on the calendar.'}
           </p>
+
           <Button 
             size="sm" 
             variant="outline" 
