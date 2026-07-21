@@ -107,6 +107,35 @@ policies restores previous behaviour (do **not** re-create the
 `password_reset_tokens` public policy — that is the exploitable state the
 plan forbids returning to).
 
+## 5b. Deployment progress log — session 2 (2026-07-21, post-Lovable-publish)
+
+The app was published on Lovable. **Verification found the publish deployed the
+frontend but NOT the edge functions** — the whole fleet still carries a
+`2026-07-20 09:40 UTC` deploy timestamp, before the security merge.
+
+- ✅ **notifications + document_chunks RLS applied live** (`security_phase7_rls_notifications_document_chunks`).
+  0 public policies remain; notifications scoped to authenticated broadcast-or-own,
+  document_chunks read-only for authenticated + service-role writes. Frontend
+  compatible (`NotificationsContext` uses the JWT client; only a `TemplateList`
+  chunk-delete is affected, degrading to a harmless no-op).
+- 🔴 **Confirmed F-01 exploit live on the un-redeployed fleet, then closed:** a
+  forged `service_role` JWT (signed with a wrong secret) was **accepted** by
+  `client-portal-invite` (reached invite-creation logic — an account-takeover
+  vector). Redeployed via MCP → **v395**; forged token now → 401. The `aml-*`
+  functions and the ~10 `verify_jwt=true` functions reject forged tokens
+  independently, but an unknown subset of the remaining ~52 `verify_jwt=false`
+  functions is still exposed until the fleet is redeployed.
+- 🟡 **EmailCopilot frontend fix (PR #1042):** email writes moved to the JWT
+  client so the `email_copilot_*` RLS can be applied after republish. NOT yet
+  applied.
+- ⛔ **STILL REQUIRED (owner):** full edge-function redeploy via Lovable's
+  "deploy functions" or `supabase functions deploy`. Lovable *publish* ≠
+  function deploy. This is the top open item.
+- ⏳ **Pending after republish:** apply `email_copilot_emails` /
+  `email_copilot_sent_replies` RLS (remaining part of `20260721000001`).
+
+---
+
 ## 5a. Deployment progress log (2026-07-21)
 
 **Applied live:**
