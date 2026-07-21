@@ -446,8 +446,8 @@ const App = () => (
                 </NotificationsProvider>
               </BrowserRouter>
             </PermissionsProvider>
-          </AuthProvider>
-        </BrandProvider>
+          </BrandProvider>
+        </AuthProvider>
       </TooltipProvider>
   </QueryClientProvider>
 );
