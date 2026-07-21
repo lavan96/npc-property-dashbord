@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { hashPassword } from "../_shared/password.ts";
+import { generateOtp, hashResetToken, verifyResetToken, MAX_RESET_ATTEMPTS } from "../_shared/resetTokens.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
@@ -119,8 +120,8 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Generate 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      // Generate 6-digit OTP (crypto-random; stored hashed — ABUSE-003)
+      const otp = generateOtp();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       // Invalidate existing OTPs
@@ -135,7 +136,7 @@ Deno.serve(async (req: Request) => {
         .from('password_reset_tokens')
         .insert({
           user_id: user.id,
-          otp_code: otp,
+          otp_code: await hashResetToken(otp),
           expires_at: expiresAt.toISOString(),
         });
 
@@ -194,6 +195,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+
+    /**
+     * Fetch the newest unused, unexpired token for the user and verify the
+     * provided OTP against it with attempt limiting (ABUSE-003). Supports
+     * hashed-at-rest codes with legacy plaintext dual-read.
+     */
+    const verifyStaffOtp = async (userId: string, providedOtp: string) => {
+      const { data: token } = await supabase
+        .from('password_reset_tokens')
+        .select('*')
+        .eq('user_id', userId)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!token) return null;
+
+      if ((token.attempts || 0) >= MAX_RESET_ATTEMPTS) {
+        // Burn the token after too many attempts
+        await supabase
+          .from('password_reset_tokens')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', token.id);
+        return null;
+      }
+
+      const valid = await verifyResetToken(token.otp_code, providedOtp);
+      if (!valid) {
+        await supabase
+          .from('password_reset_tokens')
+          .update({ attempts: (token.attempts || 0) + 1 })
+          .eq('id', token.id);
+        return null;
+      }
+      return token;
+    };
+
     if (action === 'verify_otp') {
       const { username, otp } = body;
 
@@ -218,19 +258,10 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Verify OTP
-      const { data: token, error: tokenError } = await supabase
-        .from('password_reset_tokens')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('otp_code', otp)
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Verify OTP (hashed compare + attempt limit)
+      const token = await verifyStaffOtp(user.id, otp);
 
-      if (tokenError || !token) {
+      if (!token) {
         return new Response(
           JSON.stringify({ success: false, error: 'Invalid or expired OTP' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -276,19 +307,10 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Verify OTP one more time
-      const { data: token, error: tokenError } = await supabase
-        .from('password_reset_tokens')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('otp_code', otp)
-        .is('used_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Verify OTP one more time (hashed compare + attempt limit)
+      const token = await verifyStaffOtp(user.id, otp);
 
-      if (tokenError || !token) {
+      if (!token) {
         return new Response(
           JSON.stringify({ success: false, error: 'Invalid or expired OTP' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

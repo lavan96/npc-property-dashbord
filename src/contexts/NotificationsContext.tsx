@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 
 export type NotificationType = 
   | 'report_generated' 
@@ -99,8 +99,11 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const currentUserId = user?.id;
+  // Notifications RLS is scoped to authenticated users (Phase 7) — direct
+  // anon-key access is no longer permitted, so use the JWT-bearing client.
+  const { supabase } = useAuthenticatedSupabase();
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -134,13 +137,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
-  }, [currentUserId]);
+  }, [currentUserId, supabase]);
 
   // Load notifications from Supabase on mount and when user changes
   useEffect(() => {
     fetchNotifications();
     
-    // Subscribe to real-time changes
+    // Subscribe to real-time changes (RLS applies; authorize with the JWT)
+    if (accessToken) {
+      try { supabase.realtime.setAuth(accessToken); } catch { /* non-fatal */ }
+    }
     const channel = supabase
       .channel('notifications-changes')
       .on(
@@ -159,7 +165,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, supabase, accessToken]);
 
 
   const addNotification = async (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {

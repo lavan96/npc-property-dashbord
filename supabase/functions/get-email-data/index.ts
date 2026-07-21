@@ -1,8 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { isSuperadmin, logSecurityEvent } from "../_shared/auth_v2.ts";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+/**
+ * Can `userId` see a personal-mailbox email row? (MAIL-003)
+ * Owned rows: owner_user_id (preferred) or created_by (legacy attribution).
+ * Rows with no attribution at all are legacy shared data and stay visible
+ * until backfill completes.
+ */
+function ownsPersonalEmail(row: { owner_user_id?: string | null; created_by?: string | null }, userId: string): boolean {
+  if (row.owner_user_id) return row.owner_user_id === userId;
+  if (row.created_by) return row.created_by === userId;
+  return true; // unattributed legacy rows
+}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -17,10 +30,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     // Verify authentication
-    const { error: authError } = await verifyAuth(supabase, req.headers, body);
-    if (authError) {
-      return createUnauthorizedResponse(authError, corsHeaders);
+    const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
+    if (authError || !userId) {
+      return createUnauthorizedResponse(authError || 'Authentication required', corsHeaders);
     }
+    const isService = authMethod === 'service_role';
+    const superadmin = !isService && (await isSuperadmin(supabase, userId));
 
     const { action, mailbox_source, email_id } = body;
 
@@ -33,12 +48,21 @@ Deno.serve(async (req) => {
       // Step 1: fetch emails WITHOUT join, and EXCLUDE heavy jsonb columns
       // (attachments, summary) to avoid statement timeouts. Body is kept for
       // previews/search but is text — clients fetch full body via action='get'.
-      const { data: emails, error } = await supabase
+      let query = supabase
         .from('email_copilot_emails')
-        .select('id, sender, subject, body_preview, received_at, draft_reply, urgency_level, linked_property_address, linked_report_id, status, created_by, created_at, updated_at, cc_recipients, bcc_recipients, mailbox_source, to_recipients, folder, client_id, conversation_id')
+        .select('id, sender, subject, body_preview, received_at, draft_reply, urgency_level, linked_property_address, linked_report_id, status, created_by, owner_user_id, created_at, updated_at, cc_recipients, bcc_recipients, mailbox_source, to_recipients, folder, client_id, conversation_id')
         .eq('mailbox_source', mailboxFilter)
         .order('received_at', { ascending: false })
         .range(offset, offset + limit - 1);
+
+      // SECURITY (MAIL-003): personal-mailbox emails belong to the user who
+      // connected the mailbox. Non-superadmin callers only see their own
+      // (plus unattributed legacy rows until backfill completes).
+      if (mailboxFilter === 'personal' && !isService && !superadmin) {
+        query = query.or(`owner_user_id.eq.${userId},and(owner_user_id.is.null,created_by.eq.${userId}),and(owner_user_id.is.null,created_by.is.null)`);
+      }
+
+      const { data: emails, error } = await query;
 
       if (error) throw error;
 
@@ -71,7 +95,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, emails: enrichedData, hasMore: enrichedData.length === limit }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
       );
     }
 
@@ -92,9 +116,27 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
 
+      // SECURITY (MAIL-003): record-level ownership check for personal
+      // emails. Return 404 (not 403) to avoid confirming existence.
+      if (
+        data &&
+        data.mailbox_source === 'personal' &&
+        !isService && !superadmin &&
+        !ownsPersonalEmail(data, userId)
+      ) {
+        await logSecurityEvent(supabase, {
+          action: 'email.get', decision: 'deny', reason_code: 'not_owner',
+          actor_type: 'human', actor_id: userId, target_type: 'email', target_id: String(email_id),
+        });
+        return new Response(
+          JSON.stringify({ success: true, email: null }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ success: true, email: data }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
       );
     }
 
@@ -102,29 +144,36 @@ Deno.serve(async (req) => {
     if (action === 'list_replies') {
       const mailboxFilter = mailbox_source || 'admin';
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('email_copilot_sent_replies')
         .select('*')
         .eq('mailbox_source', mailboxFilter)
         .order('sent_at', { ascending: false });
 
+      if (mailboxFilter === 'personal' && !isService && !superadmin) {
+        query = query.or(`owner_user_id.eq.${userId},and(owner_user_id.is.null,created_by.eq.${userId}),and(owner_user_id.is.null,created_by.is.null)`);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
 
       return new Response(
         JSON.stringify({ success: true, replies: data || [] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
       );
     }
 
     return new Response(
-      JSON.stringify({ error: `Unknown action: ${action}` }),
+      JSON.stringify({ error: 'Unknown action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('[get-email-data] Error:', error);
+    // Generic public error; details stay in server logs (ERR-001)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

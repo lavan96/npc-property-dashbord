@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { hashPassword } from "../_shared/password.ts"
 import { createCorsHeaders } from "../_shared/auth.ts"
+import { verifyResetToken, MAX_RESET_ATTEMPTS } from "../_shared/resetTokens.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -26,6 +27,40 @@ Deno.serve(async (req) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Verify the OTP with attempt limiting (ABUSE-003). Failed attempts
+    // increment a counter; at the limit the token is invalidated. Comparison
+    // supports hashed-at-rest tokens with legacy plaintext dual-read.
+    const checkOtp = async (): Promise<{ ok: boolean; userId?: string; error?: string }> => {
+      const { data: portalUser } = await supabase
+        .from('finance_portal_users')
+        .select('id, reset_token, reset_token_expires_at, reset_token_attempts')
+        .eq('email', normalizedEmail)
+        .maybeSingle()
+
+      if (!portalUser || !portalUser.reset_token) {
+        return { ok: false, error: 'Invalid code' }
+      }
+      if ((portalUser.reset_token_attempts || 0) >= MAX_RESET_ATTEMPTS) {
+        await supabase
+          .from('finance_portal_users')
+          .update({ reset_token: null, reset_token_expires_at: null })
+          .eq('id', portalUser.id)
+        return { ok: false, error: 'Too many attempts. Please request a new code.' }
+      }
+      if (!portalUser.reset_token_expires_at || new Date(portalUser.reset_token_expires_at) < new Date()) {
+        return { ok: false, error: 'Code has expired. Please request a new one.' }
+      }
+      const valid = await verifyResetToken(portalUser.reset_token, otp)
+      if (!valid) {
+        await supabase
+          .from('finance_portal_users')
+          .update({ reset_token_attempts: (portalUser.reset_token_attempts || 0) + 1 })
+          .eq('id', portalUser.id)
+        return { ok: false, error: 'Invalid code' }
+      }
+      return { ok: true, userId: portalUser.id }
+    }
+
     if (action === 'verify_otp') {
       if (!otp) {
         return new Response(
@@ -33,21 +68,10 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      const { data: portalUser } = await supabase
-        .from('finance_portal_users')
-        .select('id, reset_token, reset_token_expires_at')
-        .eq('email', normalizedEmail)
-        .maybeSingle()
-
-      if (!portalUser || portalUser.reset_token !== otp) {
+      const result = await checkOtp()
+      if (!result.ok) {
         return new Response(
-          JSON.stringify({ error: 'Invalid code', success: false }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      if (!portalUser.reset_token_expires_at || new Date(portalUser.reset_token_expires_at) < new Date()) {
-        return new Response(
-          JSON.stringify({ error: 'Code has expired. Please request a new one.', success: false }),
+          JSON.stringify({ error: result.error, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -70,21 +94,10 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      const { data: portalUser } = await supabase
-        .from('finance_portal_users')
-        .select('id, reset_token, reset_token_expires_at')
-        .eq('email', normalizedEmail)
-        .maybeSingle()
-
-      if (!portalUser || portalUser.reset_token !== otp) {
+      const result = await checkOtp()
+      if (!result.ok) {
         return new Response(
-          JSON.stringify({ error: 'Invalid code', success: false }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      if (!portalUser.reset_token_expires_at || new Date(portalUser.reset_token_expires_at) < new Date()) {
-        return new Response(
-          JSON.stringify({ error: 'Code has expired', success: false }),
+          JSON.stringify({ error: result.error, success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -102,12 +115,13 @@ Deno.serve(async (req) => {
           session_expires_at: null,
           failed_login_attempts: 0,
           locked_until: null,
+          reset_token_attempts: 0,
         })
-        .eq('id', portalUser.id)
+        .eq('id', result.userId)
 
       await supabase.from('finance_portal_activity_log').insert({
-        finance_user_id: portalUser.id,
-        actor_user_id: portalUser.id,
+        finance_user_id: result.userId,
+        actor_user_id: result.userId,
         actor_type: 'finance_user',
         action: 'password_reset_completed',
         entity_type: 'auth',

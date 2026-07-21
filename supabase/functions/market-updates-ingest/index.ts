@@ -4,6 +4,7 @@
 // enriches with implications/risk flags/citations, and persists to market_updates.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifySupabaseJWT } from "../_shared/jwt.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -226,20 +227,16 @@ Deno.serve(async (req) => {
     (anonKey && apikey && apikey === anonKey) ||
     (publishableKey && apikey && apikey === publishableKey);
 
-  // Fallback: accept any bearer that decodes as a Supabase-issued JWT with a
-  // recognised role claim. Signature is not re-verified here — the Market
-  // Updates page is UI-gated to superadmin/admin and ingestion is idempotent.
-  const looksLikeSupabaseJwt = (tok: string): boolean => {
-    try {
-      const parts = tok.split(".");
-      if (parts.length !== 3) return false;
-      const pad = (s: string) => s + "===".slice((s.length + 3) % 4);
-      const payload = JSON.parse(atob(pad(parts[1].replace(/-/g, "+").replace(/_/g, "/"))));
-      return typeof payload?.role === "string" && ["anon", "authenticated", "service_role"].includes(payload.role);
-    } catch { return false; }
+  // Fallback: accept a bearer/apikey JWT only after cryptographic signature
+  // verification against the project secret. Decoded-but-unverified claims
+  // are forgeable and must never authorise a request.
+  const isVerifiedSupabaseJwt = async (tok: string): Promise<boolean> => {
+    if (!tok.includes(".")) return false;
+    const payload = await verifySupabaseJWT(tok);
+    return typeof payload?.role === "string" && ["anon", "authenticated", "service_role"].includes(payload.role);
   };
-  if (!authorised && bearer && looksLikeSupabaseJwt(bearer)) authorised = true;
-  if (!authorised && apikey && looksLikeSupabaseJwt(apikey)) authorised = true;
+  if (!authorised && bearer && (await isVerifiedSupabaseJwt(bearer))) authorised = true;
+  if (!authorised && apikey && (await isVerifiedSupabaseJwt(apikey))) authorised = true;
 
   console.log("[auth]", {
     hasAuth: Boolean(auth),

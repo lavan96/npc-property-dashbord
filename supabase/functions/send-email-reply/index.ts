@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { logSecurityEvent } from '../_shared/auth_v2.ts';
+import { checkPermission } from '../_shared/permissions.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 
 const clientId = Deno.env.get('MICROSOFT_CLIENT_ID');
@@ -308,12 +310,30 @@ Deno.serve(async (req) => {
       console.log('[send-email-reply] Service role token detected - internal call authorized');
       userId = 'service_role';
     } else {
-      const { error: authError, userId: authUserId } = await verifyAuth(supabase, req.headers, body);
+      const { error: authError, userId: authUserId, authMethod } = await verifyAuth(supabase, req.headers, body);
       if (authError) {
         console.log('[send-email-reply] Auth failed:', authError);
         return createUnauthorizedResponse(authError, corsHeaders);
       }
       userId = authUserId;
+
+      // SECURITY (MAIL-005): sending goes out from the central Microsoft
+      // mailbox — the sender identity is resolved server-side from env, and
+      // callers must hold the email_copilot module edit permission
+      // (superadmins bypass inside checkPermission).
+      if (userId && userId !== 'service_role') {
+        const perm = await checkPermission(supabase, userId, 'email_copilot_emails', 'create', authMethod);
+        if (!perm.allowed) {
+          await logSecurityEvent(supabase, {
+            action: 'email.send_central_mailbox', decision: 'deny', reason_code: 'module_permission_denied',
+            actor_type: 'human', actor_id: userId,
+          });
+          return new Response(
+            JSON.stringify({ success: false, error: 'You do not have permission to send email from the shared mailbox' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
     }
     console.log('[send-email-reply] Authenticated user:', userId);
 
@@ -485,7 +505,10 @@ Deno.serve(async (req) => {
         bcc_recipients: bcc || [],
         attachments: attachmentMetadata,
         sent_at: new Date().toISOString(),
-        mailbox_source: mailboxSource || 'admin'
+        mailbox_source: mailboxSource || 'admin',
+        created_by: userId !== 'service_role' ? userId : null,
+        // Bind personal-mailbox sends to the sending user (MAIL-003)
+        owner_user_id: (mailboxSource === 'personal' && userId !== 'service_role') ? userId : null
       })
       .select('id')
       .single();

@@ -3,7 +3,13 @@
  * Validates session tokens from the custom auth system
  * Supports HttpOnly cookies for XSS protection
  * Also supports Supabase JWT when verify_jwt is enabled (defense in depth)
+ *
+ * SECURITY: Bearer JWTs are ALWAYS cryptographically verified before any
+ * claim (sub/role) is trusted. Most functions run with verify_jwt=false at
+ * the gateway, so in-function signature verification is the trust boundary.
  */
+
+import { verifySupabaseJWT } from './jwt.ts';
 
 export interface SessionValidationResult {
   error: string | null;
@@ -111,17 +117,19 @@ export async function verifyAuth(
     bodyHasSessionToken: !!(body?.session_token)
   });
 
-  // First, try to get JWT from Authorization header (when verify_jwt is enabled in Supabase)
-  // Supabase automatically validates JWT when verify_jwt=true, so if we get here,
-  // the JWT is already validated. We just need to extract the user ID.
+  // First, try the Authorization header. SECURITY: claims from a Bearer JWT
+  // are only trusted after cryptographic verification. Most functions run
+  // with verify_jwt=false at the gateway, so a decoded-but-unverified payload
+  // is attacker-controlled input (forged sub/role, alg=none, etc.).
   if (authHeader?.startsWith('Bearer ')) {
-    const jwtToken = authHeader.substring(7);
-    
+    const jwtToken = authHeader.substring(7).trim();
+
     // CRITICAL: Check if the bearer token is the service_role key by direct comparison
-    // This handles non-JWT service role keys (e.g., sb_secret_* format) used in 
-    // service-to-service calls between edge functions
+    // This handles non-JWT service role keys (e.g., sb_secret_* format) used in
+    // service-to-service calls between edge functions. A direct secret match is a
+    // cryptographically sound shared-secret check.
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (serviceRoleKey && jwtToken.trim() === serviceRoleKey.trim()) {
+    if (serviceRoleKey && jwtToken === serviceRoleKey.trim()) {
       console.log('[verifyAuth] Service role key matched by direct comparison - allowing internal service call');
       return {
         error: null,
@@ -130,63 +138,85 @@ export async function verifyAuth(
         authMethod: 'service_role',
       };
     }
-    
-    try {
-      // Decode JWT to get user ID (Supabase has already validated it)
-      const parts = jwtToken.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]));
-        const userId = payload.sub;
-        const role = payload.role;
-        
-        console.log('[verifyAuth] JWT decoded:', { userId: userId?.substring(0, 8) + '...', role });
-        
-        // CRITICAL: Allow service_role tokens for internal service-to-service calls
-        // This enables edge functions to call other edge functions securely
-        if (role === 'service_role') {
-          console.log('[verifyAuth] Service role token detected - allowing internal service call');
-          return {
-            error: null,
-            userId: 'service_role',
-            username: 'system',
-            authMethod: 'service_role',
-          };
-        }
-        
-        // Process authenticated user JWTs
-        // User JWTs from Supabase have role: 'authenticated'
-        // Anon tokens have role: 'anon' and should fall through to session token check
-        if (userId && role === 'authenticated') {
-          // Verify the user actually exists in custom_users table
-          const { data: user, error: userError } = await supabase
-            .from('custom_users')
-            .select('username, id')
-            .eq('id', userId)
-            .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors
-          
-          // Only return success if user exists
-          if (!userError && user) {
-            console.log('[verifyAuth] JWT authentication successful:', { userId: userId.substring(0, 8) + '...', username: user.username });
+
+    // The anon key is public and identifies nobody; fall through to session auth.
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const isAnonKey = !!anonKey && jwtToken === anonKey.trim();
+
+    if (jwtToken.includes('.') && !isAnonKey) {
+      try {
+        // 1) Verify the HS256 signature against the project JWT secret. This
+        //    covers both custom-auth JWTs (issued by _shared/jwt.ts) and
+        //    legacy Supabase keys/JWTs signed with the same secret.
+        const payload = await verifySupabaseJWT(jwtToken);
+
+        if (payload) {
+          if ((payload as any).role === 'service_role') {
+            console.log('[verifyAuth] Verified service_role JWT - allowing internal service call');
             return {
               error: null,
-              userId: userId,
-              username: user.username || null,
-              authMethod: 'jwt',
+              userId: 'service_role',
+              username: 'system',
+              authMethod: 'service_role',
             };
+          }
+
+          if (payload.sub && payload.role === 'authenticated') {
+            // Signature is valid; confirm the user exists and is active.
+            const { data: user, error: userError } = await supabase
+              .from('custom_users')
+              .select('username, id, is_active')
+              .eq('id', payload.sub)
+              .maybeSingle();
+
+            if (!userError && user && user.is_active !== false) {
+              console.log('[verifyAuth] JWT authentication successful:', { userId: payload.sub.substring(0, 8) + '...', username: user.username });
+              return {
+                error: null,
+                userId: payload.sub,
+                username: user.username || null,
+                authMethod: 'jwt',
+              };
+            }
+            console.log('[verifyAuth] Verified JWT but user missing/inactive in custom_users, falling back to session token');
           } else {
-            // User JWT is valid but user doesn't exist in custom_users
-            // This shouldn't happen, but log it and fall through to session token
-            console.log('[verifyAuth] JWT user not found in custom_users, falling back to session token:', userId?.substring(0, 8) + '...', userError?.message);
+            console.log('[verifyAuth] Verified JWT is not an authenticated user token (role:', payload.role, '), falling back to session token');
           }
         } else {
-          // This is likely an anon token or invalid JWT
-          // Don't treat it as a user JWT, fall through to session token check
-          console.log('[verifyAuth] JWT is not an authenticated user token (role:', role, '), falling back to session token');
+          // 2) HS256 verification failed. The token may be a native Supabase
+          //    Auth JWT signed with a newer (possibly asymmetric) key — verify
+          //    it with the Auth server instead of trusting decoded claims.
+          const supabaseUrl = Deno.env.get('SUPABASE_URL');
+          if (supabaseUrl && anonKey) {
+            const resp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+              headers: { Authorization: `Bearer ${jwtToken}`, apikey: anonKey },
+            });
+            if (resp.ok) {
+              const authUser = await resp.json();
+              if (authUser?.id) {
+                const { data: user, error: userError } = await supabase
+                  .from('custom_users')
+                  .select('username, id, is_active')
+                  .eq('id', authUser.id)
+                  .maybeSingle();
+                if (!userError && user && user.is_active !== false) {
+                  console.log('[verifyAuth] Auth-server-verified JWT successful:', { userId: String(authUser.id).substring(0, 8) + '...' });
+                  return {
+                    error: null,
+                    userId: String(authUser.id),
+                    username: user.username || null,
+                    authMethod: 'jwt',
+                  };
+                }
+              }
+            }
+          }
+          console.log('[verifyAuth] Bearer JWT failed cryptographic verification, falling back to session token');
         }
+      } catch (err) {
+        console.log('[verifyAuth] JWT verification errored, falling back to session token:', err);
+        // Fall through to session token check
       }
-    } catch (err) {
-      console.log('[verifyAuth] JWT extraction failed, falling back to session token:', err);
-      // Fall through to session token check
     }
   }
 
