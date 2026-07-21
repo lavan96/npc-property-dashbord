@@ -107,6 +107,42 @@ policies restores previous behaviour (do **not** re-create the
 `password_reset_tokens` public policy — that is the exploitable state the
 plan forbids returning to).
 
+## 5a. Deployment progress log (2026-07-21)
+
+**Applied live:**
+- ✅ Additive migration `20260721000000` + `20260721000002` owner backfill (see §5.1).
+- ✅ `custom-auth-login` redeployed via MCP → **version 928**, `verify_jwt=false`.
+  Smoke-tested: missing fields → 400; bogus login → 400 "Security verification
+  required" (confirms new code path live and `TURNSTILE_SECRET_KEY` is set in
+  production, so CAPTCHA is active).
+- ✅ **Critical live DB fix applied ahead of the rest:** dropped the
+  `password_reset_tokens` `{public}` `ALL qual=true` policy
+  (`security_phase7_drop_password_reset_public_policy`). Verified: 0 public
+  policies remain (4 service_role policies intact). Plaintext-OTP exposure to
+  anon/authenticated PostgREST callers is closed. This statement is
+  idempotent-compatible with the full `20260721000001` migration.
+
+**Blocked in the current environment (needs the Lovable/CLI pipeline):**
+- ⛔ **Full edge-function fleet redeploy.** The F-01 `_shared/auth.ts` fix is
+  bundled per-function; ~300 functions carry it. The only deploy mechanism
+  here is the MCP `deploy_edge_function` tool, which requires inlining each
+  function's full source — not feasible by hand for the whole fleet, and a
+  partial deploy cannot close F-01 (an attacker targets any un-updated
+  function). This must run from merged `main` via `supabase functions deploy`
+  or Lovable. Note: a git merge to `main` does NOT auto-deploy functions
+  (confirmed — function versions did not bump after PR #1040 merged).
+- ⛔ **Frontend deploy.** The `NotificationsContext` JWT-client change is on
+  `main` but the hosted frontend build is deployed by Lovable; there is no
+  tool to trigger/verify that static build from this environment.
+- ⛔ **Remainder of RLS migration `20260721000001`** (notifications,
+  `email_copilot_emails`/`sent_replies` scoping, `document_chunks`). Held
+  deliberately: these are coupled to the frontend still using the anon client
+  for direct reads/writes (e.g. `NotificationsContext` reads `notifications`;
+  `EmailCopilot.tsx` directly updates `email_copilot_emails.status`).
+  Tightening to `auth.uid()`-scoped policies before the JWT-client frontend is
+  live would break staff notifications and "mark as replied". Apply the full
+  `20260721000001` only AFTER the function fleet + frontend are deployed.
+
 ## 6. Verification checklist after deploy (acceptance tests)
 
 - Forged JWT (`alg=none`, modified `sub`, `role=service_role`) → 401 on any
