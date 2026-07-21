@@ -613,8 +613,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true }, corsHeaders);
     }
 
-    // Agent tool: create event for a specific user by email (service-to-service)
+    // Agent tool: create event for a specific user by email (service-to-service ONLY)
     if (action === 'createEventForUser') {
+      // SECURITY: this action bypasses per-user mailbox ownership, so only
+      // trust it when the caller is service_role (invoked from a backend
+      // function). A signed-in end user must go through `createEvent`.
+      if (userId !== 'service_role') {
+        return jsonResponse({ error: 'createEventForUser is service-role only' }, corsHeaders, 403);
+      }
       const targetEmail = body.targetUserEmail;
       if (!targetEmail) {
         return jsonResponse({ error: 'targetUserEmail is required' }, corsHeaders, 400);
