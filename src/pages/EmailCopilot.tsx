@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { LiveModelBadge, ModelUpgradeButton } from '@/components/agentModels';
 
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthenticatedSupabase } from '@/hooks/useAuthenticatedSupabase';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
@@ -286,6 +287,10 @@ export default function EmailCopilot() {
   const isMobile = useIsMobile();
   const { hasModuleAccess, canEdit: canEditModule, canDelete: canDeleteModule, loading: permissionsLoading } = usePermissions();
   const { user, loading: authLoading } = useAuth();
+  // Direct writes to email_copilot_emails run under the deny-by-default RLS
+  // (Phase 7): use the JWT-bearing client so auth.uid() is present. Reads
+  // continue to flow through the service-role get-email-data function.
+  const { supabase: authedSupabase } = useAuthenticatedSupabase();
   const isAuthReady = !authLoading && !!user;
   const { addNotification } = useNotifications();
   const [emails, setEmails] = useState<Email[]>([]);
@@ -1544,7 +1549,7 @@ export default function EmailCopilot() {
       });
       
       // Update email status to 'replied' so it shows badge and remains visible in thread
-      await supabase
+      await authedSupabase
         .from('email_copilot_emails')
         .update({ status: 'replied' })
         .eq('id', selectedEmail.id);
@@ -1663,7 +1668,7 @@ export default function EmailCopilot() {
     
     setIsSavingDraft(true);
     try {
-      const { error } = await supabase
+      const { error } = await authedSupabase
         .from('email_copilot_emails')
         .update({ draft_reply: editableDraft })
         .eq('id', selectedEmail.id);
@@ -1691,7 +1696,7 @@ export default function EmailCopilot() {
     if (!selectedEmail) return;
     
     try {
-      const { error } = await supabase
+      const { error } = await authedSupabase
         .from('email_copilot_emails')
         .update({ status: 'archived' })
         .eq('id', selectedEmail.id);
@@ -1711,7 +1716,7 @@ export default function EmailCopilot() {
     if (!selectedEmail) return;
     
     try {
-      const { error } = await supabase
+      const { error } = await authedSupabase
         .from('email_copilot_emails')
         .delete()
         .eq('id', selectedEmail.id);
