@@ -4013,15 +4013,40 @@ function MailboxSettingsModal({
 }) {
   const [mailboxValue, setMailboxValue] = useState(currentMailbox || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [accountRole, setAccountRole] = useState<string | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   useEffect(() => {
     setMailboxValue(currentMailbox || '');
   }, [currentMailbox, open]);
 
+  // Fetch the caller's own account email so we can lock the input to it —
+  // matches the server-side ownership guard in admin-user-management.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoadingProfile(true);
+    invokeSecureFunction('admin-user-management', { action: 'get_own_profile' })
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data?.success) {
+          setAccountEmail(data.user?.email || null);
+          setAccountRole(data.user?.role || null);
+        }
+      })
+      .finally(() => { if (!cancelled) setLoadingProfile(false); });
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const isSuperadmin = accountRole === 'superadmin';
+  const lockedToOwnEmail = !!accountEmail && !isSuperadmin;
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const trimmed = mailboxValue.trim();
+      // Non-superadmins can only bind their own account email.
+      const trimmed = lockedToOwnEmail ? (accountEmail || '') : mailboxValue.trim();
       if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
         toast.error('Please enter a valid email address');
         setIsSaving(false);
@@ -4039,8 +4064,6 @@ function MailboxSettingsModal({
       }
 
       if (data?.success) {
-        // Verify by re-fetching the profile so the parent state reflects
-        // exactly what the backend stored (handles race / trim / clear cases).
         const { data: profile } = await invokeSecureFunction('admin-user-management', {
           action: 'get_own_profile',
         });
@@ -4068,25 +4091,32 @@ function MailboxSettingsModal({
             Configure Personal Mailbox
           </DialogTitle>
           <DialogDescription>
-            Enter your personal Microsoft 365 email address to sync emails from your own mailbox.
+            {lockedToOwnEmail
+              ? 'For security, you can only connect the mailbox that matches your account email.'
+              : 'Enter your personal Microsoft 365 email address to sync emails from your own mailbox.'}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="personal-mailbox">Personal Email Address</Label>
             <Input
               id="personal-mailbox"
               type="email"
-              placeholder="your.email@company.com"
-              value={mailboxValue}
+              placeholder={loadingProfile ? 'Loading…' : 'your.email@company.com'}
+              value={lockedToOwnEmail ? (accountEmail || '') : mailboxValue}
               onChange={(e) => setMailboxValue(e.target.value)}
+              disabled={lockedToOwnEmail || loadingProfile}
+              readOnly={lockedToOwnEmail}
             />
             <p className="text-xs text-muted-foreground">
-              This email must be part of the same Microsoft 365 organization.
+              {lockedToOwnEmail
+                ? 'Locked to your account email. Ask a superadmin to link a different address on your behalf.'
+                : 'This email must be part of the same Microsoft 365 organization.'}
             </p>
           </div>
         </div>
+
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
