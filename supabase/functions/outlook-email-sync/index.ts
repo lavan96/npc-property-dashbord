@@ -377,13 +377,42 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[Outlook Sync] Authenticated user: ${username || userId} (${userId})`);
-    
+
+    // SECURITY: a caller may only sync from a mailbox that has been bound to
+    // their own account (personal_mailbox), and personal_mailbox itself is
+    // constrained server-side to equal their custom_users.email. If they pass
+    // some other tenant address, refuse — do NOT silently fall back to the
+    // shared admin mailbox (that would still leak someone else's inbox on the
+    // next call if the guard is ever relaxed elsewhere).
+    let requestedMailbox: string | null = mailbox ? String(mailbox).trim() : null;
+    if (requestedMailbox && userId && userId !== 'service_role') {
+      const { data: caller } = await supabase
+        .from('custom_users')
+        .select('email, personal_mailbox, role')
+        .eq('id', userId)
+        .maybeSingle();
+      const req = requestedMailbox.toLowerCase();
+      const own = (caller?.email || '').toLowerCase();
+      const bound = (caller?.personal_mailbox || '').toLowerCase();
+      const isSuperadmin = caller?.role === 'superadmin';
+      const ownershipOk = isSuperadmin || req === own || (bound && req === bound);
+      if (!ownershipOk) {
+        console.log(`[Outlook Sync] Rejected mailbox ${requestedMailbox} for user ${userId} (own=${own}, bound=${bound})`);
+        return new Response(
+          JSON.stringify({
+            error: `You can only sync your own mailbox (${caller?.email || 'unknown'}). Ask a superadmin to link a different address on your behalf.`,
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Use provided mailbox or fall back to default
-    const targetMailbox = mailbox || DEFAULT_MAILBOX_EMAIL;
-    
+    const targetMailbox = requestedMailbox || DEFAULT_MAILBOX_EMAIL;
+
     // Determine mailbox source for tagging emails
-    const mailboxSource = mailbox ? 'personal' : 'admin';
-    
+    const mailboxSource = requestedMailbox ? 'personal' : 'admin';
+
     console.log(`[Outlook Sync] Action: ${action}, Limit: ${limit}, Mailbox: ${targetMailbox}, Source: ${mailboxSource}`);
 
     // Handle clear action
