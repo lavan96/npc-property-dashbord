@@ -205,8 +205,8 @@ const PathNormalizer = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrandProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <BrandProvider>
             <PermissionsProvider>
               <BrowserRouter>
                 <PathNormalizer />
@@ -446,8 +446,8 @@ const App = () => (
                 </NotificationsProvider>
               </BrowserRouter>
             </PermissionsProvider>
-          </AuthProvider>
-        </BrandProvider>
+          </BrandProvider>
+        </AuthProvider>
       </TooltipProvider>
   </QueryClientProvider>
 );
