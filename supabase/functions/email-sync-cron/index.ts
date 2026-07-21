@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { verifyInternal, logSecurityEvent } from "../_shared/auth_v2.ts";
 
 /**
  * Background email sync cron function.
@@ -150,6 +151,28 @@ Deno.serve(async (req) => {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // AUTH (Critical 2): this cron drives Microsoft Graph + the service role and
+  // creates notifications/attachments. It must fail closed to anonymous callers.
+  // pg_cron invokes it with the service-role key (the standard vault/pg_net
+  // pattern); internal callers may instead sign the request (HMAC). Both are
+  // accepted by verifyInternal — a public anon key or a "source=scheduled" body
+  // field is NOT. rawBody is read for signature verification.
+  const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const rawBody = await req.text().catch(() => '');
+  const internal = await verifyInternal(authClient, req, rawBody);
+  if (!internal.ok) {
+    await logSecurityEvent(authClient, {
+      action: 'email_sync_cron.invoke',
+      decision: 'deny',
+      reason_code: internal.errorCode ?? 'unauthorized',
+      actor_type: 'cron',
+    });
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {

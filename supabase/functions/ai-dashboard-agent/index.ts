@@ -8493,10 +8493,16 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       case 'execute-tool': {
-        // Service-to-service call from agent-task-runner for scheduled task execution
-        // Use verifyAuth's authMethod detection instead of raw key comparison
+        // Service-to-service call from agent-task-runner for scheduled task execution.
+        // SECURITY (Critical 5): trust is derived ONLY from the verified auth
+        // method (exact service-role-key match or a cryptographically verified
+        // service_role JWT). The previous `|| body.source === 'scheduled_task'`
+        // let any authenticated human claim service identity and then execute a
+        // tool AS ANOTHER USER via body.user_id. A request-body field is never a
+        // trust signal; caller-provided user_id is honoured only for verified
+        // service callers.
         const { authMethod } = await verifyAuth(sb, req.headers, body);
-        const isService = authMethod === 'service_role' || body.source === 'scheduled_task';
+        const isService = authMethod === 'service_role';
         if (!isService) {
           return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
         }

@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { logApiUsage } from '../_shared/logApiUsage.ts';
-import { createCorsHeaders } from '../_shared/auth.ts';
+import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
 
 interface AirtableRecord {
   id: string;
@@ -25,6 +25,23 @@ Deno.serve(async (req) => {
 
   try {
     console.log('Airtable proxy function called');
+
+    // AUTH (Critical 3): this proxy holds an Airtable credential that can read
+    // any table in the configured base (incl. list_tables). It must never be
+    // callable anonymously. Parse the body once (POST) and require a verified
+    // staff human; GET callers still authenticate via the Authorization /
+    // x-session-token headers.
+    const supabaseAuthClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const parsedBody = req.method === 'POST'
+      ? await req.json().catch(() => ({} as Record<string, any>))
+      : {} as Record<string, any>;
+    const auth = await verifyAuth(supabaseAuthClient, req.headers, parsedBody);
+    if (auth.error || !auth.userId) {
+      return createUnauthorizedResponse(auth.error || 'Authentication required', corsHeaders);
+    }
 
     // Get secrets from environment variables (managed by Supabase)
     const token = Deno.env.get('AIRTABLE_TOKEN');
@@ -57,7 +74,7 @@ Deno.serve(async (req) => {
     let tableOverride: string | null = null;
 
     if (req.method === 'POST') {
-      const body = await req.json().catch(() => ({}));
+      const body = parsedBody;
       pageSize = body.pageSize?.toString() || '100';
       offset = body.offset || '';
       sortField = body.sortField || null;

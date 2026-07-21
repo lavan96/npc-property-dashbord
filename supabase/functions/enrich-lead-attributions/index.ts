@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyInternal } from '../_shared/auth_v2.ts';
 
 const META_API_VERSION = 'v21.0';
 const META_BASE_URL = `https://graph.facebook.com/${META_API_VERSION}`;
@@ -16,17 +17,21 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.text().catch(() => '');
+    const body = (() => { try { return rawBody ? JSON.parse(rawBody) : {}; } catch { return {}; } })();
 
-    // Allow scheduled/cron invocations (called by pg_cron with anon key)
-    const isScheduled = body.source === 'scheduled';
-    if (!isScheduled) {
-      const authResult = await verifyAuth(supabase, req.headers, body);
-      if (authResult.error) {
-        return createUnauthorizedResponse(authResult.error, corsHeaders);
+    // AUTH: accept EITHER a verified staff human OR a verified internal/service
+    // call (service-role key / HMAC — the pg_cron pattern). The previous check
+    // treated a caller-supplied `body.source === 'scheduled'` as a full auth
+    // bypass, so anyone could drive the paid Meta Ads enrichment. Body fields
+    // are never a trust signal.
+    const human = await verifyAuth(supabase, req.headers, body);
+    if (human.error || !human.userId) {
+      const internal = await verifyInternal(supabase, req, rawBody);
+      if (!internal.ok) {
+        return createUnauthorizedResponse(human.error || 'Authentication required', corsHeaders);
       }
-    } else {
-      console.log('[enrich] Scheduled cron invocation');
+      console.log('[enrich] Verified internal/scheduled invocation');
     }
 
     const accessToken = Deno.env.get('META_ADS_ACCESS_TOKEN');

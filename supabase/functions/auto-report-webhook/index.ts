@@ -1,9 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyInternal, logSecurityEvent } from "../_shared/auth_v2.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret',
 };
+
+/** Constant-time string comparison (avoids leaking the secret via timing). */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 interface ListingData {
   id: string;
@@ -990,8 +999,33 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await req.json();
-    
+    // AUTH (Critical 1): this webhook creates investment-report records and
+    // invokes the PAID report generator with the service role. It must fail
+    // closed to anonymous callers. Accept EITHER an internal service call
+    // (service-role key / HMAC-signed) OR a dedicated high-entropy webhook
+    // secret presented in x-webhook-secret (constant-time compared). When
+    // AUTO_REPORT_WEBHOOK_SECRET is unset the secret path is unavailable and
+    // the endpoint refuses to start — it does not silently run open.
+    const rawBody = await req.text();
+    const expectedSecret = (Deno.env.get('AUTO_REPORT_WEBHOOK_SECRET') || '').trim();
+    const providedSecret = (req.headers.get('x-webhook-secret') || '').trim();
+    const secretOk = expectedSecret.length >= 16 && timingSafeEqual(providedSecret, expectedSecret);
+    const internal = await verifyInternal(supabase, req, rawBody);
+    if (!internal.ok && !secretOk) {
+      await logSecurityEvent(supabase, {
+        action: 'auto_report_webhook.invoke',
+        decision: 'deny',
+        reason_code: expectedSecret.length < 16 ? 'webhook_secret_unconfigured' : (internal.errorCode ?? 'invalid_secret'),
+        actor_type: 'webhook',
+      });
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const body = JSON.parse(rawBody);
+
     // Support both single listing and batch
     const listings: ListingData[] = Array.isArray(body.listings) ? body.listings : [body.listing || body];
     
