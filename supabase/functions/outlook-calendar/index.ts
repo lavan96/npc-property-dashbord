@@ -411,7 +411,14 @@ Deno.serve(async (req) => {
 
     // ── Diagnostic action ────────────────────────────────────────────
     if (action === 'testPermissions') {
-      const testEmail = body.testEmail || userEmail;
+      // SECURITY: never let the caller probe another user's mailbox.
+      const caller = await loadCallerAccount(supabase, effectiveUserId!);
+      const requestedTest = body.testEmail || userEmail;
+      const ownershipCheck = assertMailboxOwnership(requestedTest, caller);
+      if (!ownershipCheck.ok) {
+        return jsonResponse({ error: ownershipCheck.error }, corsHeaders, 403);
+      }
+      const testEmail = requestedTest;
       if (!testEmail) {
         return jsonResponse({ error: 'No email to test. Provide testEmail or configure microsoft_email.' }, corsHeaders, 400);
       }
