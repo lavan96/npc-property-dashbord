@@ -403,6 +403,24 @@ Deno.serve(async (req) => {
     // Resolve calling user's Microsoft email
     // When called via service-role (e.g. from ai-dashboard-agent), use _userId from body
     const effectiveUserId = (userId === 'service_role' && body._userId) ? body._userId : userId;
+
+    // SECURITY (Critical 7): the mailbox that the calendar CRUD actions
+    // (listEvents/createEvent/updateEvent/deleteEvent/freeBusy) operate on is
+    // resolved HERE. The backend uses an app-only Graph token, so honouring a
+    // caller-supplied `targetEmail` without an ownership check let any
+    // authenticated user read/modify another tenant user's calendar — the same
+    // class of bug the mailbox-binding remediation closed for setMicrosoftEmail,
+    // reached through a different parameter. Enforce the same guard: a caller
+    // may only target their own account email; superadmins may target any.
+    // Service-role callers (userId==='service_role') resolve via _userId only.
+    if (body.targetEmail && userId !== 'service_role') {
+      const caller = await loadCallerAccount(supabase, effectiveUserId!);
+      const ownershipCheck = assertMailboxOwnership(body.targetEmail, caller);
+      if (!ownershipCheck.ok) {
+        console.log(`[outlook-calendar] Rejected targetEmail override for ${userId}: ${ownershipCheck.error}`);
+        return jsonResponse({ error: ownershipCheck.error }, corsHeaders, 403);
+      }
+    }
     const userEmail = body.targetEmail || await resolveMicrosoftEmail(supabase, effectiveUserId!);
 
     // Get Microsoft access token
