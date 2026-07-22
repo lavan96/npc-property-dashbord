@@ -19,6 +19,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyInternal } from '../_shared/auth_v2.ts';
 
 const WORKER_MAP: Record<string, string> = {
   contacts: 'ghl-migrate-contacts-worker',
@@ -52,23 +53,19 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  // Caller gate: this function is harmless on its own (it only invokes the
-  // claim_migration_jobs RPC and dispatches workers). The actual privileged
-  // operations live inside the workers, which validate _service_token. We
-  // therefore accept any caller — but reject if neither an Authorization
-  // header nor a known internal/cron marker is present, to keep random
-  // traffic from spinning up dispatchers.
-  const auth = req.headers.get('authorization') || '';
-  const internal = req.headers.get('x-internal-call') === 'true';
-  if (!auth && !internal) {
+  // AUTH-002: require a real internal credential. The dispatcher forwards the
+  // INTERNAL_EDGE_SECRET to the workers, so its own trigger must be gated — the
+  // previous "any Authorization header" check let anyone spin up the whole
+  // migration pipeline.
+  const gate = await verifyInternal(supabase, req, '');
+  if (!gate.ok) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
   const startedAt = Date.now();
 
   try {
