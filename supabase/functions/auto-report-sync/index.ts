@@ -359,11 +359,16 @@ Deno.serve(async (req) => {
 
         // Fire-and-forget: Start report generation without waiting for completion
         // The generate-investment-report function will update the report status when done
+        const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+        const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
         fetch(`${supabaseUrl}/functions/v1/generate-investment-report`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
+            // AUTH-002: internal secret, not the service-role key.
+            'Authorization': `Bearer ${_internalSecret ? _anon : supabaseServiceKey}`,
+            'apikey': _internalSecret ? _anon : supabaseServiceKey,
+            ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
           },
           body: JSON.stringify({
             reportId: reportId,

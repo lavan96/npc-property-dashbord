@@ -601,12 +601,16 @@ Deno.serve(async (req) => {
           if (body?.pipeline_ghl_id) syncBody.pipelineGhlId = body.pipeline_ghl_id;
           if (body?.pipeline_stage_ghl_id) syncBody.pipelineStageGhlId = body.pipeline_stage_ghl_id;
 
+          const _anon = Deno.env.get('SUPABASE_ANON_KEY') || '';
+          const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
           const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-client-to-ghl`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'apikey': _anon,
+              // AUTH-002: internal secret, not the service-role key.
+              'Authorization': `Bearer ${_internalSecret ? _anon : (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '')}`,
+              ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             },
             body: JSON.stringify(syncBody),
           });

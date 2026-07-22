@@ -174,14 +174,18 @@ Deno.serve(async (req) => {
       dispatch_count: (job.dispatch_count || 0) + 1,
     }).eq('id', jobId);
 
+    const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+    const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
     const dispatch = fetch(`${supabaseUrl}/functions/v1/ghl-legacy-wipe-worker`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${serviceRoleKey}`,
+        // AUTH-002: internal secret, not the service-role key.
+        Authorization: `Bearer ${_internalSecret ? _anon : serviceRoleKey}`,
+        ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
         'x-internal-call': 'true',
       },
-      body: JSON.stringify({ job_id: jobId, _service_token: serviceRoleKey }),
+      body: JSON.stringify({ job_id: jobId }),
     }).catch((e) => console.error(`[legacy-wipe-worker] re-dispatch threw:`, e.message));
 
     // @ts-ignore

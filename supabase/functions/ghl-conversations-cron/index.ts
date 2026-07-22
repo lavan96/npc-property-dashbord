@@ -95,12 +95,15 @@ Deno.serve(async (req) => {
 
       try {
         const syncUrl = `${supabaseUrl}/functions/v1/sync-ghl-conversations`;
+        const internalEdgeSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
         const syncRes = await fetch(syncUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceRoleKey}`,
+            // AUTH-002: internal secret, not the service-role key.
+            'Authorization': `Bearer ${internalEdgeSecret ? anonKey : serviceRoleKey}`,
             'apikey': anonKey,
+            ...(internalEdgeSecret ? { 'x-internal-edge-secret': internalEdgeSecret } : {}),
           },
           body: JSON.stringify({
             client_id: client.id,
