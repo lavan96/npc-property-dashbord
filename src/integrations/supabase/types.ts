@@ -6355,6 +6355,21 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_vault_bootstrap_marker: {
+        Row: {
+          bootstrapped_at: string
+          id: string
+        }
+        Insert: {
+          bootstrapped_at?: string
+          id?: string
+        }
+        Update: {
+          bootstrapped_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       custom_users: {
         Row: {
           created_at: string
