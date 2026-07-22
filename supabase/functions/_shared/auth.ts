@@ -11,6 +11,14 @@
 
 import { verifySupabaseJWT } from './jwt.ts';
 
+/** Constant-time string comparison (avoids leaking a secret via timing). */
+function constantTimeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export interface SessionValidationResult {
   error: string | null;
   userId: string | null;
@@ -116,6 +124,19 @@ export async function verifyAuth(
     bodyHasCommandCentreSessionToken: !!(body?.command_centre_session_token),
     bodyHasSessionToken: !!(body?.session_token)
   });
+
+  // Internal-service auth (AUTH-002): a dedicated INTERNAL_EDGE_SECRET presented
+  // in x-internal-edge-secret authorizes an internal edge-to-edge call as
+  // service_role, WITHOUT spreading the crown-jewel service-role key on the
+  // wire. Constant-time compared; headers-only. This lets every receiver that
+  // already accepts service_role via verifyAuth transparently accept the safer
+  // internal credential.
+  const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
+  const presentedInternal = (headers.get('x-internal-edge-secret') || '').trim();
+  if (internalSecret.length >= 16 && presentedInternal.length > 0 && constantTimeEqualStr(internalSecret, presentedInternal)) {
+    console.log('[verifyAuth] Valid x-internal-edge-secret - allowing internal service call');
+    return { error: null, userId: 'service_role', username: 'system', authMethod: 'service_role' };
+  }
 
   // First, try the Authorization header. SECURITY: claims from a Bearer JWT
   // are only trusted after cryptographic verification. Most functions run

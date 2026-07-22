@@ -251,6 +251,27 @@ export async function verifyInternal(
   req: Request,
   rawBody: string
 ): Promise<AuthContext> {
+  // Preferred internal-auth path (AUTH-002): a dedicated INTERNAL_EDGE_SECRET
+  // presented in x-internal-edge-secret, constant-time compared. Callers use
+  // this instead of the crown-jewel service-role key, so a leak of this header
+  // only permits internal function invocation — not full RLS-bypassing DB
+  // access. Headers-only, so it is robust to gateway path rewrites and does not
+  // require reading the raw body.
+  const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
+  const presentedInternal = (req.headers.get('x-internal-edge-secret') || '').trim();
+  if (internalSecret.length >= 16 && presentedInternal.length > 0 &&
+      constantTimeEqual(internalSecret, presentedInternal)) {
+    return ctx({
+      ok: true,
+      authType: 'internal_service',
+      actorId: req.headers.get('x-internal-caller') || 'internal_service',
+      username: 'system',
+      roles: [],
+      method: 'internal_hmac',
+      errorCode: null,
+    });
+  }
+
   // Legacy path: direct service-role key comparison (shared-secret check).
   const authHeader = req.headers.get('authorization') || '';
   const serviceRoleKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();

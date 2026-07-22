@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyInternal, logSecurityEvent } from "../_shared/auth_v2.ts";
+import { callInternalFunction } from "../_shared/internalCall.ts";
 
 /**
  * Agent Scheduled Task Runner
@@ -258,17 +259,11 @@ Deno.serve(async (req) => {
 });
 
 // ─── Helper: call ai-dashboard-agent ───
-async function callAgent(supabaseUrl: string, serviceRoleKey: string, anonKey: string, body: any): Promise<any> {
-  const response = await fetch(`${supabaseUrl}/functions/v1/ai-dashboard-agent`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${serviceRoleKey}`,
-      'apikey': anonKey,
-    },
-    body: JSON.stringify(body),
-  });
-  return await response.json().catch(() => ({ error: 'Failed to parse response' }));
+async function callAgent(_supabaseUrl: string, _serviceRoleKey: string, _anonKey: string, body: any): Promise<any> {
+  // AUTH-002: authenticate via the dedicated internal secret, not the
+  // service-role key. ai-dashboard-agent's execute-tool accepts it as service.
+  const r = await callInternalFunction('ai-dashboard-agent', body, 'agent-task-runner');
+  return r.data ?? { error: r.error || 'Failed to parse response' };
 }
 
 // ─── Check if a checklist cron template is due ───
