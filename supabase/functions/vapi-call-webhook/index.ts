@@ -5,7 +5,7 @@ import { phonesMatch } from '../_shared/phone.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret, x-vapi-webhook-secret, x-vapi-signature',
 };
 
 // ---- Blacklist auto-kill configuration ----
