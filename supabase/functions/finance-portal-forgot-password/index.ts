@@ -27,6 +27,24 @@ Deno.serve(async (req) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    const genericSuccess = () => new Response(
+      JSON.stringify({ success: true, message: 'If an account exists with this email, a reset code has been sent.' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+    // ABUSE-003: throttle reset REQUESTS per source IP and per account (atomic
+    // DB check). On limit return the same generic success and send nothing.
+    const clientIp = (req.headers.get('x-forwarded-for')?.split(',')[0]
+      || req.headers.get('cf-connecting-ip') || 'unknown').trim();
+    const [{ data: ipOk }, { data: acctOk }] = await Promise.all([
+      supabase.rpc('check_and_bump_rate_limit', { p_key: `fpfp_ip:${clientIp}`, p_max: 5, p_window_seconds: 900 }),
+      supabase.rpc('check_and_bump_rate_limit', { p_key: `fpfp_email:${normalizedEmail}`, p_max: 5, p_window_seconds: 3600 }),
+    ]);
+    if (ipOk === false || acctOk === false) {
+      console.warn('[finance-portal-forgot-password] rate limited', { ip: clientIp });
+      return genericSuccess();
+    }
+
     const { data: portalUser } = await supabase
       .from('finance_portal_users')
       .select('id, email, is_active, revoked_at, finance_agent_contacts:finance_contact_id (name)')
