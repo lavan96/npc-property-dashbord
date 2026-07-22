@@ -915,3 +915,6 @@ verify_jwt = false
 
 [functions.quantitative-report-pipeline]
 verify_jwt = false
+
+[functions.bootstrap-cron-vault]
+verify_jwt = false

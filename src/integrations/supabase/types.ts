@@ -6355,6 +6355,21 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_vault_bootstrap_marker: {
+        Row: {
+          bootstrapped_at: string
+          id: string
+        }
+        Insert: {
+          bootstrapped_at?: string
+          id?: string
+        }
+        Update: {
+          bootstrapped_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       custom_users: {
         Row: {
           created_at: string
@@ -20179,6 +20194,10 @@ export type Database = {
         Args: { p_attempt: Json; p_job_id: string }
         Returns: undefined
       }
+      bootstrap_cron_vault: {
+        Args: { p_internal_edge_secret: string; p_service_role_key: string }
+        Returns: undefined
+      }
       bump_finance_partner_activity: {
         Args: { _contact_id: string }
         Returns: undefined
@@ -20241,6 +20260,7 @@ export type Database = {
         }
         Returns: string
       }
+      cron_service_role_headers: { Args: { extra?: Json }; Returns: Json }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
       finalize_ghl_cutover: { Args: { p_job_id: string }; Returns: Json }
       finalize_migration_upload: {

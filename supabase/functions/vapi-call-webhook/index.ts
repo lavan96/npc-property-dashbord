@@ -6,7 +6,7 @@ import { verifyWebhookSecret } from '../_shared/auth_v2.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret, x-vapi-webhook-secret, x-vapi-signature',
 };
 
 // ---- Blacklist auto-kill configuration ----
