@@ -234,11 +234,39 @@ export function withReportMetering(
         );
       }
       if (e instanceof MissionControlError && e.code === "unconfigured") {
+        // Metering is intentionally OFF in environments where Mission Control
+        // is not set up at all — bypass is by design, not a dependency failure.
         console.warn("[reportMetering] Mission Control unconfigured — bypassing");
         return handler(forwardReq);
       }
-      console.error("[reportMetering] reserve failed, bypassing metering", e);
-      return handler(forwardReq);
+      // FAIL CLOSED (Phase 9): Mission Control IS configured but the reserve
+      // errored (transient / network / 5xx). Previously we ran the paid handler
+      // for free, so an attacker could exhaust paid credits by forcing MC
+      // errors. Refuse the request instead; the caller can retry.
+      const msg = e instanceof Error ? e.message : "metering_unavailable";
+      console.error("[reportMetering] reserve failed — failing closed", e);
+      await logAudit({
+        event: "reserve",
+        user_id: plan.userId,
+        agency_ref: AGENCY_TENANT_REF,
+        function_name: functionName,
+        kind: plan.kind,
+        idempotency_key: plan.idempotencyKey,
+        requested_tokens: estimated,
+        status: "error",
+        error_message: msg,
+        request_payload: plan.requestPayload ?? null,
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: {
+            code: "metering_unavailable",
+            message: "Usage metering is temporarily unavailable. Please retry shortly.",
+          },
+        }),
+        { status: 503, headers: { ...cors, "Content-Type": "application/json" } },
+      );
     }
 
     let response: Response;
