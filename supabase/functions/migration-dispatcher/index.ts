@@ -119,11 +119,15 @@ Deno.serve(async (req) => {
 
       const url = `${supabaseUrl}/functions/v1/${workerName}`;
       try {
+        const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+        const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
         const r = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${serviceRoleKey}`,
+            // AUTH-002: internal secret, not the service-role key (header or body).
+            Authorization: `Bearer ${_internalSecret ? _anon : serviceRoleKey}`,
+            ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             'x-internal-call': 'true',
           },
           body: JSON.stringify({
@@ -132,7 +136,6 @@ Deno.serve(async (req) => {
             target_account: job.target_account,
             dry_run: job.dry_run,
             payload: job.payload || {},
-            _service_token: serviceRoleKey,
             _dispatched_by: 'cron',
             _dispatch_count: job.dispatch_count,
           }),

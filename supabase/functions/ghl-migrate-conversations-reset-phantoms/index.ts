@@ -15,13 +15,14 @@
  * messages are being reset, so the worker can recreate the shell too if
  * it was the empty one we created in error.
  *
- * Trigger:
- *   POST with body { _service_token: <SERVICE_ROLE_KEY>, since?: ISO,
- *                    dry_run?: boolean }
+ * Trigger (internal-only; authenticate with x-internal-edge-secret /
+ * INTERNAL_EDGE_SECRET — see _shared/internalCall.ts):
+ *   POST with body { since?: ISO, dry_run?: boolean }
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
+import { verifyInternal } from '../_shared/auth_v2.ts';
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok');
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const body = await req.json().catch(() => ({}));
-  if (body._service_token !== serviceRoleKey) {
+  if (!(await verifyInternal(createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!), req, '')).ok) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
   const since = body.since || '2026-04-28T03:00:00+00:00';

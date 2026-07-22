@@ -15,6 +15,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyInternal } from '../_shared/auth_v2.ts';
 import {
   getGhlCredentials,
   validateGhlCredentials,
@@ -302,7 +303,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     // Internal-call validation
-    if (body._service_token !== serviceRoleKey) {
+    if (!(await verifyInternal(createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!), req, '')).ok) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
     }
 

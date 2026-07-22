@@ -183,7 +183,6 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         job_id: jobId,
-        _service_token: serviceRoleKey,
       }),
     }).then(async (res) => {
       if (!res.ok) {

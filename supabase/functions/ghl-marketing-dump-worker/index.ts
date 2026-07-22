@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
         ...(internalEdgeSecret ? { 'x-internal-edge-secret': internalEdgeSecret } : {}),
         'x-internal-call': 'true',
       },
-      body: JSON.stringify({ job_id: jobId, _service_token: serviceRoleKey }),
+      body: JSON.stringify({ job_id: jobId }),
     }).catch((e) => console.error('[worker] self-dispatch threw', e));
 
     // @ts-ignore
