@@ -7529,7 +7529,25 @@ async function handleRenameConversation(sb: any, userId: string, convId: string,
   return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
 }
 
-async function handleGetMessages(sb: any, convId: string, cors: Record<string, string>) {
+/**
+ * Conversation access control (AI conversation IDOR fix). A caller may access a
+ * conversation only if they OWN it or hold an ACTIVE share. Service-role callers
+ * (userId==='service_role') bypass. Returns true/false; callers 403 on false.
+ */
+async function userCanAccessConversation(sb: any, userId: string, convId: string | null | undefined): Promise<boolean> {
+  if (!convId) return false;
+  if (userId === 'service_role') return true;
+  const { data: conv } = await sb.from('agent_conversations').select('user_id').eq('id', convId).maybeSingle();
+  if (conv && conv.user_id === userId) return true;
+  const { data: share } = await sb.from('agent_conversation_shares')
+    .select('id').eq('conversation_id', convId).eq('shared_with', userId).eq('is_active', true).maybeSingle();
+  return !!share;
+}
+
+async function handleGetMessages(sb: any, userId: string, convId: string, cors: Record<string, string>) {
+  if (!(await userCanAccessConversation(sb, userId, convId))) {
+    return new Response(JSON.stringify({ success: false, error: 'Not authorized for this conversation' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
   const { data, error } = await sb.from('agent_messages').select('*, custom_users!agent_messages_sent_by_fkey(username)').eq('conversation_id', convId).order('created_at', { ascending: true }).limit(200);
   if (error) throw error;
 
@@ -7558,7 +7576,23 @@ async function handleGetMessages(sb: any, convId: string, cors: Record<string, s
 }
 
 async function handleConfirmAction(sb: any, body: any, cors: Record<string, string>) {
-  const { message_id, approved, conversation_id } = body;
+  const { message_id, approved } = body;
+  const callerId = body.user_id;
+
+  // IDOR fix: the pending message (and its stored tool_calls) must belong to a
+  // conversation the caller can access. Derive the conversation from the MESSAGE
+  // (not a caller-supplied conversation_id) and verify access before touching
+  // anything or executing tool calls.
+  const { data: pendingMsg } = await sb.from('agent_messages')
+    .select('tool_calls, conversation_id').eq('id', message_id).maybeSingle();
+  if (!pendingMsg) {
+    return new Response(JSON.stringify({ success: false, error: 'Message not found' }), { status: 404, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
+  const conversation_id = pendingMsg.conversation_id;
+  if (!(await userCanAccessConversation(sb, callerId, conversation_id))) {
+    return new Response(JSON.stringify({ success: false, error: 'Not authorized for this conversation' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
+
   await sb.from('agent_messages').update({ confirmation_status: approved ? 'approved' : 'rejected' }).eq('id', message_id);
 
   if (!approved) {
@@ -7566,7 +7600,6 @@ async function handleConfirmAction(sb: any, body: any, cors: Record<string, stri
     return new Response(JSON.stringify({ success: true, message: 'Action cancelled.' }), { headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
-  const { data: pendingMsg } = await sb.from('agent_messages').select('tool_calls').eq('id', message_id).single();
   if (pendingMsg?.tool_calls) {
     const results: any[] = [];
     for (const tc of pendingMsg.tool_calls) {
@@ -7610,6 +7643,11 @@ async function handleChat(sb: any, body: any, userId: string, username: string, 
   const stepId: string | null = typeof body?.step_id === 'string' ? body.step_id : null;
   if (!conversation_id || !message) {
     return new Response(JSON.stringify({ error: 'conversation_id and message are required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
+
+  // IDOR fix: only the owner (or an active share) may post to / read a conversation.
+  if (!(await userCanAccessConversation(sb, userId, conversation_id))) {
+    return new Response(JSON.stringify({ error: 'Not authorized for this conversation' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
   await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message, sent_by: userId, plan_id: planId, step_id: stepId });
@@ -8135,6 +8173,13 @@ async function handleChatStream(
     });
   }
 
+  // IDOR fix: only the owner (or an active share) may post to / read a conversation.
+  if (!(await userCanAccessConversation(sb, userId, conversation_id))) {
+    return new Response(JSON.stringify({ error: 'Not authorized for this conversation' }), {
+      status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+
   await sb.from('agent_messages').insert({ conversation_id, role: 'user', content: message, sent_by: userId });
 
   const { data: prefs } = await sb.from('agent_user_preferences')
@@ -8420,7 +8465,7 @@ Deno.serve(async (req) => {
       case 'create-conversation': return handleCreateConversation(sb, userId!, body.title, cors);
       case 'delete-conversation': return handleDeleteConversation(sb, userId!, body.conversation_id, cors);
       case 'rename-conversation': return handleRenameConversation(sb, userId!, body.conversation_id, body.title, cors);
-      case 'get-messages': return handleGetMessages(sb, body.conversation_id, cors);
+      case 'get-messages': return handleGetMessages(sb, userId!, body.conversation_id, cors);
       case 'confirm-action': return handleConfirmAction(sb, { ...body, user_id: userId }, cors);
       case 'chat': return handleChat(sb, body, userId!, username!, cors);
       case 'chat-stream': return handleChatStream(sb, body, userId!, username!, cors, req.signal);
@@ -8493,10 +8538,16 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       case 'execute-tool': {
-        // Service-to-service call from agent-task-runner for scheduled task execution
-        // Use verifyAuth's authMethod detection instead of raw key comparison
+        // Service-to-service call from agent-task-runner for scheduled task execution.
+        // SECURITY (Critical 5): trust is derived ONLY from the verified auth
+        // method (exact service-role-key match or a cryptographically verified
+        // service_role JWT). The previous `|| body.source === 'scheduled_task'`
+        // let any authenticated human claim service identity and then execute a
+        // tool AS ANOTHER USER via body.user_id. A request-body field is never a
+        // trust signal; caller-provided user_id is honoured only for verified
+        // service callers.
         const { authMethod } = await verifyAuth(sb, req.headers, body);
-        const isService = authMethod === 'service_role' || body.source === 'scheduled_task';
+        const isService = authMethod === 'service_role';
         if (!isService) {
           return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
         }

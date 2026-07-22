@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,11 +22,51 @@ export interface EmailAttachment {
   name: string;
   contentType: string;
   size: number;
-  storageUrl: string;
+  /** Legacy: permanent (public) URL. May be absent on newer records. */
+  storageUrl?: string | null;
+  /** Preferred: object path resolved to a short-lived signed URL on demand. */
+  storagePath?: string | null;
+  storageBucket?: string | null;
 }
 
 interface EmailAttachmentsListProps {
   attachments: EmailAttachment[];
+}
+
+/**
+ * Resolve a viewable URL for each attachment. Newer records carry a storagePath
+ * (bucket is or will become private) — fetch a fresh signed URL via the
+ * secure-storage proxy. Older records fall back to their stored storageUrl.
+ * Returns a map keyed by attachment index.
+ */
+function useResolvedAttachmentUrls(attachments: EmailAttachment[]): Record<number, string> {
+  const [urls, setUrls] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const resolved: Record<number, string> = {};
+      await Promise.all(
+        attachments.map(async (att, i) => {
+          if (att.storagePath) {
+            const { data } = await invokeSecureFunction('secure-storage', {
+              operation: 'signedUrl',
+              bucket: att.storageBucket || 'email-attachments',
+              path: att.storagePath,
+              expires_in: 900,
+            });
+            const signed = (data as any)?.data?.signedUrl;
+            if (signed) { resolved[i] = signed; return; }
+          }
+          if (att.storageUrl) resolved[i] = att.storageUrl;
+        }),
+      );
+      if (!cancelled) setUrls(resolved);
+    })();
+    return () => { cancelled = true; };
+  }, [attachments]);
+
+  return urls;
 }
 
 function formatSize(size: number) {
@@ -53,9 +94,11 @@ function AttachmentIcon({ contentType }: { contentType: string }) {
 
 function ImageThumb({
   attachment,
+  url,
   onOpen,
 }: {
   attachment: EmailAttachment;
+  url: string | undefined;
   onOpen: () => void;
 }) {
   const [loaded, setLoaded] = useState(false);
@@ -73,9 +116,9 @@ function ImageThumb({
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         </div>
       )}
-      {!errored ? (
+      {!errored && url ? (
         <img
-          src={attachment.storageUrl}
+          src={url}
           alt={attachment.name}
           loading="lazy"
           onLoad={() => setLoaded(true)}
@@ -97,12 +140,14 @@ function ImageThumb({
 }
 
 export default function EmailAttachmentsList({ attachments }: EmailAttachmentsListProps) {
-  const [preview, setPreview] = useState<EmailAttachment | null>(null);
+  const [preview, setPreview] = useState<{ att: EmailAttachment; url: string | undefined } | null>(null);
+  const urls = useResolvedAttachmentUrls(attachments || []);
 
   if (!attachments || attachments.length === 0) return null;
 
-  const images = attachments.filter((a) => a.contentType?.startsWith('image/'));
-  const others = attachments.filter((a) => !a.contentType?.startsWith('image/'));
+  const entries = attachments.map((att, i) => ({ att, i, url: urls[i] }));
+  const images = entries.filter((e) => e.att.contentType?.startsWith('image/'));
+  const others = entries.filter((e) => !e.att.contentType?.startsWith('image/'));
 
   const isPreviewable = (a: EmailAttachment) =>
     a.contentType?.startsWith('image/') || a.contentType === 'application/pdf';
@@ -123,11 +168,12 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
               Images
             </p>
             <div className="flex flex-wrap gap-3">
-              {images.map((att, i) => (
+              {images.map(({ att, i, url }) => (
                 <ImageThumb
                   key={`img-${i}`}
                   attachment={att}
-                  onOpen={() => setPreview(att)}
+                  url={url}
+                  onOpen={() => setPreview({ att, url })}
                 />
               ))}
             </div>
@@ -136,7 +182,7 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
 
         {others.length > 0 && (
           <div className="space-y-2">
-            {others.map((attachment, index) => (
+            {others.map(({ att: attachment, i: index, url }) => (
               <div
                 key={`file-${index}`}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-border/65 bg-muted/20 p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/35 hover:shadow-md"
@@ -158,7 +204,7 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                      onClick={() => setPreview(attachment)}
+                      onClick={() => setPreview({ att: attachment, url })}
                       title="Preview"
                     >
                       <Eye className="h-4 w-4" />
@@ -168,7 +214,8 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
-                    onClick={() => downloadFile(attachment.storageUrl, attachment.name)}
+                    onClick={() => url && downloadFile(url, attachment.name)}
+                    disabled={!url}
                     title="Download"
                   >
                     <Download className="h-4 w-4" />
@@ -184,14 +231,14 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
         <DialogContent className="max-w-5xl p-0">
           <DialogHeader className="border-b px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <DialogTitle className="truncate text-sm">{preview?.name}</DialogTitle>
+              <DialogTitle className="truncate text-sm">{preview?.att.name}</DialogTitle>
               <div className="flex items-center gap-1">
-                {preview && (
+                {preview?.url && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-8 gap-1.5"
-                    onClick={() => downloadFile(preview.storageUrl, preview.name)}
+                    onClick={() => preview.url && downloadFile(preview.url, preview.att.name)}
                   >
                     <Download className="h-3.5 w-3.5" />
                     Download
@@ -210,19 +257,19 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
             </div>
           </DialogHeader>
           <div className="h-[80vh] w-full bg-muted/30">
-            {preview?.contentType?.startsWith('image/') ? (
+            {preview?.att.contentType?.startsWith('image/') ? (
               <div className="flex h-full w-full items-center justify-center overflow-auto p-4">
                 <img
-                  src={preview.storageUrl}
-                  alt={preview.name}
+                  src={preview.url}
+                  alt={preview.att.name}
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
-            ) : preview?.contentType === 'application/pdf' ? (
+            ) : preview?.att.contentType === 'application/pdf' ? (
               <iframe
-                key={preview.storageUrl}
-                src={preview.storageUrl}
-                title={preview.name}
+                key={preview.url}
+                src={preview.url}
+                title={preview.att.name}
                 className="h-full w-full"
               />
             ) : (

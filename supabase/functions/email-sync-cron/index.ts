@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { verifyInternal, logSecurityEvent } from "../_shared/auth_v2.ts";
+import { insertTargetedNotification } from "../_shared/notify.ts";
 
 /**
  * Background email sync cron function.
@@ -152,6 +154,28 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // AUTH (Critical 2): this cron drives Microsoft Graph + the service role and
+  // creates notifications/attachments. It must fail closed to anonymous callers.
+  // pg_cron invokes it with the service-role key (the standard vault/pg_net
+  // pattern); internal callers may instead sign the request (HMAC). Both are
+  // accepted by verifyInternal — a public anon key or a "source=scheduled" body
+  // field is NOT. rawBody is read for signature verification.
+  const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const rawBody = await req.text().catch(() => '');
+  const internal = await verifyInternal(authClient, req, rawBody);
+  if (!internal.ok) {
+    await logSecurityEvent(authClient, {
+      action: 'email_sync_cron.invoke',
+      decision: 'deny',
+      reason_code: internal.errorCode ?? 'unauthorized',
+      actor_type: 'cron',
+    });
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
     console.log('[Email Sync Cron] Starting background email sync...');
 
@@ -271,15 +295,19 @@ Deno.serve(async (req) => {
                     });
 
                   if (!uploadError) {
-                    const { data: urlData } = supabase.storage
+                    // EC-5: store path + short-lived signed URL (not a permanent
+                    // public URL) so the bucket can go private; frontend refreshes.
+                    const { data: signed } = await supabase.storage
                       .from('email-attachments')
-                      .getPublicUrl(filePath);
+                      .createSignedUrl(filePath, 60 * 60 * 24 * 7);
 
                     storedAttachments.push({
                       name: fullAtt.name,
                       contentType: fullAtt.contentType,
                       size: fullAtt.size,
-                      storageUrl: urlData.publicUrl
+                      storagePath: filePath,
+                      storageBucket: 'email-attachments',
+                      storageUrl: signed?.signedUrl ?? null,
                     });
                   }
                 }
@@ -298,17 +326,19 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Create bell notification for new inbox emails
+      // Create bell notification for new inbox emails. This is the CENTRAL
+      // mailbox, so target users who can view the email_copilot module (+
+      // superadmins) rather than broadcasting sender/subject to all staff.
       const senderName = (email.from?.emailAddress?.name || email.from?.emailAddress?.address || 'Unknown').split('<')[0].trim();
-      await supabase
-        .from('notifications')
-        .insert({
+      await insertTargetedNotification(supabase, {
+        moduleKey: 'email_copilot',
+        notification: {
           type: 'email_received',
           title: `Email from ${senderName}`,
           message: email.subject || 'No subject',
           entity_id: insertedEmail.id,
-          read: false
-        });
+        },
+      });
 
       insertedCount++;
     }

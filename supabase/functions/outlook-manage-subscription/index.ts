@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { verifyAuth, createCorsHeaders, createUnauthorizedResponse, createForbiddenResponse } from '../_shared/auth.ts';
+import { requireSuperadmin } from '../_shared/authz.ts';
+import { logSecurityEvent } from '../_shared/auth_v2.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,12 +57,25 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
     
-    const { error: authError, userId } = await verifyAuth(supabase, req.headers, body);
+    const { error: authError, userId, authMethod } = await verifyAuth(supabase, req.headers, body);
     if (authError) {
       console.log('[outlook-manage-subscription] Auth failed:', authError);
       return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log(`[outlook-manage-subscription] Authenticated user: ${userId}`);
+
+    // AUTHZ: creating/listing/renewing/deleting Microsoft Graph subscriptions is
+    // an admin/internal operation — it wires the org mailbox to a webhook. Any
+    // authenticated user must NOT be able to do this. Require superadmin
+    // (deny-by-default; verified service calls bypass).
+    const authz = await requireSuperadmin(supabase, { userId, authMethod });
+    if (!authz.ok) {
+      await logSecurityEvent(supabase, {
+        action: `outlook_subscription.${action}`, decision: 'deny',
+        reason_code: authz.reason_code, actor_type: 'human', actor_id: userId,
+      });
+      return createForbiddenResponse(authz.error || 'Access denied', corsHeaders);
+    }
 
     if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
       return new Response(JSON.stringify({ error: 'Missing Microsoft credentials' }), {
@@ -79,7 +94,9 @@ Deno.serve(async (req) => {
         notificationUrl: webhookUrl,
         resource: `/users/${MICROSOFT_MAILBOX_EMAIL}/messages`,
         expirationDateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days max
-        clientState: 'npc-email-copilot-webhook'
+        // Prefer a high-entropy secret so the receiving webhook can authenticate
+        // notifications via clientState; fall back to the legacy constant.
+        clientState: (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || 'npc-email-copilot-webhook').trim(),
       };
 
       console.log('Creating subscription:', subscription);

@@ -54,15 +54,6 @@ verify_jwt = false
 [functions.aml-launch-ops]
 verify_jwt = false
 
-
-
-
-
-
-
-
-
-
 [functions.finance-email-track-pixel]
 verify_jwt = false
 
@@ -274,10 +265,6 @@ verify_jwt = false
 [functions.import-schools-data]
 verify_jwt = true
 
-[functions.compare-investment-reports]
-verify_jwt = true
-request_timeout = 120
-
 [functions.generate-bulk-reports]
 verify_jwt = true
 request_timeout = 150
@@ -313,17 +300,11 @@ request_timeout = 300
 [functions.email-copilot]
 verify_jwt = false
 
-[functions.outlook-email-sync]
-verify_jwt = false
-
 [functions.email-sync-cron]
 verify_jwt = false
 
 [functions.outlook-email-webhook]
 verify_jwt = false
-
-[functions.outlook-manage-subscription]
-verify_jwt = true
 
 [functions.vapi-call-webhook]
 verify_jwt = false
@@ -349,10 +330,6 @@ verify_jwt = true
 
 [functions.cleanup-stale-calls]
 verify_jwt = true
-
-[functions.compare-cash-flow-reports]
-verify_jwt = true
-request_timeout = 120
 
 [functions.report-qa]
 verify_jwt = false
@@ -419,10 +396,6 @@ verify_jwt = true
 [functions.get-activity-logs]
 verify_jwt = true
 
-[functions.regenerate-report-qualitative]
-verify_jwt = true
-request_timeout = 900
-
 [functions.archive-old-reports]
 verify_jwt = true
 
@@ -432,18 +405,8 @@ verify_jwt = true
 [functions.log-activity]
 verify_jwt = true
 
-[functions.check-integration-secrets]
-verify_jwt = true
-
-[functions.update-integration-secret]
-verify_jwt = true
-
 [functions.sync-client-to-ghl]
 verify_jwt = false
-
-[functions.generate-portfolio-analysis]
-verify_jwt = true
-request_timeout = 120
 
 [functions.clean-note-transcript]
 verify_jwt = true
@@ -455,15 +418,11 @@ request_timeout = 120
 [functions.update-ghl-opportunity-stage]
 verify_jwt = true
 
-[functions.calculate-borrowing-capacity]
-verify_jwt = true
-
 [functions.manage-bc-scenarios]
 verify_jwt = true
 
 [functions.commercial-bc-scenario-agent]
 verify_jwt = true
-
 
 [functions.cdr-lending-rates-service]
 verify_jwt = false
@@ -770,7 +729,6 @@ request_timeout = 30
 verify_jwt = false
 request_timeout = 30
 
-
 [functions.ghl-legacy-backfill-gaps]
 verify_jwt = false
 request_timeout = 400
@@ -906,8 +864,6 @@ request_timeout = 1500
 verify_jwt = false
 request_timeout = 1500
 
-
-
 [functions.estimate-commercial-noi]
 verify_jwt = true
 
@@ -924,7 +880,6 @@ verify_jwt = false
 # Called by pg_cron (multi-period digests) and by authenticated portal users to regenerate
 # a period digest. Auth is enforced in-function (Authorization required OR cron secret).
 verify_jwt = false
-
 
 [functions.market-updates-qa]
 # Auth enforced in-function (any Authorization header or cron secret).

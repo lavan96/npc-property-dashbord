@@ -180,4 +180,55 @@ export async function checkPermission(
   return { allowed: true, moduleKey };
 }
 
+/**
+ * Read-side gate: require can_view on a module identified directly by key.
+ *
+ * Used for storage READ operations (download/list/signedUrl) which previously
+ * had no authorization at all — any authenticated user could read any object in
+ * an allowed bucket. Semantics mirror checkPermission: service-role and
+ * superadmin bypass; an unregistered module stays open (legacy compatibility);
+ * a registered module requires an explicit can_view permission row.
+ */
+export async function checkModuleView(
+  supabase: any,
+  userId: string,
+  moduleKey: string,
+  authMethod?: string,
+): Promise<PermissionCheckResult> {
+  if (authMethod === 'service_role' || userId === 'service_role') {
+    return { allowed: true };
+  }
+
+  const { data: superadminRole } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'superadmin')
+    .maybeSingle();
+  if (superadminRole) return { allowed: true };
+
+  const { data: moduleData } = await supabase
+    .from('dashboard_modules')
+    .select('id')
+    .eq('module_key', moduleKey)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (!moduleData) {
+    // Unregistered module → allow (don't break reads for modules not yet in the registry)
+    return { allowed: true };
+  }
+
+  const { data: userPerm } = await supabase
+    .from('user_permissions')
+    .select('can_view')
+    .eq('user_id', userId)
+    .eq('module_id', moduleData.id)
+    .maybeSingle();
+
+  if (!userPerm || !userPerm.can_view) {
+    return { allowed: false, reason: `You do not have view permission for "${moduleKey}"`, moduleKey };
+  }
+  return { allowed: true, moduleKey };
+}
+
 export { TABLE_TO_MODULE_MAP, OPERATION_TO_PERMISSION };

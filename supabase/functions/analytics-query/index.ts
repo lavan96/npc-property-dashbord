@@ -1,6 +1,8 @@
 // Batch 7E.2 — Analytics query proxy over read-only views
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { requireModulePermission } from '../_shared/authz.ts';
+import { logSecurityEvent } from '../_shared/auth_v2.ts';
 
 interface Body {
   view: 'vw_pipeline_funnel' | 'vw_lender_mix' | 'vw_broker_scorecard' | 'vw_revenue_dashboard';
@@ -21,6 +23,25 @@ Deno.serve(async (req) => {
     const body: Body = await req.json();
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
+
+    // AUTHZ: these views expose org-wide financial data (revenue, broker
+    // scorecard, lender mix, pipeline funnel). The allowlist prevents arbitrary
+    // table selection but not unauthorized reads — gate on the
+    // finance_portal_admin module view permission (deny-by-default; superadmin +
+    // verified service bypass).
+    const authz = await requireModulePermission(
+      supabase,
+      { userId: auth.userId, authMethod: auth.authMethod },
+      'finance_portal_admin',
+      'can_view',
+    );
+    if (!authz.ok) {
+      await logSecurityEvent(supabase, {
+        action: `analytics_query.${body.view}`, decision: 'deny',
+        reason_code: authz.reason_code, actor_type: 'human', actor_id: auth.userId,
+      });
+      return createForbiddenResponse(authz.error || 'Access denied', cors);
+    }
 
     const j = (data: any, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });

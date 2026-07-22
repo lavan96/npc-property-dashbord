@@ -113,7 +113,9 @@ interface EmailAttachment {
   name: string;
   contentType: string;
   size: number;
-  storageUrl: string;
+  storageUrl?: string | null;
+  storagePath?: string | null;
+  storageBucket?: string | null;
 }
 
 interface Email {
@@ -209,7 +211,9 @@ const normalizeEmailAttachments = (attachments: unknown): EmailAttachment[] => {
     name: toSafeString(attachment?.name, 'Attachment'),
     contentType: toSafeString(attachment?.contentType ?? attachment?.content_type, 'application/octet-stream'),
     size: Number(attachment?.size) || 0,
-    storageUrl: toSafeString(attachment?.storageUrl ?? attachment?.storage_url),
+    storageUrl: toSafeString(attachment?.storageUrl ?? attachment?.storage_url) || null,
+    storagePath: attachment?.storagePath ?? attachment?.storage_path ?? null,
+    storageBucket: attachment?.storageBucket ?? attachment?.storage_bucket ?? null,
   }));
 };
 

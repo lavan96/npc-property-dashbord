@@ -147,16 +147,19 @@ async function uploadAttachmentToStorage(
       return null;
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
+    // EC-5: store path + short-lived signed URL (not a permanent public URL)
+    // so the email-attachments bucket can be made private; frontend refreshes.
+    const { data: signed } = await supabase.storage
       .from('email-attachments')
-      .getPublicUrl(filePath);
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7);
 
     return {
       name: attachment.name,
       contentType: attachment.contentType,
       size: attachment.size,
-      storageUrl: urlData.publicUrl
+      storagePath: filePath,
+      storageBucket: 'email-attachments',
+      storageUrl: signed?.signedUrl ?? null,
     };
   } catch (error) {
     console.error('[Outlook Webhook] Error uploading attachment:', error);
@@ -273,6 +276,24 @@ Deno.serve(async (req) => {
     if (!body.value || !Array.isArray(body.value)) {
       console.log('[Outlook Webhook] No notifications in payload');
       return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // SECURITY: validate the subscription clientState on every notification.
+    // Microsoft Graph echoes the clientState set at subscription time; a caller
+    // forging notifications will not know it. Prefer a high-entropy secret
+    // (OUTLOOK_WEBHOOK_CLIENT_STATE); fall back to the legacy constant so
+    // existing subscriptions keep working until they are recreated. Reject the
+    // whole batch if any notification's clientState does not match.
+    const expectedClientState = (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || 'npc-email-copilot-webhook').trim();
+    const clientStateOk = body.value.every(
+      (n: any) => (n?.clientState ?? '') === expectedClientState,
+    );
+    if (!clientStateOk) {
+      console.warn('[Outlook Webhook] Rejected: clientState mismatch');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }

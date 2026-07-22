@@ -1,6 +1,8 @@
 // Batch 7E.2 — Compliance records (versioned) + pack exports
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { requireModulePermission, permForAction } from '../_shared/authz.ts';
+import { logSecurityEvent } from '../_shared/auth_v2.ts';
 
 interface Body {
   action: 'list' | 'get' | 'create_version' | 'update_status' | 'pack_export' | 'list_packs' | 'delete';
@@ -22,6 +24,23 @@ Deno.serve(async (req) => {
     const body: Body = await req.json();
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
+
+    // AUTHZ: compliance records hold sensitive client/deal/signature/regulatory
+    // material. Gate every action on the finance_portal_admin module permission
+    // (deny-by-default; superadmin + verified service bypass).
+    const authz = await requireModulePermission(
+      supabase,
+      { userId: auth.userId, authMethod: auth.authMethod },
+      'finance_portal_admin',
+      permForAction(body.action),
+    );
+    if (!authz.ok) {
+      await logSecurityEvent(supabase, {
+        action: `compliance_records.${body.action}`, decision: 'deny',
+        reason_code: authz.reason_code, actor_type: 'human', actor_id: auth.userId,
+      });
+      return createForbiddenResponse(authz.error || 'Access denied', cors);
+    }
 
     const j = (data: any, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });

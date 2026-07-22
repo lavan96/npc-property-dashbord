@@ -190,11 +190,29 @@ async function sha256Hex(data: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function constantTimeEqual(a: string, b: string): boolean {
+export function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
+}
+
+/**
+ * Fail-closed webhook secret gate. Returns true only when a sufficiently strong
+ * secret is configured AND the presented value matches it (constant-time).
+ * A missing/weak secret returns false — production webhooks must refuse to run
+ * rather than process unauthenticated input.
+ */
+export function verifyWebhookSecret(
+  configured: string | null | undefined,
+  presented: string | null | undefined,
+  minLength = 16,
+): boolean {
+  const secret = (configured || '').trim();
+  const given = (presented || '').trim();
+  if (secret.length < minLength) return false;
+  if (given.length === 0) return false;
+  return constantTimeEqual(secret, given);
 }
 
 function internalMessage(method: string, path: string, timestamp: string, nonce: string, caller: string, bodyHash: string): string {

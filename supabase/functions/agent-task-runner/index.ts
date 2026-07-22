@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyInternal, logSecurityEvent } from "../_shared/auth_v2.ts";
 
 /**
  * Agent Scheduled Task Runner
@@ -23,16 +24,22 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')?.trim() || '';
     const sb = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify this is a scheduled/service call
-    const body = await req.json().catch(() => ({}));
-    const authHeader = req.headers.get('Authorization') || '';
-    const isServiceCall = authHeader.includes(serviceRoleKey) || body.source === 'scheduled';
-
-    if (!isServiceCall) {
-      const apiKey = req.headers.get('apikey') || '';
-      if (!apiKey && !authHeader) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-      }
+    // AUTH (Critical 6): trust the caller ONLY as a real internal/service
+    // invocation — a valid service-role-key Bearer (the pg_cron vault pattern)
+    // or an HMAC-signed internal request. The previous check trusted
+    // `body.source === 'scheduled'` and fell through on any anon key /
+    // Authorization header, so a public caller could drive privileged
+    // scheduled automation. Body fields are never a trust signal.
+    const rawBody = await req.text().catch(() => '');
+    const internal = await verifyInternal(sb, req, rawBody);
+    if (!internal.ok) {
+      await logSecurityEvent(sb, {
+        action: 'agent_task_runner.invoke',
+        decision: 'deny',
+        reason_code: internal.errorCode ?? 'unauthorized',
+        actor_type: 'cron',
+      });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
     const now = new Date().toISOString();

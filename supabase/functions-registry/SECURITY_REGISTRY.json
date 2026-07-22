@@ -50,18 +50,24 @@
     },
     "agent-task-runner": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "ai-dashboard-agent": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "authenticated-staff",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "airtable-proxy": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "authenticated-staff",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "aml-access": {
       "verify_jwt": false,
@@ -155,8 +161,10 @@
     },
     "analytics-query": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "analyze-meta-ads": {
       "verify_jwt": true,
@@ -195,8 +203,10 @@
     },
     "auto-report-webhook": {
       "verify_jwt": false,
-      "exposure_class": "webhook",
-      "owner": "security-remediation-program"
+      "exposure_class": "webhook-secret",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "backfill-investment-scores": {
       "verify_jwt": false,
@@ -425,13 +435,17 @@
     },
     "email-sync-cron": {
       "verify_jwt": false,
-      "exposure_class": "cron-worker",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "enrich-lead-attributions": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "authenticated-or-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "estimate-commercial-caprate": {
       "verify_jwt": true,
@@ -743,8 +757,10 @@
     },
     "generate-commission-payout": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "generate-investment-report": {
       "verify_jwt": false,
@@ -944,8 +960,10 @@
     },
     "ghl-webhook-receiver": {
       "verify_jwt": false,
-      "exposure_class": "webhook",
-      "owner": "security-remediation-program"
+      "exposure_class": "webhook-secret",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "ghl-workflow-visualizer": {
       "verify_jwt": true,
@@ -1049,13 +1067,17 @@
     },
     "manage-commission-ledger": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "manage-compliance-records": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "manage-data-import": {
       "verify_jwt": true,
@@ -1064,8 +1086,10 @@
     },
     "manage-generated-documents": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "manage-industrial-data": {
       "verify_jwt": true,
@@ -1270,25 +1294,31 @@
     },
     "outlook-calendar": {
       "verify_jwt": false,
-      "exposure_class": "human-authenticated",
+      "exposure_class": "authenticated-staff",
       "owner": "security-remediation-program",
-      "reviewed": true
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "outlook-email-sync": {
       "verify_jwt": false,
-      "exposure_class": "human-authenticated",
+      "exposure_class": "authenticated-staff",
       "owner": "security-remediation-program",
-      "reviewed": true
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "outlook-email-webhook": {
       "verify_jwt": false,
-      "exposure_class": "webhook",
-      "owner": "security-remediation-program"
+      "exposure_class": "webhook-clientstate",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "outlook-manage-subscription": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "superadmin-only",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "parse-property-pdf": {
       "verify_jwt": false,
@@ -1477,9 +1507,10 @@
     },
     "secure-storage": {
       "verify_jwt": true,
-      "exposure_class": "human-authenticated",
+      "exposure_class": "module-gated",
       "owner": "security-remediation-program",
-      "reviewed": true
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "send-appointment-notification": {
       "verify_jwt": true,
@@ -1493,9 +1524,10 @@
     },
     "send-email-reply": {
       "verify_jwt": false,
-      "exposure_class": "human-authenticated",
+      "exposure_class": "module-gated",
       "owner": "security-remediation-program",
-      "reviewed": true
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "send-ghl-message": {
       "verify_jwt": false,
@@ -1614,13 +1646,17 @@
     },
     "vapi-call-webhook": {
       "verify_jwt": false,
-      "exposure_class": "webhook",
-      "owner": "security-remediation-program"
+      "exposure_class": "webhook-secret",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     },
     "voice-to-text": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "authenticated-staff",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "second-round-audit-remediation"
     }
   }
 }

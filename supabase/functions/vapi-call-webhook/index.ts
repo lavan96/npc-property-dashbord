@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { phonesMatch } from '../_shared/phone.ts';
+import { verifyWebhookSecret } from '../_shared/auth_v2.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -978,20 +979,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // FAIL CLOSED: refuse unless a strong VAPI_WEBHOOK_SECRET is configured AND
+    // the caller presents it (constant-time). The previous check validated the
+    // secret only "if configured", so an unset secret accepted any caller.
     const webhookSecret = Deno.env.get('VAPI_WEBHOOK_SECRET');
-    if (webhookSecret) {
-      const providedSecret =
-        req.headers.get('x-vapi-secret') ||
-        req.headers.get('x-webhook-secret') ||
-        req.headers.get('x-vapi-webhook-secret') ||
-        req.headers.get('x-vapi-signature');
-      if (providedSecret !== webhookSecret) {
-        console.warn('[Vapi Webhook] Rejected request with invalid webhook secret');
-        return new Response(JSON.stringify({ error: 'Unauthorized webhook request' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    const providedSecret = req.headers.get('x-vapi-secret') || req.headers.get('x-webhook-secret');
+    if (!verifyWebhookSecret(webhookSecret, providedSecret)) {
+      console.warn('[Vapi Webhook] Rejected: missing/invalid webhook secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized webhook request' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

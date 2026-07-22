@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { isSuperadmin, logSecurityEvent } from '../_shared/auth_v2.ts';
-import { checkPermission } from '../_shared/permissions.ts';
+import { checkPermission, checkModuleView } from '../_shared/permissions.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -16,6 +16,16 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 interface BucketPolicy {
   operations: string[];
   permissionTable?: string;
+  /**
+   * Module key required to READ (download/list/signedUrl/publicUrl) from this
+   * bucket. Reads previously had no authorization — any authenticated user
+   * could pull any object in an allowed bucket. When set, non-internal reads
+   * require can_view on this module (superadmin/service bypass; unregistered
+   * module stays open for legacy compatibility). Low-sensitivity/public buckets
+   * (branding-assets, report-templates, investment-reports) intentionally omit
+   * it so their asset reads stay broadly available.
+   */
+  readModuleKey?: string;
   superadminDelete?: boolean;
   allowPublicUrl?: boolean;
   /** SVG allowed only on staff-managed asset buckets (branding/templates) */
@@ -26,20 +36,20 @@ interface BucketPolicy {
 const DEFAULT_MAX_UPLOAD = 25 * 1024 * 1024; // 25 MB binary
 
 const BUCKET_POLICIES: Record<string, BucketPolicy> = {
-  'client-files':         { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', maxUploadBytes: DEFAULT_MAX_UPLOAD },
-  'client-documents':     { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', maxUploadBytes: DEFAULT_MAX_UPLOAD },
-  'vownet-forms':         { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'client-files':         { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', readModuleKey: 'clients', maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'client-documents':     { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', readModuleKey: 'clients', maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'vownet-forms':         { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', readModuleKey: 'clients', maxUploadBytes: DEFAULT_MAX_UPLOAD },
   // NOTE: investment-reports is currently a PUBLIC bucket and the report
   // pipeline persists public pdf_url links; publicUrl stays allowed until the
   // coordinated signed-URL migration (STOR-004) flips the bucket private.
   'investment-reports':   { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], superadminDelete: true, allowPublicUrl: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
-  'quantitative-reports': { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'quantitative-reports': { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], readModuleKey: 'reports', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
   // report-templates is a public bucket whose asset URLs are embedded in
   // rendered templates; publicUrl remains available (no client PII stored).
   'report-templates':     { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], permissionTable: 'report_templates', allowPublicUrl: true, allowSvg: true, maxUploadBytes: 50 * 1024 * 1024 },
   'branding-assets':      { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], superadminDelete: true, allowPublicUrl: true, allowSvg: true, maxUploadBytes: 10 * 1024 * 1024 },
-  'qa_exports':           { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
-  'email-attachments':    { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'email_copilot_emails', maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'qa_exports':           { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], readModuleKey: 'report_qa', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'email-attachments':    { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'email_copilot_emails', readModuleKey: 'email_copilot', maxUploadBytes: DEFAULT_MAX_UPLOAD },
 };
 
 // Content types that may execute in a browser or shell — rejected on upload.
@@ -159,6 +169,24 @@ Deno.serve(async (req) => {
           });
           return createForbiddenResponse(perm.reason || 'Permission denied', corsHeaders);
         }
+      }
+    }
+
+    // Read-side authorization (EC-5): download/list/signedUrl/publicUrl were
+    // previously unauthorized beyond "is authenticated". Require can_view on the
+    // bucket's governing module so a caller without that module cannot read its
+    // objects. (Object-level ownership — tying a specific path to the caller's
+    // client assignment / report ownership — is the deeper follow-up; this
+    // closes the any-authenticated-staff read hole.)
+    if (!isInternal && policy.readModuleKey &&
+        (operation === 'download' || operation === 'list' || operation === 'signedUrl' || operation === 'publicUrl')) {
+      const readPerm = await checkModuleView(supabase, actorId, policy.readModuleKey, sessionResult.authMethod);
+      if (!readPerm.allowed) {
+        await logSecurityEvent(supabase, {
+          action: `storage.${operation}`, decision: 'deny', reason_code: 'read_permission_denied',
+          actor_type: 'human', actor_id: actorId, target_type: 'bucket', target_id: bucket,
+        });
+        return createForbiddenResponse(readPerm.reason || 'Read permission denied', corsHeaders);
       }
     }
 

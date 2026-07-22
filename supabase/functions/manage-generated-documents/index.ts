@@ -1,6 +1,8 @@
 // Batch 7E.2 — Generated documents (loan/cover/etc) + DocuSign envelope tracking
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
-import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { requireModulePermission, permForAction } from '../_shared/authz.ts';
+import { logSecurityEvent } from '../_shared/auth_v2.ts';
 import { getDocuSignAccessToken, getDocuSignRestBaseUrl } from '../_shared/docusign-auth.ts';
 import { buildFreeformEnvelope, pdfBytesToBase64, type FreeformRecipient, type FreeformTab } from '../_shared/docusign-freeform.ts';
 
@@ -29,6 +31,30 @@ Deno.serve(async (req) => {
     const body: Body = await req.json();
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
+
+    // AUTHZ (Critical 8): "valid dashboard session" is NOT authorization here.
+    // This function can list/read/mutate any generated document and send it
+    // through the org DocuSign account to arbitrary recipients. Gate every
+    // action on the agreements module permission (deny-by-default; superadmin
+    // and verified service calls bypass). Send/void/delete require the stronger
+    // edit/delete flags via permForAction.
+    const requiredPerm = permForAction(body.action);
+    const authz = await requireModulePermission(
+      supabase,
+      { userId: auth.userId, authMethod: auth.authMethod },
+      'agreements',
+      requiredPerm,
+    );
+    if (!authz.ok) {
+      await logSecurityEvent(supabase, {
+        action: `generated_documents.${body.action}`,
+        decision: 'deny',
+        reason_code: authz.reason_code,
+        actor_type: 'human',
+        actor_id: auth.userId,
+      });
+      return createForbiddenResponse(authz.error || 'Access denied', cors);
+    }
 
     const j = (data: any, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
