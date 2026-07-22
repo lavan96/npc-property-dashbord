@@ -5,7 +5,7 @@ import { phonesMatch } from '../_shared/phone.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-vapi-secret, x-webhook-secret, x-vapi-webhook-secret, x-vapi-signature',
 };
 
 // ---- Blacklist auto-kill configuration ----
@@ -980,7 +980,11 @@ Deno.serve(async (req) => {
   try {
     const webhookSecret = Deno.env.get('VAPI_WEBHOOK_SECRET');
     if (webhookSecret) {
-      const providedSecret = req.headers.get('x-vapi-secret') || req.headers.get('x-webhook-secret');
+      const providedSecret =
+        req.headers.get('x-vapi-secret') ||
+        req.headers.get('x-webhook-secret') ||
+        req.headers.get('x-vapi-webhook-secret') ||
+        req.headers.get('x-vapi-signature');
       if (providedSecret !== webhookSecret) {
         console.warn('[Vapi Webhook] Rejected request with invalid webhook secret');
         return new Response(JSON.stringify({ error: 'Unauthorized webhook request' }), {
