@@ -1,3 +1,4 @@
+const INTERNAL_EDGE_SECRET = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
 // Shared logic for processing bulk_generation_items. Used by both
 // `generate-bulk-reports` (initial run) and `resume-bulk-generation` (cron).
 //
@@ -95,7 +96,7 @@ async function callInvestmentReport(
       signal,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
+        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || serviceRoleKey}`,
         'apikey': anonKey,
       },
       body: JSON.stringify({

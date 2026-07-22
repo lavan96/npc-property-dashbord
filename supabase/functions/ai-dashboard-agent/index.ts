@@ -5,6 +5,7 @@ import { getBrandConfig } from "../_shared/brand-config.ts";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const INTERNAL_EDGE_SECRET = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
 const AI_GATEWAY_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
@@ -3243,7 +3244,7 @@ async function executeSendEmail(sb: any, args: any) {
   try {
     const resp = await fetch(`${SUPABASE_URL.trim()}/functions/v1/send-email-reply`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`, 'apikey': SUPABASE_ANON_KEY.trim() },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY.trim()}`, 'apikey': SUPABASE_ANON_KEY.trim() },
       body: JSON.stringify({ to: args.to, subject: args.subject, body: args.body, cc: args.cc, bcc: args.bcc, original_email_id: args.original_email_id, mailbox_source: args.mailbox_source || 'admin', source: 'agent' }),
     });
     const result = await resp.json();
@@ -3260,7 +3261,7 @@ async function callGHLCalendar(payload: Record<string, unknown>) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY.trim()}`,
       'apikey': SUPABASE_ANON_KEY.trim(),
     },
     body: JSON.stringify(payload),
@@ -3311,7 +3312,7 @@ async function executeGetAppointmentsForClient(sb: any, args: any) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+          'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY.trim()}`,
           'apikey': SUPABASE_ANON_KEY.trim(),
         },
         body: JSON.stringify({ action: 'getContactAppointments', contactId: client.ghl_contact_id }),
@@ -3964,7 +3965,7 @@ async function executeCreateClient(sb: any, args: any, userId: string) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY.trim()}`,
         'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
       },
       body: JSON.stringify(syncBody),
@@ -5949,7 +5950,7 @@ async function callOutlookCalendar(payload: Record<string, unknown>, userId?: st
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),
@@ -6177,7 +6178,7 @@ async function executeGenerateAgreement(sb: any, args: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY.trim()}`,
       'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
     },
     body: JSON.stringify(payload),
@@ -6195,7 +6196,7 @@ async function executeSendAgreementDocusign(args: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY.trim()}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY.trim()}`,
       'apikey': (SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY).trim(),
     },
     body: JSON.stringify({ action: 'send_docusign', agreement_id: args.agreement_id }),
@@ -6409,7 +6410,7 @@ async function executeSendPortalInvite(sb: any, args: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY}`,
       'apikey': SUPABASE_ANON_KEY.trim(),
     },
     body: JSON.stringify(body),
@@ -6433,7 +6434,7 @@ async function executeRevokePortalAccess(sb: any, args: any) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY}`,
       'apikey': SUPABASE_ANON_KEY.trim(),
     },
     body: JSON.stringify({ action: 'revoke', client_id: cid }),
@@ -6738,7 +6739,7 @@ async function executeTriggerInvestmentReport(sb: any, args: any, userId: string
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY}`,
         'apikey': SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ report_id: report.id, property_address }),
@@ -7909,7 +7910,7 @@ async function callAirtableProxy(body: any = {}) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || SUPABASE_SERVICE_ROLE_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
     body: JSON.stringify(body),

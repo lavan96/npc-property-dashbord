@@ -259,8 +259,12 @@ export async function verifyInternal(
   // require reading the raw body.
   const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
   const presentedInternal = (req.headers.get('x-internal-edge-secret') || '').trim();
-  if (internalSecret.length >= 16 && presentedInternal.length > 0 &&
-      constantTimeEqual(internalSecret, presentedInternal)) {
+  const bearerForInternal = (req.headers.get('authorization') || '').startsWith('Bearer ')
+    ? (req.headers.get('authorization') || '').slice(7).trim() : '';
+  if (internalSecret.length >= 16 && (
+        (presentedInternal.length > 0 && constantTimeEqual(internalSecret, presentedInternal)) ||
+        (bearerForInternal.length > 0 && constantTimeEqual(internalSecret, bearerForInternal))
+      )) {
     return ctx({
       ok: true,
       authType: 'internal_service',

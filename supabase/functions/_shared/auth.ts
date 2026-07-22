@@ -133,8 +133,12 @@ export async function verifyAuth(
   // internal credential.
   const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
   const presentedInternal = (headers.get('x-internal-edge-secret') || '').trim();
-  if (internalSecret.length >= 16 && presentedInternal.length > 0 && constantTimeEqualStr(internalSecret, presentedInternal)) {
-    console.log('[verifyAuth] Valid x-internal-edge-secret - allowing internal service call');
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (internalSecret.length >= 16 && (
+        (presentedInternal.length > 0 && constantTimeEqualStr(internalSecret, presentedInternal)) ||
+        (bearerToken.length > 0 && constantTimeEqualStr(internalSecret, bearerToken))
+      )) {
+    console.log('[verifyAuth] Valid INTERNAL_EDGE_SECRET - allowing internal service call');
     return { error: null, userId: 'service_role', username: 'system', authMethod: 'service_role' };
   }
 
