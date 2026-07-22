@@ -980,7 +980,11 @@ Deno.serve(async (req) => {
   try {
     const webhookSecret = Deno.env.get('VAPI_WEBHOOK_SECRET');
     if (webhookSecret) {
-      const providedSecret = req.headers.get('x-vapi-secret') || req.headers.get('x-webhook-secret');
+      const providedSecret =
+        req.headers.get('x-vapi-secret') ||
+        req.headers.get('x-webhook-secret') ||
+        req.headers.get('x-vapi-webhook-secret') ||
+        req.headers.get('x-vapi-signature');
       if (providedSecret !== webhookSecret) {
         console.warn('[Vapi Webhook] Rejected request with invalid webhook secret');
         return new Response(JSON.stringify({ error: 'Unauthorized webhook request' }), {
