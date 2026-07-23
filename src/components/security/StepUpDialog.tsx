@@ -14,8 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ShieldCheck, Loader2 } from 'lucide-react';
-import { requestStepUpChallenge, type StepUpCapability } from '@/lib/security/stepUp';
+import { ShieldCheck, Loader2, Fingerprint } from 'lucide-react';
+import { requestStepUpChallenge, requestStepUpWithWebAuthn, webauthnSupported, type StepUpCapability } from '@/lib/security/stepUp';
 
 interface StepUpDialogProps {
   open: boolean;
