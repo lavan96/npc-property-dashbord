@@ -235,7 +235,6 @@ export default function Listings() {
   const navigate = useNavigate();
   const { prefs, update: updatePrefs, recordLastUsed, effectiveScope, effectiveTier } = useReportPreferences();
   // Per-row pending scope/tier choice in the picker (controlled)
-  const [rowPicker, setRowPicker] = useState<Record<string, { scope: ReportScope; tier: ReportTier }>>({});
 
   useEffect(() => {
     setViewMode(isMobile ? 'list' : 'table');
@@ -828,10 +827,7 @@ export default function Listings() {
                   label={listing.address || listing.location}
                   isSelected={selectedListings.has(listing.id)}
                   canGenerate={canEditListings}
-                  effectiveScope={effectiveScope}
-                  effectiveTier={effectiveTier}
                   onQuickGenerate={() => launchScopedGeneration(listing, effectiveScope, effectiveTier)}
-                  onGenerateWithScope={({ scope, tier }) => launchScopedGeneration(listing, scope, tier)}
                   onToggleSelect={() => handleSelectListing(listing.id, !selectedListings.has(listing.id))}
                   onOpenDetails={() => openDetailsModal(listing)}
                   onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
@@ -933,7 +929,6 @@ export default function Listings() {
                   
                   <TableCell className="sticky right-0 z-10 w-20 min-w-20 py-4 pr-5 text-right align-middle last:rounded-r-xl bg-card/95 backdrop-blur group-hover:bg-transparent shadow-[-8px_0_16px_-8px_rgba(15,23,42,0.18)] dark:bg-background/92">
                     {(() => {
-                      const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
                         <ReportActionMenu
                           surface="listing-row"
@@ -943,26 +938,9 @@ export default function Listings() {
                             onOpenSource: listing.url ? () => openSourceUrl(listing.url!) : undefined,
                             onCopyAddress: () => copyToClipboard(buildFullAddress(listing), 'Full address'),
                             onOpenGenerateModal: canEditListings ? () => openInvestmentReportModal(listing) : undefined,
-                            onGenerateWithScope: canEditListings
-                              ? ({ scope, tier }) => launchScopedGeneration(listing, scope, tier)
-                              : undefined,
                           }}
                           permissions={{ canGenerate: canEditListings }}
                           triggerClassName="h-9 w-9 rounded-full border border-border bg-background text-foreground opacity-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_24px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 data-[state=open]:border-primary/60 data-[state=open]:bg-primary/12 data-[state=open]:text-primary"
-                          generatePicker={
-                            canEditListings
-                              ? {
-                                  scope: current.scope,
-                                  tier: current.tier,
-                                  defaultScope: prefs.default_scope,
-                                  defaultTier: prefs.default_tier,
-                                  onChange: (next) =>
-                                    setRowPicker((m) => ({ ...m, [listing.id]: next })),
-                                  onSaveDefault: ({ scope, tier }) =>
-                                    updatePrefs({ default_scope: scope, default_tier: tier }),
-                                }
-                              : undefined
-                          }
                         />
                       );
                     })()}

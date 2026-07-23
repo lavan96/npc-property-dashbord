@@ -7,6 +7,7 @@ import { RegenerateReportButton } from '@/components/reports/RegenerateReportBut
 import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
 import { TierBadge, type ReportTier } from '@/components/reports/TierBadge';
 import type { InvestmentReport } from './types';
+import { getReportVariantLabel } from '@/lib/reports/reportVariants';
 
 interface InvestmentReportTableProps {
   reports: InvestmentReport[];
@@ -100,7 +101,7 @@ export function InvestmentReportTable({
                   {report.report_tier ? <TierBadge tier={report.report_tier} showIcon={false} /> : <span className="text-muted-foreground">—</span>}
                   {report.report_variant && report.report_variant !== 'composite' && (
                     <Badge variant="outline" className="ml-2 text-xs">
-                      {report.report_variant === 'financial' ? 'FIN' : 'PLDD'}
+                      {getReportVariantLabel(report.report_variant)}
                     </Badge>
                   )}
                 </td>
