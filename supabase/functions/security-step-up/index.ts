@@ -25,6 +25,13 @@ import { generateStepUpToken, hashStepUpToken, resolveActiveStaffSession } from 
 import { createEncryptedTotpSecret, verifyEncryptedTotp } from '../_shared/totp.ts';
 import { generateRecoveryCodes, hashRecoveryCode, hashRecoveryCodes, isRecoveryCode, isRecoveryCodeHashConfigured } from '../_shared/recoveryCodes.ts';
 import { consumeRateLimit, getTrustedClientIp } from '../_shared/requestSecurity.ts';
+import {
+  loadWebAuthnConfig,
+  buildRegistrationOptions,
+  verifyRegistration,
+  buildAssertionOptions,
+  verifyAssertion,
+} from '../_shared/webauthn.ts';
 
 const corsHeaders = createCorsHeaders();
 const STEP_UP_TTL_MS = 15 * 60 * 1000; // 15 min
@@ -196,6 +203,139 @@ Deno.serve(async (req) => {
       return j({ success: true, recovery_codes: recoveryCodes });
     }
 
+    // ---------------- WebAuthn (passkey) lifecycle ----------------
+    if (action === 'webauthn_list') {
+      const { data: creds } = await admin.from('user_webauthn_credentials')
+        .select('id, credential_id, device_name, device_type, backed_up, transports, last_used_at, created_at')
+        .eq('user_id', auth.userId)
+        .order('created_at', { ascending: false });
+      return j({ success: true, credentials: creds ?? [] });
+    }
+
+    if (action === 'webauthn_delete') {
+      const credentialRowId = String(body?.credential_id ?? '');
+      if (!credentialRowId) return j({ success: false, error: 'credential_id_required' }, 400);
+      const { error } = await admin.from('user_webauthn_credentials')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('id', credentialRowId);
+      if (error) return j({ success: false, error: 'delete_failed' }, 500);
+      // If this was the last webauthn credential, clear webauthn_enrolled_at.
+      const { count } = await admin.from('user_webauthn_credentials')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', auth.userId);
+      if ((count ?? 0) === 0) {
+        await admin.from('custom_users').update({ webauthn_enrolled_at: null }).eq('id', auth.userId);
+      }
+      try { await admin.from('security_events').insert({ action: 'mfa.webauthn_removed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { staff_session_id: staffSession.id, credential_row_id: credentialRowId } }); } catch { /* ignore */ }
+      return j({ success: true });
+    }
+
+    if (action === 'enroll_webauthn_begin') {
+      const cfg = loadWebAuthnConfig();
+      if (!cfg) return j({ success: false, error: 'webauthn_not_configured' }, 503);
+      if (!await verifyUserPassword(admin, auth.userId, String(body?.password ?? ''))) {
+        return j({ success: false, error: 'invalid_credentials' }, 401);
+      }
+      const { data: existing } = await admin.from('user_webauthn_credentials')
+        .select('credential_id').eq('user_id', auth.userId);
+      const options = await buildRegistrationOptions({
+        cfg,
+        userId: auth.userId,
+        userName: auth.username || auth.userId,
+        existingCredentialIds: (existing ?? []).map((r: any) => r.credential_id),
+      });
+      const enrollmentToken = generateStepUpToken(32);
+      const tokenHash = await hashStepUpToken(auth.userId, 'webauthn.registration', enrollmentToken);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      await admin.from('mfa_webauthn_challenges')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('purpose', 'registration');
+      const { error: insErr } = await admin.from('mfa_webauthn_challenges').insert({
+        user_id: auth.userId,
+        staff_session_id: staffSession.id,
+        purpose: 'registration',
+        challenge_b64url: options.challenge,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+      });
+      if (insErr) return j({ success: false, error: 'webauthn_challenge_unavailable' }, 503);
+      return j({ success: true, enrollment_token: enrollmentToken, options, expires_at: expiresAt });
+    }
+
+    if (action === 'enroll_webauthn_finish') {
+      const cfg = loadWebAuthnConfig();
+      if (!cfg) return j({ success: false, error: 'webauthn_not_configured' }, 503);
+      const enrollmentToken = String(body?.enrollment_token ?? '');
+      const clientResponse = body?.credential;
+      const deviceName = typeof body?.device_name === 'string' ? String(body.device_name).slice(0, 120) : null;
+      if (enrollmentToken.length < 16 || !clientResponse?.id) {
+        return j({ success: false, error: 'invalid_registration' }, 400);
+      }
+      const tokenHash = await hashStepUpToken(auth.userId, 'webauthn.registration', enrollmentToken);
+      const { data: challenge } = await admin.from('mfa_webauthn_challenges')
+        .select('id, challenge_b64url, expires_at, staff_session_id')
+        .eq('user_id', auth.userId)
+        .eq('purpose', 'registration')
+        .eq('token_hash', tokenHash)
+        .eq('staff_session_id', staffSession.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      if (!challenge) return j({ success: false, error: 'invalid_registration' }, 401);
+      const verified = await verifyRegistration({ cfg, expectedChallenge: challenge.challenge_b64url, response: clientResponse });
+      if (!verified) return j({ success: false, error: 'webauthn_verification_failed' }, 401);
+      // Consume the challenge before persisting the credential.
+      await admin.from('mfa_webauthn_challenges').delete().eq('id', challenge.id);
+      const { error: credErr } = await admin.from('user_webauthn_credentials').insert({
+        user_id: auth.userId,
+        credential_id: verified.credentialId,
+        public_key: verified.publicKey,
+        counter: verified.counter,
+        transports: Array.isArray(clientResponse?.response?.transports) ? clientResponse.response.transports : [],
+        aaguid: verified.aaguid,
+        device_type: verified.deviceType,
+        backed_up: verified.backedUp,
+        device_name: deviceName,
+      });
+      if (credErr) return j({ success: false, error: 'credential_persist_failed', detail: credErr.message }, 500);
+      await admin.from('custom_users').update({ webauthn_enrolled_at: new Date().toISOString() }).eq('id', auth.userId);
+      try { await admin.from('security_events').insert({ action: 'mfa.webauthn_enrolled', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { staff_session_id: staffSession.id, device_type: verified.deviceType } }); } catch { /* ignore */ }
+      return j({ success: true, method: 'webauthn' });
+    }
+
+    if (action === 'webauthn_assertion_begin') {
+      const cfg = loadWebAuthnConfig();
+      if (!cfg) return j({ success: false, error: 'webauthn_not_configured' }, 503);
+      const capability = String(body?.capability ?? '').trim();
+      if (!capability || capability.length > 64) return j({ success: false, error: 'capability_required' }, 400);
+      const { data: creds } = await admin.from('user_webauthn_credentials')
+        .select('credential_id').eq('user_id', auth.userId);
+      if (!creds || creds.length === 0) return j({ success: false, error: 'no_webauthn_credentials' }, 404);
+      const options = await buildAssertionOptions({
+        cfg,
+        allowCredentialIds: creds.map((r: any) => r.credential_id),
+      });
+      const assertionToken = generateStepUpToken(32);
+      const tokenHash = await hashStepUpToken(auth.userId, `webauthn.assertion:${capability}`, assertionToken);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      await admin.from('mfa_webauthn_challenges')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('purpose', 'assertion');
+      const { error: insErr } = await admin.from('mfa_webauthn_challenges').insert({
+        user_id: auth.userId,
+        staff_session_id: staffSession.id,
+        purpose: 'assertion',
+        challenge_b64url: options.challenge,
+        token_hash: tokenHash,
+        capability,
+        expires_at: expiresAt,
+      });
+      if (insErr) return j({ success: false, error: 'webauthn_challenge_unavailable' }, 503);
+      return j({ success: true, assertion_token: assertionToken, options, expires_at: expiresAt });
+    }
+
     if (action !== 'challenge') return j({ success: false, error: 'unknown_action' }, 400);
 
     const capability = String(body?.capability ?? '').trim();
@@ -230,35 +370,83 @@ Deno.serve(async (req) => {
     let method = 'password';
     let assuranceLevel = 1;
     if (userRow?.mfa_enrolled_at) {
-      if (userRow.mfa_method !== 'totp' || !userRow.mfa_secret_encrypted) {
-        return j({ success: false, error: 'mfa_configuration_invalid', code: 'mfa_verification_required' }, 503);
-      }
-      const suppliedFactor = String(body?.mfa_code || body?.recovery_code || '');
-      const recoveryCode = isRecoveryCode(suppliedFactor);
-      if (recoveryCode) {
-        const hash = await hashRecoveryCode(auth.userId, suppliedFactor);
-        const ip = getTrustedClientIp(req);
-        const userRate = await consumeRateLimit(admin, `mfa:recovery:user:${auth.userId}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS);
-        const ipRate = ip ? await consumeRateLimit(admin, `mfa:recovery:ip:${ip}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS) : { allowed: true };
-        if (!userRate.allowed || !ipRate.allowed || !hash) return j({ success: false, error: !hash ? 'mfa_configuration_invalid' : 'rate_limited', code: 'mfa_verification_required' }, !hash ? 503 : 429);
-        const { data: consumed, error: consumeError } = await admin.rpc('consume_mfa_recovery_code', { p_user_id: auth.userId, p_code_hash: hash });
-        if (consumeError || consumed !== true) {
-          try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_or_used_recovery_code', metadata_redacted: { capability } }); } catch { /* ignore */ }
-          return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+      const suppliedAssertionToken = typeof body?.assertion_token === 'string' ? String(body.assertion_token) : '';
+      const suppliedAssertion = body?.assertion;
+      if (suppliedAssertionToken && suppliedAssertion?.id) {
+        // WebAuthn assertion path (passkey / security key)
+        const cfg = loadWebAuthnConfig();
+        if (!cfg) return j({ success: false, error: 'webauthn_not_configured', code: 'mfa_verification_required' }, 503);
+        const tokenHash = await hashStepUpToken(auth.userId, `webauthn.assertion:${capability}`, suppliedAssertionToken);
+        const { data: challenge } = await admin.from('mfa_webauthn_challenges')
+          .select('id, challenge_b64url, staff_session_id, capability')
+          .eq('user_id', auth.userId)
+          .eq('purpose', 'assertion')
+          .eq('token_hash', tokenHash)
+          .eq('staff_session_id', staffSession.id)
+          .eq('capability', capability)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+        if (!challenge) return j({ success: false, error: 'invalid_assertion', code: 'mfa_verification_required' }, 401);
+        const { data: credRow } = await admin.from('user_webauthn_credentials')
+          .select('id, credential_id, public_key, counter, transports')
+          .eq('user_id', auth.userId)
+          .eq('credential_id', suppliedAssertion.id)
+          .maybeSingle();
+        if (!credRow) return j({ success: false, error: 'unknown_credential', code: 'mfa_verification_required' }, 401);
+        const verified = await verifyAssertion({
+          cfg,
+          expectedChallenge: challenge.challenge_b64url,
+          response: suppliedAssertion,
+          credential: {
+            id: credRow.id,
+            credential_id: credRow.credential_id,
+            public_key: credRow.public_key as unknown as Uint8Array,
+            counter: Number(credRow.counter ?? 0),
+            transports: Array.isArray(credRow.transports) ? credRow.transports : [],
+          },
+        });
+        if (!verified) {
+          try { await admin.from('security_events').insert({ action: 'step_up.webauthn_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_assertion', metadata_redacted: { capability } }); } catch { /* ignore */ }
+          return j({ success: false, error: 'invalid_assertion', code: 'mfa_verification_required' }, 401);
         }
-        method = 'password+recovery_code';
+        // Consume challenge and bump counter atomically-ish.
+        await admin.from('mfa_webauthn_challenges').delete().eq('id', challenge.id);
+        await admin.from('user_webauthn_credentials')
+          .update({ counter: verified.newCounter, last_used_at: new Date().toISOString() })
+          .eq('id', credRow.id);
+        method = 'password+webauthn';
         assuranceLevel = 2;
-        try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_consumed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id } }); } catch { /* ignore */ }
+        try { await admin.from('security_events').insert({ action: 'step_up.webauthn_verified', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id, credential_row_id: credRow.id } }); } catch { /* ignore */ }
+      } else if (userRow.mfa_method === 'totp' && userRow.mfa_secret_encrypted) {
+        const suppliedFactor = String(body?.mfa_code || body?.recovery_code || '');
+        const recoveryCode = isRecoveryCode(suppliedFactor);
+        if (recoveryCode) {
+          const hash = await hashRecoveryCode(auth.userId, suppliedFactor);
+          const ip = getTrustedClientIp(req);
+          const userRate = await consumeRateLimit(admin, `mfa:recovery:user:${auth.userId}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS);
+          const ipRate = ip ? await consumeRateLimit(admin, `mfa:recovery:ip:${ip}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS) : { allowed: true };
+          if (!userRate.allowed || !ipRate.allowed || !hash) return j({ success: false, error: !hash ? 'mfa_configuration_invalid' : 'rate_limited', code: 'mfa_verification_required' }, !hash ? 503 : 429);
+          const { data: consumed, error: consumeError } = await admin.rpc('consume_mfa_recovery_code', { p_user_id: auth.userId, p_code_hash: hash });
+          if (consumeError || consumed !== true) {
+            try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_or_used_recovery_code', metadata_redacted: { capability } }); } catch { /* ignore */ }
+            return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+          }
+          method = 'password+recovery_code';
+          assuranceLevel = 2;
+          try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_consumed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id } }); } catch { /* ignore */ }
+        } else {
+          const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, suppliedFactor);
+          if (!totp.valid) {
+            try { await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_totp', metadata_redacted: { capability } }); } catch { /* ignore */ }
+            return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+          }
+          const { data: updatedMfa, error: updateMfaError } = await admin.from('custom_users').update({ mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter }).eq('id', auth.userId).or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`).select('id').maybeSingle();
+          if (updateMfaError || !updatedMfa) return j({ success: false, error: 'mfa_code_replayed', code: 'mfa_verification_required' }, 401);
+          method = 'password+totp';
+          assuranceLevel = 2;
+        }
       } else {
-        const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, suppliedFactor);
-        if (!totp.valid) {
-          try { await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_totp', metadata_redacted: { capability } }); } catch { /* ignore */ }
-          return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
-        }
-        const { data: updatedMfa, error: updateMfaError } = await admin.from('custom_users').update({ mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter }).eq('id', auth.userId).or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`).select('id').maybeSingle();
-        if (updateMfaError || !updatedMfa) return j({ success: false, error: 'mfa_code_replayed', code: 'mfa_verification_required' }, 401);
-        method = 'password+totp';
-        assuranceLevel = 2;
+        return j({ success: false, error: 'mfa_configuration_invalid', code: 'mfa_verification_required' }, 503);
       }
     }
 

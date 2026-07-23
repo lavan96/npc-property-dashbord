@@ -6517,6 +6517,7 @@ export type Database = {
           timezone: string
           updated_at: string
           username: string
+          webauthn_enrolled_at: string | null
         }
         Insert: {
           created_at?: string
@@ -6545,6 +6546,7 @@ export type Database = {
           timezone?: string
           updated_at?: string
           username: string
+          webauthn_enrolled_at?: string | null
         }
         Update: {
           created_at?: string
@@ -6573,6 +6575,7 @@ export type Database = {
           timezone?: string
           updated_at?: string
           username?: string
+          webauthn_enrolled_at?: string | null
         }
         Relationships: []
       }
@@ -14160,6 +14163,42 @@ export type Database = {
           },
         ]
       }
+      mfa_webauthn_challenges: {
+        Row: {
+          capability: string | null
+          challenge_b64url: string
+          created_at: string
+          expires_at: string
+          id: string
+          purpose: string
+          staff_session_id: string | null
+          token_hash: string | null
+          user_id: string
+        }
+        Insert: {
+          capability?: string | null
+          challenge_b64url: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          purpose: string
+          staff_session_id?: string | null
+          token_hash?: string | null
+          user_id: string
+        }
+        Update: {
+          capability?: string | null
+          challenge_b64url?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          staff_session_id?: string | null
+          token_hash?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       migration_job_items: {
         Row: {
           attempts: number
@@ -20087,6 +20126,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_webauthn_credentials: {
+        Row: {
+          aaguid: string | null
+          backed_up: boolean
+          counter: number
+          created_at: string
+          credential_id: string
+          device_name: string | null
+          device_type: string | null
+          id: string
+          last_used_at: string | null
+          public_key: string
+          transports: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aaguid?: string | null
+          backed_up?: boolean
+          counter?: number
+          created_at?: string
+          credential_id: string
+          device_name?: string | null
+          device_type?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_key: string
+          transports?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aaguid?: string | null
+          backed_up?: boolean
+          counter?: number
+          created_at?: string
+          credential_id?: string
+          device_name?: string | null
+          device_type?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_key?: string
+          transports?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       vapi_call_logs: {
         Row: {
