@@ -410,12 +410,37 @@ Deno.serve(async (req) => {
       }
 
       case 'list': {
+        // WP-06 Phase B — sensitive buckets require a resource scope so the
+        // caller cannot enumerate objects outside their assignment. We resolve
+        // the authorized set from storage_object_bindings, then intersect with
+        // the physical storage.list results. Public-asset buckets keep the
+        // existing prefix-based behaviour.
+        const sensitivityAtList = BUCKET_SENSITIVITY[bucket];
+        const requiresScope = !isInternal && sensitivityAtList && sensitivityAtList !== 'public_asset';
+        if (requiresScope) {
+          const scopeClient = typeof list_client_id === 'string' ? list_client_id : null;
+          const scopeOwner  = typeof list_owner_user_id === 'string' ? list_owner_user_id : null;
+          if (!scopeClient && !scopeOwner) {
+            await logSecurityEvent(supabase, {
+              action: 'storage.list', decision: 'deny', reason_code: 'list_scope_required',
+              actor_type: 'human', actor_id: actorId, target_type: 'bucket', target_id: bucket,
+            });
+            return jsonResponse({ success: false, error: 'A resource scope is required to list this bucket' }, corsHeaders, 400);
+          }
+          const superadminForList = await isSuperadmin(supabase, actorId);
+          const bindings = await authorizedBindingsForList(supabase, bucket, {
+            actorId, isSuperadmin: superadminForList, isInternalService: false, authMethod: sessionResult.authMethod,
+          }, { clientId: scopeClient, ownerUserId: scopeOwner });
+          console.log(`[Secure Storage] Listed (scoped): ${bucket} client=${scopeClient} owner=${scopeOwner} (${bindings.length} items)`);
+          return jsonResponse({
+            success: true,
+            data: { files: bindings.map((b) => ({ name: b.object_path, id: b.id, metadata: { resource_type: b.resource_type, resource_id: b.resource_id } })) },
+          }, corsHeaders);
+        }
+
         const { data, error } = await supabase.storage
           .from(bucket)
-          .list(typeof path === 'string' ? path : '', {
-            limit: 100,
-            offset: 0
-          });
+          .list(typeof path === 'string' ? path : '', { limit: 100, offset: 0 });
 
         if (error) {
           console.error(`[Secure Storage] List error:`, error);
