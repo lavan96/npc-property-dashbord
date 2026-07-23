@@ -3106,29 +3106,55 @@ ${transcript}`;
     }
 
     // Phase 4.5 — Per-answer shareable links
+    // WP-07 — public share links are 128-bit random tokens; we store only a
+    // sha256 hash + 8-char prefix + expiry, never the plaintext.
     if (action === "generate-share-link") {
-      const { messageId } = body;
+      const { messageId, ttlDays } = body;
       if (!messageId) {
         return new Response(JSON.stringify({ error: "messageId required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Generate stable token if none exists
-      const { data: existing } = await supabase
+      // Resolve the parent conversation and authorize.
+      const { data: msgRow } = await supabase
         .from("report_qa_messages")
-        .select("share_token")
+        .select("id, conversation_id")
         .eq("id", messageId)
         .maybeSingle();
-      let token = existing?.share_token as string | null;
-      if (!token) {
-        token = crypto.randomUUID();
-        const { error: updErr } = await supabase
-          .from("report_qa_messages")
-          .update({ share_token: token })
-          .eq("id", messageId);
-        if (updErr) throw updErr;
-      }
-      return new Response(JSON.stringify({ shareToken: token }), {
+      if (!msgRow) return denyResponse('Message not found');
+      const linkAccess = await resolveReportQaAccess(supabase, {
+        actorId: userId, isSuperadmin, conversationId: msgRow.conversation_id,
+      });
+      if (!canAdminister(linkAccess.role)) return denyResponse('Only the owner can create share links');
+
+      // 32-byte random → base64url (256 bits of entropy).
+      const raw = new Uint8Array(32);
+      crypto.getRandomValues(raw);
+      const token = btoa(String.fromCharCode(...raw))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const prefix = token.slice(0, 8);
+
+      const enc = new TextEncoder();
+      const digest = await crypto.subtle.digest('SHA-256', enc.encode(token));
+      const hash = Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0')).join('');
+
+      const days = Math.min(Math.max(Number(ttlDays) || 30, 1), 90);
+      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+      const { error: updErr } = await supabase
+        .from("report_qa_messages")
+        .update({
+          share_token: null,
+          share_token_hash: hash,
+          share_token_prefix: prefix,
+          share_expires_at: expiresAt,
+          share_revoked_at: null,
+        })
+        .eq("id", messageId);
+      if (updErr) throw updErr;
+
+      return new Response(JSON.stringify({ shareToken: token, expiresAt }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -3140,15 +3166,32 @@ ${transcript}`;
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const { data: msgRow } = await supabase
+        .from("report_qa_messages")
+        .select("id, conversation_id")
+        .eq("id", messageId)
+        .maybeSingle();
+      if (!msgRow) return denyResponse('Message not found');
+      const revokeLinkAccess = await resolveReportQaAccess(supabase, {
+        actorId: userId, isSuperadmin, conversationId: msgRow.conversation_id,
+      });
+      if (!canAdminister(revokeLinkAccess.role)) return denyResponse('Only the owner can revoke share links');
+
       const { error } = await supabase
         .from("report_qa_messages")
-        .update({ share_token: null })
+        .update({
+          share_token: null,
+          share_token_hash: null,
+          share_token_prefix: null,
+          share_revoked_at: new Date().toISOString(),
+        })
         .eq("id", messageId);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // Phase 5.4 — Branch a conversation from a specific message.
     // Copies all messages up to and including `branchFromMessageId` into a
