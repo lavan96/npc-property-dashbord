@@ -27,6 +27,28 @@ Deno.serve(async (req) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    // Enumeration-safe generic response (also used when rate-limited so an
+    // attacker cannot distinguish throttling from a normal request).
+    const genericSuccess = () => new Response(
+      JSON.stringify({ success: true, message: 'If an account exists with this email, a reset link has been sent.' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+    // ABUSE-003: throttle reset REQUESTS per source IP and per account so an
+    // attacker cannot pump unlimited OTP emails / token rotations. Limits are
+    // enforced atomically in the DB (check_and_bump_rate_limit). On limit we
+    // return the same generic success and send nothing.
+    const clientIp = (req.headers.get('x-forwarded-for')?.split(',')[0]
+      || req.headers.get('cf-connecting-ip') || 'unknown').trim();
+    const [{ data: ipOk }, { data: acctOk }] = await Promise.all([
+      supabase.rpc('check_and_bump_rate_limit', { p_key: `cpfp_ip:${clientIp}`, p_max: 5, p_window_seconds: 900 }),
+      supabase.rpc('check_and_bump_rate_limit', { p_key: `cpfp_email:${normalizedEmail}`, p_max: 5, p_window_seconds: 3600 }),
+    ]);
+    if (ipOk === false || acctOk === false) {
+      console.warn('[client-portal-forgot-password] rate limited', { ip: clientIp });
+      return genericSuccess();
+    }
+
     // Look up portal user
     const { data: portalUser } = await supabase
       .from('client_portal_users')

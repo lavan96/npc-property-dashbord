@@ -841,7 +841,14 @@ Deno.serve(async (req) => {
       const contentType = body.content_type ?? 'image/png';
       const ext = contentType.includes('jpeg') ? 'jpg' : contentType.includes('webp') ? 'webp' : 'png';
       const path = `${importId}/${kind}-${pageIndex}-${seq}.${ext}`;
-      const bytes = b64ToBytes(body.data_base64 as string);
+      // Size ceiling before decoding caller-supplied base64 (request-size control):
+      // ~20 MB of base64 ≈ ~15 MB decoded, comfortably above a page raster while
+      // preventing a single upload from decoding an unbounded blob into memory.
+      const dataB64 = (body.data_base64 as string) || '';
+      if (dataB64.length > 20 * 1024 * 1024) {
+        return json({ error: 'Asset payload too large' }, 413);
+      }
+      const bytes = b64ToBytes(dataB64);
       const { error: upErr } = await admin.storage
         .from(ASSET_BUCKET)
         .upload(path, bytes, { contentType, upsert: true });

@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_ANON_KEY = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+const INTERNAL_EDGE_SECRET = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
@@ -37,8 +39,10 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            // AUTH-002: internal secret, not the service-role key.
+            'Authorization': `Bearer ${INTERNAL_EDGE_SECRET ? SUPABASE_ANON_KEY : SUPABASE_SERVICE_ROLE_KEY}`,
+            'apikey': INTERNAL_EDGE_SECRET ? SUPABASE_ANON_KEY : SUPABASE_SERVICE_ROLE_KEY,
+            ...(INTERNAL_EDGE_SECRET ? { 'x-internal-edge-secret': INTERNAL_EDGE_SECRET } : {}),
           },
           body: JSON.stringify({
             to: row.recipient,

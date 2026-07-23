@@ -41,7 +41,7 @@ async function upsertInsight(sb: any, draft: InsightDraft) {
   // Notifications bell (best-effort)
   try {
     await sb.from('notifications').insert({
-      user_id: draft.user_id, type: 'agent_insight',
+      target_user_id: draft.user_id, type: 'agent_insight',
       title: draft.title, message: draft.summary ?? draft.title,
       link: '/agent-insights', read: false,
     });

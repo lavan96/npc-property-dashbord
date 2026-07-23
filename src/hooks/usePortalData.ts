@@ -10,7 +10,7 @@ function getSessionToken(): string | null {
   catch { try { return localStorage.getItem(PORTAL_SESSION_KEY); } catch { return null; } }
 }
 
-async function invokePortalEdge(functionName: string, body: Record<string, any>) {
+export async function invokePortalEdge(functionName: string, body: Record<string, any>) {
   const sessionToken = getSessionToken();
   const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
     method: 'POST',

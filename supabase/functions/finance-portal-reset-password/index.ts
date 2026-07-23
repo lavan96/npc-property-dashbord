@@ -31,34 +31,28 @@ Deno.serve(async (req) => {
     // increment a counter; at the limit the token is invalidated. Comparison
     // supports hashed-at-rest tokens with legacy plaintext dual-read.
     const checkOtp = async (): Promise<{ ok: boolean; userId?: string; error?: string }> => {
-      const { data: portalUser } = await supabase
-        .from('finance_portal_users')
-        .select('id, reset_token, reset_token_expires_at, reset_token_attempts')
-        .eq('email', normalizedEmail)
-        .maybeSingle()
-
-      if (!portalUser || !portalUser.reset_token) {
+      // ABUSE-003: atomically consume one attempt (increment + limit/expiry in a
+      // single DB statement) to close the read-then-write race. The OTP is
+      // verified here because it is hashed with a server pepper the DB lacks.
+      const { data, error } = await supabase.rpc('consume_finance_portal_reset_attempt', {
+        p_email: normalizedEmail,
+        p_max: MAX_RESET_ATTEMPTS,
+      })
+      const row = Array.isArray(data) ? data[0] : data
+      if (error || !row || row.status === 'not_found') {
         return { ok: false, error: 'Invalid code' }
       }
-      if ((portalUser.reset_token_attempts || 0) >= MAX_RESET_ATTEMPTS) {
-        await supabase
-          .from('finance_portal_users')
-          .update({ reset_token: null, reset_token_expires_at: null })
-          .eq('id', portalUser.id)
+      if (row.status === 'too_many') {
         return { ok: false, error: 'Too many attempts. Please request a new code.' }
       }
-      if (!portalUser.reset_token_expires_at || new Date(portalUser.reset_token_expires_at) < new Date()) {
+      if (row.status === 'expired') {
         return { ok: false, error: 'Code has expired. Please request a new one.' }
       }
-      const valid = await verifyResetToken(portalUser.reset_token, otp)
+      const valid = await verifyResetToken(row.reset_token, otp)
       if (!valid) {
-        await supabase
-          .from('finance_portal_users')
-          .update({ reset_token_attempts: (portalUser.reset_token_attempts || 0) + 1 })
-          .eq('id', portalUser.id)
         return { ok: false, error: 'Invalid code' }
       }
-      return { ok: true, userId: portalUser.id }
+      return { ok: true, userId: row.user_id }
     }
 
     if (action === 'verify_otp') {

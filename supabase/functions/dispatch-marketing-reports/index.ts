@@ -361,12 +361,15 @@ async function processScheduleDispatch(
         }],
       };
 
+      const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
       const emailResponse = await fetch(`${supabaseUrl.trim()}/functions/v1/send-email-reply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${serviceKey.trim()}`,
+          // AUTH-002: internal secret, not the service-role key.
+          'Authorization': `Bearer ${_internalSecret ? anonKey.trim() : serviceKey.trim()}`,
           'apikey': anonKey.trim(),
+          ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
         },
         body: JSON.stringify(emailPayload),
       });
@@ -423,12 +426,15 @@ async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKe
   // Generate a new report with the specified type and audience
   console.log(`[dispatch] Generating new ${reportType} report for ${audienceSegment}...`);
   
+  const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
   const genResponse = await fetch(`${supabaseUrl.trim()}/functions/v1/generate-market-intelligence-report`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${serviceKey.trim()}`,
+      // AUTH-002: internal secret, not the service-role key.
+      'Authorization': `Bearer ${_internalSecret ? anonKey.trim() : serviceKey.trim()}`,
       'apikey': anonKey.trim(),
+      ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
     },
     body: JSON.stringify({
       report_type: reportType,

@@ -65,17 +65,20 @@ Deno.serve(async (req) => {
 
     // Fire-and-forget the worker. We do NOT await — we want this function
     // to return the job_id within ~1s so the client can start polling.
+    const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+    const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
     const workerUrl = `${supabaseUrl}/functions/v1/build-conversations-export-worker`;
     const workerCall = fetch(workerUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${serviceRoleKey}`,
+        // AUTH-002: internal secret, not the service-role key (in header or body).
+        Authorization: `Bearer ${_internalSecret ? _anon : serviceRoleKey}`,
+        ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
         'x-internal-call': 'true',
       },
       body: JSON.stringify({
         job_id: job.id,
-        _service_token: serviceRoleKey,
       }),
     }).catch((e) => {
       console.error(`[start-conversations-export] worker dispatch threw: ${e?.message || e}`);

@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
 import { verifyWebhookSecret } from '../_shared/auth_v2.ts';
+import { insertTargetedNotification } from '../_shared/notify.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -261,15 +262,15 @@ async function handleConversationMessageEvent(supabase: any, body: any, eventTyp
       const channelLabel = channelType.toUpperCase();
       const preview = (messageBody || '(Attachment)').substring(0, 100);
 
-      await supabase
-        .from('notifications')
-        .insert({
+      await insertTargetedNotification(supabase, {
+        moduleKey: 'conversations',
+        notification: {
           type: 'conversation_reply',
           title: `New ${channelLabel} from ${clientName}`,
           message: preview,
           entity_id: clientId || convRecord.id,
-          read: false,
-        });
+        },
+      });
 
       console.log(`[ghl-webhook] 📬 Notification created for inbound ${channelLabel} from ${clientName}`);
     } catch (notifErr) {
@@ -815,22 +816,17 @@ Deno.serve(async (req) => {
         notificationMessage += ` (${calendarName})`;
       }
 
-      // Insert notification into the notifications table
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
+      // Insert notification, targeted to conversations-module viewers.
+      await insertTargetedNotification(supabase, {
+        moduleKey: 'conversations',
+        notification: {
           type: notificationType,
           title: notificationTitle,
           message: notificationMessage,
           entity_id: body.id || null,
-          read: false
-        });
-
-      if (notifError) {
-        console.error('[ghl-webhook] Failed to insert appointment notification:', notifError);
-      } else {
-        console.log('[ghl-webhook] Appointment notification inserted');
-      }
+        },
+      });
+      console.log('[ghl-webhook] Appointment notification inserted');
 
       // Also try to resolve client and log activity
       if (contactId) {

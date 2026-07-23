@@ -19,6 +19,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
+import { verifyInternal } from '../_shared/auth_v2.ts';
 
 const WORKER_MAP: Record<string, string> = {
   contacts: 'ghl-migrate-contacts-worker',
@@ -52,23 +53,19 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  // Caller gate: this function is harmless on its own (it only invokes the
-  // claim_migration_jobs RPC and dispatches workers). The actual privileged
-  // operations live inside the workers, which validate _service_token. We
-  // therefore accept any caller — but reject if neither an Authorization
-  // header nor a known internal/cron marker is present, to keep random
-  // traffic from spinning up dispatchers.
-  const auth = req.headers.get('authorization') || '';
-  const internal = req.headers.get('x-internal-call') === 'true';
-  if (!auth && !internal) {
+  // AUTH-002: require a real internal credential. The dispatcher forwards the
+  // INTERNAL_EDGE_SECRET to the workers, so its own trigger must be gated — the
+  // previous "any Authorization header" check let anyone spin up the whole
+  // migration pipeline.
+  const gate = await verifyInternal(supabase, req, '');
+  if (!gate.ok) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
   const startedAt = Date.now();
 
   try {
@@ -119,11 +116,15 @@ Deno.serve(async (req) => {
 
       const url = `${supabaseUrl}/functions/v1/${workerName}`;
       try {
+        const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+        const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
         const r = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${serviceRoleKey}`,
+            // AUTH-002: internal secret, not the service-role key (header or body).
+            Authorization: `Bearer ${_internalSecret ? _anon : serviceRoleKey}`,
+            ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             'x-internal-call': 'true',
           },
           body: JSON.stringify({
@@ -132,7 +133,6 @@ Deno.serve(async (req) => {
             target_account: job.target_account,
             dry_run: job.dry_run,
             payload: job.payload || {},
-            _service_token: serviceRoleKey,
             _dispatched_by: 'cron',
             _dispatch_count: job.dispatch_count,
           }),

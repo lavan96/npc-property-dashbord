@@ -66,16 +66,20 @@ Deno.serve(async (req) => {
 
     if (insErr || !job) throw new Error(`Failed to create job: ${insErr?.message}`);
 
-    // Fire worker
+    // Fire worker (AUTH-002: authenticate with the dedicated internal secret,
+    // not the service-role key; anon key only routes the gateway).
+    const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+    const internalEdgeSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
     const workerUrl = `${supabaseUrl}/functions/v1/ghl-marketing-dump-worker`;
     const workerCall = fetch(workerUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${serviceRoleKey}`,
+        Authorization: `Bearer ${internalEdgeSecret ? anonKey : serviceRoleKey}`,
+        ...(internalEdgeSecret ? { 'x-internal-edge-secret': internalEdgeSecret } : {}),
         'x-internal-call': 'true',
       },
-      body: JSON.stringify({ job_id: job.id, _service_token: serviceRoleKey }),
+      body: JSON.stringify({ job_id: job.id }),
     }).catch((e) => console.error('[enqueue] worker dispatch threw', e));
 
     // @ts-ignore

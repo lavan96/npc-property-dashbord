@@ -8,6 +8,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { createCorsHeaders } from '../_shared/auth.ts';
+import { verifyInternal } from '../_shared/auth_v2.ts';
 import { getGhlCredentials, buildGhlHeaders, type GhlAccount } from '../_shared/ghl-account.ts';
 import { processAsset, type AssetTask, type DumpRow } from '../_shared/ghl-asset-harvester.ts';
 
@@ -20,15 +21,20 @@ Deno.serve(async (req) => {
 
   const startedAt = Date.now();
   try {
-    const internal = req.headers.get('x-internal-call');
-    if (internal !== 'true') {
-      return new Response(JSON.stringify({ success: false, error: 'internal-only' }), { status: 403, headers: corsHeaders });
-    }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const body = await req.json().catch(() => ({}));
+    // AUTH-002: require a real internal credential (INTERNAL_EDGE_SECRET / HMAC /
+    // service-role key), not the spoofable `x-internal-call: true` header that
+    // any caller could set. rawBody is read once for verification + parsing.
+    const rawBody = await req.text().catch(() => '');
+    const internal = await verifyInternal(supabase, req, rawBody);
+    if (!internal.ok) {
+      return new Response(JSON.stringify({ success: false, error: 'internal-only' }), { status: 403, headers: corsHeaders });
+    }
+
+    const body = (() => { try { return rawBody ? JSON.parse(rawBody) : {}; } catch { return {}; } })();
     const jobId = body.job_id;
     if (!jobId) throw new Error('job_id required');
 
@@ -107,15 +113,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, done: true, processed, failed }), { headers: corsHeaders });
     }
 
-    // Re-enqueue self
+    // Re-enqueue self (AUTH-002: authenticate with the dedicated internal
+    // secret, not the service-role key; anon key only routes the gateway).
+    const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+    const internalEdgeSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
     const workerCall = fetch(`${supabaseUrl}/functions/v1/ghl-marketing-dump-worker`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${serviceRoleKey}`,
+        Authorization: `Bearer ${internalEdgeSecret ? anonKey : serviceRoleKey}`,
+        ...(internalEdgeSecret ? { 'x-internal-edge-secret': internalEdgeSecret } : {}),
         'x-internal-call': 'true',
       },
-      body: JSON.stringify({ job_id: jobId, _service_token: serviceRoleKey }),
+      body: JSON.stringify({ job_id: jobId }),
     }).catch((e) => console.error('[worker] self-dispatch threw', e));
 
     // @ts-ignore

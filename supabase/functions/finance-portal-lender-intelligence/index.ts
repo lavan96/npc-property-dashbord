@@ -137,14 +137,18 @@ Deno.serve(async (req) => {
 
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 240_000); // 4 minutes
+        const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+        const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
         const resp = await fetch(
           `${supabaseUrl}/functions/v1/cdr-lending-rates-service`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${serviceKey}`,
-              apikey: serviceKey,
+              // AUTH-002: internal secret, not the service-role key.
+              Authorization: `Bearer ${_internalSecret ? _anon : serviceKey}`,
+              apikey: _internalSecret ? _anon : serviceKey,
+              ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             },
             body: JSON.stringify(
               lenderOnly

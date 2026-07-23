@@ -13,6 +13,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { strToU8, zipSync } from 'https://esm.sh/fflate@0.8.2';
 import { createCorsHeaders } from '../_shared/auth.ts';
+import { verifyInternal } from '../_shared/auth_v2.ts';
 
 const PAGE_SIZE = 1000;             // pagination page size for messages
 const IN_CHUNK_SIZE = 100;           // max IDs per .in() call (URL length limit)
@@ -141,11 +142,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     jobId = body.job_id;
 
-    // Service-role gate: only accept calls from start-conversations-export
-    // or another internal function passing the service token.
-    const internal = req.headers.get('x-internal-call') === 'true'
-      && body._service_token === serviceRoleKey;
-    if (!internal) {
+    // AUTH-002: internal-only gate via a real credential (INTERNAL_EDGE_SECRET /
+    // service-role key), not a service token carried in the request body. The
+    // internal-secret path is headers-only, so it is fine that req.json() has
+    // already consumed the stream.
+    const internal = await verifyInternal(supabase, req, '');
+    if (!internal.ok) {
       return new Response(
         JSON.stringify({ success: false, error: 'Internal-only endpoint' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

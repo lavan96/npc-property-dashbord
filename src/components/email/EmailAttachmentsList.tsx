@@ -48,17 +48,23 @@ function useResolvedAttachmentUrls(attachments: EmailAttachment[]): Record<numbe
       const resolved: Record<number, string> = {};
       await Promise.all(
         attachments.map(async (att, i) => {
-          if (att.storagePath) {
+          // Prefer the object path; for legacy records that only have a stored
+          // public URL, parse the bucket+path out of it so we can still fetch a
+          // signed URL once the bucket is private (STOR-004).
+          let bucket = att.storageBucket || 'email-attachments';
+          let path = att.storagePath || null;
+          if (!path && att.storageUrl) {
+            const m = att.storageUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?|$)/);
+            if (m) { bucket = m[1]; path = decodeURIComponent(m[2]); }
+          }
+          if (path) {
             const { data } = await invokeSecureFunction('secure-storage', {
-              operation: 'signedUrl',
-              bucket: att.storageBucket || 'email-attachments',
-              path: att.storagePath,
-              expires_in: 900,
+              operation: 'signedUrl', bucket, path, expires_in: 900,
             });
             const signed = (data as any)?.data?.signedUrl;
             if (signed) { resolved[i] = signed; return; }
           }
-          if (att.storageUrl) resolved[i] = att.storageUrl;
+          if (att.storageUrl) resolved[i] = att.storageUrl; // last-resort legacy fallback
         }),
       );
       if (!cancelled) setUrls(resolved);

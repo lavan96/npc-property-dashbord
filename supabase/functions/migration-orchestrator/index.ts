@@ -199,11 +199,15 @@ Deno.serve(async (req) => {
 
     // Use EdgeRuntime.waitUntil if available (Supabase Deno) so the worker
     // call survives after we return the response to the client.
+    const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+    const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
     const dispatch = fetch(workerUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${serviceRoleKey}`,
+        // AUTH-002: internal secret, not the service-role key (header or body).
+        Authorization: `Bearer ${_internalSecret ? _anon : serviceRoleKey}`,
+        ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
         'x-internal-call': 'true',
       },
       body: JSON.stringify({
@@ -212,7 +216,6 @@ Deno.serve(async (req) => {
         target_account,
         dry_run,
         payload,
-        _service_token: serviceRoleKey, // worker validates via verifyAuth's service role path
       }),
     }).then(async (res) => {
       if (!res.ok) {

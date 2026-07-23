@@ -12,6 +12,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.55.0";
 import { buildProvenance, logClientActivity } from "../_shared/client-data-provenance.ts";
 import { buildNoteDedupeKey, createSyncEvent, resolveSyncConflict, sha256Text, SYNC_CONFLICT_WINDOW_MS } from "../_shared/client-sync.ts";
+import { insertTargetedNotification } from "../_shared/notify.ts";
 
 const CREATE_CLIENT_PERMISSION_TABLES = [
   'properties', 'income', 'expenses', 'assets', 'liabilities', 'employment', 'address_history', 'notes', 'contacts', 'documents', 'borrowing_capacity', 'messages',
@@ -236,11 +237,14 @@ function jsonResponse(data: any, status = 200) {
 
 async function notifyCommandCentreOfFinanceClient(supabase: any, input: { clientId: string; clientName: string; financeEmail: string | null }) {
   try {
-    await supabase.from('notifications').insert({
-      type: 'info',
-      title: 'New finance portal client',
-      message: `${input.clientName} was created from the Finance Portal${input.financeEmail ? ` by ${input.financeEmail}` : ''}.`,
-      entity_id: input.clientId,
+    await insertTargetedNotification(supabase, {
+      moduleKey: 'finance_portal_admin',
+      notification: {
+        type: 'info',
+        title: 'New finance portal client',
+        message: `${input.clientName} was created from the Finance Portal${input.financeEmail ? ` by ${input.financeEmail}` : ''}.`,
+        entity_id: input.clientId,
+      },
     });
   } catch (error) {
     console.error('[finance-portal-client-data] command centre notification failed', error);
@@ -601,12 +605,16 @@ Deno.serve(async (req) => {
           if (body?.pipeline_ghl_id) syncBody.pipelineGhlId = body.pipeline_ghl_id;
           if (body?.pipeline_stage_ghl_id) syncBody.pipelineStageGhlId = body.pipeline_stage_ghl_id;
 
+          const _anon = Deno.env.get('SUPABASE_ANON_KEY') || '';
+          const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
           const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-client-to-ghl`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'apikey': _anon,
+              // AUTH-002: internal secret, not the service-role key.
+              'Authorization': `Bearer ${_internalSecret ? _anon : (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '')}`,
+              ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             },
             body: JSON.stringify(syncBody),
           });

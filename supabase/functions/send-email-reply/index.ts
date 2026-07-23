@@ -363,6 +363,45 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Recipient-domain allowlist (optional DLP control). When
+    // EMAIL_RECIPIENT_ALLOWLIST is set (comma-separated domains), every to/cc/bcc
+    // recipient must be within it; otherwise the send is refused. Unset = allow
+    // all (backwards-compatible).
+    const allowlistRaw = (Deno.env.get('EMAIL_RECIPIENT_ALLOWLIST') || '').trim();
+    if (allowlistRaw) {
+      const allowedDomains = allowlistRaw.toLowerCase().split(',').map((d) => d.trim().replace(/^@/, '')).filter(Boolean);
+      const allRecipients = [to, ...(cc || []), ...(bcc || [])].filter(Boolean) as string[];
+      const domainOf = (addr: string) => (addr.split('@')[1] || '').toLowerCase().trim();
+      const offending = allRecipients.filter((r) => !allowedDomains.includes(domainOf(r)));
+      if (offending.length > 0) {
+        await logSecurityEvent(supabase, {
+          action: 'email.send', decision: 'deny', reason_code: 'recipient_domain_blocked',
+          actor_type: userId === 'service_role' ? 'internal_service' : 'human', actor_id: userId,
+        });
+        return new Response(JSON.stringify({ success: false, error: 'One or more recipients are outside the permitted domains.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Per-sender send-rate quota (abuse control): cap outbound emails per hour so
+    // a compromised session can't blast the shared mailbox. Keyed by actor;
+    // service/internal callers are exempt (they are already trusted + metered).
+    if (userId && userId !== 'service_role') {
+      const { data: underLimit } = await supabase.rpc('check_and_bump_rate_limit', {
+        p_key: `email_send:${userId}`, p_max: 100, p_window_seconds: 3600,
+      });
+      if (underLimit === false) {
+        await logSecurityEvent(supabase, {
+          action: 'email.send', decision: 'deny', reason_code: 'send_rate_limited',
+          actor_type: 'human', actor_id: userId,
+        });
+        return new Response(JSON.stringify({ success: false, error: 'Send rate limit reached. Please try again later.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Get access token and signature in parallel
     const [accessToken, signature] = await Promise.all([
       getAccessToken(),
@@ -558,7 +597,15 @@ Deno.serve(async (req) => {
 
     // ─── Persist outbound email in GHL conversation thread ───
     if (ghlConversationId) {
-      try {
+      // Ownership/existence guard: the caller supplies ghlConversationId, and we
+      // upsert messages + mutate conversation metadata by it. Confirm it is a
+      // real conversation before writing so a caller can't inject rows against
+      // an arbitrary/guessed id.
+      const { data: convExists } = await supabase
+        .from('ghl_conversations').select('id').eq('id', ghlConversationId).maybeSingle();
+      if (!convExists) {
+        console.warn('[Send Email] Skipping thread persist for unknown ghlConversationId');
+      } else try {
         const messageRecord = {
           ghl_message_id: `email-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
           conversation_id: ghlConversationId,

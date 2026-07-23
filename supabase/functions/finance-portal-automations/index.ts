@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (existing) return false;
     await supabase.from('notifications').insert({
-      user_id: userId, type, title, message,
+      target_user_id: userId, type, title, message,
       metadata: { purchase_file_id: fileId, ...extra },
     });
     return true;
@@ -155,8 +155,12 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // AUTH-002: runner_tick authenticates via the dedicated
+          // x-automation-secret; the service-role Bearer was redundant. Use the
+          // anon key only for gateway routing.
           'x-automation-secret': expected || '',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY') || ''}`,
         },
         body: JSON.stringify({ operation: 'runner_tick' }),
       },

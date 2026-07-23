@@ -114,11 +114,15 @@ Deno.serve(async (req) => {
     // for the next cron tick (~15s).
     if (action === 'resume') {
       const dispatchUrl = `${supabaseUrl}/functions/v1/migration-dispatcher`;
+      const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+      const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
       fetch(dispatchUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${serviceRoleKey}`,
+          // AUTH-002: internal secret, not the service-role key.
+          Authorization: `Bearer ${_internalSecret ? _anon : serviceRoleKey}`,
+          ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
           'x-internal-call': 'true',
         },
         body: JSON.stringify({ _triggered_by: 'migration-job-control:resume' }),
