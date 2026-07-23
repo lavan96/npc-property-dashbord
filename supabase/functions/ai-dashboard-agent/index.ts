@@ -8568,7 +8568,14 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
         }
         const targetUserId = body.user_id || userId!;
-        const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId);
+        // WP-05B: verified service-role callers (agent-task-runner et al.)
+        // act as 'internal'. Ownership check is bypassed but actor-type,
+        // step-up, and any WP-05C internal-caller allowlist still apply.
+        const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId, {
+          actorType: 'internal',
+          stepUpVerified: true,
+          internalCaller: body.internal_caller || 'service_role',
+        });
         return new Response(JSON.stringify({ success: true, result: toolResult }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       // ============= Phase 5: Memory analytics, insights feed, skills, evals =============
