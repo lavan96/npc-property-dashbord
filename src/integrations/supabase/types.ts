@@ -6500,6 +6500,12 @@ export type Database = {
           is_active: boolean
           last_login_at: string | null
           locked_until: string | null
+          mfa_enrolled_at: string | null
+          mfa_last_verified_at: string | null
+          mfa_method: string | null
+          mfa_recovery_codes_hash: string[] | null
+          mfa_required: boolean
+          mfa_secret_encrypted: string | null
           microsoft_email: string | null
           outlook_auto_prep_enabled: boolean | null
           outlook_follow_up_blocking: boolean | null
@@ -6522,6 +6528,12 @@ export type Database = {
           is_active?: boolean
           last_login_at?: string | null
           locked_until?: string | null
+          mfa_enrolled_at?: string | null
+          mfa_last_verified_at?: string | null
+          mfa_method?: string | null
+          mfa_recovery_codes_hash?: string[] | null
+          mfa_required?: boolean
+          mfa_secret_encrypted?: string | null
           microsoft_email?: string | null
           outlook_auto_prep_enabled?: boolean | null
           outlook_follow_up_blocking?: boolean | null
@@ -6544,6 +6556,12 @@ export type Database = {
           is_active?: boolean
           last_login_at?: string | null
           locked_until?: string | null
+          mfa_enrolled_at?: string | null
+          mfa_last_verified_at?: string | null
+          mfa_method?: string | null
+          mfa_recovery_codes_hash?: string[] | null
+          mfa_required?: boolean
+          mfa_secret_encrypted?: string | null
           microsoft_email?: string | null
           outlook_auto_prep_enabled?: boolean | null
           outlook_follow_up_blocking?: boolean | null
@@ -19101,6 +19119,51 @@ export type Database = {
           source_url?: string | null
           state?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      step_up_sessions: {
+        Row: {
+          assurance_level: number
+          capability: string
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          issued_at: string
+          method: string
+          revoked_at: string | null
+          token_hash: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          assurance_level?: number
+          capability: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          issued_at?: string
+          method?: string
+          revoked_at?: string | null
+          token_hash: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          assurance_level?: number
+          capability?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          issued_at?: string
+          method?: string
+          revoked_at?: string | null
+          token_hash?: string
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
