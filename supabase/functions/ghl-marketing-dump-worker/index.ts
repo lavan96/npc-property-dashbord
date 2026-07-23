@@ -34,6 +34,9 @@ Deno.serve(async (req) => {
     if (!internal.ok) {
       return new Response(JSON.stringify({ success: false, error: 'internal-only' }), { status: 403, headers: corsHeaders });
     }
+    // Strict-lock will be enabled below via verifyInternal opts
+      return new Response(JSON.stringify({ success: false, error: 'internal-only' }), { status: 403, headers: corsHeaders });
+    }
 
     const body = (() => { try { return rawBody ? JSON.parse(rawBody) : {}; } catch { return {}; } })();
     const jobId = body.job_id;
