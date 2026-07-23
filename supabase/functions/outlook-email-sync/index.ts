@@ -197,7 +197,8 @@ async function fetchAttachments(accessToken: string, mailboxEmail: string, messa
 async function uploadAttachmentToStorage(
   supabase: any,
   attachment: Attachment,
-  emailId: string
+  emailId: string,
+  bindingScope?: { clientId?: string | null; ownerUserId?: string | null },
 ): Promise<StoredAttachment | null> {
   try {
     if (!attachment.contentBytes) {
@@ -224,6 +225,24 @@ async function uploadAttachmentToStorage(
 
     if (error) {
       console.error('[Outlook Sync] Storage upload error:', error);
+      return null;
+    }
+
+    // WP-06 Phase B — record the object binding for the new attachment. Any
+    // failure here removes the object so we never leave an unauthorizable orphan.
+    const { error: bindErr } = await supabase.from('storage_object_bindings').upsert({
+      bucket: 'email-attachments',
+      object_path: filePath,
+      resource_type: 'email_attachment',
+      resource_id: emailId,
+      client_id: bindingScope?.clientId ?? null,
+      owner_user_id: bindingScope?.ownerUserId ?? null,
+      sensitivity: 'restricted',
+      created_by: bindingScope?.ownerUserId ?? null,
+    }, { onConflict: 'bucket,object_path' });
+    if (bindErr) {
+      console.error('[Outlook Sync] Binding create failed, rolling back:', bindErr.message);
+      await supabase.storage.from('email-attachments').remove([filePath]).catch(() => {});
       return null;
     }
 
