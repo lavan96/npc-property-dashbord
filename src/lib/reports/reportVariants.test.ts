@@ -1,21 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { getReportVariantLabel, normalizeReportVariant } from './reportVariants';
+import { REPORT_VARIANT_ORDER, getReportVariantLabel, resolveInvestmentReportType } from './reportVariants';
 
-describe('report variant normalization', () => {
-  it('uses structured report metadata before the Compass base engine alias', () => {
-    expect(normalizeReportVariant({ report_variant: 'composite', report_tier: 'briefing' })).toBe('compass');
-    expect(normalizeReportVariant({ report_variant: 'briefing', report_tier: 'compass' })).toBe('briefing');
+describe('resolveInvestmentReportType', () => {
+  it('prefers an explicit specific tier over the legacy Compass engine', () => {
+    expect(resolveInvestmentReportType({ report_variant: 'composite', report_tier: 'SNAP' })).toBe('snapshot');
+    expect(resolveInvestmentReportType({ report_variant: 'compass', report_tier: 'BRIEF' })).toBe('briefing');
   });
 
-  it.each([
-    ['FIN', 'financial'], ['PLDD', 'strategic'], ['client_briefing', 'briefing'], ['quick_snapshot', 'snapshot'], ['investment_report', 'compass'],
-  ] as const)('normalizes legacy alias %s to %s', (alias, variant) => {
-    expect(normalizeReportVariant(alias)).toBe(variant);
+  it('reads historical metadata aliases without exposing them', () => {
+    const report = { report_variant: 'compass', metadata: { reportType: 'PLDD' } };
+    expect(resolveInvestmentReportType(report)).toBe('strategic');
+    expect(getReportVariantLabel(report)).toBe('Strategic');
   });
 
-  it('uses explicit historical template/title evidence as controlled fallback', () => {
-    expect(normalizeReportVariant({ template_identifier: 'briefing' })).toBe('briefing');
-    expect(normalizeReportVariant({ title: 'Property Snapshot — 23 Atlantis Avenue' })).toBe('snapshot');
-    expect(getReportVariantLabel({ report_tier: 'PLDD' })).toBe('Strategic');
+  it('keeps a genuine base report as Compass and unknown typed rows neutral', () => {
+    expect(resolveInvestmentReportType({ report_variant: 'investment_report' })).toBe('compass');
+    expect(resolveInvestmentReportType({ report_variant: 'experimental_v3' })).toBeUndefined();
+    expect(getReportVariantLabel({ report_variant: 'experimental_v3' })).toBe('Report');
+  });
+
+  it('uses the fixed package-summary business order', () => {
+    expect(REPORT_VARIANT_ORDER).toEqual(['compass', 'financial', 'strategic', 'snapshot', 'briefing']);
   });
 });

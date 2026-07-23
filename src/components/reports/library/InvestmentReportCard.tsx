@@ -20,10 +20,11 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
-import { TierBadge, type ReportTier } from '@/components/reports/TierBadge';
+import { type ReportTier } from '@/components/reports/TierBadge';
 import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from '@/components/reports/report-view/utils';
 import type { InvestmentReport } from './types';
-import { getReportVariantLabel } from '@/lib/reports/reportVariants';
+import { resolveInvestmentReportType } from '@/lib/reports/reportVariants';
+import { ReportTypeBadge } from '@/components/reports/ReportTypeBadge';
 
 interface InvestmentReportCardProps {
   report: InvestmentReport;
@@ -78,6 +79,7 @@ export function InvestmentReportCard({
   const scoreType = report.investment_score?.scoreType === 'area' ? 'Area Grade' : 'Investment Grade';
   const recommendation = scoreSummary?.recommendation || 'Score calculated from market, financial & location data';
   const hasAreaPlaceholder = !hasGradeDisplay && !report.investment_score && ['suburb', 'zipcode', 'state'].includes(report.report_scope || '');
+  const reportType = resolveInvestmentReportType(report);
 
   return (
     <Card
@@ -104,12 +106,7 @@ export function InvestmentReportCard({
                   {scope.label}
                 </Badge>
               )}
-              {report.report_tier && <TierBadge tier={report.report_tier} showIcon={false} />}
-              {report.report_variant && (
-                <Badge variant="outline" className="text-xs">
-                  {getReportVariantLabel(report)}
-                </Badge>
-              )}
+              <ReportTypeBadge type={reportType} />
             </div>
           </div>
 

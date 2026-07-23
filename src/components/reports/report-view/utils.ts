@@ -9,7 +9,7 @@ export function getReportScore(report: InvestmentReport | null) {
 }
 
 export function getReportTierLabel(report: InvestmentReport | null) {
-  return report?.report_tier ? report.report_tier.replace(/_/g, ' ') : 'Standard';
+  return getCanonicalReportVariantLabel(report);
 }
 
 export function getReportVariantLabel(report: InvestmentReport | null) {
