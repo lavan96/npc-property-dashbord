@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileStack, ExternalLink, Calculator, Compass, FileText, Zap } from 'lucide-react';
+import { Loader2, ExternalLink, Calculator, Compass, FileText, Zap } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { getReportVariantLabel } from '@/lib/reports/reportVariants';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Props {
   compositeReportId: string;
@@ -17,7 +17,6 @@ interface Props {
 export function ReportVariantControls({ compositeReportId, reportVariant, derivedFromReportId, onNavigate }: Props) {
   const { toast } = useToast();
   const [forking, setForking] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
 
   const isComposite = !reportVariant || reportVariant === 'composite';
   const isFork = !!derivedFromReportId;
@@ -34,13 +33,12 @@ export function ReportVariantControls({ compositeReportId, reportVariant, derive
         title: `${getReportVariantLabel(pathway)} report generated`,
         description: 'The report is saved to this property package and is ready to view.',
       });
-      setOpen(false);
       const reportId = isFork ? data?.[pathway]?.id : data?.reportId;
       if (reportId) onNavigate(reportId);
     } catch (err: any) {
       toast({
-        title: 'Fork failed',
-        description: err?.message || 'Could not generate client reports',
+        title: `${getReportVariantLabel(pathway)} report generation failed`,
+        description: 'No existing reports were changed. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -67,29 +65,35 @@ export function ReportVariantControls({ compositeReportId, reportVariant, derive
   if (!isComposite) return null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={!!forking} className="shadow-sm">
-          <FileStack className="h-4 w-4 mr-1" /> Generate Client Reports
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Generate Client Reports</DialogTitle><DialogDescription>Select a client-facing pathway. Each is saved independently in this property package.</DialogDescription></DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {([
-            ['financial', 'Financial', 'Detailed property financial modelling, cash flow, costs, yields and investment-position analysis.', Calculator],
-            ['strategic', 'Strategic', 'Property-level due diligence, location suitability, risks, opportunities and strategic investment assessment.', Compass],
-            ['briefing', 'Briefing', 'Concise client-facing briefing summarising the property, key findings and recommended next steps.', FileText],
-            ['snapshot', 'Snapshot', 'High-level rapid overview of the property, market position and major decision indicators.', Zap],
-          ] as Array<[string, string, string, typeof Calculator]>).map(([id, title, description, Icon]) => {
-            const pathway = id as 'financial' | 'strategic' | 'briefing' | 'snapshot'; const PathIcon = Icon;
-            return <Button key={pathway} variant="outline" disabled={!!forking} onClick={() => handleFork(pathway)} className="h-auto min-h-32 items-start justify-start whitespace-normal p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/15 focus-visible:border-primary focus-visible:ring-primary/40">
-              {forking === pathway ? <Loader2 className="mr-3 mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" /> : <PathIcon className="mr-3 mt-0.5 h-5 w-5 shrink-0 text-primary" />}
-              <span><span className="block font-semibold">{title}</span><span className="mt-1 block text-xs font-normal leading-relaxed text-muted-foreground">{description}</span></span>
-            </Button>;
-          })}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="flex flex-wrap items-center justify-center gap-1.5" aria-label="Client report generation controls">
+      {([
+        ['financial', 'Financial', 'Generate financial modelling, costs, yields, cash flow and investment-position analysis.', Calculator],
+        ['strategic', 'Strategic', 'Generate property-level due diligence, risks, opportunities and strategic assessment.', Compass],
+        ['briefing', 'Briefing', 'Generate a concise client-facing summary of the property and key findings.', FileText],
+        ['snapshot', 'Snapshot', 'Generate a rapid high-level overview of the property and major decision indicators.', Zap],
+      ] as Array<[string, string, string, typeof Calculator]>).map(([id, title, description, Icon]) => {
+        const pathway = id as 'financial' | 'strategic' | 'briefing' | 'snapshot';
+        const processing = forking === pathway;
+        return <Tooltip key={pathway}>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={processing}
+              aria-busy={processing}
+              aria-label={processing ? `Generating ${title}` : `${title}: ${description}`}
+              onClick={() => handleFork(pathway)}
+              className="h-9 border-border/80 bg-card/80 px-2.5 shadow-sm transition-[transform,border-color,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:shadow-md hover:shadow-primary/20 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/50 active:translate-y-0 motion-reduce:transition-none"
+            >
+              {processing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" /> : <Icon className="mr-1.5 h-4 w-4" aria-hidden="true" />}
+              {processing ? `Generating ${title}` : title}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">{description}</TooltipContent>
+        </Tooltip>;
+      })}
+      <span className="sr-only" aria-live="polite">{forking ? `Generating ${getReportVariantLabel(forking)}` : ''}</span>
+    </div>
   );
 }
