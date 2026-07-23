@@ -3023,12 +3023,21 @@ ${transcript}`;
     // Handle revoking a share
     if (action === "revoke-share") {
       const { conversationId: convId, targetUserId: revokeUserId } = body;
+      if (!convId || !revokeUserId) {
+        return new Response(JSON.stringify({ error: "conversationId and targetUserId are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      // WP-07 — only owner/admin can revoke.
+      const revokeAccess = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId: convId });
+      if (!canAdminister(revokeAccess.role)) return denyResponse('Only the owner can revoke shares');
+
       const { error: revokeError } = await supabase
         .from("report_qa_conversation_shares")
         .update({ is_active: false })
         .eq("conversation_id", convId)
         .eq("shared_with", revokeUserId);
       if (revokeError) throw revokeError;
+
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
