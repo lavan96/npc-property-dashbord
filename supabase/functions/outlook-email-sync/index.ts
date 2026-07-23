@@ -627,7 +627,10 @@ Deno.serve(async (req) => {
                 continue;
               }
 
-              const stored = await uploadAttachmentToStorage(supabase, attachment, insertedEmail.id);
+              const stored = await uploadAttachmentToStorage(supabase, attachment, insertedEmail.id, {
+                clientId: insertedEmail.client_id ?? null,
+                ownerUserId: insertedEmail.owner_user_id ?? insertedEmail.created_by ?? null,
+              });
               if (stored) {
                 storedAttachments.push(stored);
               }
