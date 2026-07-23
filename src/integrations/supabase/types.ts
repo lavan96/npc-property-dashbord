@@ -20719,7 +20719,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      cron_invoke_signed_function: {
+        Args: { body?: Json; caller?: string; function_name: string }
+        Returns: number
+      }
       cron_service_role_headers: { Args: { extra?: Json }; Returns: Json }
+      cron_signed_internal_headers: {
+        Args: {
+          body?: Json
+          caller?: string
+          extra?: Json
+          function_name: string
+          method: string
+        }
+        Returns: Json
+      }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
       finalize_ghl_cutover: { Args: { p_job_id: string }; Returns: Json }
       finalize_migration_upload: {
