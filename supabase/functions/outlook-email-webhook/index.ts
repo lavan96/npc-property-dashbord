@@ -337,18 +337,21 @@ Deno.serve(async (req) => {
     const accessToken = await getAccessToken();
 
     for (const notification of body.value) {
-      console.log('[Outlook Webhook] Processing notification:', notification);
-
+      // WP-13: never log the full notification (contains resource ids + odata refs).
       if (notification.resourceData?.['@odata.type'] !== '#Microsoft.Graph.Message') {
-        console.log('[Outlook Webhook] Skipping non-message notification');
         continue;
       }
 
       const messageId = notification.resourceData?.id;
       if (!messageId) {
-        console.log('[Outlook Webhook] No message ID in notification');
         continue;
       }
+
+      // WP-13: idempotency — skip if we've already claimed this event.
+      if (!(await claimNotification(notification))) {
+        continue;
+      }
+
 
       const email = await fetchEmailById(accessToken, messageId);
       if (!email) {
