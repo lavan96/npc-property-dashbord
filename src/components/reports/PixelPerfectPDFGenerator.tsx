@@ -26,6 +26,7 @@ interface InvestmentReportData {
     locationData?: any;
     investmentScore?: any;
   };
+  pdf_url?: string | null;
 }
 
 interface PixelPerfectPDFGeneratorProps {
