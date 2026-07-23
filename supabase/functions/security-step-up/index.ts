@@ -17,22 +17,21 @@
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyPassword } from '../_shared/password.ts';
 import { generateStepUpToken, hashStepUpToken } from '../_shared/stepUp.ts';
 
 const corsHeaders = createCorsHeaders();
 const STEP_UP_TTL_MS = 15 * 60 * 1000; // 15 min
 
-async function verifyPassword(admin: any, userId: string, plaintext: string): Promise<boolean> {
+async function verifyUserPassword(admin: any, userId: string, plaintext: string): Promise<boolean> {
   if (!plaintext || plaintext.length < 4) return false;
-  const { data, error } = await admin.rpc('verify_custom_user_password', {
-    _user_id: userId,
-    _plaintext: plaintext,
-  });
-  if (error) {
-    // RPC not present — fall back to a simple hash compare only when available
-    return false;
-  }
-  return data === true;
+  const { data } = await admin
+    .from('custom_users')
+    .select('password_hash')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!data?.password_hash) return false;
+  try { return await verifyPassword(plaintext, data.password_hash); } catch { return false; }
 }
 
 Deno.serve(async (req) => {
