@@ -2791,12 +2791,8 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
         updateData.client_id = clientId || null;
       }
 
-      if (title !== undefined) updateData.title = title;
-      if (reportNames !== undefined) updateData.report_names = Array.isArray(reportNames) ? reportNames : [];
-      if (reportContents !== undefined) updateData.report_contents = Array.isArray(reportContents) ? reportContents : [];
-      // clientId may be a uuid string or null (to unlink)
-      if (clientId !== undefined) updateData.client_id = clientId || null;
       updateData.updated_at = new Date().toISOString();
+
 
       const { data, error } = await supabase
         .from("report_qa_conversations")
