@@ -3,6 +3,7 @@ import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/b
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { isSuperadmin, logSecurityEvent } from '../_shared/auth_v2.ts';
 import { checkPermission, checkModuleView } from '../_shared/permissions.ts';
+import { authorizeObjectAccess, deleteStorageBinding, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -190,6 +191,45 @@ Deno.serve(async (req) => {
       }
     }
 
+
+    // WP-06 object-level authorization: for sensitive buckets, resolve the
+    // storage_object_bindings ledger and deny (as 404) when the caller is not
+    // tied to the bound resource. Legacy paths without a binding fall through
+    // to the existing per-bucket module gate above (see LEGACY_FALLBACK_BUCKETS).
+    const sensitivity = BUCKET_SENSITIVITY[bucket];
+    const isObjectOp =
+      operation === 'download' || operation === 'signedUrl' ||
+      operation === 'delete'   || operation === 'publicUrl';
+    if (!isInternal && sensitivity && sensitivity !== 'public_asset' && isObjectOp) {
+      const targets: string[] = operation === 'delete' && Array.isArray(path)
+        ? path.filter((p): p is string => typeof p === 'string')
+        : (typeof path === 'string' && path ? [path] : []);
+      const superadmin = await isSuperadmin(supabase, actorId);
+      for (const p of targets) {
+        const authz = await authorizeObjectAccess(supabase, bucket, p, {
+          actorId, isSuperadmin: superadmin, isInternalService: false, authMethod: sessionResult.authMethod,
+        });
+        if (!authz.allowed) {
+          await logSecurityEvent(supabase, {
+            action: `storage.${operation}`, decision: 'deny',
+            reason_code: authz.reason || 'object_authz_denied',
+            actor_type: 'human', actor_id: actorId,
+            target_type: 'storage_object', target_id: `${bucket}/${p}`,
+          });
+          // Return 404 to avoid enumerating object existence.
+          return jsonResponse({ success: false, error: 'Not found' }, corsHeaders, 404);
+        }
+        if (authz.legacyFallback) {
+          await logSecurityEvent(supabase, {
+            action: `storage.${operation}`, decision: 'allow',
+            reason_code: 'legacy_fallback_no_binding',
+            actor_type: 'human', actor_id: actorId,
+            target_type: 'storage_object', target_id: `${bucket}/${p}`,
+          });
+        }
+      }
+    }
+
     // Handle operations
     switch (operation) {
       case 'upload': {
@@ -286,6 +326,11 @@ Deno.serve(async (req) => {
         if (error) {
           console.error(`[Secure Storage] Delete error:`, error);
           return jsonResponse({ success: false, error: 'Delete failed' }, corsHeaders, 500);
+        }
+
+        // WP-06: clean up bindings for the deleted objects (best-effort).
+        for (const p of paths) {
+          await deleteStorageBinding(supabase, bucket, p);
         }
 
         await logSecurityEvent(supabase, {

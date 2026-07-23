@@ -18940,6 +18940,45 @@ export type Database = {
         }
         Relationships: []
       }
+      storage_object_bindings: {
+        Row: {
+          bucket: string
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          object_path: string
+          owner_user_id: string | null
+          resource_id: string | null
+          resource_type: string
+          sensitivity: string
+        }
+        Insert: {
+          bucket: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          object_path: string
+          owner_user_id?: string | null
+          resource_id?: string | null
+          resource_type: string
+          sensitivity?: string
+        }
+        Update: {
+          bucket?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          object_path?: string
+          owner_user_id?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          sensitivity?: string
+        }
+        Relationships: []
+      }
       suburb_directory: {
         Row: {
           created_at: string
