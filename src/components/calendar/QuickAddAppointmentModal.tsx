@@ -99,12 +99,16 @@ export function QuickAddAppointmentModal({
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
 
-  // Reset form when modal opens
+  // A new draft is initialised only on the closed-to-open transition. Calendar
+  // selection and calendar query refreshes must never reinitialise this draft.
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       setTitle('');
       setNotes('');
       setContactSearch('');
@@ -128,29 +132,20 @@ export function QuickAddAppointmentModal({
         setTime(`${String(currentHour).padStart(2, '0')}:00`);
       }
 
-      if (calendars.length > 0 && !selectedCalendarId) {
-        setSelectedCalendarId(calendars[0].id);
-      }
+      setSelectedCalendarId(currentCalendarId => currentCalendarId || calendars[0]?.id || '');
 
       setTimeout(() => titleInputRef.current?.focus(), 100);
     }
-  }, [open, defaultDate, defaultHour, calendars, selectedCalendarId]);
+    wasOpenRef.current = open;
+  }, [open, defaultDate, defaultHour, calendars]);
 
-  // Auto-detect appointment type from selected calendar name
+  // Calendar data can arrive after the dialog opens. Set only the missing
+  // calendar value; all existing draft fields remain untouched.
   useEffect(() => {
-    if (!selectedCalendarId || calendars.length === 0) return;
-    const cal = calendars.find(c => c.id === selectedCalendarId);
-    if (!cal) return;
-    const name = cal.name.toLowerCase();
-    if (name.includes('zoom') || name.includes('video') || name.includes('virtual')) {
-      setAppointmentType('zoom');
-    } else if (name.includes('phone') || name.includes('call') || name.includes('discovery')) {
-      setAppointmentType('call');
-    } else if (name.includes('in person') || name.includes('in-person') || name.includes('office') || name.includes('face')) {
-      setAppointmentType('in-person');
+    if (open && !selectedCalendarId && calendars.length > 0) {
+      setSelectedCalendarId(calendars[0].id);
     }
-    // else keep current selection
-  }, [selectedCalendarId, calendars]);
+  }, [open, selectedCalendarId, calendars]);
 
   // Debounced contact search
   useEffect(() => {
@@ -323,6 +318,24 @@ export function QuickAddAppointmentModal({
 
   const handleRemoveBookingRecipient = (email: string) => {
     setBookingRecipients(prev => prev.filter(r => r.email !== email));
+  };
+
+  const openNativePicker = (inputRef: React.RefObject<HTMLInputElement>) => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    input.focus();
+    // showPicker is not implemented by every browser; focusing the native input
+    // remains a safe fallback that preserves its standard interaction.
+    if ('showPicker' in input) {
+      try {
+        input.showPicker();
+      } catch {
+        input.click();
+      }
+    } else {
+      input.click();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -551,6 +564,7 @@ export function QuickAddAppointmentModal({
                 type="button"
                 variant="outline"
                 size="icon"
+                aria-label="Add invite recipient"
                 onClick={handleAddManualRecipient}
                 disabled={!manualRecipientEmail.trim()}
                 className="shrink-0"
@@ -575,7 +589,12 @@ export function QuickAddAppointmentModal({
           {/* Calendar */}
           <div className="space-y-2">
             <Label>Calendar *</Label>
-            <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
+            <Select
+              value={selectedCalendarId}
+              onValueChange={(nextCalendarId) => {
+                if (nextCalendarId !== selectedCalendarId) setSelectedCalendarId(nextCalendarId);
+              }}
+            >
               <SelectTrigger>
                 <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                 <SelectValue placeholder="Select calendar" />
@@ -636,29 +655,53 @@ export function QuickAddAppointmentModal({
           })()}
 
           {/* Date and Time */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="date">Date *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <Input
+                  ref={dateInputRef}
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                  className="cursor-pointer pr-12 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Open date picker"
+                  onClick={() => openNativePicker(dateInputRef)}
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-primary/10 hover:text-primary focus-visible:ring-primary"
+                >
+                  <Calendar className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
              <div className="space-y-2">
               <Label htmlFor="time">Time *</Label>
               <div className="relative">
-                <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  ref={timeInputRef}
                   id="time"
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   required
-                  className="pl-8"
+                  className="cursor-pointer pr-12 [&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Open time picker"
+                  onClick={() => openNativePicker(timeInputRef)}
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-primary/10 hover:text-primary focus-visible:ring-primary"
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
