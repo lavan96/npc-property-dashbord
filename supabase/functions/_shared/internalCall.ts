@@ -1,23 +1,21 @@
 /**
  * internalCall — edge-function-to-edge-function invocation without spreading the
- * service-role key (AUTH-002 / Phase 2).
+ * service-role key (AUTH-002 / Phase 2 / WP-12).
  *
- * Internal callers previously passed the full Supabase service-role key as the
- * Bearer credential on every inter-function HTTP call. That key bypasses all RLS
- * and grants, so spreading it across the fleet made a leak catastrophic. This
- * helper authenticates the call with the dedicated INTERNAL_EDGE_SECRET in the
- * `x-internal-edge-secret` header (which verifyAuth / verifyInternal accept as
- * an internal service identity). A leak of that secret only permits internal
- * function invocation — not direct DB access.
+ * WP-12: every internal call is now HMAC-signed (method, path, timestamp,
+ * nonce, caller, key id, body hash) via `signInternalRequest`. Receivers verify
+ * the signature with `verifyInternal` and enforce a per-target caller
+ * allowlist. The legacy `x-internal-edge-secret` header is still attached
+ * during the rollout window so receivers that have not yet flipped strict-mode
+ * on can still accept the request — that fallback disappears when
+ * `INTERNAL_STRICT_SIGNED=true` is set on the receiver.
  *
- * The gateway still needs an apikey; the public anon key is used for routing
- * (functions invoked internally run with verify_jwt=false or accept the
- * internal secret in-function).
- *
- * AUTH-004: the legacy service-role-key fallback has been RETIRED. Inter-function
- * calls authenticate ONLY with INTERNAL_EDGE_SECRET; if it is unset the call
- * fails closed (no service-role key is ever placed on an inter-function request).
+ * The gateway still needs an apikey; the public anon key is used for routing.
+ * Under no circumstance is the service-role key placed on an inter-function
+ * request.
  */
+
+import { signInternalRequest } from './auth_v2.ts';
 
 export interface InternalCallResult<T = any> {
   ok: boolean;
@@ -45,22 +43,34 @@ export async function callInternalFunction<T = any>(
 ): Promise<InternalCallResult<T>> {
   const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
   const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
+  const internalSecretV2 = (Deno.env.get('INTERNAL_EDGE_SECRET_V2') || '').trim();
 
-  // AUTH-004: fail closed. Inter-function calls authenticate ONLY with the
-  // dedicated internal secret — never the service-role key. If the secret is
-  // missing/too short we refuse the call rather than degrade to a service-role
-  // Bearer that bypasses all RLS.
-  if (internalSecret.length < 16) {
+  // Fail closed: neither the current nor the previous internal key is configured.
+  if (internalSecret.length < 16 && internalSecretV2.length < 16) {
     console.error(`[internalCall] INTERNAL_EDGE_SECRET not configured — refusing internal call to ${functionName}`);
     return { ok: false, status: 0, data: null, error: 'internal auth not configured' };
+  }
+
+  const rawBody = JSON.stringify(body);
+  const path = `/functions/v1/${functionName}`;
+
+  let signedHeaders: Record<string, string> = {};
+  try {
+    signedHeaders = await signInternalRequest('POST', path, rawBody, callerName);
+  } catch (e) {
+    console.error(`[internalCall] failed to sign request to ${functionName}:`, e);
+    return { ok: false, status: 0, data: null, error: 'internal signing failed' };
   }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'apikey': anonKey,
-    'x-internal-caller': callerName,
-    'x-internal-edge-secret': internalSecret,
     'Authorization': `Bearer ${anonKey}`,
+    'x-internal-caller': callerName,
+    // Legacy dual-header — accepted by non-strict receivers during rollout.
+    // Strict-mode receivers ignore it and rely on the signed envelope below.
+    'x-internal-edge-secret': internalSecretV2 || internalSecret,
+    ...signedHeaders,
   };
 
   const controller = new AbortController();
@@ -69,7 +79,7 @@ export async function callInternalFunction<T = any>(
     const resp = await fetch(`${functionsBaseUrl()}/${functionName}`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: rawBody,
       signal: controller.signal,
     });
     let data: any = null;
