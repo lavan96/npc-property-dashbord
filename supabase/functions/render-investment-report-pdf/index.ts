@@ -5339,9 +5339,8 @@ async function uploadPdfAndSign(
     .from(PDF_BUCKET)
     .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
   if (signErr || !signed?.signedUrl) {
-    // Fall back to public URL if the bucket is public.
-    const { data: pub } = supabase.storage.from(PDF_BUCKET).getPublicUrl(path);
-    if (pub?.publicUrl) return pub.publicUrl;
+    // No public-URL fallback: the bucket is (being made) private, so a public
+    // URL would not resolve. Consumers re-sign on demand.
     throw new Error(`signed URL failed: ${signErr?.message || "unknown"}`);
   }
   return signed.signedUrl;

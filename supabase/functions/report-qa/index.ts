@@ -3880,17 +3880,20 @@ ${cleanContent.length + 500}
         throw new Error(`Failed to upload PDF: ${uploadError.message}`);
       }
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // STOR-004: qa_exports is private — store a short-lived SIGNED URL plus the
+      // object path (so the frontend can re-sign via secure-storage), not a
+      // permanent public URL.
+      const { data: signedData } = await supabase.storage
         .from('qa_exports')
-        .getPublicUrl(fileName);
-
-      const publicUrl = urlData.publicUrl;
-      console.log(`[report-qa] PDF uploaded: ${publicUrl}`);
+        .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
+      const fileUrl = signedData?.signedUrl || '';
+      console.log(`[report-qa] PDF uploaded (signed): ${fileName}`);
 
       // Create attachment object
       const attachment = {
-        url: publicUrl,
+        url: fileUrl,
+        storagePath: fileName,
+        storageBucket: 'qa_exports',
         fileName: fileName,
         fileSize: pdfBytes.length,
         createdAt: new Date().toISOString(),

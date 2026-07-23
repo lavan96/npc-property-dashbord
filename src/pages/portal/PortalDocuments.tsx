@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { usePortalAuth } from '@/hooks/usePortalAuth';
-import { usePortalDocumentsData } from '@/hooks/usePortalData';
+import { usePortalDocumentsData, invokePortalEdge } from '@/hooks/usePortalData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -267,18 +267,22 @@ export default function PortalDocuments() {
   const handleDownload = async (file: any) => {
     try {
       setDownloadingId(file.id);
-      const { data: blob, error } = await supabase.storage
-        .from('client-files')
-        .download(file.file_path);
-      if (error) throw error;
-      const url = URL.createObjectURL(blob);
+      // STOR-004: fetch a short-lived signed URL via the portal edge function
+      // (service role, ownership-checked) instead of an anonymous storage
+      // download — the client-files bucket is private.
+      const res = await invokePortalEdge('get-portal-client-data', {
+        action: 'downloadFile',
+        fileId: file.id,
+      });
+      if (!res?.success || !res?.signedUrl) throw new Error(res?.error || 'Download failed');
       const a = document.createElement('a');
-      a.href = url;
+      a.href = res.signedUrl;
       a.download = file.file_name;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error('Download error:', err);
       toast.error('Unable to download file. Please try again.');

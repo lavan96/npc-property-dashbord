@@ -74,6 +74,35 @@ Deno.serve(async (req) => {
 
     const clientId = session.client_portal_users.client_id;
 
+    // Handle client-files download (STOR-004): return a short-lived SIGNED URL
+    // scoped to a file that belongs to THIS portal user's client, so the
+    // client-files bucket can be private (no anonymous download path).
+    if (body.action === 'downloadFile') {
+      const fileId = body.fileId;
+      if (!fileId) {
+        return new Response(JSON.stringify({ error: 'fileId is required', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { data: fileRow } = await supabase
+        .from('client_files')
+        .select('id, client_id, file_path, file_name')
+        .eq('id', fileId)
+        .maybeSingle();
+      // Ownership: the file must belong to the caller's client. 404 (not 403)
+      // avoids confirming existence of other clients' files.
+      if (!fileRow || fileRow.client_id !== clientId || !fileRow.file_path) {
+        return new Response(JSON.stringify({ error: 'Not found', success: false }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const { data: signed } = await supabase.storage.from('client-files').createSignedUrl(fileRow.file_path, 300);
+      if (!signed?.signedUrl) {
+        return new Response(JSON.stringify({ error: 'Failed to generate download link', success: false }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ success: true, signedUrl: signed.signedUrl, fileName: fileRow.file_name }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Handle report download action
     if (body.action === 'downloadReport') {
       const reportId = body.reportId;
@@ -127,18 +156,23 @@ Deno.serve(async (req) => {
 
       // storagePath is now resolved above
 
-      // If storage_path is already a full URL (e.g. investment-reports bucket public URL), return it directly
+      // If storage_path is a full URL: for a legacy Supabase PUBLIC URL, convert
+      // it to a short-lived SIGNED URL so it keeps working once the bucket is
+      // private (STOR-004). Non-Supabase external URLs are returned as-is.
       if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
-        // Mark as read
-        await supabase
-          .from('client_portal_reports')
-          .update({ is_read: true })
-          .eq('id', reportId);
+        await supabase.from('client_portal_reports').update({ is_read: true }).eq('id', reportId);
 
-        console.log('[get-portal-client-data] Returning direct URL for report:', report.report_title);
-
+        // .../storage/v1/object/public/<bucket>/<path>  ->  { bucket, path }
+        const m = storagePath.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?|$)/);
+        let outUrl = storagePath;
+        if (m) {
+          const [, legacyBucket, legacyPath] = m;
+          const { data: reSigned } = await supabase.storage.from(legacyBucket).createSignedUrl(decodeURIComponent(legacyPath), 300);
+          if (reSigned?.signedUrl) outUrl = reSigned.signedUrl;
+        }
+        console.log('[get-portal-client-data] Returning URL for report:', report.report_title);
         return new Response(
-          JSON.stringify({ success: true, signedUrl: storagePath, reportTitle: report.report_title }),
+          JSON.stringify({ success: true, signedUrl: outUrl, reportTitle: report.report_title }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
