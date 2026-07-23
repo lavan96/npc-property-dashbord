@@ -327,15 +327,15 @@ export function QuickAddAppointmentModal({
     input.focus();
     // showPicker is not implemented by every browser; focusing the native input
     // remains a safe fallback that preserves its standard interaction.
-    if ('showPicker' in input) {
-      try {
-        input.showPicker();
-      } catch {
-        input.click();
+    try {
+      if (typeof (input as HTMLInputElement).showPicker === 'function') {
+        (input as HTMLInputElement).showPicker();
+        return;
       }
-    } else {
-      input.click();
+    } catch {
+      // fall through to click fallback
     }
+    input.click();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
