@@ -2,6 +2,8 @@
 /** This is the business order used in property-package summaries. */
 export const REPORT_VARIANT_ORDER = ['compass', 'financial', 'strategic', 'snapshot', 'briefing'] as const;
 export type ReportVariant = typeof REPORT_VARIANT_ORDER[number];
+export const CLIENT_REPORT_VARIANTS = ['financial', 'strategic', 'briefing', 'snapshot'] as const;
+export type ClientReportVariant = typeof CLIENT_REPORT_VARIANTS[number];
 
 export type ReportVariantSource = {
   report_variant?: unknown;
@@ -36,6 +38,10 @@ const aliases: Record<string, ReportVariant> = {
 export const REPORT_VARIANT_LABELS: Record<ReportVariant, string> = {
   compass: 'Compass', financial: 'Financial', strategic: 'Strategic', briefing: 'Briefing', snapshot: 'Snapshot',
 };
+
+export function isClientReportVariant(value: unknown): value is ClientReportVariant {
+  return typeof value === 'string' && (CLIENT_REPORT_VARIANTS as readonly string[]).includes(value);
+}
 
 function normalizeValue(value: unknown): ReportVariant | undefined {
   if (typeof value !== 'string') return undefined;

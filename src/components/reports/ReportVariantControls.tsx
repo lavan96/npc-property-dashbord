@@ -3,7 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Calculator, Compass, FileText, Zap } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
-import { getReportVariantLabel, normalizeReportVariant } from '@/lib/reports/reportVariants';
+import {
+  CLIENT_REPORT_VARIANTS,
+  getReportVariantLabel,
+  normalizeReportVariant,
+  type ClientReportVariant,
+} from '@/lib/reports/reportVariants';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Props {
@@ -19,7 +24,7 @@ export function ReportVariantControls({ compositeReportId, reportVariant, onNavi
 
   const activeVariant = normalizeReportVariant(reportVariant);
 
-  const handleFork = async (pathway: 'financial' | 'strategic' | 'briefing' | 'snapshot') => {
+  const handleFork = async (pathway: ClientReportVariant) => {
     setForking(pathway);
     try {
       const isFork = pathway === 'financial' || pathway === 'strategic';
@@ -27,16 +32,21 @@ export function ReportVariantControls({ compositeReportId, reportVariant, onNavi
         ? { composite_report_id: compositeReportId, variants: [pathway] }
         : { parentReportId: compositeReportId, targetTier: pathway });
       if (error) throw new Error(error.message);
+      const reportId = isFork ? data?.[pathway]?.id : data?.reportId;
+      const succeeded = isFork ? data?.ok === true : data?.success === true;
+      if (!succeeded || !reportId) {
+        throw new Error(data?.error || 'The generated report could not be retrieved.');
+      }
       toast({
         title: `${getReportVariantLabel(pathway)} report generated`,
         description: 'The report is saved to this property package and is ready to view.',
       });
-      const reportId = isFork ? data?.[pathway]?.id : data?.reportId;
-      if (reportId) onNavigate(reportId);
-    } catch (err: any) {
+      onNavigate(reportId);
+    } catch (err: unknown) {
+      console.error(`Failed to generate ${pathway} report`, err);
       toast({
         title: `${getReportVariantLabel(pathway)} report generation failed`,
-        description: 'No existing reports were changed. Please try again.',
+        description: `We couldn't generate the ${getReportVariantLabel(pathway)} report. Your existing reports were not changed. Please retry.`,
         variant: 'destructive',
       });
     } finally {
@@ -51,8 +61,7 @@ export function ReportVariantControls({ compositeReportId, reportVariant, onNavi
         ['strategic', 'Strategic', 'Generate property due diligence, risks, opportunities and strategic assessment.', Compass, 'border-primary/45 bg-primary/10 text-primary-foreground hover:border-primary hover:bg-primary/20 hover:shadow-primary/30'],
         ['briefing', 'Briefing', 'Generate a concise client-facing property briefing and key findings.', FileText, 'border-purple-400/40 bg-purple-500/10 text-purple-100 hover:border-purple-300 hover:bg-purple-500/20 hover:shadow-purple-500/25'],
         ['snapshot', 'Snapshot', 'Generate a rapid high-level overview and major decision indicators.', Zap, 'border-fuchsia-400/40 bg-fuchsia-500/10 text-fuchsia-100 hover:border-fuchsia-300 hover:bg-fuchsia-500/20 hover:shadow-fuchsia-500/25'],
-      ] as Array<[string, string, string, typeof Calculator, string]>).map(([id, title, description, Icon, accentClass]) => {
-        const pathway = id as 'financial' | 'strategic' | 'briefing' | 'snapshot';
+      ] as Array<[ClientReportVariant, string, string, typeof Calculator, string]>).filter(([id]) => CLIENT_REPORT_VARIANTS.includes(id)).map(([pathway, title, description, Icon, accentClass]) => {
         const processing = forking === pathway;
         const active = activeVariant === pathway;
         return <Tooltip key={pathway}>
