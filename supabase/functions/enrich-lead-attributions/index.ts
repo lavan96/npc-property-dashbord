@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // are never a trust signal.
     const human = await verifyAuth(supabase, req.headers, body);
     if (human.error || !human.userId) {
-      const internal = await verifyInternal(supabase, req, rawBody);
+      const internal = await verifyInternal(supabase, req, rawBody, { strict: true, allowedCallers: ['pg_cron'] });
       if (!internal.ok) {
         return createUnauthorizedResponse(human.error || 'Authentication required', corsHeaders);
       }
