@@ -2765,7 +2765,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
     // Handle updating conversation (e.g., title)
     if (action === "update-conversation") {
       const { conversationId, title, clientId, reportNames, reportContents } = body;
-      
+
       if (!conversationId) {
         return new Response(
           JSON.stringify({ error: "conversationId is required" }),
@@ -2773,7 +2773,24 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
         );
       }
 
+      // WP-07 — owner/admin only for title/client rewiring; collaborate may
+      // update report_names/report_contents but not re-link client_id.
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canWrite(access.role)) return denyResponse();
+      const isAdminOfConv = canAdminister(access.role);
+
       const updateData: any = {};
+      if (title !== undefined) {
+        if (!isAdminOfConv) return denyResponse('Only the owner can rename this conversation');
+        updateData.title = title;
+      }
+      if (reportNames !== undefined) updateData.report_names = Array.isArray(reportNames) ? reportNames : [];
+      if (reportContents !== undefined) updateData.report_contents = Array.isArray(reportContents) ? reportContents : [];
+      if (clientId !== undefined) {
+        if (!isAdminOfConv) return denyResponse('Only the owner can re-link the client');
+        updateData.client_id = clientId || null;
+      }
+
       if (title !== undefined) updateData.title = title;
       if (reportNames !== undefined) updateData.report_names = Array.isArray(reportNames) ? reportNames : [];
       if (reportContents !== undefined) updateData.report_contents = Array.isArray(reportContents) ? reportContents : [];
