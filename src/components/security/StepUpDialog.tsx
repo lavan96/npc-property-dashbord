@@ -54,7 +54,7 @@ export function StepUpDialog({
     const result = await requestStepUpChallenge(capability, password);
     setBusy(false);
     if (!result.ok) {
-      const err = result.error;
+      const err = (result as { ok: false; error: string }).error;
       setError(
         err === 'invalid_credentials' ? 'Incorrect password.' :
         err === 'mfa_enrollment_required' ? 'MFA enrolment is required for this account.' :
