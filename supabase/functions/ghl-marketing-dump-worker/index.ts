@@ -117,20 +117,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, done: true, processed, failed }), { headers: corsHeaders });
     }
 
-    // Re-enqueue self (AUTH-002: authenticate with the dedicated internal
-    // secret, not the service-role key; anon key only routes the gateway).
-    const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
-    const internalEdgeSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
-    const workerCall = fetch(`${supabaseUrl}/functions/v1/ghl-marketing-dump-worker`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${anonKey}`,
-        ...(internalEdgeSecret ? { 'x-internal-edge-secret': internalEdgeSecret } : {}),
-        'x-internal-call': 'true',
-      },
-      body: JSON.stringify({ job_id: jobId }),
-    }).catch((e) => console.error('[worker] self-dispatch threw', e));
+    // Re-enqueue self via signed internal call (WP-12).
+    const workerCall = callInternalFunction(
+      'ghl-marketing-dump-worker',
+      { job_id: jobId },
+      'ghl-marketing-dump-worker',
+    ).catch((e: any) => console.error('[worker] self-dispatch threw', e));
 
     // @ts-ignore
     if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
