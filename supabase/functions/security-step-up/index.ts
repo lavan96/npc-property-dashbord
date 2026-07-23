@@ -370,35 +370,83 @@ Deno.serve(async (req) => {
     let method = 'password';
     let assuranceLevel = 1;
     if (userRow?.mfa_enrolled_at) {
-      if (userRow.mfa_method !== 'totp' || !userRow.mfa_secret_encrypted) {
-        return j({ success: false, error: 'mfa_configuration_invalid', code: 'mfa_verification_required' }, 503);
-      }
-      const suppliedFactor = String(body?.mfa_code || body?.recovery_code || '');
-      const recoveryCode = isRecoveryCode(suppliedFactor);
-      if (recoveryCode) {
-        const hash = await hashRecoveryCode(auth.userId, suppliedFactor);
-        const ip = getTrustedClientIp(req);
-        const userRate = await consumeRateLimit(admin, `mfa:recovery:user:${auth.userId}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS);
-        const ipRate = ip ? await consumeRateLimit(admin, `mfa:recovery:ip:${ip}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS) : { allowed: true };
-        if (!userRate.allowed || !ipRate.allowed || !hash) return j({ success: false, error: !hash ? 'mfa_configuration_invalid' : 'rate_limited', code: 'mfa_verification_required' }, !hash ? 503 : 429);
-        const { data: consumed, error: consumeError } = await admin.rpc('consume_mfa_recovery_code', { p_user_id: auth.userId, p_code_hash: hash });
-        if (consumeError || consumed !== true) {
-          try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_or_used_recovery_code', metadata_redacted: { capability } }); } catch { /* ignore */ }
-          return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+      const suppliedAssertionToken = typeof body?.assertion_token === 'string' ? String(body.assertion_token) : '';
+      const suppliedAssertion = body?.assertion;
+      if (suppliedAssertionToken && suppliedAssertion?.id) {
+        // WebAuthn assertion path (passkey / security key)
+        const cfg = loadWebAuthnConfig();
+        if (!cfg) return j({ success: false, error: 'webauthn_not_configured', code: 'mfa_verification_required' }, 503);
+        const tokenHash = await hashStepUpToken(auth.userId, `webauthn.assertion:${capability}`, suppliedAssertionToken);
+        const { data: challenge } = await admin.from('mfa_webauthn_challenges')
+          .select('id, challenge_b64url, staff_session_id, capability')
+          .eq('user_id', auth.userId)
+          .eq('purpose', 'assertion')
+          .eq('token_hash', tokenHash)
+          .eq('staff_session_id', staffSession.id)
+          .eq('capability', capability)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+        if (!challenge) return j({ success: false, error: 'invalid_assertion', code: 'mfa_verification_required' }, 401);
+        const { data: credRow } = await admin.from('user_webauthn_credentials')
+          .select('id, credential_id, public_key, counter, transports')
+          .eq('user_id', auth.userId)
+          .eq('credential_id', suppliedAssertion.id)
+          .maybeSingle();
+        if (!credRow) return j({ success: false, error: 'unknown_credential', code: 'mfa_verification_required' }, 401);
+        const verified = await verifyAssertion({
+          cfg,
+          expectedChallenge: challenge.challenge_b64url,
+          response: suppliedAssertion,
+          credential: {
+            id: credRow.id,
+            credential_id: credRow.credential_id,
+            public_key: credRow.public_key as unknown as Uint8Array,
+            counter: Number(credRow.counter ?? 0),
+            transports: Array.isArray(credRow.transports) ? credRow.transports : [],
+          },
+        });
+        if (!verified) {
+          try { await admin.from('security_events').insert({ action: 'step_up.webauthn_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_assertion', metadata_redacted: { capability } }); } catch { /* ignore */ }
+          return j({ success: false, error: 'invalid_assertion', code: 'mfa_verification_required' }, 401);
         }
-        method = 'password+recovery_code';
+        // Consume challenge and bump counter atomically-ish.
+        await admin.from('mfa_webauthn_challenges').delete().eq('id', challenge.id);
+        await admin.from('user_webauthn_credentials')
+          .update({ counter: verified.newCounter, last_used_at: new Date().toISOString() })
+          .eq('id', credRow.id);
+        method = 'password+webauthn';
         assuranceLevel = 2;
-        try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_consumed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id } }); } catch { /* ignore */ }
+        try { await admin.from('security_events').insert({ action: 'step_up.webauthn_verified', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id, credential_row_id: credRow.id } }); } catch { /* ignore */ }
+      } else if (userRow.mfa_method === 'totp' && userRow.mfa_secret_encrypted) {
+        const suppliedFactor = String(body?.mfa_code || body?.recovery_code || '');
+        const recoveryCode = isRecoveryCode(suppliedFactor);
+        if (recoveryCode) {
+          const hash = await hashRecoveryCode(auth.userId, suppliedFactor);
+          const ip = getTrustedClientIp(req);
+          const userRate = await consumeRateLimit(admin, `mfa:recovery:user:${auth.userId}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS);
+          const ipRate = ip ? await consumeRateLimit(admin, `mfa:recovery:ip:${ip}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS) : { allowed: true };
+          if (!userRate.allowed || !ipRate.allowed || !hash) return j({ success: false, error: !hash ? 'mfa_configuration_invalid' : 'rate_limited', code: 'mfa_verification_required' }, !hash ? 503 : 429);
+          const { data: consumed, error: consumeError } = await admin.rpc('consume_mfa_recovery_code', { p_user_id: auth.userId, p_code_hash: hash });
+          if (consumeError || consumed !== true) {
+            try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_or_used_recovery_code', metadata_redacted: { capability } }); } catch { /* ignore */ }
+            return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+          }
+          method = 'password+recovery_code';
+          assuranceLevel = 2;
+          try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_consumed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id } }); } catch { /* ignore */ }
+        } else {
+          const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, suppliedFactor);
+          if (!totp.valid) {
+            try { await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_totp', metadata_redacted: { capability } }); } catch { /* ignore */ }
+            return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+          }
+          const { data: updatedMfa, error: updateMfaError } = await admin.from('custom_users').update({ mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter }).eq('id', auth.userId).or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`).select('id').maybeSingle();
+          if (updateMfaError || !updatedMfa) return j({ success: false, error: 'mfa_code_replayed', code: 'mfa_verification_required' }, 401);
+          method = 'password+totp';
+          assuranceLevel = 2;
+        }
       } else {
-        const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, suppliedFactor);
-        if (!totp.valid) {
-          try { await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_totp', metadata_redacted: { capability } }); } catch { /* ignore */ }
-          return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
-        }
-        const { data: updatedMfa, error: updateMfaError } = await admin.from('custom_users').update({ mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter }).eq('id', auth.userId).or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`).select('id').maybeSingle();
-        if (updateMfaError || !updatedMfa) return j({ success: false, error: 'mfa_code_replayed', code: 'mfa_verification_required' }, 401);
-        method = 'password+totp';
-        assuranceLevel = 2;
+        return j({ success: false, error: 'mfa_configuration_invalid', code: 'mfa_verification_required' }, 503);
       }
     }
 
