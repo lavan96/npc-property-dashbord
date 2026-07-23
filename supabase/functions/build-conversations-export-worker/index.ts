@@ -139,20 +139,24 @@ Deno.serve(async (req) => {
   let jobId: string | null = null;
 
   try {
-    const body = await req.json().catch(() => ({}));
-    jobId = body.job_id;
+    // WP-12 Phase B: capture the raw body once so verifyInternal's signed-envelope
+    // hash matches. Passing '' broke every signed cron/service call under
+    // INTERNAL_STRICT_SIGNED=true.
+    const rawBody = await req.text();
+    let parsedBody: any = {};
+    try { parsedBody = rawBody ? JSON.parse(rawBody) : {}; } catch { parsedBody = {}; }
+    jobId = parsedBody.job_id;
 
-    // AUTH-002: internal-only gate via a real credential (INTERNAL_EDGE_SECRET /
-    // service-role key), not a service token carried in the request body. The
-    // internal-secret path is headers-only, so it is fine that req.json() has
-    // already consumed the stream.
-    const internal = await verifyInternal(supabase, req, '');
+    // AUTH-002: internal-only gate via a real credential (signed envelope or,
+    // during rollout, INTERNAL_EDGE_SECRET / service-role key).
+    const internal = await verifyInternal(supabase, req, rawBody);
     if (!internal.ok) {
       return new Response(
         JSON.stringify({ success: false, error: 'Internal-only endpoint' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+
 
     if (!jobId) {
       return new Response(
