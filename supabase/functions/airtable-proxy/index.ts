@@ -244,7 +244,8 @@ Deno.serve(async (req) => {
       endpoint: `/v0/${baseId}/${tableName}`,
       status: 'success',
       model_used: 'rest-api',
-      metadata: { records_fetched: data.records.length, has_offset: !!data.offset },
+      user_id: auth.userId,
+      metadata: { records_fetched: data.records.length, has_offset: !!data.offset, table: tableName, op: op || 'list' },
     });
 
     // Transform the data to match the expected format
