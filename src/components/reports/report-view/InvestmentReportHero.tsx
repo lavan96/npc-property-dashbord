@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { InvestmentReport } from './types';
 import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from './utils';
+import { resolveInvestmentReportType } from '@/lib/reports/reportVariants';
+import { ReportTypeBadge } from '@/components/reports/ReportTypeBadge';
 
 interface Props {
   report: InvestmentReport;
@@ -27,6 +29,7 @@ export function InvestmentReportHero({
   const scoreTone = getScoreTone(scoreSummary.score);
   const gradeTone = getInvestmentGradeTone(scoreSummary.grade);
   const isDerivedVariant = Boolean(report.derived_from_report_id);
+  const reportType = resolveInvestmentReportType(report);
 
   return (
     <Card className="overflow-hidden border-primary/10 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
@@ -36,8 +39,7 @@ export function InvestmentReportHero({
             <div className="min-w-0 space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" /> Investment Report</Badge>
-                <Badge variant="outline" className="capitalize">{reportTierLabel}</Badge>
-                <Badge variant="outline" className="capitalize">{reportVariantLabel}</Badge>
+                <ReportTypeBadge type={reportType} />
                 {isDerivedVariant && <Badge variant="secondary" className="gap-1"><GitBranch className="h-3 w-3" /> Variant</Badge>}
                 {isClientReport && <Badge variant="outline">Client-ready</Badge>}
                 {hasOverrides && <Badge className="gap-1 bg-brand-600 text-foreground dark:text-white hover:bg-brand-600"><AlertCircle className="h-3 w-3" /> {overrideCount} Adjustment{overrideCount !== 1 ? 's' : ''}</Badge>}
@@ -93,8 +95,7 @@ export function InvestmentReportHero({
           </div>
           <div className="rounded-xl border bg-background/70 p-4">
             <p className="text-xs text-muted-foreground">Report tier</p>
-            <p className="mt-2 truncate text-lg font-semibold capitalize">{reportTierLabel}</p>
-            <p className="mt-1 truncate text-xs text-muted-foreground capitalize">{reportVariantLabel}</p>
+            <p className="mt-2 truncate text-lg font-semibold">{reportTierLabel}</p>
           </div>
           <div className="rounded-xl border bg-background/70 p-4">
             <p className="text-xs text-muted-foreground">Manual overrides</p>

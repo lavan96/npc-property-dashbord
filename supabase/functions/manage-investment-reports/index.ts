@@ -23,7 +23,7 @@ function createCorsHeaders(origin: string | null): Record<string, string> {
 }
 
 interface RequestBody {
-  action: 'insert' | 'update' | 'delete' | 'archive' | 'unarchive' | 'bulkDelete' | 'getVersion';
+  action: 'insert' | 'update' | 'delete' | 'archive' | 'unarchive' | 'archivePackage' | 'unarchivePackage' | 'bulkDelete' | 'getVersion';
   reportId?: string;
   reportIds?: string[];
   data?: Record<string, any>;
@@ -237,6 +237,37 @@ Deno.serve(async (req) => {
           JSON.stringify({ success: true, report }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      case 'archivePackage':
+      case 'unarchivePackage': {
+        if (!reportIds?.length || reportIds.some(id => typeof id !== 'string')) {
+          return new Response(JSON.stringify({ error: 'reportIds are required for package updates' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        // Resolve membership on the server so restore includes active siblings hidden
+        // by the archived filter. A listing ID is the stable key; exact address is only
+        // used for legacy rows that have no listing reference.
+        const uniqueIds = [...new Set(reportIds)];
+        const { data: anchorRows, error: anchorError } = await supabase
+          .from('investment_reports')
+          .select('id, property_listing_id, property_address')
+          .in('id', uniqueIds)
+          .limit(1);
+        const anchor = anchorRows?.[0];
+        if (anchorError || !anchor) {
+          console.error('Package anchor lookup failed:', anchorError, { uniqueIds });
+          return new Response(JSON.stringify({ error: 'Property package was not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        let packageQuery = supabase.from('investment_reports').update({ is_archived: action === 'archivePackage', updated_at: new Date().toISOString() });
+        packageQuery = anchor.property_listing_id
+          ? packageQuery.eq('property_listing_id', anchor.property_listing_id)
+          : packageQuery.eq('property_address', anchor.property_address);
+        const { data: updated, error: packageError } = await packageQuery.select('id, is_archived');
+        if (packageError || !updated?.length) {
+          console.error('Error updating investment report package:', packageError);
+          return new Response(JSON.stringify({ error: 'Failed to update property package' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        return new Response(JSON.stringify({ success: true, reports: updated }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       case 'getVersion': {

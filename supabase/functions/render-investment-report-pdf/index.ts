@@ -2749,12 +2749,16 @@ export async function buildHtml(
     "en-AU",
     { day: "numeric", month: "long", year: "numeric" },
   );
-  const reportVariant: "composite" | "financial" | "due_diligence" =
+  const reportVariant: "composite" | "compass" | "financial" | "strategic" | "briefing" | "snapshot" | "due_diligence" =
     (report.report_variant as any) || "composite";
   const variantLabel = reportVariant === "financial"
     ? "Financial Analysis Report"
-    : reportVariant === "due_diligence"
+    : reportVariant === "strategic" || reportVariant === "due_diligence"
     ? "Property & Location Due Diligence"
+    : reportVariant === "briefing"
+    ? "Client Briefing"
+    : reportVariant === "snapshot"
+    ? "Property Snapshot"
     : "Investment Report";
 
   const fin = report.financial_calculations || {};

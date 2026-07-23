@@ -21,6 +21,7 @@ export interface InvestmentReport {
   report_tier?: string | null;
   report_variant?: string | null;
   derived_from_report_id?: string | null;
+  parent_report_id?: string | null;
   pdf_url?: string | null;
 }
 

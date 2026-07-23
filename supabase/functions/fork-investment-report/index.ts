@@ -1,7 +1,7 @@
 /**
  * fork-investment-report
  * ----------------------
- * Takes a completed composite Investment Report and deterministically produces
+ * Takes a completed Compass-base Investment Report and deterministically produces
  * two derived client-facing reports:
  *
  *   - 'financial'      → Client Investment Feasibility & Financial Performance
@@ -13,7 +13,7 @@
  * existing child rows instead of duplicating them.
  *
  * Request:
- *   { composite_report_id: string; variants?: ('financial' | 'strategic')[]; force?: boolean }
+ *   { composite_report_id: string; variants?: ('financial' | 'strategic')[] }
  *
  * Response:
  *   { ok: true, financial?: { id, ... }, strategic?: { id, ... } }
@@ -156,13 +156,15 @@ function renderVariantMarkdown(
 async function loadComposite(supabase: any, id: string) {
   const { data, error } = await supabase
     .from('investment_reports')
-    .select('id, property_address, property_listing_id, client_property_id, generated_by, report_content, financial_calculations, demographics_data, economic_data, location_intelligence, property_specs, manual_overrides, status, report_variant, sources_content')
+    .select('id, property_address, property_listing_id, client_property_id, generated_by, report_content, financial_calculations, demographics_data, economic_data, location_intelligence, property_specs, manual_overrides, status, report_variant, report_tier, sources_content')
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(`Failed to load composite: ${error.message}`);
   if (!data) throw new Error(`Composite report ${id} not found`);
-  if (data.report_variant !== 'composite') {
-    throw new Error(`Report ${id} is not a composite (variant=${data.report_variant})`);
+  // `composite` is a legacy storage value for the Compass base engine. New
+  // records persist `compass`; accept both so historical reports remain usable.
+  if (data.report_variant !== 'composite' && data.report_variant !== 'compass') {
+    throw new Error(`Report ${id} is not a Compass base report (variant=${data.report_variant})`);
   }
   if (data.status !== 'completed') {
     throw new Error(`Composite report ${id} is not yet completed (status=${data.status})`);
@@ -173,12 +175,15 @@ async function loadComposite(supabase: any, id: string) {
 type PersistedVariant = 'financial' | 'strategic';
 
 async function findExistingFork(supabase: any, parentId: string, variant: PersistedVariant) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('investment_reports')
     .select('id')
     .eq('derived_from_report_id', parentId)
     .eq('report_variant', variant)
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
+  if (error) throw new Error(`Failed to locate existing ${variant} report: ${error.message}`);
   return data?.id || null;
 }
 
@@ -189,7 +194,6 @@ async function upsertFork(
   persistedVariant: PersistedVariant,
   reportContent: string,
   scoreInputRaw: any,
-  force: boolean,
 ) {
   const score = variant === 'financial'
     ? scoreFinancial(scoreInputRaw)
@@ -209,10 +213,11 @@ async function upsertFork(
     property_specs: parent.property_specs,
     manual_overrides: parent.manual_overrides,
     variant_generated_at: new Date().toISOString(),
+    report_tier: persistedVariant,
     status: 'completed',
   };
 
-  if (existingId && !force) {
+  if (existingId) {
     const { data, error } = await supabase
       .from('investment_reports')
       .update(sharedFields)
@@ -221,11 +226,6 @@ async function upsertFork(
       .maybeSingle();
     if (error) throw new Error(`Failed to refresh ${variant} fork: ${error.message}`);
     return { ...data, refreshed: true };
-  }
-
-  // Force or new: delete-then-insert so the existing row isn't orphaned
-  if (existingId && force) {
-    await supabase.from('investment_reports').delete().eq('id', existingId);
   }
 
   const { data, error } = await supabase
@@ -266,7 +266,6 @@ Deno.serve(async (req) => {
     }
 
     const compositeId = body.composite_report_id || body.compositeReportId || body.reportId;
-    const force = body.force === true;
     const requestedVariants = Array.isArray(body.variants) && body.variants.length > 0 ? body.variants : ['financial', 'strategic'];
     const variants = requestedVariants.filter((variant: unknown): variant is PersistedVariant => variant === 'financial' || variant === 'strategic');
     if (!variants.length) throw new Error('At least one valid client report pathway is required');
@@ -281,7 +280,6 @@ Deno.serve(async (req) => {
       userId: userId?.substring?.(0, 8) || userId,
       authMethod,
       compositeId,
-      force,
     });
 
     const parent = await loadComposite(supabase, compositeId);
@@ -319,8 +317,8 @@ Deno.serve(async (req) => {
     };
 
     const generated = await Promise.all(variants.map(async (variant) => {
-      if (variant === 'financial') return ['financial', await upsertFork(supabase, parent, 'financial', 'financial', financialMd, scoreInputRaw, force)] as const;
-      return ['strategic', await upsertFork(supabase, parent, 'due_diligence', 'strategic', dueDiligenceMd, scoreInputRaw, force)] as const;
+      if (variant === 'financial') return ['financial', await upsertFork(supabase, parent, 'financial', 'financial', financialMd, scoreInputRaw)] as const;
+      return ['strategic', await upsertFork(supabase, parent, 'due_diligence', 'strategic', dueDiligenceMd, scoreInputRaw)] as const;
     }));
     const result = Object.fromEntries(generated);
 

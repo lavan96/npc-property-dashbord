@@ -283,6 +283,7 @@ Deno.serve(async (req) => {
   }
 
   console.log('=== Condense Investment Report Function Started ===');
+  let targetReportId: string | null = null;
 
   try {
     // SECURITY: Verify authentication
@@ -374,6 +375,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    // The client-facing variant is required at creation time. Never rely on
+    // the database default here: that would mislabel a Briefing/Snapshot as a
+    // Compass base report in the generated report library.
+    const reportVariant = targetTier as 'briefing' | 'snapshot' | 'financial';
+
     // Supabase client already initialized above for auth verification
 
     // Fetch the parent (Compass) report
@@ -397,35 +403,50 @@ Deno.serve(async (req) => {
 
     console.log('Parent report found:', parentReport.property_address);
 
-    // Check if this tier already exists for this parent
-    const { data: existingTier } = await supabase
+    // Resolve the exact child in this Compass package before generating. A
+    // missing row is created below; an existing row is regenerated in place so
+    // retries never create an uncontrolled duplicate or silently no-op.
+    const { data: existingTier, error: existingTierError } = await supabase
       .from('investment_reports')
       .select('id')
       .eq('parent_report_id', parentReportId)
       .eq('report_tier', targetTier)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (existingTier) {
-      console.log('Tier already exists, returning existing report');
-      return new Response(JSON.stringify({ 
-        success: true,
-        reportId: existingTier.id,
-        message: `${TIER_CONFIG[targetTier].name} already exists for this property`
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (existingTierError) {
+      throw new Error(`Failed to resolve existing ${TIER_CONFIG[targetTier].name}: ${existingTierError.message}`);
     }
 
-    // Create pending condensed report
-    const { data: condensedReport, error: insertError } = await supabase
-      .from('investment_reports')
-      .insert({
+    let condensedReport: { id: string } | null = existingTier;
+    if (existingTier) {
+      const { data, error } = await supabase
+        .from('investment_reports')
+        .update({
+          report_content: `Generating ${TIER_CONFIG[targetTier].name}...`,
+          report_variant: reportVariant,
+          status: 'processing',
+          error_message: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingTier.id)
+        .select('id')
+        .maybeSingle();
+      if (error || !data) throw new Error(`Failed to prepare ${TIER_CONFIG[targetTier].name} regeneration: ${error?.message || 'report not found'}`);
+      condensedReport = data;
+    } else {
+      // Create the target before calling the generator. This makes a missing
+      // requested type a valid create path rather than a zero-row update.
+      const { data, error: insertError } = await supabase
+        .from('investment_reports')
+        .insert({
         property_address: parentReport.property_address,
         property_listing_id: parentReport.property_listing_id,
         report_content: `Generating ${TIER_CONFIG[targetTier].name}...`,
         status: 'pending',
         report_tier: targetTier,
+        report_variant: reportVariant,
         parent_report_id: parentReportId,
         report_scope: parentReport.report_scope,
         property_specs: parentReport.property_specs,
@@ -436,16 +457,20 @@ Deno.serve(async (req) => {
         investment_score: parentReport.investment_score,
         location_intelligence: parentReport.location_intelligence,
         data_sources: parentReport.data_sources,
-      })
-      .select()
-      .single();
+        })
+        .select('id')
+        .single();
 
-    if (insertError) {
-      console.error('Failed to create condensed report:', insertError);
-      throw new Error(`Failed to create report: ${insertError.message}`);
+      if (insertError) {
+        console.error('Failed to create condensed report:', insertError);
+        throw new Error(`Failed to create report: ${insertError.message}`);
+      }
+      condensedReport = data;
     }
 
-    console.log('Created pending condensed report:', condensedReport.id);
+    if (!condensedReport) throw new Error(`Failed to initialise ${TIER_CONFIG[targetTier].name}`);
+    targetReportId = condensedReport.id;
+    console.log(`${existingTier ? 'Regenerating' : 'Created pending'} condensed report:`, condensedReport.id);
 
     // Get the tier configuration
     const tierConfig = TIER_CONFIG[targetTier];
@@ -577,6 +602,24 @@ IMPORTANT:
 
   } catch (error) {
     console.error('Condense report error:', error);
+    // A report is only completed after its generated content is persisted. If
+    // any later stage fails, retain the same target for a safe retry instead
+    // of leaving it indefinitely in pending/processing.
+    if (targetReportId) {
+      try {
+        const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+        await supabase
+          .from('investment_reports')
+          .update({
+            status: 'failed',
+            error_message: 'Client report generation did not complete. Retry the requested report type.',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetReportId);
+      } catch (statusError) {
+        console.error('Failed to mark condensed report as failed:', statusError);
+      }
+    }
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error occurred',
       success: false 
