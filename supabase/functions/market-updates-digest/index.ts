@@ -177,15 +177,24 @@ function fallbackDigest(period: Period, updates: any[], grouped: Record<string, 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
-  const auth = req.headers.get("authorization") ?? "";
+  // WP-03: strict cron auth via constant-time helper. Admin manual trigger
+  // still allowed via authenticated Bearer (verifyAuth) — attacker-controlled
+  // headers alone can no longer reach the AI generation path.
   const cronSecret = Deno.env.get("MARKET_INGESTION_CRON_SECRET");
-  const cronOk = cronSecret && req.headers.get("x-cron-secret") === cronSecret;
-  if (!auth && !cronOk) return json({ error: "Unauthorised digest request." }, 401);
+  const cronHeader = req.headers.get("x-cron-secret");
+  const cronOk = verifyRequiredCronSecret(cronSecret, cronHeader);
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  if (!cronOk) {
+    let bodyPreview: any = {};
+    try { bodyPreview = await req.clone().json(); } catch {}
+    const auth = await verifyAuth(sb, req.headers, bodyPreview);
+    if (auth.error || !auth.userId) return securityJsonError(401, "unauthorized");
+  }
 
   const payload = await req.json().catch(() => ({}));
   const period: Period = VALID_PERIODS.includes(payload?.period) ? payload.period : "24h";
