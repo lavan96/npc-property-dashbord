@@ -18288,7 +18288,13 @@ export type Database = {
           role: string
           sent_by: string | null
           sent_by_username: string | null
+          share_expires_at: string | null
+          share_last_accessed_at: string | null
+          share_revoked_at: string | null
           share_token: string | null
+          share_token_hash: string | null
+          share_token_prefix: string | null
+          share_view_count: number
           stream_id: string | null
           tool_invocations: Json
         }
@@ -18309,7 +18315,13 @@ export type Database = {
           role: string
           sent_by?: string | null
           sent_by_username?: string | null
+          share_expires_at?: string | null
+          share_last_accessed_at?: string | null
+          share_revoked_at?: string | null
           share_token?: string | null
+          share_token_hash?: string | null
+          share_token_prefix?: string | null
+          share_view_count?: number
           stream_id?: string | null
           tool_invocations?: Json
         }
@@ -18330,7 +18342,13 @@ export type Database = {
           role?: string
           sent_by?: string | null
           sent_by_username?: string | null
+          share_expires_at?: string | null
+          share_last_accessed_at?: string | null
+          share_revoked_at?: string | null
           share_token?: string | null
+          share_token_hash?: string | null
+          share_token_prefix?: string | null
+          share_view_count?: number
           stream_id?: string | null
           tool_invocations?: Json
         }
@@ -18357,6 +18375,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      report_qa_share_access_log: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string | null
+          outcome: string
+          requester_ip: string | null
+          requester_ua: string | null
+          share_token_prefix: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          outcome: string
+          requester_ip?: string | null
+          requester_ua?: string | null
+          share_token_prefix: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          outcome?: string
+          requester_ip?: string | null
+          requester_ua?: string | null
+          share_token_prefix?: string
+        }
+        Relationships: []
       }
       report_qa_stream_checkpoints: {
         Row: {
@@ -20468,8 +20516,6 @@ export type Database = {
       get_shared_qa_answer: {
         Args: { _share_token: string }
         Returns: {
-          attachments: Json
-          citations: Json
           content: string
           conversation_id: string
           conversation_title: string
@@ -20477,7 +20523,6 @@ export type Database = {
           message_id: string
           model_provider: string
           role: string
-          tool_invocations: Json
         }[]
       }
       get_user_activity_summary: {
