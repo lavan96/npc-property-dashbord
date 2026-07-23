@@ -3,8 +3,10 @@
   "functions": {
     "abs-data-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "abs-employment-service": {
       "verify_jwt": false,
@@ -13,8 +15,10 @@
     },
     "abs-seifa-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "admin-password-reset": {
       "verify_jwt": true,
@@ -30,23 +34,31 @@
     },
     "agent-insights-runner": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "agent-models-read": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "agent-planner": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "agent-skill-marketplace": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "agent-task-runner": {
       "verify_jwt": false,
@@ -168,38 +180,52 @@
     },
     "analyze-meta-ads": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "analyze-meta-ads-phase2": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "analyze-meta-ads-phase3": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "analyze-meta-ads-phase4": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "analyze-meta-ads-phase5": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "archive-old-reports": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "auto-report-sync": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "auto-report-webhook": {
       "verify_jwt": false,
@@ -235,8 +261,10 @@
     },
     "bc-scenario-agent": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "bootstrap-cron-vault": {
       "verify_jwt": false,
@@ -250,28 +278,38 @@
     },
     "calculate-borrowing-capacity": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "cdr-lending-rates-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "check-integration-secrets": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "check-model-availability": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "clean-note-transcript": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "cleanup-call-log-names": {
       "verify_jwt": true,
@@ -291,18 +329,24 @@
     },
     "client-portal-batch6": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "client-portal-comms": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "client-portal-finance-hub": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "client-portal-forgot-password": {
       "verify_jwt": false,
@@ -347,28 +391,38 @@
     },
     "cloudflare-proxy": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "commercial-bc-scenario-agent": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "compare-cash-flow-reports": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "compare-investment-reports": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "condense-investment-report": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "conversation-sync-cron": {
       "verify_jwt": true,
@@ -377,8 +431,10 @@
     },
     "cotality-service": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "crime-statistics-service": {
       "verify_jwt": false,
@@ -405,13 +461,17 @@
     },
     "data-conflict-resolver": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "diagnose-ghl-attribution": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "dispatch-marketing-reports": {
       "verify_jwt": false,
@@ -420,8 +480,10 @@
     },
     "domain-data-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "email-body-backfill": {
       "verify_jwt": true,
@@ -430,13 +492,17 @@
     },
     "email-copilot": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "email-copilot-extras": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "email-sync-cron": {
       "verify_jwt": false,
@@ -454,33 +520,45 @@
     },
     "estimate-commercial-caprate": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "estimate-commercial-noi": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "estimate-property-expenses": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "feature-flags-admin": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "fetch-meta-ads": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "figma-template-sync": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-email-track-pixel": {
       "verify_jwt": false,
@@ -494,118 +572,164 @@
     },
     "finance-portal-admin": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-ai-copilot": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-audit-timeline": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-automations": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-batch6": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-batch7": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-batch8": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-batch9-10": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-briefing-runner": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-broker-kpis": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-bulk-actions": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-change-password": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-client-comms": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-client-data": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-client-mirror": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-client-tasks": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-commissions": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-dashboard-metrics": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-deal-trackers": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-document-requirements": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-documents": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-engagement": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-forecasting": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-forgot-password": {
       "verify_jwt": false,
@@ -615,8 +739,10 @@
     },
     "finance-portal-handoff-create": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-handoff-redeem": {
       "verify_jwt": false,
@@ -625,18 +751,24 @@
     },
     "finance-portal-invite": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-lender-intelligence": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-lender-packet": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-login": {
       "verify_jwt": false,
@@ -651,28 +783,38 @@
     },
     "finance-portal-messages": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-notifications": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-nudges": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-pipeline": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-purchase-files": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-reset-password": {
       "verify_jwt": false,
@@ -682,33 +824,45 @@
     },
     "finance-portal-saved-views": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-settings": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-settlement-runway": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-snoozes": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-templates": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-tri-portal-health": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "finance-portal-verify": {
       "verify_jwt": false,
@@ -717,48 +871,66 @@
     },
     "financial-calculator-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "financial-validation-service": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "fix-report-status": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "fork-investment-report": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "format-comparison-report": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-bulk-reports": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-chart-analysis": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-chart-images": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-charts-python": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-commission-payout": {
       "verify_jwt": false,
@@ -769,38 +941,52 @@
     },
     "generate-investment-report": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-market-intelligence-report": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "generate-portfolio-analysis": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-activity-logs": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-api-usage-stats": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-call-logs": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-client-data": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-email-data": {
       "verify_jwt": false,
@@ -810,28 +996,38 @@
     },
     "get-investment-reports": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-portal-client-data": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-system-logs": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-token-event-trail": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-user-names": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "get-vapid-public-key": {
       "verify_jwt": false,
@@ -840,23 +1036,31 @@
     },
     "ghl-account-preview": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-calendar": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-calendar-proxy": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-calendar-test": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-conversations-cron": {
       "verify_jwt": false,
@@ -870,8 +1074,10 @@
     },
     "ghl-legacy-wipe-orchestrator": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-legacy-wipe-worker": {
       "verify_jwt": true,
@@ -880,13 +1086,17 @@
     },
     "ghl-marketing-dump-enqueue": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-marketing-dump-export": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-marketing-dump-worker": {
       "verify_jwt": false,
@@ -895,8 +1105,10 @@
     },
     "ghl-marketing-raw-dump": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-migrate-bookings-worker": {
       "verify_jwt": false,
@@ -925,8 +1137,10 @@
     },
     "ghl-migrate-conversations-reset-phantoms": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-migrate-conversations-worker": {
       "verify_jwt": false,
@@ -960,8 +1174,10 @@
     },
     "ghl-test-credentials": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "ghl-webhook-receiver": {
       "verify_jwt": false,
@@ -972,8 +1188,10 @@
     },
     "ghl-workflow-visualizer": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "google-places-autocomplete": {
       "verify_jwt": false,
@@ -982,13 +1200,17 @@
     },
     "hero-image-studio": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "import-clients-from-ghl": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "import-from-url": {
       "verify_jwt": false,
@@ -997,78 +1219,108 @@
     },
     "import-schools-data": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "import-suburb-directory": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "investment-scoring-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "list-token-audit": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "list-token-usage": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "location-intelligence-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "log-activity": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-agency-agreements": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-agent-models": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-automation-settings": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-bc-scenarios": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-call-logs": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-call-settings": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-client-data": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-commercial-data": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-commission-ledger": {
       "verify_jwt": false,
@@ -1086,8 +1338,10 @@
     },
     "manage-data-import": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-generated-documents": {
       "verify_jwt": false,
@@ -1098,83 +1352,115 @@
     },
     "manage-industrial-data": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-investment-reports": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-lead-magnets": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-lender-favourites": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-lender-rate-alerts": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-lender-submissions": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-portal-client-data": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-report-preferences": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manage-templates": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "manychat-proxy": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-qa-digest-runner": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-qa-quality-report": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-qa-quality-snapshot": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-qa-share": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-qa-subscriptions": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-updates-digest": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-updates-embed-backfill": {
       "verify_jwt": false,
@@ -1196,8 +1482,10 @@
     },
     "market-updates-source-admin": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "market-updates-voice-transcribe": {
       "verify_jwt": false,
@@ -1208,18 +1496,24 @@
     },
     "mcp": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "message-governance": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "migrate-comparison-scores": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "migration-dispatcher": {
       "verify_jwt": false,
@@ -1228,68 +1522,94 @@
     },
     "migration-job-control": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "migration-job-status": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "migration-orchestrator": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "migration-upload-source": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-balance": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-catalog": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-devices": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-handoff": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-key-info": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-packs": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-purchases": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-rotate-key": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-seats": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "mission-control-webhook": {
       "verify_jwt": false,
@@ -1298,8 +1618,10 @@
     },
     "one-time-bulk-conversation-sync": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "outlook-calendar": {
       "verify_jwt": false,
@@ -1331,38 +1653,52 @@
     },
     "parse-property-pdf": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "parse-template-document": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "parse-vownet-pdf": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "pdf-import-client-report": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "pdf-import-diagnostics": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "pdf-import-monitoring": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "pdf-import-retention": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "pdf-import-ssim-score": {
       "verify_jwt": false,
@@ -1386,33 +1722,45 @@
     },
     "pdf-parse-recover-stuck-jobs": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "phase6-quality-ops": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "portal-book-appointment": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "portal-upload-file": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "prepare-report-hero-images": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "process-scheduled-emails": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "public-transport-service": {
       "verify_jwt": false,
@@ -1421,68 +1769,94 @@
     },
     "push-subscribe": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "push-unsubscribe": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "quantitative-report-pipeline": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "rba-data-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "reclassify-property": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "regenerate-report-qualitative": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "render-investment-report-pdf": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "render-source": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "render-template-pdf": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "report-engine-agent": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "report-engine-inspector": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "report-qa": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "report-schema-validator": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "request-lead-magnet": {
       "verify_jwt": false,
@@ -1491,18 +1865,24 @@
     },
     "resume-bulk-generation": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "retrieve-template-context": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "risk-assessment-service": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "school-data-service": {
       "verify_jwt": false,
@@ -1511,8 +1891,10 @@
     },
     "scrape-property-listing": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "secure-storage": {
       "verify_jwt": true,
@@ -1523,13 +1905,17 @@
     },
     "send-appointment-notification": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "send-call-alert-email": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "send-email-reply": {
       "verify_jwt": false,
@@ -1540,73 +1926,101 @@
     },
     "send-ghl-message": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "module-gated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "send-web-push": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "cron-worker",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "send-weekly-call-report": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "share-report-with-finance": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "sqm-rent-service": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "staff-client-portal-handoff-create": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "staff-client-portal-messages": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "portal-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "start-conversations-export": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "internal-service",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "sync-client-to-ghl": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "sync-ghl-conversations": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "sync-ghl-marketing-assets": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "sync-ghl-pipelines": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "sync-notes-to-ghl": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "template-ai-author": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "template-analytics": {
       "verify_jwt": false,
@@ -1625,8 +2039,10 @@
     },
     "template-import-pdf": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "template-share": {
       "verify_jwt": false,
@@ -1635,23 +2051,31 @@
     },
     "update-ghl-opportunity-stage": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "update-integration-secret": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "update-stamp-duty-rates": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "user-guide-assistant": {
       "verify_jwt": true,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
     },
     "vapi-call-webhook": {
       "verify_jwt": false,
