@@ -28,7 +28,8 @@ import { ReportLibraryEmptyState } from '@/components/reports/library/ReportLibr
 import { ReportLibrarySkeleton } from '@/components/reports/library/ReportLibrarySkeleton';
 import { ReportLibraryPagination } from '@/components/reports/library/ReportLibraryPagination';
 import type { ComparisonAnalysis, InvestmentReport } from '@/components/reports/library/types';
-import { getReportPackageKey } from '@/lib/reports/reportVariants';
+import { buildGeneratedReportGroups, type GeneratedReportGroup } from '@/lib/reports/generatedReportGroups';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // UI Refactor Safety Checklist (Phase 0):
 // - Preserve Supabase table names, secure edge function names, route paths, and permission guards.
@@ -87,6 +88,7 @@ export default function GeneratedReports() {
   const [sourceFilter, setSourceFilter] = useState<string>('all'); // Filter by generation source (manual/auto)
   const [showArchived, setShowArchived] = useState(false); // Show archived reports
   const [showArchivedComparisons, setShowArchivedComparisons] = useState(false); // Show archived comparisons
+  const [packagePendingArchive, setPackagePendingArchive] = useState<GeneratedReportGroup | null>(null);
   const [generatingTier, setGeneratingTier] = useState<{ reportId: string; tier: ReportTier } | null>(null);
   const reportsPerPage = 50;
   
@@ -254,14 +256,8 @@ export default function GeneratedReports() {
     return matchesSearch && matchesScope && matchesGrade && matchesScore && matchesTier && matchesSource && matchesArchive;
   });
   
-  const propertyPackages = useMemo(() => Object.values(filteredInvestmentReports.reduce<Record<string, InvestmentReport[]>>((packages, report) => {
-    const key = getReportPackageKey(report); (packages[key] ||= []).push(report); return packages;
-  }, {})), [filteredInvestmentReports]);
-  const totalInvestmentPages = Math.ceil((investmentViewMode === 'cards' ? propertyPackages.length : filteredInvestmentReports.length) / reportsPerPage);
-  const paginatedInvestmentReports = filteredInvestmentReports.slice(
-    (investmentPage - 1) * reportsPerPage,
-    investmentPage * reportsPerPage
-  );
+  const propertyPackages = useMemo(() => buildGeneratedReportGroups(filteredInvestmentReports), [filteredInvestmentReports]);
+  const totalInvestmentPages = Math.ceil(propertyPackages.length / reportsPerPage);
   const paginatedPropertyPackages = propertyPackages.slice((investmentPage - 1) * reportsPerPage, investmentPage * reportsPerPage);
 
   useEffect(() => {
@@ -569,6 +565,28 @@ export default function GeneratedReports() {
         description: error?.message || 'Could not restore the report.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const togglePackageArchive = async (group: GeneratedReportGroup) => {
+    const archive = !group.isArchived;
+    const reportIds = group.reports.map(report => report.id);
+    try {
+      const { data, error } = await invokeSecureFunction('manage-investment-reports', {
+        action: archive ? 'archivePackage' : 'unarchivePackage',
+        reportIds,
+      });
+      if (error || !data?.success) throw new Error(data?.error || error?.message || 'Package update failed');
+      const affected = new Set(reportIds);
+      setInvestmentReports(previous => previous.map(report => affected.has(report.id) ? { ...report, is_archived: archive } : report));
+      await fetchInvestmentReports();
+      if (showArchived) await fetchArchivedReports();
+      logActivityDirect({ actionType: 'report_archived', entityType: 'investment_report', entityId: group.groupId, entityName: group.propertyAddress, metadata: { action: archive ? 'package_archived' : 'package_restored', reportCount: reportIds.length } });
+      toast({ title: archive ? 'Property package archived' : 'Property package restored', description: archive ? `All reports for ${group.propertyAddress} are now available under Show Archived.` : `All reports for ${group.propertyAddress} are visible in Generated Reports again.` });
+    } catch (error) {
+      const reference = crypto.randomUUID?.().slice(0, 8) || Date.now().toString(36);
+      console.error(`Generated report package update failed [${reference}]`, error);
+      toast({ title: archive ? 'Unable to archive property package' : 'Unable to restore property package', description: `Your reports were not changed. Please try again. Reference: ${reference}`, variant: 'destructive' });
     }
   };
   
@@ -916,29 +934,19 @@ export default function GeneratedReports() {
             <>
               {investmentViewMode === 'table' && !isMobile ? (
                 <InvestmentReportTable
-                  reports={paginatedInvestmentReports}
-                  isSelected={isSelected}
-                  canAddMore={canAddMore}
-                  isAutoGenerated={(reportId) => autoGeneratedReportIds.has(reportId)}
-                  generatingTier={generatingTier}
+                  groups={paginatedPropertyPackages}
                   canEditReports={canEditReports}
                   generatorLabel={generatorLabel}
-                  getGradeColor={getGradeColor}
-                  getScoreColor={getScoreColor}
-                  onToggleSelection={handleToggleSelection}
                   onView={(selected) => navigate(`/investment-report/${selected.id}`)}
                   onDownload={downloadInvestmentReportText}
-                  onRegenerated={handleInvestmentReportUpdate}
-                  onViewHistory={handleViewVersionHistory}
-                  onToggleArchive={(selected) => selected.is_archived ? unarchiveReport(selected.id) : archiveReport(selected.id)}
-                  onGenerateTier={handleGenerateTier}
+                  onTogglePackageArchive={(group) => group.isArchived ? void togglePackageArchive(group) : setPackagePendingArchive(group)}
                 />
               ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {paginatedPropertyPackages.map((reports) => (
+                  {paginatedPropertyPackages.map((group) => (
                     <PropertyReportPackageCard
-                      key={getReportPackageKey(reports[0])}
-                      reports={reports}
+                      key={group.groupId}
+                      reports={group.reports}
                       isSelected={isSelected}
                       canAddMore={canAddMore}
                       isAutoGenerated={false}
@@ -954,6 +962,11 @@ export default function GeneratedReports() {
                       onViewHistory={handleViewVersionHistory}
                       onToggleArchive={(selected) => selected.is_archived ? unarchiveReport(selected.id) : archiveReport(selected.id)}
                       onGenerateTier={handleGenerateTier}
+                      onTogglePackageArchive={(reports) => {
+                        const packageGroup = buildGeneratedReportGroups(reports)[0];
+                        if (!packageGroup) return;
+                        packageGroup.isArchived ? void togglePackageArchive(packageGroup) : setPackagePendingArchive(packageGroup);
+                      }}
                     />
                   ))}
                 </div>
@@ -1010,6 +1023,13 @@ export default function GeneratedReports() {
           )}
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!packagePendingArchive} onOpenChange={(open) => !open && setPackagePendingArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Archive property package?</AlertDialogTitle><AlertDialogDescription>This will archive all generated reports for {packagePendingArchive?.propertyAddress || 'this property'}. The reports will remain available under Show Archived.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (packagePendingArchive) void togglePackageArchive(packagePendingArchive); setPackagePendingArchive(null); }}>Archive package</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Lazy loaded modals - only render when open */}
       {comparisonModalOpen && (
