@@ -9,6 +9,7 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
+import { downloadClientPdf } from '@/lib/reports/clientPdfDownload';
 
 type ReportTier = 'compass' | 'briefing' | 'snapshot' | 'financial';
 
@@ -32,6 +33,7 @@ interface PixelPerfectPDFGeneratorProps {
   includeSources?: boolean;
   includeScoring?: boolean;
   reportTier?: ReportTier;
+  pdf_url?: string | null;
   skipDatabaseUpdate?: boolean;
 }
 
@@ -3499,7 +3501,9 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
         const { error: updateError } = await invokeSecureFunction('manage-investment-reports', {
           action: 'update',
           reportId: report.id,
-          data: { pdf_url: publicUrl }
+          // Store the stable object path, never a short-lived/public URL. The
+          // shared downloader obtains an authorised response at click time.
+          data: { pdf_url: uploadResult.path }
         });
 
         if (updateError) {
@@ -3550,18 +3554,32 @@ export const PixelPerfectPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandl
   const generatePixelPerfectPDF = async () => {
     setIsGenerating(true);
     try {
+      // Prefer the existing persisted standard client PDF. This is the same
+      // flow used by the Generated Reports card and avoids needless renders.
+      if (report.pdf_url) {
+        await downloadClientPdf(report.id, {
+          report: {
+            id: report.id,
+            property_address: report.address,
+            report_tier: reportTier,
+            pdf_url: report.pdf_url,
+          },
+        });
+        toast.success('Client PDF downloaded successfully.');
+        return;
+      }
       const result = await generateCore();
 
-      // Download the PDF
-      console.log('⬇️ Step 10: Triggering browser download...');
-      const downloadUrl = URL.createObjectURL(result.blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `${result.suburb}_${result.state}_Investment_Report.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
+      // The renderer persists the stable storage path first. Download through
+      // the same authorised retrieval service used by report-library cards.
+      await downloadClientPdf(report.id, {
+        report: {
+          id: report.id,
+          property_address: report.address,
+          report_tier: reportTier,
+          pdf_url: result.publicUrl,
+        },
+      });
 
       console.log('✅ PDF generation completed successfully!');
       toast.success('PDF generated and saved successfully!');

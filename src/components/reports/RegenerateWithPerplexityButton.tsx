@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { useChunkedRegeneration } from '@/hooks/useChunkedRegeneration';
 
@@ -53,7 +53,7 @@ export function RegenerateWithPerplexityButton({
           entityType: 'investment_report',
           entityId: reportId,
           entityName: propertyAddress,
-          metadata: { regenerationType: 'perplexity_qualitative_chunked' }
+          metadata: { regenerationType: 'qualitative_chunked' }
         });
         onRegenerated?.();
       }
@@ -68,6 +68,8 @@ export function RegenerateWithPerplexityButton({
         className={`${className}`}
         onClick={() => setShowConfirm(true)}
         disabled={isRegenerating}
+        aria-label="Regenerate this report using the latest available data and current settings"
+        title="Regenerate this report using the latest available data and current settings."
         style={variant === 'default' ? { 
           background: 'linear-gradient(135deg, #1A1A2E 0%, #20B2AA 100%)',
         } : undefined}
@@ -75,12 +77,12 @@ export function RegenerateWithPerplexityButton({
         {isRegenerating ? (
           <>
             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-            {currentSection}/{totalSections}
+            Regenerating… {currentSection}/{totalSections}
           </>
         ) : (
           <>
-            <Sparkles className="mr-1 h-3 w-3" />
-            Perplexity
+            <RefreshCw className="mr-1 h-3 w-3" />
+            Regenerate
           </>
         )}
       </Button>
@@ -89,12 +91,12 @@ export function RegenerateWithPerplexityButton({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-success-foreground0" />
-              Regenerate with Perplexity AI?
+              <RefreshCw className="h-5 w-5 text-success-foreground0" />
+              Regenerate this report?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                This will use Perplexity AI to regenerate the qualitative analysis sections of your report with:
+                This refreshes the qualitative analysis sections using the latest available data and your current settings:
               </p>
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>All your manual overrides injected as context</li>
@@ -116,8 +118,8 @@ export function RegenerateWithPerplexityButton({
                 background: 'linear-gradient(135deg, #1A1A2E 0%, #20B2AA 100%)',
               }}
             >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Regenerate with Perplexity
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Regenerate report
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
