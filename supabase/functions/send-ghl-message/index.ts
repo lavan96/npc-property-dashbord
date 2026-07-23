@@ -1,6 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getEffectiveGhlCredentials, resolveGhlAccessTokenForLocation } from '../_shared/ghl-account.ts';
+import { checkPermission } from '../_shared/permissions.ts';
+import { rateLimit } from '../_shared/wp08Guards.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
+
+// WP-08 — hard message length ceiling (SMS is 1600 across most providers).
+const MAX_MESSAGE_LENGTH = 1600;
 
 type SupportedChannel = 'sms' | 'whatsapp';
 
