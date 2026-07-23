@@ -30,7 +30,7 @@ export interface InvestmentReport {
   created_at: string;
   current_version: number;
   report_scope?: string;
-  report_tier?: 'compass' | 'briefing' | 'snapshot';
+  report_tier?: 'compass' | 'financial' | 'strategic' | 'briefing' | 'snapshot' | string;
   report_variant?: 'compass' | 'composite' | 'financial' | 'strategic' | 'briefing' | 'snapshot' | 'due_diligence' | null;
   derived_from_report_id?: string | null;
   parent_report_id?: string | null;

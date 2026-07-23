@@ -1,4 +1,4 @@
-import { ArrowLeft, Calculator, Download, Edit, FolderOpen, Images, MoreHorizontal, Send, Settings } from 'lucide-react';
+import { ArrowLeft, Calculator, Download, Edit, FolderOpen, History, Images, MoreHorizontal, Send, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -27,6 +27,7 @@ interface Props {
   onEdit: () => void;
   onOverride: () => void;
   onManageHeroImages: () => void;
+  onOpenVersionHistory: () => void;
   onDownload: () => void;
 }
 
@@ -43,6 +44,7 @@ export function InvestmentReportCommandHeader({
   onEdit,
   onOverride,
   onManageHeroImages,
+  onOpenVersionHistory,
   onDownload,
 }: Props) {
   const reportType = resolveInvestmentReportType(report);
@@ -123,6 +125,10 @@ export function InvestmentReportCommandHeader({
               <DropdownMenuItem onClick={onManageHeroImages}>
                 <Images className="h-4 w-4 mr-2" />
                 Manage Hero Images
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenVersionHistory}>
+                <History className="h-4 w-4 mr-2" />
+                Version History
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDownload}>

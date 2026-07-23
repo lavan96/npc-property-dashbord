@@ -7,6 +7,7 @@ import { InvestmentReportEditor } from '@/components/reports/InvestmentReportEdi
 import { ManualDataOverrideModal } from '@/components/reports/ManualDataOverrideModal';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
 import { HeroImageStudio } from '@/components/reports/HeroImageStudio';
+import { ReportVersionHistory } from '@/components/reports/ReportVersionHistory';
 import { DEFAULT_PDF_DESIGN_OPTIONS, type PdfDesignOptions } from '@/components/reports/premiumPdfDesign';
 import { InvestmentReportCommandHeader } from '@/components/reports/report-view/InvestmentReportCommandHeader';
 import { InvestmentReportDocument } from '@/components/reports/report-view/InvestmentReportDocument';
@@ -32,6 +33,7 @@ export default function InvestmentReportView() {
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
   const [sendToClientOpen, setSendToClientOpen] = useState(false);
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
   const [includeSources, setIncludeSources] = useState(true);
   const [includeScoring, setIncludeScoring] = useState(true);
   const [includeCharts, setIncludeCharts] = useState(true);
@@ -57,7 +59,7 @@ export default function InvestmentReportView() {
       const { data, error: fetchError } = await invokeSecureFunction('get-investment-reports', {
         reportId: id,
         listOptions: {
-        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier, report_variant, derived_from_report_id, parent_report_id, pdf_url'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, current_version, report_tier, report_variant, derived_from_report_id, parent_report_id, pdf_url'
         }
       });
 
@@ -111,7 +113,7 @@ export default function InvestmentReportView() {
     const { data } = await invokeSecureFunction('get-investment-reports', {
       reportId: id,
       listOptions: {
-        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, report_tier, report_variant, derived_from_report_id, parent_report_id, pdf_url'
+        select: 'id, property_address, property_listing_id, report_content, sources_content, created_at, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence, is_client_report, client_property_id, current_version, report_tier, report_variant, derived_from_report_id, parent_report_id, pdf_url'
       }
     });
 
@@ -166,6 +168,7 @@ export default function InvestmentReportView() {
         onEdit={() => setEditorOpen(true)}
         onOverride={() => setOverrideModalOpen(true)}
         onManageHeroImages={() => setHeroDialogOpen(true)}
+        onOpenVersionHistory={() => setVersionHistoryOpen(true)}
         onDownload={handleDownload}
       />
 
@@ -269,6 +272,14 @@ export default function InvestmentReportView() {
           }
           return null;
         }}
+      />
+
+      <ReportVersionHistory
+        reportId={report.id}
+        currentVersion={report.current_version || 1}
+        open={versionHistoryOpen}
+        onOpenChange={setVersionHistoryOpen}
+        onVersionRestored={handleReportUpdate}
       />
 
       {/* Hero Image Studio */}
