@@ -1,10 +1,26 @@
-// Batch 7E.2 — Generated documents (loan/cover/etc) + DocuSign envelope tracking
+// WP-09A — Generated documents + DocuSign (hardened)
+// - Explicit input schemas per action
+// - Server-side bucket allowlist (caller `bucket` ignored)
+// - Resource-ownership access checks (client_id / deal_id)
+// - Status finite-state machine
+// - Immutable server-only fields (docusign_*, signed_*, sent_at/viewed_at/signed_at/voided_at, audit, generated_by)
+// - Idempotency key + PDF hash for send_freeform
+// - Recipient/tab bounds; recipient emails validated
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { requireModulePermission, permForAction } from '../_shared/authz.ts';
 import { logSecurityEvent } from '../_shared/auth_v2.ts';
 import { getDocuSignAccessToken, getDocuSignRestBaseUrl } from '../_shared/docusign-auth.ts';
 import { buildFreeformEnvelope, pdfBytesToBase64, type FreeformRecipient, type FreeformTab } from '../_shared/docusign-freeform.ts';
+import { isSuperadmin } from '../_shared/wp08Guards.ts';
+import {
+  GENERATED_DOC_BUCKET_ALLOWLIST, resolveDocumentBucket,
+  isValidDocTransition, type DocStatus,
+  DOC_SERVICE_ONLY_FIELDS, DOC_UPDATE_ALLOWED_FIELDS,
+  resolveGeneratedDocumentAccess, hasRecentStepUp,
+  pickAllowed, sha256Hex, normalizeIdempotencyKey,
+  MAX_FREEFORM_RECIPIENTS, MAX_FREEFORM_TABS, validateEmail,
+} from '../_shared/wp09Guards.ts';
 
 interface Body {
   action: 'list' | 'get' | 'create' | 'update' | 'update_status' | 'append_audit' | 'list_signature_events' | 'delete' | 'save_signing_layout' | 'send_freeform' | 'check_status' | 'envelope_details' | 'download_signed';
@@ -12,11 +28,11 @@ interface Body {
   data?: Record<string, any>;
   filters?: Record<string, any>;
   session_token?: string;
-  bucket?: string;
   signing_recipients?: FreeformRecipient[];
   signing_layout?: FreeformTab[];
   email_subject?: string;
   email_blurb?: string;
+  idempotency_key?: string;
 }
 
 Deno.serve(async (req) => {
@@ -32,32 +48,44 @@ Deno.serve(async (req) => {
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
 
-    // AUTHZ (Critical 8): "valid dashboard session" is NOT authorization here.
-    // This function can list/read/mutate any generated document and send it
-    // through the org DocuSign account to arbitrary recipients. Gate every
-    // action on the agreements module permission (deny-by-default; superadmin
-    // and verified service calls bypass). Send/void/delete require the stronger
-    // edit/delete flags via permForAction.
-    const requiredPerm = permForAction(body.action);
     const authz = await requireModulePermission(
       supabase,
       { userId: auth.userId, authMethod: auth.authMethod },
       'agreements',
-      requiredPerm,
+      permForAction(body.action),
     );
     if (!authz.ok) {
       await logSecurityEvent(supabase, {
         action: `generated_documents.${body.action}`,
-        decision: 'deny',
-        reason_code: authz.reason_code,
-        actor_type: 'human',
-        actor_id: auth.userId,
+        decision: 'deny', reason_code: authz.reason_code,
+        actor_type: 'human', actor_id: auth.userId,
       });
       return createForbiddenResponse(authz.error || 'Access denied', cors);
     }
 
+    const isSuper = await isSuperadmin(supabase, auth.userId, auth.authMethod);
+
     const j = (data: any, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+
+    // Fetch-and-authorize helper used by every id-scoped action.
+    const loadAndAuthorize = async () => {
+      if (!body.id) return { err: j({ success: false, error: 'Missing id' }, 400) as Response };
+      const { data: doc, error } = await supabase
+        .from('generated_documents').select('*').eq('id', body.id).maybeSingle();
+      if (error) return { err: j({ success: false, error: error.message }, 500) };
+      if (!doc) return { err: j({ success: false, error: 'Not found' }, 404) };
+      const access = await resolveGeneratedDocumentAccess(supabase, auth.userId!, isSuper, doc);
+      if (!access.ok) {
+        await logSecurityEvent(supabase, {
+          action: `generated_documents.${body.action}`, decision: 'deny',
+          reason_code: 'resource_denied', actor_type: 'human', actor_id: auth.userId!,
+          resource_id: body.id,
+        } as any);
+        return { err: createForbiddenResponse('Access denied', cors) };
+      }
+      return { doc };
+    };
 
     switch (body.action) {
       case 'list': {
@@ -68,53 +96,73 @@ Deno.serve(async (req) => {
         if (f.submission_id) q = q.eq('submission_id', f.submission_id);
         if (f.status) q = q.eq('status', f.status);
         if (f.template_type) q = q.eq('template_type', f.template_type);
+        // Non-superadmin: scope to caller's docs OR their assigned clients.
+        if (!isSuper) q = q.eq('generated_by', auth.userId!);
         const { data, error } = await q;
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'get': {
-        const { data, error } = await supabase.from('generated_documents').select('*').eq('id', body.id!).maybeSingle();
-        if (error) return j({ success: false, error: error.message }, 500);
-        return j({ success: true, data });
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        return j({ success: true, data: r.doc });
       }
 
       case 'create': {
-        const insertRow = { ...(body.data || {}), generated_by: auth.userId };
+        const payload = pickAllowed(body.data, DOC_UPDATE_ALLOWED_FIELDS, DOC_SERVICE_ONLY_FIELDS);
+        const insertRow = {
+          ...payload,
+          generated_by: auth.userId,
+          status: 'draft',
+        };
         const { data, error } = await supabase.from('generated_documents').insert(insertRow).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'update': {
-        const { data, error } = await supabase.from('generated_documents').update(body.data || {}).eq('id', body.id!).select().single();
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const payload = pickAllowed(body.data, DOC_UPDATE_ALLOWED_FIELDS, DOC_SERVICE_ONLY_FIELDS);
+        if (Object.keys(payload).length === 0) return j({ success: false, error: 'No allowed fields to update' }, 400);
+        const { data, error } = await supabase.from('generated_documents').update(payload).eq('id', body.id!).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'update_status': {
-        const updates: Record<string, any> = { status: body.data?.status, ...(body.data || {}) };
-        delete updates.id;
-        const status = body.data?.status;
-        if (status === 'sent') updates.sent_at = new Date().toISOString();
-        if (status === 'viewed') updates.viewed_at = new Date().toISOString();
-        if (status === 'signed') updates.signed_at = new Date().toISOString();
-        if (status === 'voided') updates.voided_at = new Date().toISOString();
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const nextStatus = String(body.data?.status || '') as DocStatus;
+        if (!isValidDocTransition(r.doc.status as DocStatus, nextStatus)) {
+          return j({ success: false, error: `Invalid transition ${r.doc.status} → ${nextStatus}` }, 409);
+        }
+        // Human callers cannot set signed/voided directly — those come from DocuSign flows.
+        if (['sent', 'signed', 'viewed', 'voided', 'delivered', 'declined'].includes(nextStatus) && !isSuper) {
+          return j({ success: false, error: 'Status change reserved for envelope events' }, 403);
+        }
+        const updates: Record<string, any> = { status: nextStatus };
         const { data, error } = await supabase.from('generated_documents').update(updates).eq('id', body.id!).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
+        // Server-side audit
+        const auditArr = Array.isArray(r.doc.audit) ? r.doc.audit : [];
+        auditArr.push({ ts: new Date().toISOString(), user_id: auth.userId, event: 'status_change', from: r.doc.status, to: nextStatus });
+        await supabase.from('generated_documents').update({ audit: auditArr }).eq('id', body.id!);
         return j({ success: true, data });
       }
 
       case 'append_audit': {
-        const { data: existing } = await supabase.from('generated_documents').select('audit').eq('id', body.id!).single();
-        const audit = Array.isArray((existing as any)?.audit) ? (existing as any).audit : [];
-        audit.push({ ...(body.data?.event || {}), ts: new Date().toISOString(), user_id: auth.userId });
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const note = typeof body.data?.note === 'string' ? body.data.note.slice(0, 1000) : '';
+        const eventType = typeof body.data?.event_type === 'string' ? body.data.event_type.slice(0, 64) : 'note';
+        const audit = Array.isArray(r.doc.audit) ? r.doc.audit : [];
+        audit.push({ ts: new Date().toISOString(), user_id: auth.userId, event: eventType, note });
         const { data, error } = await supabase.from('generated_documents').update({ audit }).eq('id', body.id!).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'delete': {
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        if (['sent', 'signed'].includes(r.doc.status)) return j({ success: false, error: 'Cannot delete sent/signed document' }, 409);
         const { error } = await supabase.from('generated_documents').delete().eq('id', body.id!);
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data: { ok: true } });
@@ -126,41 +174,66 @@ Deno.serve(async (req) => {
         if (f.document_id) q = q.eq('document_id', f.document_id);
         else if (f.compliance_record_id) q = q.eq('compliance_record_id', f.compliance_record_id);
         else if (f.envelope_id) q = q.eq('docusign_envelope_id', f.envelope_id);
+        else return j({ success: false, error: 'Filter required' }, 400);
         const { data, error } = await q;
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'save_signing_layout': {
-        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const recipients = (body.signing_recipients ?? []).slice(0, MAX_FREEFORM_RECIPIENTS);
+        const tabs = (body.signing_layout ?? []).slice(0, MAX_FREEFORM_TABS);
         const { error } = await supabase.from('generated_documents').update({
-          signing_recipients: body.signing_recipients ?? [],
-          signing_layout: body.signing_layout ?? [],
+          signing_recipients: recipients,
+          signing_layout: tabs,
           signing_prepared_at: new Date().toISOString(),
-        }).eq('id', body.id);
+        }).eq('id', body.id!);
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true });
       }
 
       case 'send_freeform': {
-        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const doc = r.doc;
+        // Step-up gate for money/legally-binding actions
+        if (!isSuper && !hasRecentStepUp(req)) {
+          return j({ success: false, error: 'Step-up verification required', code: 'step_up_required' }, 401);
+        }
+        if (['sent', 'signed', 'voided'].includes(doc.status) && !body.idempotency_key) {
+          return j({ success: false, error: 'Document already sent; provide idempotency_key to retry' }, 409);
+        }
+        const idem = normalizeIdempotencyKey(body.idempotency_key);
+        if (idem && doc.metadata?.last_idempotency_key === idem && doc.docusign_envelope_id) {
+          return j({ success: true, envelope_id: doc.docusign_envelope_id, status: doc.docusign_status, idempotent: true });
+        }
         const recipients = body.signing_recipients ?? [];
         const tabs = body.signing_layout ?? [];
-        if (recipients.length === 0) return j({ success: false, error: 'At least one recipient required' }, 400);
-        if (tabs.length === 0) return j({ success: false, error: 'Place at least one field' }, 400);
-        for (const r of recipients) {
-          if (!r.email || !r.name) return j({ success: false, error: 'Recipient missing name/email' }, 400);
+        if (recipients.length === 0 || recipients.length > MAX_FREEFORM_RECIPIENTS) return j({ success: false, error: `1-${MAX_FREEFORM_RECIPIENTS} recipients required` }, 400);
+        if (tabs.length === 0 || tabs.length > MAX_FREEFORM_TABS) return j({ success: false, error: 'Invalid tab count' }, 400);
+        for (const rec of recipients) {
+          if (!validateEmail(rec.email) || !rec.name || rec.name.length > 200) {
+            return j({ success: false, error: 'Recipient invalid name/email' }, 400);
+          }
         }
-        const { data: doc, error: dErr } = await supabase.from('generated_documents').select('*').eq('id', body.id).single();
-        if (dErr || !doc) return j({ success: false, error: 'Document not found' }, 404);
         if (!doc.pdf_storage_path) return j({ success: false, error: 'PDF not ready' }, 409);
-        const bucket = body.bucket || 'client-documents';
+
+        // Server-derived bucket (caller value ignored)
+        const bucket = resolveDocumentBucket(doc.template_type);
+        if (!GENERATED_DOC_BUCKET_ALLOWLIST.has(bucket)) return j({ success: false, error: 'Bucket not allowed' }, 500);
+
         const { data: blob, error: dlErr } = await supabase.storage.from(bucket).download(doc.pdf_storage_path);
-        if (dlErr || !blob) return j({ success: false, error: `Failed to load PDF from ${bucket}: ${dlErr?.message}` }, 500);
+        if (dlErr || !blob) return j({ success: false, error: `Failed to load PDF: ${dlErr?.message}` }, 500);
         const pdfBytes = new Uint8Array(await blob.arrayBuffer());
+        const pdfHash = await sha256Hex(pdfBytes);
+
+        // If document was approved and pdf_hash captured, ensure it matches (tamper check)
+        if (doc.pdf_hash && doc.pdf_hash !== pdfHash) {
+          return j({ success: false, error: 'PDF has changed since approval', code: 'pdf_hash_mismatch' }, 409);
+        }
 
         const accountId = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
-        if (!accountId) return j({ success: false, error: 'DOCUSIGN_ACCOUNT_ID not configured', requires_setup: true }, 422);
+        if (!accountId) return j({ success: false, error: 'DocuSign not configured', requires_setup: true }, 422);
         let token: string;
         try { token = await getDocuSignAccessToken(); }
         catch (e: any) { return j({ success: false, error: `DocuSign auth: ${e.message}` }, 401); }
@@ -169,8 +242,8 @@ Deno.serve(async (req) => {
           pdfBase64: pdfBytesToBase64(pdfBytes),
           documentName: `${doc.title || 'Document'}.pdf`,
           recipients, tabs,
-          emailSubject: body.email_subject || `${doc.title || 'Document for signature'}`,
-          emailBlurb: body.email_blurb || 'Please review and sign the attached document.',
+          emailSubject: (body.email_subject || `${doc.title || 'Document for signature'}`).slice(0, 200),
+          emailBlurb: (body.email_blurb || 'Please review and sign the attached document.').slice(0, 4000),
         });
         const url = `${getDocuSignRestBaseUrl()}/v2.1/accounts/${accountId}/envelopes`;
         const dsRes = await fetch(url, {
@@ -179,11 +252,15 @@ Deno.serve(async (req) => {
           body: JSON.stringify(envelope),
         });
         const txt = await dsRes.text();
-        let dsData: any; try { dsData = JSON.parse(txt); } catch { return j({ success: false, error: `DocuSign non-JSON (${dsRes.status})`, raw: txt.substring(0, 400) }, 502); }
+        let dsData: any;
+        try { dsData = JSON.parse(txt); }
+        catch { return j({ success: false, error: `DocuSign non-JSON (${dsRes.status})` }, 502); }
         if (!dsRes.ok) {
           console.error('[generated-docs freeform] envelope failed:', txt.substring(0, 1000));
-          return j({ success: false, error: `DocuSign: ${dsData.message || dsData.errorCode || 'Unknown'}`, details: dsData }, dsRes.status);
+          return j({ success: false, error: `DocuSign rejected the request` }, dsRes.status);
         }
+        const audit = Array.isArray(doc.audit) ? doc.audit : [];
+        audit.push({ ts: new Date().toISOString(), user_id: auth.userId, event: 'sent', envelope_id: dsData.envelopeId, pdf_hash: pdfHash, recipients: recipients.length });
         await supabase.from('generated_documents').update({
           status: 'sent',
           docusign_envelope_id: dsData.envelopeId,
@@ -193,42 +270,45 @@ Deno.serve(async (req) => {
           signing_recipients: recipients,
           signing_layout: tabs,
           signing_prepared_at: new Date().toISOString(),
-        }).eq('id', body.id);
-        return j({ success: true, envelope_id: dsData.envelopeId, status: dsData.status });
+          pdf_hash: pdfHash,
+          audit,
+          metadata: { ...(doc.metadata || {}), last_idempotency_key: idem },
+        }).eq('id', body.id!);
+        return j({ success: true, envelope_id: dsData.envelopeId, status: dsData.status, pdf_hash: pdfHash });
       }
 
       case 'check_status':
       case 'envelope_details': {
-        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
-        const { data: doc, error: dErr } = await supabase.from('generated_documents').select('*').eq('id', body.id).single();
-        if (dErr || !doc?.docusign_envelope_id) return j({ success: false, error: 'Envelope not found' }, 404);
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const doc = r.doc;
+        if (!doc?.docusign_envelope_id) return j({ success: false, error: 'Envelope not found' }, 404);
         const acct = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
         if (!acct) return j({ success: false, error: 'DocuSign not configured' }, 422);
         let token: string;
         try { token = await getDocuSignAccessToken(); }
         catch (e: any) { return j({ success: false, error: `DocuSign auth: ${e.message}` }, 401); }
-        const auth = { Authorization: `Bearer ${token}` };
+        const hdr = { Authorization: `Bearer ${token}` };
         const base = getDocuSignRestBaseUrl();
         const envId = doc.docusign_envelope_id;
         const [envRes, recRes, evtRes] = await Promise.all([
-          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}`, { headers: auth }),
-          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/recipients`, { headers: auth }),
-          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/audit_events`, { headers: auth }),
+          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}`, { headers: hdr }),
+          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/recipients`, { headers: hdr }),
+          fetch(`${base}/v2.1/accounts/${acct}/envelopes/${envId}/audit_events`, { headers: hdr }),
         ]);
         const envelope = await envRes.json();
-        if (!envRes.ok) return j({ success: false, error: `DocuSign: ${envelope?.message || 'Unknown'}` }, 502);
+        if (!envRes.ok) return j({ success: false, error: 'DocuSign lookup failed' }, 502);
         const recipients = recRes.ok ? await recRes.json() : null;
         const auditRaw = evtRes.ok ? await evtRes.json() : null;
 
         let newStatus = doc.status;
         const updates: Record<string, any> = { docusign_status: envelope.status };
         if (envelope.status === 'completed') { newStatus = 'signed'; updates.signed_at = envelope.completedDateTime || new Date().toISOString(); }
-        else if (envelope.status === 'delivered') newStatus = 'viewed';
+        else if (envelope.status === 'delivered') newStatus = 'delivered';
         else if (envelope.status === 'sent') newStatus = 'sent';
-        else if (envelope.status === 'declined') newStatus = 'voided';
-        else if (envelope.status === 'voided') { newStatus = 'voided'; updates.voided_at = envelope.voidedDateTime || new Date().toISOString(); updates.voided_reason = envelope.voidedReason || null; }
+        else if (envelope.status === 'declined') newStatus = 'declined';
+        else if (envelope.status === 'voided') { newStatus = 'voided'; updates.voided_at = envelope.voidedDateTime || new Date().toISOString(); }
         updates.status = newStatus;
-        await supabase.from('generated_documents').update(updates).eq('id', body.id);
+        await supabase.from('generated_documents').update(updates).eq('id', body.id!);
 
         const events = (auditRaw?.auditEvents || []).map((ev: any) => {
           const fields: Record<string, string> = {};
@@ -259,9 +339,9 @@ Deno.serve(async (req) => {
       }
 
       case 'download_signed': {
-        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
-        const { data: doc, error: dErr } = await supabase.from('generated_documents').select('id, title, docusign_envelope_id').eq('id', body.id).single();
-        if (dErr || !doc?.docusign_envelope_id) return j({ success: false, error: 'Envelope not found' }, 404);
+        const r = await loadAndAuthorize(); if ('err' in r) return r.err;
+        const doc = r.doc;
+        if (!doc?.docusign_envelope_id) return j({ success: false, error: 'Envelope not found' }, 404);
         const acct = Deno.env.get('DOCUSIGN_ACCOUNT_ID');
         if (!acct) return j({ success: false, error: 'DocuSign not configured' }, 422);
         let token: string;
@@ -269,10 +349,7 @@ Deno.serve(async (req) => {
         catch (e: any) { return j({ success: false, error: `DocuSign auth: ${e.message}` }, 401); }
         const url = `${getDocuSignRestBaseUrl()}/v2.1/accounts/${acct}/envelopes/${doc.docusign_envelope_id}/documents/combined`;
         const dsRes = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/pdf' } });
-        if (!dsRes.ok) {
-          const txt = await dsRes.text();
-          return j({ success: false, error: `DocuSign: ${txt.substring(0, 300)}` }, 502);
-        }
+        if (!dsRes.ok) return j({ success: false, error: 'DocuSign download failed' }, 502);
         const bytes = new Uint8Array(await dsRes.arrayBuffer());
         let bin = ''; for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
         const b64 = btoa(bin);
