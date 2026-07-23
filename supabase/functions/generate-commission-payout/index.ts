@@ -1,8 +1,15 @@
-// Batch 7E.2 — Generate broker payout from received commissions in a period
+// WP-09B — Commission payout (hardened, maker/checker via SECURITY DEFINER RPCs)
+// - Transaction-safe generation via public.generate_commission_payout
+// - Maker/checker enforced in public.mark_commission_payout_paid (approver ≠ generator)
+// - Compensating cancellation via public.cancel_commission_payout
+// - Step-up gate for mark_paid
+// - Idempotency key required for generate
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { requireModulePermission, permForAction } from '../_shared/authz.ts';
 import { logSecurityEvent } from '../_shared/auth_v2.ts';
+import { hasRecentStepUp, normalizeIdempotencyKey } from '../_shared/wp09Guards.ts';
+import { isSuperadmin } from '../_shared/wp08Guards.ts';
 
 interface Body {
   action: 'list' | 'generate' | 'mark_paid' | 'cancel';
@@ -10,6 +17,7 @@ interface Body {
   data?: Record<string, any>;
   filters?: Record<string, any>;
   session_token?: string;
+  idempotency_key?: string;
 }
 
 Deno.serve(async (req) => {
@@ -25,9 +33,6 @@ Deno.serve(async (req) => {
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
 
-    // AUTHZ: payout generation moves money. Gate every action on the
-    // finance_portal_admin module permission (deny-by-default; superadmin +
-    // verified service bypass). generate/mark_paid/cancel require edit/delete.
     const authz = await requireModulePermission(
       supabase,
       { userId: auth.userId, authMethod: auth.authMethod },
@@ -42,6 +47,7 @@ Deno.serve(async (req) => {
       return createForbiddenResponse(authz.error || 'Access denied', cors);
     }
 
+    const isSuper = await isSuperadmin(supabase, auth.userId, auth.authMethod);
     const j = (data: any, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
@@ -49,65 +55,69 @@ Deno.serve(async (req) => {
       case 'list': {
         let q = supabase.from('commission_payouts').select('*').order('period_end', { ascending: false }).limit(200);
         if (body.filters?.broker_id) q = q.eq('broker_id', body.filters.broker_id);
+        if (body.filters?.status) q = q.eq('status', body.filters.status);
         const { data, error } = await q;
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'generate': {
-        const { broker_id, broker_name, period_start, period_end } = body.data || {};
+        const broker_id = body.data?.broker_id;
+        const broker_name = body.data?.broker_name || null;
+        const period_start = body.data?.period_start;
+        const period_end = body.data?.period_end;
         if (!broker_id || !period_start || !period_end) {
           return j({ success: false, error: 'broker_id, period_start, period_end required' }, 400);
         }
-
-        const { data: entries, error: e1 } = await supabase
-          .from('commission_ledger').select('*')
-          .eq('broker_id', broker_id).eq('status', 'received')
-          .gte('received_date', period_start).lte('received_date', period_end);
-        if (e1) return j({ success: false, error: e1.message }, 500);
-        const list = entries || [];
-
-        const total_gross = list.reduce((s, r) => s + Number(r.gross_amount || 0), 0);
-        const total_gst = list.reduce((s, r) => s + Number(r.gst_amount || 0), 0);
-        const total_net = list.reduce((s, r) => s + Number(r.net_amount || 0), 0);
-
-        const { data: payout, error } = await supabase.from('commission_payouts').insert({
-          broker_id, broker_name, period_start, period_end,
-          total_gross, total_gst, total_net,
-          ledger_entry_ids: list.map(e => e.id),
-          entry_count: list.length,
-          status: 'pending',
-          generated_by: auth.userId,
-        }).select().single();
-        if (error) return j({ success: false, error: error.message }, 500);
-
-        if (list.length) {
-          await supabase.from('commission_ledger')
-            .update({ status: 'reconciled', reconciled_date: new Date().toISOString().slice(0, 10) })
-            .in('id', list.map(e => e.id));
-        }
-
-        return j({ success: true, data: { payout, entries: list } });
+        const idem = normalizeIdempotencyKey(body.idempotency_key) ||
+                     normalizeIdempotencyKey(`gen:${broker_id}:${period_start}:${period_end}:${auth.userId}`);
+        const { data, error } = await supabase.rpc('generate_commission_payout', {
+          p_broker_id: broker_id,
+          p_broker_name: broker_name,
+          p_period_start: period_start,
+          p_period_end: period_end,
+          p_actor_id: auth.userId,
+          p_idempotency_key: idem,
+        });
+        if (error) return j({ success: false, error: error.message }, 409);
+        return j({ success: true, data: { payout: data } });
       }
 
       case 'mark_paid': {
-        const { data, error } = await supabase.from('commission_payouts')
-          .update({ status: 'paid', paid_at: new Date().toISOString(), payment_reference: body.data?.payment_reference, payment_method: body.data?.payment_method })
-          .eq('id', body.id!).select().single();
-        if (error) return j({ success: false, error: error.message }, 500);
+        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        // Step-up gate for money-move
+        if (!isSuper && !hasRecentStepUp(req)) {
+          return j({ success: false, error: 'Step-up verification required', code: 'step_up_required' }, 401);
+        }
+        const { data, error } = await supabase.rpc('mark_commission_payout_paid', {
+          p_payout_id: body.id,
+          p_approver_id: auth.userId,
+          p_payment_reference: typeof body.data?.payment_reference === 'string' ? body.data.payment_reference.slice(0, 128) : null,
+          p_payment_method: typeof body.data?.payment_method === 'string' ? body.data.payment_method.slice(0, 64) : null,
+          p_approval_note: typeof body.data?.approval_note === 'string' ? body.data.approval_note.slice(0, 1000) : null,
+        });
+        if (error) {
+          const msg = error.message || '';
+          if (msg.includes('maker_checker_violation')) {
+            await logSecurityEvent(supabase, {
+              action: 'commission_payout.mark_paid', decision: 'deny',
+              reason_code: 'maker_checker_violation', actor_type: 'human', actor_id: auth.userId,
+            });
+            return j({ success: false, error: 'Generator cannot approve their own payout', code: 'maker_checker_violation' }, 403);
+          }
+          return j({ success: false, error: msg }, 409);
+        }
         return j({ success: true, data });
       }
 
       case 'cancel': {
-        const { data: payout } = await supabase.from('commission_payouts').select('ledger_entry_ids').eq('id', body.id!).single();
-        const ids = (payout as any)?.ledger_entry_ids || [];
-        if (ids.length) {
-          await supabase.from('commission_ledger')
-            .update({ status: 'received', reconciled_date: null }).in('id', ids);
-        }
-        const { data, error } = await supabase.from('commission_payouts')
-          .update({ status: 'cancelled' }).eq('id', body.id!).select().single();
-        if (error) return j({ success: false, error: error.message }, 500);
+        if (!body.id) return j({ success: false, error: 'Missing id' }, 400);
+        const { data, error } = await supabase.rpc('cancel_commission_payout', {
+          p_payout_id: body.id,
+          p_actor_id: auth.userId,
+          p_reason: typeof body.data?.reason === 'string' ? body.data.reason.slice(0, 500) : null,
+        });
+        if (error) return j({ success: false, error: error.message }, 409);
         return j({ success: true, data });
       }
     }

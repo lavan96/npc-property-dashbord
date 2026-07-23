@@ -1,8 +1,12 @@
-// Batch 7E.2 — Commission ledger CRUD + analytics
+// WP-09B — Commission ledger (hardened)
+// - Whitelisted mutable fields on update; state fields service-only
+// - Explicit filter validation
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { requireModulePermission, permForAction } from '../_shared/authz.ts';
 import { logSecurityEvent } from '../_shared/auth_v2.ts';
+import { isSuperadmin } from '../_shared/wp08Guards.ts';
+import { LEDGER_UPDATE_ALLOWED_FIELDS, LEDGER_SERVICE_ONLY_FIELDS, pickAllowed } from '../_shared/wp09Guards.ts';
 
 interface Body {
   action: 'list' | 'get' | 'create' | 'update' | 'delete' | 'mark_received' | 'reconcile' | 'forecast_chart';
@@ -11,6 +15,11 @@ interface Body {
   filters?: Record<string, any>;
   session_token?: string;
 }
+
+const LEDGER_CREATE_ALLOWED = new Set([
+  ...LEDGER_UPDATE_ALLOWED_FIELDS,
+  'broker_id', 'deal_id', 'client_id', 'lender_id',
+]);
 
 Deno.serve(async (req) => {
   const cors = createCorsHeaders(req.headers.get('origin'));
@@ -25,10 +34,6 @@ Deno.serve(async (req) => {
     const auth = await verifyAuth(supabase, req.headers, body);
     if (auth.error || !auth.userId) return createUnauthorizedResponse(auth.error || 'Auth required', cors);
 
-    // AUTHZ: commission ledger entries are financial records. Gate every action
-    // on the finance_portal_admin module permission (deny-by-default; superadmin
-    // + verified service bypass). mark_received/reconcile/delete require the
-    // stronger delete flag via permForAction.
     const authz = await requireModulePermission(
       supabase,
       { userId: auth.userId, authMethod: auth.authMethod },
@@ -43,6 +48,7 @@ Deno.serve(async (req) => {
       return createForbiddenResponse(authz.error || 'Access denied', cors);
     }
 
+    const isSuper = await isSuperadmin(supabase, auth.userId, auth.authMethod);
     const j = (data: any, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
@@ -69,23 +75,30 @@ Deno.serve(async (req) => {
       }
 
       case 'create': {
-        const insertRow = { ...(body.data || {}), created_by: auth.userId };
+        const payload = pickAllowed(body.data, LEDGER_CREATE_ALLOWED, LEDGER_SERVICE_ONLY_FIELDS);
+        const insertRow = { ...payload, created_by: auth.userId, status: 'expected' };
         const { data, error } = await supabase.from('commission_ledger').insert(insertRow).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'update': {
-        const { data, error } = await supabase.from('commission_ledger').update(body.data || {}).eq('id', body.id!).select().single();
+        const payload = pickAllowed(body.data, LEDGER_UPDATE_ALLOWED_FIELDS, LEDGER_SERVICE_ONLY_FIELDS);
+        if (Object.keys(payload).length === 0) return j({ success: false, error: 'No allowed fields to update' }, 400);
+        const { data, error } = await supabase.from('commission_ledger').update(payload).eq('id', body.id!).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data });
       }
 
       case 'mark_received': {
+        // State transition: expected → received (server-controlled)
+        const { data: existing } = await supabase.from('commission_ledger').select('status').eq('id', body.id!).maybeSingle();
+        if (!existing) return j({ success: false, error: 'Not found' }, 404);
+        if (existing.status !== 'expected') return j({ success: false, error: `Invalid transition from ${existing.status}` }, 409);
         const updates = {
           status: 'received',
-          received_date: body.data?.received_date || new Date().toISOString().slice(0, 10),
-          reference: body.data?.reference,
+          received_date: (typeof body.data?.received_date === 'string' && body.data.received_date) || new Date().toISOString().slice(0, 10),
+          reference: typeof body.data?.reference === 'string' ? body.data.reference.slice(0, 128) : null,
         };
         const { data, error } = await supabase.from('commission_ledger').update(updates).eq('id', body.id!).select().single();
         if (error) return j({ success: false, error: error.message }, 500);
@@ -93,6 +106,8 @@ Deno.serve(async (req) => {
       }
 
       case 'reconcile': {
+        // Direct reconcile is superadmin-only; normal path is generate-commission-payout.
+        if (!isSuper) return j({ success: false, error: 'Superadmin only' }, 403);
         const { data, error } = await supabase.from('commission_ledger')
           .update({ status: 'reconciled', reconciled_date: new Date().toISOString().slice(0, 10) })
           .eq('id', body.id!).select().single();
@@ -101,6 +116,11 @@ Deno.serve(async (req) => {
       }
 
       case 'delete': {
+        if (!isSuper) return j({ success: false, error: 'Superadmin only' }, 403);
+        const { data: existing } = await supabase.from('commission_ledger').select('status').eq('id', body.id!).maybeSingle();
+        if (existing && ['reconciled', 'received'].includes(existing.status)) {
+          return j({ success: false, error: 'Cannot delete received/reconciled entry' }, 409);
+        }
         const { error } = await supabase.from('commission_ledger').delete().eq('id', body.id!);
         if (error) return j({ success: false, error: error.message }, 500);
         return j({ success: true, data: { ok: true } });
