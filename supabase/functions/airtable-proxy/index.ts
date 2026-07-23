@@ -111,25 +111,44 @@ Deno.serve(async (req) => {
       tableOverride = url.searchParams.get('tableName');
     }
 
-    // Op: list tables in the base via Airtable Metadata API
+    // WP-08 — bound page size (Airtable's own max is 100; force it).
+    let pageSizeNum = parseInt(pageSize, 10);
+    if (!Number.isFinite(pageSizeNum) || pageSizeNum < 1) pageSizeNum = 100;
+    pageSize = String(Math.min(100, pageSizeNum));
+
+    // WP-08 — sort direction allowlist.
+    if (sortDirection !== 'asc' && sortDirection !== 'desc') sortDirection = 'desc';
+
+    // WP-08 — resolve/enforce server-side table allowlist. The default table
+    // is always allowed; additional tables must be explicitly declared in
+    // AIRTABLE_TABLE_ALLOWLIST (comma-separated). `list_tables` is
+    // superadmin-only.
+    const superadmin = await isSuperadmin(supabaseAuthClient, auth.userId, auth.authMethod);
+    const allowlistEnv = (Deno.env.get('AIRTABLE_TABLE_ALLOWLIST') || '').trim();
+    const allowlist = new Set<string>();
+    if (defaultTableName) allowlist.add(defaultTableName);
+    for (const name of allowlistEnv.split(',').map((s) => s.trim()).filter(Boolean)) allowlist.add(name);
+
     if (op === 'list_tables') {
+      if (!superadmin) {
+        return new Response(
+          JSON.stringify({ error: 'list_tables is restricted to superadmins.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       const metaUrl = `https://api.airtable.com/v0/meta/bases/${baseId}/tables`;
-      const metaRes = await fetch(metaUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const metaRes = await fetch(metaUrl, { headers: { Authorization: `Bearer ${token}` } });
       if (!metaRes.ok) {
         const errorText = await metaRes.text();
         console.error('Airtable metadata error:', metaRes.status, errorText);
         return new Response(
-          JSON.stringify({ error: `Airtable metadata error: ${metaRes.status}`, details: errorText }),
+          JSON.stringify({ error: redactUpstreamError(metaRes.status, 'Airtable') }),
           { status: metaRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       const metaJson = await metaRes.json();
       const tables = (metaJson.tables || []).map((t: any) => ({
-        id: t.id,
-        name: t.name,
-        primaryFieldId: t.primaryFieldId,
+        id: t.id, name: t.name, primaryFieldId: t.primaryFieldId,
       }));
       return new Response(
         JSON.stringify({ tables, defaultTableName: defaultTableName || null }),
@@ -142,6 +161,14 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'No table specified and no AIRTABLE_TABLE_NAME default configured' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Superadmins keep freeform access; everyone else is bound to the allowlist.
+    if (!superadmin && !allowlist.has(tableName)) {
+      return new Response(
+        JSON.stringify({ error: 'Requested table is not permitted.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
