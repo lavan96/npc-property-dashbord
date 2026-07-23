@@ -34,6 +34,7 @@ print values.
 - [ ] Supabase project JWT signing keys — signing algorithm, rotation date
 - [ ] `RESET_TOKEN_PEPPER` — set, ≥ 32 chars, unique per environment
 - [ ] `SESSION_TOKEN_PEPPER` — set, ≥ 32 chars (WP-11A)
+- [ ] `MFA_TOTP_ENCRYPTION_KEY` — base64url-encoded 32-byte AES-256-GCM key; set before enabling enrolled staff TOTP (WP-11C)
 - [ ] Turnstile secret + `PUBLIC_ABUSE_TURNSTILE_REQUIRED=true` (WP-10)
 - [ ] Internal HMAC — `INTERNAL_HMAC_KEY_ID`, `INTERNAL_HMAC_KEY_CURRENT`, `INTERNAL_HMAC_KEY_PREVIOUS` (WP-12)
 - [ ] `INTERNAL_STRICT_SIGNED=true` (WP-12 legacy fallback disabled)

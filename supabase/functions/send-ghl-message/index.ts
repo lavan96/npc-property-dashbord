@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getEffectiveGhlCredentials, resolveGhlAccessTokenForLocation } from '../_shared/ghl-account.ts';
-import { checkPermission } from '../_shared/permissions.ts';
+import { actorIsSuperadmin, requireModulePermission } from '../_shared/authz.ts';
 import { rateLimit } from '../_shared/wp08Guards.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 
@@ -76,11 +76,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // WP-08 — require conversations module edit permission (superadmin bypasses).
-    const perm = await checkPermission(supabase, userId!, 'conversations', 'can_edit');
-    if (!perm.allowed) {
+    // The legacy checkPermission API expects a table + CRUD operation; passing
+    // module/permission strings silently entered its compatibility path. Use
+    // the deny-by-default module gate instead, before any service-role query.
+    const perm = await requireModulePermission(supabase, { userId, authMethod: 'human' }, 'conversations', 'can_edit');
+    if (!perm.ok) {
       return new Response(
-        JSON.stringify({ error: perm.reason || 'You cannot send CRM messages.' }),
+        JSON.stringify({ error: 'You cannot send CRM messages.' }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -144,6 +146,28 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Conversation is unavailable or you no longer have access to it.' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Conversation IDs are not authorization. Resolve the authoritative
+    // client and require that the caller owns or is assigned to it; return 404
+    // so the endpoint cannot be used to enumerate GHL conversations.
+    const superadmin = await actorIsSuperadmin(supabase, userId!);
+    if (!superadmin) {
+      if (!convRecord.client_id) {
+        return new Response(JSON.stringify({ error: 'Conversation is unavailable or you no longer have access to it.' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: client } = await supabase
+        .from('clients')
+        .select('created_by, assigned_team_user_id')
+        .eq('id', convRecord.client_id)
+        .maybeSingle();
+      if (!client || (client.created_by !== userId && client.assigned_team_user_id !== userId)) {
+        return new Response(JSON.stringify({ error: 'Conversation is unavailable or you no longer have access to it.' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const channel = resolveChannel(requestedChannel || type);

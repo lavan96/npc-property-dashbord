@@ -52,11 +52,13 @@ export function clearStepUpToken(capability?: string) {
 export async function requestStepUpChallenge(
   capability: string,
   password: string,
+  mfaCode?: string,
 ): Promise<{ ok: true; token: string; expires_at: string } | { ok: false; error: string }> {
   const { data, error } = await invokeSecureFunction<any>('security-step-up', {
     action: 'challenge',
     capability,
     password,
+    ...(mfaCode ? { mfa_code: mfaCode } : {}),
   });
   if (error) return { ok: false, error: error.message ?? 'challenge_failed' };
   if (!data?.success) return { ok: false, error: data?.error ?? 'challenge_failed' };
@@ -67,4 +69,15 @@ export async function requestStepUpChallenge(
 export async function revokeStepUpSessions(capability?: string) {
   clearStepUpToken(capability);
   await invokeSecureFunction('security-step-up', { action: 'revoke', capability }).catch(() => {});
+}
+
+export async function beginTotpEnrollment(password: string) {
+  const { data, error } = await invokeSecureFunction<any>('security-step-up', { action: 'enroll_totp_begin', password });
+  if (error || !data?.success) return { ok: false as const, error: error?.message ?? data?.error ?? 'mfa_enrollment_failed' };
+  return { ok: true as const, enrollmentToken: data.enrollment_token as string, otpauthUri: data.otpauth_uri as string, expiresAt: data.expires_at as string };
+}
+
+export async function confirmTotpEnrollment(enrollmentToken: string, mfaCode: string) {
+  const { data, error } = await invokeSecureFunction<any>('security-step-up', { action: 'enroll_totp_confirm', enrollment_token: enrollmentToken, mfa_code: mfaCode });
+  return !error && data?.success ? { ok: true as const } : { ok: false as const, error: error?.message ?? data?.error ?? 'mfa_enrollment_failed' };
 }

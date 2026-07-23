@@ -9,6 +9,8 @@ import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 import { runAgentLoop, agentLoopHasTools, type AgentLoopProvider } from '../_shared/agent-loop.ts';
 import { listTools } from '../_shared/agent-tools.ts';
 import { resolveReportQaAccess, canRead, canWrite, canAdminister } from '../_shared/reportQaAccess.ts';
+import { actorIsSuperadmin, requireModulePermission, type ModulePerm } from '../_shared/authz.ts';
+import { consumeRateLimit, enforceBase64Limit, getTrustedClientIp } from '../_shared/requestSecurity.ts';
 
 import { extractReportMetrics } from '../_shared/calculators.ts';
 import { fitMessagesToBudget, inputBudgetForModel } from '../_shared/contextBudget.ts';
@@ -39,6 +41,10 @@ const LEGACY_REPORT_QA_PROVIDER_TO_AGENT_KEY: Record<string, string> = {
   perplexity: 'report_qa_search',
 };
 const REPORT_QA_RETRYABLE_STATUSES = new Set([404, 410, 500, 502, 503, 504]);
+const REPORT_QA_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+const REPORT_QA_MAX_PDF_BYTES = 15 * 1024 * 1024;
+const REPORT_QA_MAX_QUESTION_CHARS = 8_000;
+const REPORT_QA_MAX_HISTORY_MESSAGES = 40;
 
 function normaliseReportQAAgentKey(candidate: unknown): string {
   const key = typeof candidate === 'string' ? candidate.trim() : '';
@@ -1208,22 +1214,111 @@ Deno.serve(async (req) => {
 
     // WP-07 — resolve superadmin once; all access decisions route through the
     // shared resolver so we never "select then filter in JS".
-    let isSuperadmin = false;
-    if (userId) {
-      const { data: roleRow } = await supabase
-        .from('custom_users')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle();
-      isSuperadmin = (roleRow?.role || '').toString().toLowerCase() === 'superadmin';
-    }
-    const denyResponse = (msg = 'Not authorized for this conversation') =>
+    const isSuperadmin = await actorIsSuperadmin(supabase, userId ?? '');
+    // Deliberately use 404 here. A caller must not be able to distinguish a
+    // conversation/message they cannot access from one that does not exist.
+    const denyResponse = (msg = 'Not found') =>
       new Response(JSON.stringify({ error: msg }), {
-        status: 403,
+        status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     const { action } = body;
+
+    type ReportQaActionRequirement = 'none' | 'read' | 'write' | 'admin';
+    const reportQaActionPolicy: Record<string, { access: ReportQaActionRequirement; permission: ModulePerm; paid?: boolean }> = {
+      'create-conversation': { access: 'none', permission: 'can_edit' },
+      'get-conversations': { access: 'none', permission: 'can_view' },
+      'load-conversation': { access: 'read', permission: 'can_view' },
+      'chat': { access: 'write', permission: 'can_edit', paid: true },
+      'transcribe': { access: 'write', permission: 'can_edit', paid: true },
+      'extract': { access: 'write', permission: 'can_edit', paid: true },
+      'index-reports': { access: 'write', permission: 'can_edit', paid: true },
+      'update-conversation': { access: 'admin', permission: 'can_edit' },
+      'summarize-conversation': { access: 'write', permission: 'can_edit', paid: true },
+      'delete-conversation': { access: 'admin', permission: 'can_delete' },
+      'share-conversation': { access: 'admin', permission: 'can_edit' },
+      'revoke-share': { access: 'admin', permission: 'can_edit' },
+      'submit-feedback': { access: 'write', permission: 'can_edit' },
+      'get-feedback': { access: 'read', permission: 'can_view' },
+      'toggle-pin-message': { access: 'write', permission: 'can_edit' },
+      'generate-share-link': { access: 'admin', permission: 'can_edit' },
+      'revoke-share-link': { access: 'admin', permission: 'can_edit' },
+      'branch-conversation': { access: 'admin', permission: 'can_edit' },
+      'generate-qa-pdf': { access: 'read', permission: 'can_edit', paid: true },
+      // This legacy client-side PDF contains only request content and does not
+      // resolve stored reports; it still needs Report Q&A edit permission.
+      'export-pdf': { access: 'none', permission: 'can_edit' },
+      'get-knowledge-stats': { access: 'read', permission: 'can_view' },
+      'get-team-members': { access: 'none', permission: 'can_view' },
+      'get-mailboxes': { access: 'none', permission: 'can_view' },
+      'send-email': { access: 'none', permission: 'can_edit' },
+      // The token itself is the credential for this legacy authenticated alias.
+      'get-shared-answer': { access: 'none', permission: 'can_view' },
+    };
+
+    /**
+     * Central, pre-dispatch Report Q&A gate. All resource identifiers are
+     * resolved before an action can query RAG, messages, memory, or a paid
+     * provider. Message actions derive their conversation from the message
+     * itself and reject a mismatched caller-supplied conversation id.
+     */
+    const authorizeReportQaAction = async (): Promise<Response | null> => {
+      const policy = reportQaActionPolicy[action];
+      // Public share-token resolution is handled before authentication. These
+      // non-conversation helpers do not expose report data.
+      if (!policy) return new Response(JSON.stringify({ error: 'Invalid action' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+      const module = await requireModulePermission(supabase, { userId, authMethod: 'human' }, 'report_qa', policy.permission);
+      if (!module.ok) return denyResponse();
+
+      let conversationId = typeof body.conversationId === 'string' ? body.conversationId : null;
+      if (action === 'branch-conversation') conversationId = typeof body.sourceConversationId === 'string' ? body.sourceConversationId : null;
+
+      const messageId = typeof body.messageId === 'string'
+        ? body.messageId
+        : (typeof body.branchFromMessageId === 'string' ? body.branchFromMessageId : null);
+      if (messageId) {
+        const { data: message } = await supabase.from('report_qa_messages')
+          .select('conversation_id').eq('id', messageId).maybeSingle();
+        if (!message?.conversation_id) return denyResponse();
+        if (conversationId && conversationId !== message.conversation_id) return denyResponse();
+        conversationId = message.conversation_id;
+      }
+
+      if (policy.access === 'none') return null;
+      if (!conversationId) return denyResponse();
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      const allowed = policy.access === 'read' ? canRead(access.role)
+        : policy.access === 'write' ? canWrite(access.role)
+        : canAdminister(access.role);
+      if (!allowed || !access.conversation) return denyResponse();
+
+      if (policy.paid) {
+        try {
+          const quota = await consumeRateLimit(supabase, `report-qa:${action}:user:${userId}`, 30, 60 * 60);
+          if (!quota.allowed) {
+            return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+              status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(quota.retryAfterSeconds) },
+            });
+          }
+          const ip = getTrustedClientIp(req.headers);
+          if (ip) {
+            const ipQuota = await consumeRateLimit(supabase, `report-qa:${action}:ip:${ip}`, 90, 60 * 60);
+            if (!ipQuota.allowed) return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(ipQuota.retryAfterSeconds) } });
+          }
+        } catch (error) {
+          console.error('[report-qa] paid action rate-limit unavailable:', error);
+          return new Response(JSON.stringify({ error: 'Service unavailable' }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+      return null;
+    };
+
+    const authorizationFailure = await authorizeReportQaAction();
+    if (authorizationFailure) return authorizationFailure;
 
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -1246,6 +1341,9 @@ Deno.serve(async (req) => {
         throw new Error("No audio data provided");
       }
 
+      const boundedAudio = enforceBase64Limit(audio, Math.ceil(REPORT_QA_MAX_AUDIO_BYTES * 4 / 3) + 16, REPORT_QA_MAX_AUDIO_BYTES);
+      if (!boundedAudio.ok) return boundedAudio.error;
+
       if (!OPENAI_API_KEY) {
         throw new Error("OPENAI_API_KEY is not configured for voice transcription");
       }
@@ -1253,7 +1351,7 @@ Deno.serve(async (req) => {
       console.log(`[report-qa] Processing voice transcription...`);
 
       // Decode base64 audio to binary
-      const binaryAudio = decodeBase64ToUint8Array(audio);
+      const binaryAudio = decodeBase64ToUint8Array(boundedAudio.normalized);
       console.log(`[report-qa] Decoded audio size: ${binaryAudio.length} bytes`);
       
       // Prepare form data
@@ -1307,6 +1405,14 @@ Deno.serve(async (req) => {
       const base64Data = (typeof fileData === 'string' && fileData.includes(','))
         ? (fileData.split(',').pop() || '')
         : (fileData || '');
+      const boundedPdf = enforceBase64Limit(base64Data, Math.ceil(REPORT_QA_MAX_PDF_BYTES * 4 / 3) + 16, REPORT_QA_MAX_PDF_BYTES);
+      if (!boundedPdf.ok) return boundedPdf.error;
+      if (typeof fileName !== 'string' || fileName.length < 1 || fileName.length > 255) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (!Array.isArray(pageImages) && pageImages !== undefined) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       
       let extractedText = "";
       let imagesProcessed = 0;
@@ -1315,7 +1421,7 @@ Deno.serve(async (req) => {
       
       try {
         // Convert base64 to Uint8Array for PDF parsing
-        const binaryString = atob(base64Data);
+        const binaryString = atob(boundedPdf.normalized);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i);
@@ -1403,6 +1509,12 @@ Deno.serve(async (req) => {
     // Handle chat Q&A with RAG retrieval (Step 6)
     if (action === "chat") {
       const { reportContents, reportNames, selectedReportNames, question, chatHistory, conversationId, useRAG = true, modelProvider: requestedModelProvider = 'report_qa', agentKey: requestedAgentKey, needsConversationSummary = false, totalMessageCount = 0, agentMode = false, enabledTools } = body;
+      if (typeof question !== 'string' || question.trim().length === 0 || question.length > REPORT_QA_MAX_QUESTION_CHARS) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (chatHistory !== undefined && (!Array.isArray(chatHistory) || chatHistory.length > REPORT_QA_MAX_HISTORY_MESSAGES)) {
+        return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       const modelAssignment = await loadReportQAModelAssignment(supabase, requestedAgentKey ?? requestedModelProvider);
       const modelProvider = modelAssignment.agent_key;
       const modelVersion = modelAssignment.model_id;
@@ -2528,6 +2640,9 @@ Format as a structured summary with bullet points. Be thorough but concise. Max 
       const { data, error } = await supabase
         .from("report_qa_conversations")
         .insert({
+          // Never rely on a browser-supplied owner or a database default: the
+          // authenticated actor is the authoritative conversation owner.
+          created_by: userId,
           report_names: sanitizedNames,
           report_contents: sanitizedContents,
           title: sanitizedTitle,
@@ -2725,10 +2840,13 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
 
     // Handle fetching conversation history (no limit - return all)
     if (action === "get-conversations") {
-      // Fetch own conversations
+      // Fetch only the authenticated actor's own conversations. The service
+      // role client bypasses RLS, so this scope is mandatory even for admins;
+      // collaborations are returned separately from active share rows below.
       const { data, error } = await supabase
         .from("report_qa_conversations")
         .select("id, title, report_names, created_at, updated_at, structured_report, client_id, agent_mode, branched_from_conversation_id, branched_from_message_id")
+        .eq("created_by", userId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -3263,6 +3381,7 @@ ${transcript}`;
       const { data: newConv, error: newConvErr } = await supabase
         .from("report_qa_conversations")
         .insert({
+          created_by: userId,
           user_id: srcConv.user_id,
           title: newTitle || `${srcConv.title || "Q&A"} — branch`,
           report_names: srcConv.report_names || [],
@@ -4029,7 +4148,9 @@ ${cleanContent.length + 500}
         .select('created_by, client_id')
         .eq('id', conversationId)
         .maybeSingle();
-      const { error: qaBindErr } = await supabase.from('storage_object_bindings').upsert({
+      // Bindings are immutable security metadata: this new random object path
+      // must be inserted once, never upserted/rebound by a later request.
+      const { error: qaBindErr } = await supabase.from('storage_object_bindings').insert({
         bucket: 'qa_exports',
         object_path: fileName,
         resource_type: 'qa_export',
@@ -4038,7 +4159,7 @@ ${cleanContent.length + 500}
         owner_user_id: convRow?.created_by ?? userId ?? null,
         sensitivity: 'sensitive',
         created_by: convRow?.created_by ?? userId ?? null,
-      }, { onConflict: 'bucket,object_path' });
+      });
 
       if (qaBindErr) {
         await supabase.storage.from('qa_exports').remove([fileName]).catch(() => {});

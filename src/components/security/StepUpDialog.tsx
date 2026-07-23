@@ -6,7 +6,7 @@
  * Sensitive edge-function callers pass `{ stepUpCapability }` to
  * `invokeSecureFunction` which attaches the token automatically.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -42,27 +42,47 @@ export function StepUpDialog({
   open, capability, title, description, onSuccess, onCancel,
 }: StepUpDialogProps) {
   const [password, setPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [requiresMfa, setRequiresMfa] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const humanCap = CAP_LABEL[capability] ?? capability;
 
+  useEffect(() => {
+    if (!open) {
+      setPassword('');
+      setMfaCode('');
+      setRequiresMfa(false);
+      setError(null);
+    }
+  }, [open]);
+
   const handleConfirm = async () => {
     if (!password) { setError('Enter your current password'); return; }
     setBusy(true);
     setError(null);
-    const result = await requestStepUpChallenge(capability, password);
+    if (requiresMfa && !/^\d{6}$/.test(mfaCode)) {
+      setBusy(false);
+      setError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    const result = await requestStepUpChallenge(capability, password, requiresMfa ? mfaCode : undefined);
     setBusy(false);
     if (!result.ok) {
       const err = (result as { ok: false; error: string }).error;
       setError(
         err === 'invalid_credentials' ? 'Incorrect password.' :
         err === 'mfa_enrollment_required' ? 'MFA enrolment is required for this account.' :
+        err === 'invalid_mfa_code' ? 'Enter the 6-digit code from your authenticator app.' :
         err || 'Verification failed.',
       );
+      if (err === 'invalid_mfa_code') setRequiresMfa(true);
       return;
     }
     setPassword('');
+    setMfaCode('');
+    setRequiresMfa(false);
     onSuccess();
   };
 
@@ -99,9 +119,26 @@ export function StepUpDialog({
           />
         </div>
 
+        {requiresMfa ? (
+          <div className="space-y-2">
+            <Label htmlFor="stepup-totp">Authenticator code</Label>
+            <Input
+              id="stepup-totp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !busy) handleConfirm(); }}
+              placeholder="000000"
+              disabled={busy}
+            />
+          </div>
+        ) : null}
+
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={busy || !password}>
+          <Button onClick={handleConfirm} disabled={busy || !password || (requiresMfa && mfaCode.length !== 6)}>
             {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</> : 'Confirm'}
           </Button>
         </DialogFooter>

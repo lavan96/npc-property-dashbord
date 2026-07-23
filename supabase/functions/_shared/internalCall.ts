@@ -5,10 +5,8 @@
  * WP-12: every internal call is now HMAC-signed (method, path, timestamp,
  * nonce, caller, key id, body hash) via `signInternalRequest`. Receivers verify
  * the signature with `verifyInternal` and enforce a per-target caller
- * allowlist. The legacy `x-internal-edge-secret` header is still attached
- * during the rollout window so receivers that have not yet flipped strict-mode
- * on can still accept the request — that fallback disappears when
- * `INTERNAL_STRICT_SIGNED=true` is set on the receiver.
+ * allowlist. This helper never transmits a reusable internal secret: receivers
+ * authenticate the signed envelope only.
  *
  * The gateway still needs an apikey; the public anon key is used for routing.
  * Under no circumstance is the service-role key placed on an inter-function
@@ -66,10 +64,8 @@ export async function callInternalFunction<T = any>(
     'Content-Type': 'application/json',
     'apikey': anonKey,
     'Authorization': `Bearer ${anonKey}`,
-    'x-internal-caller': callerName,
-    // Legacy dual-header — accepted by non-strict receivers during rollout.
-    // Strict-mode receivers ignore it and rely on the signed envelope below.
-    'x-internal-edge-secret': internalSecretV2 || internalSecret,
+    // signInternalRequest provides x-internal-caller and binds it, the path,
+    // timestamp, nonce, and body hash into the HMAC signature.
     ...signedHeaders,
   };
 

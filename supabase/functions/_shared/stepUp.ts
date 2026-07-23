@@ -4,10 +4,12 @@
  * Verifies that the caller holds a live, unrevoked, unexpired step-up session
  * for the requested capability. Tokens are minted by `security-step-up` and
  * stored hashed in `public.step_up_sessions` (SHA-256 with server pepper).
+ * Each proof is additionally bound to the active Command Centre staff session
+ * that issued it, so a stolen proof cannot be replayed from another session.
  *
  * The enforcement can be dark-launched via env `STEP_UP_ENFORCED`:
  *   - "true"           → enforce for all capabilities
- *   - "false"/"off"    → soft-audit only (never blocks)  [DEFAULT]
+ *   - "false"/"off"    → soft-audit only (never blocks; emergency rollback)
  *   - comma list       → enforce only for listed capabilities
  *     e.g. "role.change,secrets.update"
  *
@@ -15,6 +17,8 @@
  *   const gate = await requireStepUp(supabase, { userId, capability, req, body });
  *   if (gate) return gate; // 401 response
  */
+
+import { hashSessionToken, isSessionHashConfigured } from "./sessionHash.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,6 +40,67 @@ export type StepUpCapability =
   | "storage.destructive"
   | "mailbox.destructive";
 
+const ONE_TIME_CAPABILITIES = new Set<StepUpCapability>([
+  "commission.payout.generate", "commission.payout.mark_paid", "commission.payout.cancel",
+  "docusign.send", "docusign.void", "secrets.update", "role.change", "role.remove",
+]);
+
+type StaffSession = { id: string };
+
+/**
+ * Resolve the current Command Centre session without trusting a browser-supplied
+ * session ID. This deliberately accepts the same session-token locations as
+ * `verifyAuth`, but always verifies the token against the authoritative row.
+ */
+function extractStaffSessionToken(req?: Request, body?: any): string | null {
+  const cookie = req?.headers.get("cookie") ?? "";
+  const cookieMatch = cookie.match(/(?:^|;\s*)session_token=([^;]+)/);
+  if (cookieMatch?.[1]) return cookieMatch[1];
+
+  const commandCentre = req?.headers.get("x-command-centre-session-token");
+  if (commandCentre?.trim()) return commandCentre.trim();
+  const session = req?.headers.get("x-session-token");
+  if (session?.trim()) return session.trim();
+
+  const bodyToken = body?.command_centre_session_token ?? body?.session_token;
+  return typeof bodyToken === "string" && bodyToken.trim() ? bodyToken.trim() : null;
+}
+
+export async function resolveActiveStaffSession(
+  admin: any,
+  userId: string,
+  req?: Request,
+  body?: any,
+): Promise<StaffSession | null> {
+  const token = extractStaffSessionToken(req, body);
+  if (!token) return null;
+
+  const now = new Date().toISOString();
+  const select = "id, expires_at, idle_expires_at, revoked_at";
+  const base = () => admin.from("user_sessions")
+    .select(select)
+    .eq("user_id", userId)
+    .eq("portal_scope", "staff")
+    .is("revoked_at", null)
+    .gt("expires_at", now);
+
+  // Keep this lookup aligned with the dual-read session migration. A legacy
+  // plaintext row can be used only while the session itself remains valid.
+  const hash = isSessionHashConfigured() ? await hashSessionToken(token) : null;
+  let data: any = null;
+  if (hash) {
+    const result = await base().eq("token_hash", hash).maybeSingle();
+    data = result.data;
+  }
+  if (!data) {
+    const result = await base().eq("session_token", token).maybeSingle();
+    data = result.data;
+  }
+  if (!data) return null;
+  if (data.idle_expires_at && new Date(data.idle_expires_at).getTime() <= Date.now()) return null;
+  return { id: data.id };
+}
+
 async function sha256Hex(input: string) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return Array.from(new Uint8Array(b))
@@ -50,7 +115,11 @@ export async function hashStepUpToken(userId: string, capability: string, token:
 
 function enforcementModeFor(capability: string): "enforce" | "audit" {
   const raw = ((globalThis as any).Deno?.env?.get?.("STEP_UP_ENFORCED") ?? "").trim().toLowerCase();
-  if (!raw || raw === "false" || raw === "off" || raw === "0") return "audit";
+  // High-risk capabilities are fail-closed by default. Audit-only mode now
+  // requires an explicit emergency configuration rather than being the silent
+  // production default.
+  if (raw === "false" || raw === "off" || raw === "0") return "audit";
+  if (!raw) return "enforce";
   if (raw === "true" || raw === "on" || raw === "1" || raw === "*") return "enforce";
   const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
   return list.includes(capability.toLowerCase()) ? "enforce" : "audit";
@@ -86,34 +155,41 @@ export async function requireStepUp(
   const now = Date.now();
 
   let valid = false;
-  let reason: "missing" | "invalid" | "expired" | "ok" = "missing";
+  let reason: "missing" | "invalid" | "expired" | "session_required" | "session_mismatch" | "ok" = "missing";
 
   if (token) {
-    const hash = await hashStepUpToken(args.userId, args.capability, token);
-    const { data } = await admin
-      .from("step_up_sessions")
-      .select("id, expires_at, revoked_at")
-      .eq("user_id", args.userId)
-      .eq("capability", args.capability)
-      .eq("token_hash", hash)
-      .maybeSingle();
-    if (!data) reason = "invalid";
-    else if (data.revoked_at || new Date(data.expires_at).getTime() <= now) reason = "expired";
-    else {
-      reason = "ok";
-      valid = true;
+    const staffSession = await resolveActiveStaffSession(admin, args.userId, args.req, args.body);
+    if (!staffSession) {
+      reason = "session_required";
+    } else {
+      const hash = await hashStepUpToken(args.userId, args.capability, token);
+      const { data } = await admin
+        .from("step_up_sessions")
+        .select("id, bound_session_id, expires_at, revoked_at, consumed_at")
+        .eq("user_id", args.userId)
+        .eq("capability", args.capability)
+        .eq("token_hash", hash)
+        .maybeSingle();
+      if (!data) reason = "invalid";
+      else if (data.bound_session_id !== staffSession.id) reason = "session_mismatch";
+      else if (data.revoked_at || data.consumed_at || new Date(data.expires_at).getTime() <= now) reason = "expired";
+      else {
+        reason = "ok";
+        valid = true;
+        if (mode === "enforce" && ONE_TIME_CAPABILITIES.has(args.capability as StepUpCapability)) {
+          const { data: consumed } = await admin.from("step_up_sessions")
+            .update({ consumed_at: new Date().toISOString() })
+            .eq("id", data.id).is("consumed_at", null).select("id").maybeSingle();
+          if (!consumed) { valid = false; reason = "expired"; }
+        }
+      }
     }
   }
 
   if (mode === "audit" || valid) {
     if (args.logAudit && !valid) {
       try {
-        await admin.from("security_events").insert({
-          event_type: "step_up.audit",
-          severity: "info",
-          user_id: args.userId,
-          details: { capability: args.capability, reason, enforced: false },
-        });
+        await admin.from("security_events").insert({ action: "step_up.audit", decision: "allow", actor_type: "human", actor_id: args.userId, reason_code: reason, metadata_redacted: { capability: args.capability, enforced: false } });
       } catch { /* best-effort */ }
     }
     return null;
@@ -121,12 +197,7 @@ export async function requireStepUp(
 
   // Enforced + not valid → block
   try {
-    await admin.from("security_events").insert({
-      event_type: "step_up.blocked",
-      severity: "warning",
-      user_id: args.userId,
-      details: { capability: args.capability, reason, enforced: true },
-    });
+    await admin.from("security_events").insert({ action: "step_up.blocked", decision: "deny", actor_type: "human", actor_id: args.userId, reason_code: reason, metadata_redacted: { capability: args.capability, enforced: true } });
   } catch { /* best-effort */ }
 
   return new Response(

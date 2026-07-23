@@ -108,6 +108,21 @@ jobs:
         run: |
           node scripts/security/check-agent-tool-policies.mjs
           node scripts/security/check-agent-bulk-ceilings.mjs
+          node scripts/security/check-step-up-default.mjs
+          node scripts/security/check-step-up-mfa-fail-closed.mjs
+          node scripts/security/check-totp-enrollment-client-storage.mjs
+          node scripts/security/check-totp-settings-integration.mjs
+          node scripts/security/check-step-up-consumption.mjs
+          node scripts/security/check-step-up-audit-schema.mjs
+          node scripts/security/check-step-up-session-binding.mjs
+          node scripts/security/check-storage-upload-hardening.mjs
+          node scripts/security/check-ghl-message-authz.mjs
+          node scripts/security/check-market-qa-internal-auth.mjs
+          node scripts/security/check-market-digest-authz.mjs
+          node scripts/security/check-internal-call-signing.mjs
+          node scripts/security/check-google-places-circuit-fail-closed.mjs
+          node scripts/security/check-dependency-gate-level.mjs
+          node scripts/security/test-registry-launch-gates.mjs
 
       # WP-15: launch-gate aggregator (registry clean + WP-15 artefacts present).
       - name: WP-15 launch-gate aggregator
@@ -119,7 +134,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Security Remediation Phase 11 (SUPPLY-001): supply-chain visibility.
-  # Fails on unaccepted critical dependency vulnerabilities and publishes a
+  # Fails on unaccepted high/critical dependency vulnerabilities and publishes a
   # CycloneDX SBOM artifact for each build.
   supply-chain:
     runs-on: ubuntu-latest
@@ -137,11 +152,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      # Blocks on unaccepted `critical` advisories by default; lower-severity
-      # findings are reported but non-blocking. Tune via SECURITY_AUDIT_LEVEL.
+      # Production-bound builds block on unaccepted `high` and `critical`
+      # advisories. Tune only through the reviewed allowlist.
       - name: Dependency vulnerability gate (SUPPLY-001)
         env:
-          SECURITY_AUDIT_LEVEL: critical
+          SECURITY_AUDIT_LEVEL: high
         run: node scripts/security/dependency-audit.mjs
 
       # CycloneDX SBOM for the installed dependency graph. Uploaded as an

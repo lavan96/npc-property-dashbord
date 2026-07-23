@@ -41,15 +41,9 @@ export const BUCKET_SENSITIVITY: Record<string, StorageSensitivity> = {
  * legacy per-bucket module gate. Track which buckets are still on the legacy
  * fallback so we can prioritise backfill and later remove the fallback.
  */
-export const LEGACY_FALLBACK_BUCKETS = new Set<string>([
-  'client-files',
-  'client-documents',
-  'vownet-forms',
-  'investment-reports',
-  'quantitative-reports',
-  'qa_exports',
-  'email-attachments',
-]);
+// Phase C complete: all sensitive objects require a canonical binding. The
+// Phase-B migration backfills legacy rows; a missing binding now fails closed.
+export const LEGACY_FALLBACK_BUCKETS = new Set<string>();
 
 export interface StorageBinding {
   id: string;
@@ -110,7 +104,7 @@ export async function getStorageBinding(
 }
 
 /**
- * Create or upsert a binding. Callers MUST invoke this inside the same
+ * Create an immutable binding. Callers MUST invoke this inside the same
  * server-side flow that uploaded the object, so partial-failure cleanup can
  * roll back both the object and the binding.
  */
@@ -122,7 +116,7 @@ export async function createStorageBinding(
     input.sensitivity ?? BUCKET_SENSITIVITY[input.bucket] ?? 'sensitive';
   const { data, error } = await supabase
     .from('storage_object_bindings')
-    .upsert(
+    .insert(
       {
         bucket: input.bucket,
         object_path: input.object_path,
@@ -132,9 +126,7 @@ export async function createStorageBinding(
         owner_user_id: input.owner_user_id ?? null,
         sensitivity,
         created_by: input.created_by ?? null,
-      },
-      { onConflict: 'bucket,object_path' },
-    )
+      })
     .select('*')
     .single();
   if (error) {
