@@ -137,8 +137,24 @@ export function StepUpDialog({
           </div>
         ) : null}
 
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          {webauthnSupported() ? (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!password) { setError('Enter your current password'); return; }
+                setBusy(true); setError(null);
+                const r = await requestStepUpWithWebAuthn(capability, password);
+                setBusy(false);
+                if (!r.ok) { setError(r.error || 'Verification failed.'); return; }
+                setPassword(''); onSuccess();
+              }}
+              disabled={busy || !password}
+            >
+              <Fingerprint className="mr-2 h-4 w-4" /> Use security key
+            </Button>
+          ) : null}
           <Button onClick={handleConfirm} disabled={busy || !password || (requiresMfa && !MFA_FACTOR_PATTERN.test(mfaCode))}>
             {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</> : 'Confirm'}
           </Button>
