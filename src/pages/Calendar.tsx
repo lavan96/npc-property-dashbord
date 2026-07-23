@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu, Mail } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, ChevronLeft, ChevronRight, Users, Filter, RefreshCw, GripVertical, LayoutList, Flame, BarChart3, TrendingUp, AlertTriangle, Sparkles, Plus, Layers, Repeat, Bell, X, PanelLeftClose, PanelLeft, Menu, Mail, Pin, PinOff } from 'lucide-react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
@@ -51,6 +51,9 @@ import { cn } from '@/lib/utils';
 import { toTimezoneISO } from '@/lib/sydneyTime';
 import { formatInSydney } from '@/lib/timezoneUtils';
 import { getBookingTimezone } from '@/lib/bookingTimezone';
+import { useAuth } from '@/hooks/useAuth';
+import { loadCalendarToolsPreference, orderCalendarTools, saveCalendarToolsPreference } from '@/lib/calendarTools';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuLabel, ContextMenuTrigger } from '@/components/ui/context-menu';
 
 // Sidebar tab type
 type SidebarTab = 'events' | 'availability' | 'heatmap' | 'analytics' | 'summary' | 'conflicts' | 'optimize' | 'overlay' | 'outlook' | 'patterns' | 'reminders';
@@ -87,19 +90,20 @@ const safeFormatISO = (value: string | undefined | null, fmt: string): string =>
 };
 
 // Tab configurations with icons and shortcuts
-const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shortcut: string }[] = [
-  { id: 'events', icon: <CalendarIcon className="h-4 w-4" />, label: 'Events', shortcut: '1' },
-  { id: 'availability', icon: <Clock className="h-4 w-4" />, label: 'Availability', shortcut: '2' },
-  { id: 'heatmap', icon: <Flame className="h-4 w-4" />, label: 'Heatmap', shortcut: '4' },
-  { id: 'analytics', icon: <BarChart3 className="h-4 w-4" />, label: 'Analytics', shortcut: '5' },
-  { id: 'summary', icon: <TrendingUp className="h-4 w-4" />, label: 'Summary', shortcut: '6' },
-  { id: 'conflicts', icon: <AlertTriangle className="h-4 w-4" />, label: 'Conflicts', shortcut: '7' },
-  { id: 'optimize', icon: <Sparkles className="h-4 w-4" />, label: 'Optimize', shortcut: '8' },
-  { id: 'overlay', icon: <Layers className="h-4 w-4" />, label: 'Overlay', shortcut: '9' },
-  { id: 'outlook', icon: <Mail className="h-4 w-4" />, label: 'Outlook', shortcut: '' },
-  { id: 'patterns', icon: <Repeat className="h-4 w-4" />, label: 'Patterns', shortcut: '' },
-  { id: 'reminders', icon: <Bell className="h-4 w-4" />, label: 'Reminders', shortcut: '' },
+const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shortcut: string; defaultOrder: number }[] = [
+  { id: 'events', icon: <CalendarIcon className="h-4 w-4" />, label: 'Events', shortcut: '1', defaultOrder: 0 },
+  { id: 'availability', icon: <Clock className="h-4 w-4" />, label: 'Availability', shortcut: '2', defaultOrder: 1 },
+  { id: 'heatmap', icon: <Flame className="h-4 w-4" />, label: 'Heatmap', shortcut: '4', defaultOrder: 2 },
+  { id: 'analytics', icon: <BarChart3 className="h-4 w-4" />, label: 'Analytics', shortcut: '5', defaultOrder: 3 },
+  { id: 'summary', icon: <TrendingUp className="h-4 w-4" />, label: 'Summary', shortcut: '6', defaultOrder: 4 },
+  { id: 'conflicts', icon: <AlertTriangle className="h-4 w-4" />, label: 'Conflicts', shortcut: '7', defaultOrder: 5 },
+  { id: 'optimize', icon: <Sparkles className="h-4 w-4" />, label: 'Optimize', shortcut: '8', defaultOrder: 6 },
+  { id: 'overlay', icon: <Layers className="h-4 w-4" />, label: 'Overlay', shortcut: '9', defaultOrder: 7 },
+  { id: 'outlook', icon: <Mail className="h-4 w-4" />, label: 'Outlook', shortcut: '', defaultOrder: 8 },
+  { id: 'patterns', icon: <Repeat className="h-4 w-4" />, label: 'Patterns', shortcut: '', defaultOrder: 9 },
+  { id: 'reminders', icon: <Bell className="h-4 w-4" />, label: 'Reminders', shortcut: '', defaultOrder: 10 },
 ];
+const DEFAULT_PINNED_TABS: SidebarTab[] = ['events', 'conflicts'];
 
 const CALENDAR_PAGE_SHELL = 'relative -m-4 space-y-6 bg-background p-4 font-sans text-foreground md:-m-6 md:p-6';
 const PREMIUM_CARD = 'dashboard-theme-premium-card border-border/70 bg-card/90 text-card-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
@@ -108,6 +112,7 @@ const PREMIUM_BUTTON = 'border-border/70 bg-card/85 text-foreground transition-a
 
 export default function Calendar() {
   const { canEdit: canEditCalendar } = useModulePermissions('calendar');
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const { calendars, events, calendarGroups, contactCache, isLoading, isUpdating, error, fetchCalendarData, fetchCalendarGroups, fetchContact, getCalendarColor, rescheduleEvent, updateEvent, deleteEvent, createAppointment, searchContacts, blockSlot, fetchFreeSlots } = useGHLCalendar();
   const {
@@ -119,7 +124,8 @@ export default function Calendar() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('events');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [pinnedTabs, setPinnedTabs] = useState<SidebarTab[]>(['events', 'conflicts']);
+  const [pinnedTabs, setPinnedTabs] = useState<SidebarTab[]>(DEFAULT_PINNED_TABS);
+  const [contextMenuTab, setContextMenuTab] = useState<SidebarTab | null>(null);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
   const [quickAddDefaultHour, setQuickAddDefaultHour] = useState<number | undefined>(undefined);
   const [visibleCalendars, setVisibleCalendars] = useState<Set<string>>(new Set());
@@ -137,6 +143,21 @@ export default function Calendar() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { toast } = useToast();
+
+  const orderedSidebarTabs = useMemo(
+    () => orderCalendarTools(SIDEBAR_TABS, pinnedTabs),
+    [pinnedTabs],
+  );
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPinnedTabs(DEFAULT_PINNED_TABS);
+      return;
+    }
+
+    const savedTabs = loadCalendarToolsPreference(user.id, new Set(SIDEBAR_TABS.map((tab) => tab.id)));
+    setPinnedTabs((savedTabs ?? DEFAULT_PINNED_TABS) as SidebarTab[]);
+  }, [user?.id]);
 
   useEffect(() => {
     const bodyClass = 'calendar-page-active';
@@ -228,14 +249,33 @@ export default function Calendar() {
     return order;
   }, [selectedDate, events]);
 
-  // Toggle pin for a tab
+  // Pin state is ID-based and the source definitions stay canonical. The grid
+  // order is derived from this ordered collection, never mutated in place.
   const handleTogglePin = useCallback((tab: SidebarTab) => {
-    setPinnedTabs(prev =>
-      prev.includes(tab)
-        ? prev.filter(t => t !== tab)
-        : [...prev, tab]
-    );
-  }, []);
+    const previousTabs = pinnedTabs;
+    const isPinned = previousTabs.includes(tab);
+    const nextTabs = isPinned
+      ? previousTabs.filter((id) => id !== tab)
+      : [tab, ...previousTabs.filter((id) => id !== tab)];
+    const tabLabel = SIDEBAR_TABS.find((item) => item.id === tab)?.label ?? 'Tool';
+
+    setPinnedTabs(nextTabs);
+    setContextMenuTab(null);
+
+    try {
+      if (user?.id) saveCalendarToolsPreference(user.id, nextTabs);
+      toast({
+        title: isPinned ? `${tabLabel} unpinned.` : `${tabLabel} pinned to the front.`,
+      });
+    } catch {
+      setPinnedTabs(previousTabs);
+      toast({
+        variant: 'destructive',
+        title: 'Unable to save your Calendar tool order.',
+        description: 'Your previous layout has been restored.',
+      });
+    }
+  }, [pinnedTabs, toast, user?.id]);
 
   // Handle view transitions with animation
   const handleViewChange = useCallback((newView: 'month' | 'week' | 'timeline') => {
@@ -848,13 +888,17 @@ export default function Calendar() {
                     {/* Tab triggers - scrollable horizontally */}
                     <div className="shrink-0 overflow-x-auto border-b border-border px-4 py-3">
                       <div className="inline-flex flex-wrap gap-2">
-                        {SIDEBAR_TABS.map(tab => (
+                        {orderedSidebarTabs.map(tab => (
+                          <ContextMenu key={tab.id} open={contextMenuTab === tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
+                          <ContextMenuTrigger asChild>
                           <button
-                            key={tab.id}
                             aria-pressed={sidebarTab === tab.id}
+                            aria-label={`${tab.label}${pinnedTabs.includes(tab.id) ? ', pinned' : ''}`}
+                            aria-haspopup="menu"
+                            aria-expanded={contextMenuTab === tab.id}
                             onClick={() => setSidebarTab(tab.id)}
                             className={cn(
-                              "inline-flex min-h-[40px] touch-manipulation items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45",
+                              "relative inline-flex min-h-[40px] touch-manipulation items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45",
                               sidebarTab === tab.id
                                 ? "border border-primary/50 bg-primary/20 text-primary shadow-[0_10px_24px_hsl(var(--primary)/0.14)]"
                                 : "border border-border bg-background/55 text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
@@ -862,7 +906,17 @@ export default function Calendar() {
                           >
                             {tab.icon}
                             <span>{tab.label}</span>
+                            {pinnedTabs.includes(tab.id) && <Pin aria-hidden="true" className="absolute right-1 top-1 h-3 w-3 text-primary" />}
                           </button>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            <ContextMenuLabel>{tab.label} {pinnedTabs.includes(tab.id) ? '(pinned)' : ''}</ContextMenuLabel>
+                            <ContextMenuItem onSelect={() => handleTogglePin(tab.id)}>
+                              {pinnedTabs.includes(tab.id) ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
+                              {pinnedTabs.includes(tab.id) ? 'Unpin' : 'Pin to front'}
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                          </ContextMenu>
                         ))}
                       </div>
                     </div>
@@ -1405,22 +1459,22 @@ export default function Calendar() {
               </Tooltip>
 
               <TooltipProvider delayDuration={100}>
-                {SIDEBAR_TABS.map((tab) => {
+                {orderedSidebarTabs.map((tab) => {
                   const isPinned = pinnedTabs.includes(tab.id);
                   return (
-                    <Tooltip key={tab.id}>
+                    <ContextMenu key={tab.id} open={contextMenuTab === tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
+                    <Tooltip>
                       <TooltipTrigger asChild>
+                        <ContextMenuTrigger asChild>
                         <button
-                          aria-label={tab.label}
+                          aria-label={`${tab.label}${isPinned ? ', pinned' : ''}`}
                           aria-pressed={sidebarTab === tab.id}
+                          aria-haspopup="menu"
+                          aria-expanded={contextMenuTab === tab.id}
                           title={tab.label}
                           onClick={() => {
                             setSidebarTab(tab.id);
                             setSidebarCollapsed(false);
-                          }}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleTogglePin(tab.id);
                           }}
                           className={cn(
                             'relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
@@ -1431,8 +1485,10 @@ export default function Calendar() {
                           )}
                         >
                           {tab.icon}
+                          {isPinned && <Pin aria-hidden="true" className="absolute right-1 top-1 h-3 w-3 text-primary" />}
                           <span className="text-[8px] leading-none">{tab.label}</span>
                         </button>
+                        </ContextMenuTrigger>
                       </TooltipTrigger>
                       <TooltipContent side="left">
                         <div className="flex items-center gap-2">
@@ -1443,6 +1499,14 @@ export default function Calendar() {
                         </div>
                       </TooltipContent>
                     </Tooltip>
+                    <ContextMenuContent>
+                      <ContextMenuLabel>{tab.label} {isPinned ? '(pinned)' : ''}</ContextMenuLabel>
+                      <ContextMenuItem onSelect={() => handleTogglePin(tab.id)}>
+                        {isPinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
+                        {isPinned ? 'Unpin' : 'Pin to front'}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                    </ContextMenu>
                     );
                   })}
               </TooltipProvider>
@@ -1498,26 +1562,28 @@ export default function Calendar() {
                 <TooltipProvider delayDuration={100}>
                   <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
                     <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-border bg-card/80 p-2 shadow-inner shadow-sm dark:shadow-black/20">
-                      {SIDEBAR_TABS.map((tab) => {
+                      {orderedSidebarTabs.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
-                          <Tooltip key={tab.id}>
+                          <ContextMenu key={tab.id} open={contextMenuTab === tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
+                          <Tooltip>
                             <TooltipTrigger asChild>
+                              <ContextMenuTrigger asChild>
                               <TabsTrigger
-                                aria-label={tab.label}
+                                aria-label={`${tab.label}${isPinned ? ', pinned' : ''}`}
                                 title={tab.label}
                                 value={tab.id}
+                                aria-haspopup="menu"
+                                aria-expanded={contextMenuTab === tab.id}
                                 className={cn(
                                   "relative h-11 rounded-xl border border-border bg-background/55 p-0 text-muted-foreground transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
                                   isPinned && "ring-1 ring-primary/30"
                                 )}
-                                onContextMenu={(e) => {
-                                  e.preventDefault();
-                                  handleTogglePin(tab.id);
-                                }}
                               >
                                 {tab.icon}
+                                {isPinned && <Pin aria-hidden="true" className="absolute right-1 top-1 h-3 w-3 text-primary" />}
                               </TabsTrigger>
+                              </ContextMenuTrigger>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="flex flex-col gap-1">
                               <div className="flex items-center gap-2">
@@ -1531,6 +1597,14 @@ export default function Calendar() {
                               </div>
                             </TooltipContent>
                           </Tooltip>
+                          <ContextMenuContent>
+                            <ContextMenuLabel>{tab.label} {isPinned ? '(pinned)' : ''}</ContextMenuLabel>
+                            <ContextMenuItem onSelect={() => handleTogglePin(tab.id)}>
+                              {isPinned ? <PinOff className="mr-2 h-4 w-4" /> : <Pin className="mr-2 h-4 w-4" />}
+                              {isPinned ? 'Unpin' : 'Pin to front'}
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                          </ContextMenu>
                         );
                       })}
                     </TabsList>
