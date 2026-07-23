@@ -158,6 +158,61 @@ export async function deleteStorageBinding(
 }
 
 /**
+ * Rollback helper — deletes a storage object AND its binding row. Callers use
+ * this when a follow-up step (DB insert, further validation) fails after a
+ * successful upload, so we never leave orphan objects the caller can no
+ * longer reach through the authorized read path.
+ */
+export async function rollbackStorageObject(
+  supabase: SupabaseClient,
+  bucket: string,
+  path: string,
+): Promise<void> {
+  try {
+    await supabase.storage.from(bucket).remove([path]);
+  } catch (err) {
+    console.error('[storageAuthz] rollback remove failed:', (err as Error).message);
+  }
+  await deleteStorageBinding(supabase, bucket, path);
+}
+
+/**
+ * Resolve the allowed object paths for a `list` operation on a sensitive
+ * bucket. The caller must supply a resource identifier (`clientId` for
+ * client-scoped buckets, or `ownerUserId` for owner-scoped ones). Returns
+ * only the bindings the actor is authorized to see under the same rules as
+ * `authorizeObjectAccess`.
+ */
+export async function authorizedBindingsForList(
+  supabase: SupabaseClient,
+  bucket: string,
+  ctx: AuthorizeContext,
+  scope: { clientId?: string | null; ownerUserId?: string | null },
+): Promise<StorageBinding[]> {
+  if (!scope.clientId && !scope.ownerUserId) return [];
+  let query = supabase.from('storage_object_bindings').select('*').eq('bucket', bucket);
+  if (scope.clientId)    query = query.eq('client_id', scope.clientId);
+  if (scope.ownerUserId) query = query.eq('owner_user_id', scope.ownerUserId);
+  const { data, error } = await query.limit(500);
+  if (error || !data) return [];
+  if (ctx.isSuperadmin || ctx.isInternalService) return data as StorageBinding[];
+  const allowed: StorageBinding[] = [];
+  for (const b of data as StorageBinding[]) {
+    if (b.owner_user_id && b.owner_user_id === ctx.actorId) { allowed.push(b); continue; }
+    if (b.client_id) {
+      const { data: created } = await supabase
+        .from('clients').select('id').eq('id', b.client_id).eq('created_by', ctx.actorId).maybeSingle();
+      if (created) { allowed.push(b); continue; }
+      const { data: assigned } = await supabase
+        .from('finance_portal_client_assignments')
+        .select('client_id').eq('client_id', b.client_id).eq('finance_user_id', ctx.actorId).maybeSingle();
+      if (assigned) { allowed.push(b); continue; }
+    }
+  }
+  return allowed;
+}
+
+/**
  * Object-level authorization.
  *
  * When a binding exists, deny unless one of:
