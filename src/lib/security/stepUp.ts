@@ -126,7 +126,7 @@ export async function enrollWebAuthn(password: string, deviceName?: string) {
   if (begin.error || !begin.data?.success) return { ok: false as const, error: begin.error?.message ?? begin.data?.error ?? 'webauthn_begin_failed' };
   let attResp;
   try {
-    attResp = await startRegistration({ optionsJSON: begin.data.options });
+    attResp = await startRegistration(begin.data.options);
   } catch (e: any) {
     return { ok: false as const, error: e?.name === 'InvalidStateError' ? 'This authenticator is already registered.' : (e?.message ?? 'webauthn_cancelled') };
   }
