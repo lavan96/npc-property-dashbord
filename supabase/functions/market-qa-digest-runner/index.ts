@@ -3,6 +3,7 @@
 // re-asks each question through market-updates-qa, synthesises a single markdown
 // digest via Lovable AI, writes market_qa_digests, and drops a notification.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -27,7 +28,7 @@ function nextRunAt(cadence: string, from = new Date()): string {
 async function askQA(question: string): Promise<{ answer: string; question_id: string | null; citations: string[] }> {
   const r = await fetch(`${SUPABASE_URL}/functions/v1/market-updates-qa`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SERVICE_KEY}`, 'apikey': SERVICE_KEY },
+    headers: { 'Content-Type': 'application/json', 'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '', 'x-internal-edge-secret': Deno.env.get('INTERNAL_EDGE_SECRET') || '' },
     body: JSON.stringify({ question }),
   });
   if (!r.ok) return { answer: '', question_id: null, citations: [] };
@@ -142,7 +143,7 @@ Deno.serve(async (req) => {
 
   if (action === 'run-due') {
     const secret = req.headers.get('x-cron-secret');
-    if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+    if (!verifyRequiredCronSecret(CRON_SECRET, secret)) return json({ error: 'unauthorized' }, 401);
     return await runDue(sb);
   }
 
