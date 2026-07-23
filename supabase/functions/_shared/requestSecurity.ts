@@ -94,23 +94,74 @@ export async function requireHumanOrSignedInternal(supabase: any, req: Request, 
 export async function verifyPortalSession(supabase: any, token: string | null | undefined): Promise<PortalAuthContext> {
   const sessionToken = nonEmpty(token);
   if (!sessionToken) return portalCtx({ errorCode: 'missing_credentials' });
-  const { data } = await supabase.from('client_portal_sessions')
-    .select('user_id, client_portal_users:user_id ( id, client_id, status )')
-    .eq('session_token', sessionToken).gt('expires_at', new Date().toISOString()).maybeSingle();
-  const user = data?.client_portal_users;
-  if (!data || !user) return portalCtx({ errorCode: 'invalid_session' });
+  // WP-11A: dual-read — hashed lookup preferred, plaintext fallback until WP-11B closes the window.
+  let hash: string | null = null;
+  try {
+    const mod = await import('./sessionHash.ts');
+    if (mod.isSessionHashConfigured()) hash = await mod.hashSessionToken(sessionToken);
+  } catch { /* pepper missing → fallback path */ }
+
+  let row: any = null;
+  if (hash) {
+    const { data } = await supabase.from('client_portal_sessions')
+      .select('id, user_id, revoked_at, idle_expires_at, token_hash, client_portal_users:user_id ( id, client_id, status )')
+      .eq('token_hash', hash).gt('expires_at', new Date().toISOString()).maybeSingle();
+    row = data ?? null;
+  }
+  if (!row) {
+    const { data } = await supabase.from('client_portal_sessions')
+      .select('id, user_id, revoked_at, idle_expires_at, token_hash, client_portal_users:user_id ( id, client_id, status )')
+      .eq('session_token', sessionToken).gt('expires_at', new Date().toISOString()).maybeSingle();
+    row = data ?? null;
+  }
+  const user = row?.client_portal_users;
+  if (!row || !user) return portalCtx({ errorCode: 'invalid_session' });
+  if (row.revoked_at) return portalCtx({ errorCode: 'invalid_session' });
+  if (row.idle_expires_at && new Date(row.idle_expires_at).getTime() < Date.now()) return portalCtx({ errorCode: 'invalid_session' });
   if (user.status !== 'active') return portalCtx({ errorCode: 'inactive_actor' });
+  // Best-effort backfill.
+  try {
+    const patch: Record<string, unknown> = { last_used_at: new Date().toISOString() };
+    if (hash && !row.token_hash) patch.token_hash = hash;
+    await supabase.from('client_portal_sessions').update(patch).eq('id', row.id);
+  } catch { /* non-fatal */ }
   return portalCtx({ ok: true, authType: 'client_portal', actorId: user.id, clientId: user.client_id, errorCode: null });
 }
 
 export async function verifyFinancePortalSession(supabase: any, token: string | null | undefined): Promise<PortalAuthContext> {
   const sessionToken = nonEmpty(token);
   if (!sessionToken) return portalCtx({ errorCode: 'missing_credentials' });
-  const { data } = await supabase.from('finance_portal_users')
-    .select('id, finance_contact_id, is_active, revoked_at, session_expires_at')
-    .eq('session_token', sessionToken).maybeSingle();
+  let hash: string | null = null;
+  try {
+    const mod = await import('./sessionHash.ts');
+    if (mod.isSessionHashConfigured()) hash = await mod.hashSessionToken(sessionToken);
+  } catch { /* fallback */ }
+
+  let data: any = null;
+  if (hash) {
+    const res = await supabase.from('finance_portal_users')
+      .select('id, finance_contact_id, is_active, revoked_at, session_expires_at, session_idle_expires_at, session_token_hash')
+      .eq('session_token_hash', hash).maybeSingle();
+    data = res.data ?? null;
+  }
+  if (!data) {
+    const res = await supabase.from('finance_portal_users')
+      .select('id, finance_contact_id, is_active, revoked_at, session_expires_at, session_idle_expires_at, session_token_hash')
+      .eq('session_token', sessionToken).maybeSingle();
+    data = res.data ?? null;
+  }
   if (!data) return portalCtx({ errorCode: 'invalid_session' });
-  if (!data.is_active || data.revoked_at || !data.session_expires_at || new Date(data.session_expires_at) <= new Date()) return portalCtx({ errorCode: 'inactive_actor' });
+  if (!data.is_active || data.revoked_at || !data.session_expires_at || new Date(data.session_expires_at) <= new Date()) {
+    return portalCtx({ errorCode: 'inactive_actor' });
+  }
+  if (data.session_idle_expires_at && new Date(data.session_idle_expires_at).getTime() < Date.now()) {
+    return portalCtx({ errorCode: 'invalid_session' });
+  }
+  try {
+    const patch: Record<string, unknown> = { session_last_used_at: new Date().toISOString() };
+    if (hash && !data.session_token_hash) patch.session_token_hash = hash;
+    await supabase.from('finance_portal_users').update(patch).eq('id', data.id);
+  } catch { /* non-fatal */ }
   return portalCtx({ ok: true, authType: 'finance_portal', actorId: data.id, clientId: data.finance_contact_id ?? null, errorCode: null });
 }
 
