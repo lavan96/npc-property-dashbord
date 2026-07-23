@@ -368,12 +368,23 @@ export async function verifyInternal(
     return ctx({ errorCode: 'internal_timestamp_skew' });
   }
 
-  const path = new URL(req.url).pathname;
+  // Accept either the raw pathname (`/foo`) or the gateway-prefixed form
+  // (`/functions/v1/foo`). Callers sign the prefixed path, but the edge
+  // runtime strips `/functions/v1` before this handler runs, so we compute
+  // both candidates and accept a match on either.
+  const rawPath = new URL(req.url).pathname;
+  const prefixedPath = rawPath.startsWith('/functions/v1/')
+    ? rawPath
+    : `/functions/v1${rawPath.startsWith('/') ? '' : '/'}${rawPath}`;
   const bodyHash = await sha256Hex(rawBody);
-  const expected = await hmacHex(keyEntry.secret, internalMessage(req.method, path, timestamp, nonce, caller, keyId, bodyHash));
-  if (!constantTimeEqual(expected, signature)) {
+  const expectedRaw = await hmacHex(keyEntry.secret, internalMessage(req.method, rawPath, timestamp, nonce, caller, keyId, bodyHash));
+  const expectedPrefixed = rawPath === prefixedPath
+    ? expectedRaw
+    : await hmacHex(keyEntry.secret, internalMessage(req.method, prefixedPath, timestamp, nonce, caller, keyId, bodyHash));
+  if (!constantTimeEqual(expectedRaw, signature) && !constantTimeEqual(expectedPrefixed, signature)) {
     return ctx({ errorCode: 'invalid_internal_signature' });
   }
+
 
   const denied = enforceCallerAllowlist(caller);
   if (denied) return denied;
