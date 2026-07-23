@@ -2,6 +2,33 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getEffectiveGhlCredentials, resolveGhlAccessTokenForLocation } from '../_shared/ghl-account.ts';
 
+type SupportedChannel = 'sms' | 'whatsapp';
+
+function resolveChannel(value: unknown): SupportedChannel | null {
+  const channel = String(value || '').trim().toLowerCase();
+  if (channel === 'sms') return 'sms';
+  if (channel === 'whatsapp' || channel === 'whats_app') return 'whatsapp';
+  return null;
+}
+
+function providerError(status: number, payload: any, channel: SupportedChannel): string {
+  const detail = String(payload?.message || payload?.error || payload?.raw || '').toLowerCase();
+  if (status === 401 || status === 403) return 'The CRM messaging connection needs to be reauthorised.';
+  if (status === 429) return 'Messaging is temporarily rate-limited. Please try again shortly.';
+  if (detail.includes('dnd') || detail.includes('opt') || detail.includes('unsubscribe')) {
+    return channel === 'sms' ? 'This contact has opted out of SMS communications.' : 'This contact cannot receive WhatsApp messages.';
+  }
+  if (channel === 'whatsapp' && (detail.includes('window') || detail.includes('template'))) {
+    return 'The WhatsApp conversation window has closed. Select an approved template to continue.';
+  }
+  if (detail.includes('phone') || detail.includes('number') || detail.includes('recipient')) {
+    return channel === 'sms' ? 'The contact’s mobile number is invalid.' : 'This contact does not have a valid WhatsApp number.';
+  }
+  return channel === 'sms'
+    ? 'The SMS provider rejected this message. Please review the contact number and messaging configuration.'
+    : 'WhatsApp could not send this message. Check the contact number and WhatsApp connection.';
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
@@ -25,7 +52,7 @@ Deno.serve(async (req) => {
     }
     console.log(`[send-ghl-message] Authenticated user: ${userId}`);
 
-    const { conversationId, message, type, subject } = body;
+    const { conversationId, message, channel: requestedChannel, type, idempotencyKey } = body;
 
     if (!conversationId || !message) {
       return new Response(
@@ -65,40 +92,56 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build GHL message payload based on channel type
-    const messageType = type || "SMS";
-    const ghlPayload: any = {
-      type: messageType,
-      conversationId: conversationId,
-    };
-
-    // Look up contact for this conversation (required by GHL for SMS/WhatsApp)
+    // Resolve the local record first. The browser may select a conversation, but
+    // never supplies the authoritative GHL contact ID or any credential.
     const { data: convRecord } = await supabase
       .from("ghl_conversations")
-      .select("ghl_contact_id")
+      .select("id, ghl_contact_id, client_id")
       .eq("ghl_conversation_id", conversationId)
       .maybeSingle();
 
-    const contactId = convRecord?.ghl_contact_id;
+    if (!convRecord) {
+      return new Response(JSON.stringify({ error: 'Conversation is unavailable or you no longer have access to it.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    if (messageType !== 'Email') {
-      if (!contactId) {
-        return new Response(
-          JSON.stringify({
-            error: "Unable to send message: this conversation is missing a linked GHL contact. Try syncing conversations, or open the client record to send.",
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    const channel = resolveChannel(requestedChannel || type);
+    if (!channel) {
+      return new Response(JSON.stringify({ error: 'Unsupported CRM message channel.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (idempotencyKey) {
+      const { data: existing } = await supabase
+        .from('ghl_conversation_messages')
+        .select('ghl_message_id, message_status')
+        .eq('client_request_id', idempotencyKey)
+        .maybeSingle();
+      if (existing && existing.message_status !== 'failed') {
+        return new Response(JSON.stringify({ success: true, messageId: existing.ghl_message_id, duplicate: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
-      ghlPayload.contactId = contactId;
-      ghlPayload.message = message;
-    } else {
-      if (contactId) ghlPayload.contactId = contactId;
-      ghlPayload.html = message;
-      ghlPayload.message = message;
-      if (subject) {
-        ghlPayload.subject = subject;
-      }
+    }
+
+    const messageType = channel === 'whatsapp' ? 'WhatsApp' : 'SMS';
+    const ghlPayload: Record<string, string> = {
+      type: messageType,
+      conversationId,
+      contactId: convRecord.ghl_contact_id || '',
+      message,
+    };
+
+    const contactId = convRecord?.ghl_contact_id;
+    if (!contactId) {
+      const error = channel === 'sms'
+        ? 'This contact does not have a valid mobile number.'
+        : 'This contact does not have a valid WhatsApp number.';
+      return new Response(JSON.stringify({ error }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Resolve to a Location-level token when an agency/main token is configured
@@ -119,10 +162,11 @@ Deno.serve(async (req) => {
       "Content-Type": "application/json",
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
-      Version: "2021-04-15",
+      Version: "2021-07-28",
     };
+    if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
 
-    console.log(`[send-ghl-message] Sending ${messageType} to conversation ${conversationId} (contact ${contactId ?? 'n/a'})`);
+    console.log(`[send-ghl-message] Sending ${channel} to conversation ${conversationId} (contact resolved=${Boolean(contactId)})`);
 
     const ghlRes = await fetch(ghlUrl, {
       method: "POST",
@@ -136,17 +180,21 @@ Deno.serve(async (req) => {
 
     if (!ghlRes.ok) {
       console.error("[send-ghl-message] GHL API error:", ghlRes.status, ghlData);
-      const providerMsg =
-        ghlData?.message ||
-        (Array.isArray(ghlData?.message) ? ghlData.message.join('; ') : null) ||
-        ghlData?.error ||
-        ghlData?.raw ||
-        `HTTP ${ghlRes.status}`;
+      const safeError = providerError(ghlRes.status, ghlData, channel);
+      if (idempotencyKey) {
+        await supabase.from('ghl_conversation_messages').upsert({
+          ghl_message_id: `failed-${idempotencyKey}`,
+          client_request_id: idempotencyKey,
+          conversation_id: convRecord.id,
+          direction: 'outbound', body: message, channel_type: channel,
+          message_type: channel, message_status: 'failed', error_message: safeError,
+          ghl_date_added: new Date().toISOString(),
+        }, { onConflict: 'ghl_message_id' });
+      }
       return new Response(
         JSON.stringify({
-          error: `GHL rejected the message: ${providerMsg}`,
+          error: safeError,
           status: ghlRes.status,
-          details: ghlData,
         }),
         { status: ghlRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -160,26 +208,32 @@ Deno.serve(async (req) => {
       conversation_id: null as string | null,
       direction: "outbound",
       body: message,
-      channel_type: messageType.toLowerCase(),
-      message_type: messageType.toLowerCase(),
-      message_status: "delivered",
+      channel_type: channel,
+      message_type: channel,
+      message_status: "sent",
+      client_request_id: idempotencyKey || null,
       ghl_date_added: new Date().toISOString(),
     };
 
     // Look up our internal conversation record
-    const { data: conv } = await supabase
-      .from("ghl_conversations")
-      .select("id")
-      .eq("ghl_conversation_id", conversationId)
-      .maybeSingle();
+    if (convRecord) {
+      messageRecord.conversation_id = convRecord.id;
 
-    if (conv) {
-      messageRecord.conversation_id = conv.id;
+      // A successful retry replaces the locally persisted failure for the same
+      // request key before the provider message ID is stored.
+      if (idempotencyKey) {
+        await supabase
+          .from('ghl_conversation_messages')
+          .delete()
+          .eq('client_request_id', idempotencyKey)
+          .eq('message_status', 'failed');
+      }
 
       // Insert the message
-      await supabase.from("ghl_conversation_messages").upsert(messageRecord, {
+      const { error: persistError } = await supabase.from("ghl_conversation_messages").upsert(messageRecord, {
         onConflict: "ghl_message_id",
       });
+      if (persistError) throw persistError;
 
       // Update conversation metadata
       await supabase
@@ -190,7 +244,7 @@ Deno.serve(async (req) => {
           last_message_direction: "outbound",
           updated_at: new Date().toISOString(),
         })
-        .eq("id", conv.id);
+        .eq("id", convRecord.id);
     }
 
     return new Response(

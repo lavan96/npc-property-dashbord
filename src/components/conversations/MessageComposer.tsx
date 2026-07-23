@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -121,11 +121,11 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
             // Auto-resize textarea
             const el = e.target;
             el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+            el.style.height = Math.min(el.scrollHeight, channel === 'email' ? 128 : 160) + 'px';
           }}
           placeholder={placeholder}
           rows={rows}
-          className="min-h-[60px] max-h-[160px] resize-none rounded-xl border-0 bg-transparent py-1.5 text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+          className={cn("min-h-[60px] resize-none overflow-y-auto rounded-xl border-0 bg-transparent py-1.5 text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0", channel === 'email' ? "max-h-32" : "max-h-40")}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -138,6 +138,7 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
           className="mb-0.5 h-8 w-8 shrink-0 rounded-full bg-brand-300 p-0 text-black shadow-[0_0_22px_rgba(251,191,36,0.20)] transition-all hover:-translate-y-0.5 hover:bg-brand-200 hover:shadow-[0_0_30px_rgba(251,191,36,0.32)] focus-visible:ring-2 focus-visible:ring-brand-200/80 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-50"
           onClick={onSend}
           disabled={disabled || isSending}
+          aria-label={`Send ${channel === 'sms' ? 'SMS' : channel === 'whatsapp' ? 'WhatsApp' : 'email'}`}
         >
           {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
         </Button>

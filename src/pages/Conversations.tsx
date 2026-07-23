@@ -69,7 +69,7 @@ import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 // ── Channel helpers ──────────────────────────────────────────
 function normalizeChannel(ch: string | undefined): string {
   if (!ch) return "sms";
-  const lower = ch.toLowerCase();
+  const lower = ch.trim().toLowerCase();
   const map: Record<string, string> = {
     type_phone: "sms",
     phone: "sms",
@@ -78,8 +78,12 @@ function normalizeChannel(ch: string | undefined): string {
     type_sms_reaction: "sms",
     type_email: "email",
     email: "email",
+    mail: "email",
+    "2": "email",
     type_whatsapp: "whatsapp",
     whatsapp: "whatsapp",
+    whats_app: "whatsapp",
+    "3": "whatsapp",
     type_instagram: "instagram",
     instagram: "instagram",
     type_facebook: "facebook",
@@ -146,17 +150,6 @@ const getContactInitials = (name?: string | null) => {
     .toUpperCase();
 };
 
-const channelToGhlType = (ch: string): string => {
-  switch (ch) {
-    case "email":
-      return "Email";
-    case "whatsapp":
-      return "WhatsApp";
-    default:
-      return "SMS";
-  }
-};
-
 // ── Types ────────────────────────────────────────────────────
 interface ConversationRow {
   id: string;
@@ -168,6 +161,7 @@ interface ConversationRow {
   unread_count: number;
   client_id: string | null;
   ghl_contact_id: string | null;
+  available_channels?: string[] | null;
   // joined
   client_name?: string;
   client_email?: string | null;
@@ -185,6 +179,8 @@ interface Message {
   ghl_date_added: string | null;
   attachment_urls: string[] | null;
   sender_name: string | null;
+  error_message?: string | null;
+  client_request_id?: string | null;
 }
 
 interface ExportJobStatus {
@@ -232,6 +228,7 @@ export default function Conversations() {
   const [replyChannel, setReplyChannel] = useState<string>("sms");
   const [emailSubject, setEmailSubject] = useState("");
   const [selectedMailbox, setSelectedMailbox] = useState<string>("admin");
+  const requestKeysRef = useRef<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncErrorMessage, setSyncErrorMessage] = useState<string | null>(null);
@@ -380,15 +377,17 @@ export default function Conversations() {
     mutationFn: async ({
       conversationId,
       message,
-      type,
+      channel,
       subject,
+      idempotencyKey,
     }: {
       conversationId: string;
       message: string;
-      type: string;
+      channel: "sms" | "whatsapp" | "email";
       subject?: string;
+      idempotencyKey: string;
     }) => {
-      if (type === "Email") {
+      if (channel === "email") {
         const email = selectedConversation?.client_email;
         if (!email) throw new Error("Client does not have an email address");
         const { data, error } = await invokeSecureFunction("send-email-reply", {
@@ -406,8 +405,8 @@ export default function Conversations() {
       const { data, error } = await invokeSecureFunction("send-ghl-message", {
         conversationId,
         message,
-        type,
-        ...(subject ? { subject } : {}),
+        channel,
+        idempotencyKey,
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
@@ -416,6 +415,7 @@ export default function Conversations() {
     onSuccess: (data, variables) => {
       setReplyText("");
       setEmailSubject("");
+      if (selectedId) delete requestKeysRef.current[selectedId];
       toast.success("Message sent");
       // Optimistically add the sent message to the cache so it appears immediately
       queryClient.setQueryData(
@@ -427,11 +427,12 @@ export default function Conversations() {
             ghl_message_id: `opt-${Date.now()}`,
             body: variables.message,
             direction: "outbound",
-            message_type: variables.type,
-            channel_type: replyChannel,
+            message_type: variables.channel,
+            channel_type: variables.channel,
             content_type: null,
             ghl_date_added: new Date().toISOString(),
             message_status: "sent",
+            client_request_id: variables.idempotencyKey,
             attachment_urls: null,
             sender_name: null,
           };
@@ -444,7 +445,31 @@ export default function Conversations() {
       });
       refetchConversations();
     },
-    onError: (err: any) => toast.error("Failed to send: " + err.message),
+    onError: (err: any, variables) => {
+      const messageId = `failed-${variables.idempotencyKey}`;
+      queryClient.setQueryData(
+        ["conversation-messages", selectedId],
+        (old: Message[] | undefined) => {
+          const failed: Message = {
+            id: messageId,
+            ghl_message_id: messageId,
+            body: variables.message,
+            direction: "outbound",
+            message_type: variables.channel,
+            channel_type: variables.channel,
+            content_type: null,
+            ghl_date_added: new Date().toISOString(),
+            message_status: "failed",
+            error_message: err?.message || "Message could not be sent.",
+            client_request_id: variables.idempotencyKey,
+            attachment_urls: null,
+            sender_name: null,
+          };
+          return [...(old || []).filter((item) => item.client_request_id !== variables.idempotencyKey), failed];
+        },
+      );
+      toast.error(err?.message || "Message could not be sent.");
+    },
   });
 
   // ── Realtime subscription ──
@@ -509,7 +534,11 @@ export default function Conversations() {
     let list = conversations;
     if (channelFilter !== "all") {
       list = list.filter(
-        (c) => normalizeChannel(c.channel_type) === channelFilter,
+        (c) =>
+          normalizeChannel(c.channel_type) === channelFilter ||
+          c.available_channels?.some(
+            (channel) => normalizeChannel(channel) === channelFilter,
+          ),
       );
     }
     if (searchTerm) {
@@ -787,13 +816,29 @@ export default function Conversations() {
       toast.error("Please enter an email subject");
       return;
     }
+    const idempotencyKey = requestKeysRef.current[selectedConversation.id] || crypto.randomUUID();
+    requestKeysRef.current[selectedConversation.id] = idempotencyKey;
     sendMutation.mutate({
       conversationId: selectedConversation.ghl_conversation_id,
       message: replyText.trim(),
-      type: channelToGhlType(replyChannel),
+      channel: replyChannel as "sms" | "whatsapp" | "email",
+      idempotencyKey,
       ...(replyChannel === "email" && emailSubject.trim()
         ? { subject: emailSubject.trim() }
         : {}),
+    });
+  };
+
+  const retryMessage = (message: Message) => {
+    if (!selectedConversation || message.message_status !== "failed" || !message.body) return;
+    const channel = normalizeChannel(message.channel_type) as "sms" | "whatsapp" | "email";
+    const idempotencyKey = message.client_request_id || crypto.randomUUID();
+    requestKeysRef.current[selectedConversation.id] = idempotencyKey;
+    sendMutation.mutate({
+      conversationId: selectedConversation.ghl_conversation_id,
+      message: message.body,
+      channel,
+      idempotencyKey,
     });
   };
 
@@ -1343,13 +1388,13 @@ export default function Conversations() {
                       <button
                         key={conv.id}
                         className={cn(
-                          "group relative flex min-h-[5.6rem] w-full cursor-pointer items-center gap-4 text-left overflow-hidden rounded-[1.55rem] border border-border dark:border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.052),rgba(255,255,255,0.018)_55%,rgba(245,158,11,0.026))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_14px_30px_rgba(0,0,0,0.14)] outline-none transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-brand-300 before:opacity-0 before:shadow-[0_0_18px_rgba(251,191,36,0.65)] before:transition-opacity after:absolute after:inset-x-6 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.08] after:to-transparent last:after:hidden focus-visible:border-brand-200/55 focus-visible:bg-brand-300/[0.08] focus-visible:ring-2 focus-visible:ring-brand-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 hover:-translate-y-0.5 hover:border-brand-200/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.075)_62%,rgba(255,255,255,0.028))] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_38px_rgba(0,0,0,0.28)] hover:before:opacity-100",
+                          "group relative flex min-h-[5.6rem] w-full cursor-pointer items-center gap-4 overflow-hidden rounded-[1.55rem] border border-border bg-card/55 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_14px_30px_rgba(0,0,0,0.14)] outline-none transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-primary before:opacity-0 before:transition-opacity after:absolute after:inset-x-6 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.08] after:to-transparent last:after:hidden focus-visible:border-primary/65 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 hover:-translate-y-0.5 hover:border-border hover:bg-muted/70 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_38px_rgba(0,0,0,0.28)]",
                           isActive
-                            ? "border-brand-200/65 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(255,255,255,0.045)_56%,rgba(245,158,11,0.10))] shadow-[inset_4px_0_0_rgba(251,191,36,0.95),0_0_0_1px_rgba(251,191,36,0.12),0_20px_42px_rgba(245,158,11,0.13)] before:opacity-100"
+                            ? "border-primary/65 bg-primary/12 shadow-[inset_4px_0_0_hsl(var(--primary)),0_0_0_1px_hsl(var(--primary)/0.12),0_20px_42px_hsl(var(--primary)/0.13)] before:opacity-100"
                             : "",
                           conv.unread_count > 0 &&
                             !isActive &&
-                            "border-brand-200/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(255,255,255,0.03)_58%,rgba(245,158,11,0.06))] shadow-[inset_3px_0_0_rgba(251,191,36,0.9),0_0_0_1px_rgba(251,191,36,0.10),0_16px_34px_rgba(245,158,11,0.10)] before:opacity-100",
+                            "border-primary/30 bg-card/70 shadow-[inset_3px_0_0_hsl(var(--primary)/0.85),0_16px_34px_hsl(var(--primary)/0.08)] before:opacity-100",
                         )}
                         onClick={() => handleSelectConversation(conv)}
                         onKeyDown={(e) => {
@@ -1772,6 +1817,18 @@ export default function Conversations() {
                                           </span>
                                         )}
                                     </p>
+                                    {msg.message_status === "failed" && (
+                                      <Button
+                                        type="button"
+                                        variant="link"
+                                        size="sm"
+                                        className="mt-1 h-auto px-0 text-xs font-semibold text-destructive-foreground underline-offset-4 hover:underline"
+                                        onClick={() => retryMessage(msg)}
+                                        disabled={sendMutation.isPending}
+                                      >
+                                        Retry {msgChannel === "whatsapp" ? "WhatsApp" : msgChannel === "sms" ? "SMS" : "email"}
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -1786,7 +1843,7 @@ export default function Conversations() {
               </ScrollArea>
 
               {/* Reply composer */}
-              <div className="shrink-0 max-h-[45vh] overflow-y-auto space-y-3 border-t border-brand-100/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.78),rgba(9,9,11,0.96))] px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+              <div className="shrink-0 max-h-[min(36vh,20rem)] overflow-y-auto space-y-2.5 border-t border-brand-100/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.78),rgba(9,9,11,0.96))] px-4 py-2.5 shadow-[0_-18px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-100/50">
                     Send via
@@ -1892,7 +1949,7 @@ export default function Conversations() {
                   }
                   channel={replyChannel as "sms" | "email" | "whatsapp"}
                   placeholder={`Type your ${replyChannel === "sms" ? "SMS" : replyChannel === "whatsapp" ? "WhatsApp" : "email"} message...`}
-                  rows={replyChannel === "email" ? 3 : 2}
+                  rows={replyChannel === "email" ? 2 : 2}
                 />
               </div>
             </>
