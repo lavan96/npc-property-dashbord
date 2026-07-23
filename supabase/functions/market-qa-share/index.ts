@@ -109,14 +109,11 @@ Deno.serve(async (req) => {
       // Verify caller owns the source question (or is superadmin).
       const { data: question, error: qErr } = await sb
         .from('market_update_questions')
-        .select('id, asked_by, created_by, user_id')
+        .select('id, created_by')
         .eq('id', questionId)
         .maybeSingle();
       if (qErr || !question) return json({ error: 'question_not_found' }, 404);
-      const ownerId = (question as Record<string, unknown>).asked_by
-        ?? (question as Record<string, unknown>).created_by
-        ?? (question as Record<string, unknown>).user_id
-        ?? null;
+      const ownerId = (question as { created_by?: string | null }).created_by ?? null;
       const superadmin = await isSuperadmin(sb, userId);
       if (!superadmin && ownerId && ownerId !== userId) return json({ error: 'forbidden' }, 403);
 
