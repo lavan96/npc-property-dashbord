@@ -79,5 +79,13 @@ export async function beginTotpEnrollment(password: string) {
 
 export async function confirmTotpEnrollment(enrollmentToken: string, mfaCode: string) {
   const { data, error } = await invokeSecureFunction<any>('security-step-up', { action: 'enroll_totp_confirm', enrollment_token: enrollmentToken, mfa_code: mfaCode });
-  return !error && data?.success ? { ok: true as const } : { ok: false as const, error: error?.message ?? data?.error ?? 'mfa_enrollment_failed' };
+  if (error || !data?.success || !Array.isArray(data?.recovery_codes)) return { ok: false as const, error: error?.message ?? data?.error ?? 'mfa_enrollment_failed' };
+  return { ok: true as const, recoveryCodes: data.recovery_codes as string[] };
+}
+
+/** Regeneration invalidates every previous recovery code and returns the replacement set once. */
+export async function regenerateRecoveryCodes(password: string, mfaCode: string) {
+  const { data, error } = await invokeSecureFunction<any>('security-step-up', { action: 'regenerate_recovery_codes', password, mfa_code: mfaCode });
+  if (error || !data?.success || !Array.isArray(data?.recovery_codes)) return { ok: false as const, error: error?.message ?? data?.error ?? 'mfa_recovery_regeneration_failed' };
+  return { ok: true as const, recoveryCodes: data.recovery_codes as string[] };
 }
