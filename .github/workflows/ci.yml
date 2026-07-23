@@ -109,6 +109,10 @@ jobs:
           node scripts/security/check-agent-tool-policies.mjs
           node scripts/security/check-agent-bulk-ceilings.mjs
 
+      # WP-15: launch-gate aggregator (registry clean + WP-15 artefacts present).
+      - name: WP-15 launch-gate aggregator
+        run: node scripts/security/wp15-launch-gate.mjs
+
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
