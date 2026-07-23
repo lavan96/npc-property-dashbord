@@ -235,3 +235,157 @@ export const TOOL_SECURITY_POLICIES:Record<string,ToolSecurityPolicy>={
   'what_if_analysis':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
 };
 export function requireToolPolicy(name:string, actorType:'human'|'scheduled'|'internal'){const policy=TOOL_SECURITY_POLICIES[name];if(!policy||!policy.allowedActorTypes.includes(actorType))throw new Error('Tool policy denied');return policy;}
+
+// ============================================================================
+// WP-05B — Resource-scoped authorization + step-up enforcement
+// ----------------------------------------------------------------------------
+// Purpose: enforce policies at the executor boundary. Prior to WP-05B the
+// TOOL_SECURITY_POLICIES table was declared but never consulted at runtime,
+// so a compromised prompt path could dispatch any tool as long as the calling
+// function was reached. This module adds three fail-closed gates:
+//   1. Actor-type gate (same rule as requireToolPolicy)
+//   2. Resource-ownership gate: for writes/deletes that carry a client_id
+//      (or a *_id that resolves through client_id), the acting user must own
+//      the parent client row OR be a superadmin. This blocks cross-tenant
+//      IDOR through the agent tool surface.
+//   3. Step-up gate: destructive/bulk tools require an explicit step-up
+//      signal from the caller (satisfied today by the pending-message
+//      confirmation flow; forward-compatible with a real TOTP/WebAuthn
+//      step-up in a later WP).
+// The gate is a single call authorizeAgentTool(...) invoked at the top of
+// executeTool in ai-dashboard-agent. Read tools with can_view are exempt from
+// ownership checks (they are already scoped by the tool implementation).
+// ============================================================================
+
+// Default resource resolver — derives {resourceType, resourceId} from
+// convention-based arg keys. Keeps the 217-row policy table compact.
+const DEFAULT_ARG_TO_RESOURCE: Record<string, { table: string; ownerColumn: string; parentClientColumn?: string }> = {
+  client_id:            { table: 'clients',                ownerColumn: 'created_by' },
+  deal_id:              { table: 'client_deals',           ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  reminder_id:          { table: 'client_reminders',       ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  note_id:              { table: 'client_notes',           ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  file_id:              { table: 'client_files',           ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  activity_id:          { table: 'client_activities',      ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  playbook_id:          { table: 'agent_playbooks',        ownerColumn: 'user_id' },
+  scheduled_task_id:    { table: 'agent_scheduled_tasks',  ownerColumn: 'user_id' },
+  checklist_instance_id:{ table: 'checklist_instances',    ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  game_plan_id:         { table: 'game_plans',             ownerColumn: 'created_by' },
+  agreement_id:         { table: 'agency_agreements',      ownerColumn: 'created_by', parentClientColumn: 'client_id' },
+  chart_id:             { table: 'charts',                 ownerColumn: 'user_id' },
+  report_id:            { table: 'generated_reports',      ownerColumn: 'user_id' },
+};
+
+// Tools that MUST have a caller-supplied step-up signal. Derived by prefix so
+// the 217-row policy table doesn't have to be re-audited; explicit policy
+// requiresStepUp:true still wins.
+function toolRequiresStepUp(name: string, policy: ToolSecurityPolicy): boolean {
+  if (policy.requiresStepUp) return true;
+  if (name.startsWith('bulk_')) return true;
+  if (policy.permission === 'can_delete') return true;
+  return false;
+}
+
+export interface AgentToolAuthzContext {
+  actorType: 'human' | 'scheduled' | 'internal';
+  stepUpVerified?: boolean;      // true when the confirm-tool path executed it
+  internalCaller?: string;       // service-role caller identity (WP-05C)
+}
+
+export class AgentToolAuthzError extends Error {
+  constructor(public code: 'policy_denied' | 'actor_denied' | 'resource_denied' | 'step_up_required' | 'batch_too_large', message: string) {
+    super(message);
+    this.name = 'AgentToolAuthzError';
+  }
+}
+
+async function isSuperadmin(sb: any, userId: string): Promise<boolean> {
+  if (!userId || userId === 'service_role') return false;
+  try {
+    const { data } = await sb.from('user_roles').select('role').eq('user_id', userId).eq('role', 'superadmin').maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
+async function ownsResource(sb: any, userId: string, argKey: string, argValue: string): Promise<boolean> {
+  const spec = DEFAULT_ARG_TO_RESOURCE[argKey];
+  if (!spec) return true; // unknown key → no resource gate (still gated by other args)
+  if (!argValue || typeof argValue !== 'string') return true;
+  try {
+    // First: direct ownership on the row itself.
+    const { data: row } = await sb.from(spec.table).select(`${spec.ownerColumn}${spec.parentClientColumn ? ',' + spec.parentClientColumn : ''}`).eq('id', argValue).maybeSingle();
+    if (!row) return false; // row missing → fail closed
+    if ((row as any)[spec.ownerColumn] === userId) return true;
+    // Fallback: ownership of the parent client (many child rows are owned via clients.created_by).
+    const parentClientId = spec.parentClientColumn ? (row as any)[spec.parentClientColumn] : null;
+    if (parentClientId) {
+      const { data: c } = await sb.from('clients').select('created_by').eq('id', parentClientId).maybeSingle();
+      if (c && (c as any).created_by === userId) return true;
+    }
+    return false;
+  } catch {
+    return false; // fail closed on any error
+  }
+}
+
+/**
+ * Fail-closed authorization gate for every agent tool dispatch.
+ *
+ * Order:
+ *  1. Policy must exist and permit the actorType.
+ *  2. Step-up gate (delete_*, bulk_*, or policy.requiresStepUp) requires
+ *     ctx.stepUpVerified. The pending-message confirmation path sets this;
+ *     direct tool calls without confirmation are rejected.
+ *  3. Batch ceiling (WP-05C surface, wired here so future policies opt in).
+ *  4. Resource-ownership gate on can_edit / can_delete tools:
+ *     - superadmin bypasses
+ *     - service-role internal callers bypass (they act system-wide)
+ *     - every recognised *_id arg is checked against the acting user
+ */
+export async function authorizeAgentTool(sb: any, name: string, args: Record<string, any>, userId: string, ctx: AgentToolAuthzContext): Promise<void> {
+  const policy = TOOL_SECURITY_POLICIES[name];
+  if (!policy) throw new AgentToolAuthzError('policy_denied', `No policy registered for tool '${name}'`);
+  if (!policy.allowedActorTypes.includes(ctx.actorType)) {
+    throw new AgentToolAuthzError('actor_denied', `Tool '${name}' cannot be invoked by actor '${ctx.actorType}'`);
+  }
+  // Batch ceiling (defensive; policies may set maxBatchSize in WP-05C).
+  if (typeof policy.maxBatchSize === 'number') {
+    const arr = (Array.isArray(args?.ids) && args.ids) || (Array.isArray(args?.items) && args.items) || null;
+    if (arr && arr.length > policy.maxBatchSize) {
+      throw new AgentToolAuthzError('batch_too_large', `Tool '${name}' batch of ${arr.length} exceeds ceiling ${policy.maxBatchSize}`);
+    }
+  }
+  // Step-up gate (deletes, bulk_*, or explicit requiresStepUp).
+  if (toolRequiresStepUp(name, policy) && !ctx.stepUpVerified) {
+    // Internal service-role callers may bypass step-up ONLY when the policy
+    // explicitly whitelists them (WP-05C). Default: fail closed.
+    const internalWhitelisted = ctx.actorType === 'internal' && !!policy.allowedInternalCallers?.includes(ctx.internalCaller || '');
+    if (!internalWhitelisted) {
+      throw new AgentToolAuthzError('step_up_required', `Tool '${name}' requires step-up confirmation`);
+    }
+  }
+  // Read tools are already scoped by the executor query.
+  if (policy.permission === 'can_view') return;
+  // Ownership gate for writes/deletes.
+  if (ctx.actorType === 'internal') return; // service-role bypass (audited elsewhere)
+  if (await isSuperadmin(sb, userId)) return;
+  // Use policy.resolveResource if provided, otherwise scan args for known keys.
+  const explicit = policy.resolveResource?.(args);
+  if (explicit) {
+    // Map the explicit resource back to an arg key if we recognise the type.
+    const argKey = Object.keys(DEFAULT_ARG_TO_RESOURCE).find((k) => DEFAULT_ARG_TO_RESOURCE[k].table.startsWith(explicit.resourceType));
+    if (argKey && !(await ownsResource(sb, userId, argKey, explicit.resourceId))) {
+      throw new AgentToolAuthzError('resource_denied', `User does not own ${explicit.resourceType} ${explicit.resourceId}`);
+    }
+  } else {
+    for (const [key, value] of Object.entries(args || {})) {
+      if (!(key in DEFAULT_ARG_TO_RESOURCE)) continue;
+      if (typeof value !== 'string') continue;
+      if (!(await ownsResource(sb, userId, key, value))) {
+        throw new AgentToolAuthzError('resource_denied', `User does not own ${key}=${value}`);
+      }
+    }
+  }
+}
+
