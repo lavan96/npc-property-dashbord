@@ -1,25 +1,51 @@
 // Web Push dispatcher — invoked by the `dispatch_web_push_on_notification` DB trigger.
-// Sends VAPID-signed Web Push notifications to all of a user's active push subscriptions.
+// WP-04 hardened: caller supplies only `notification_id`; every user-visible
+// field is derived from the notifications row via service role. URL is
+// validated against an allowlist. Idempotency is enforced against
+// push_delivery_log so retries never fan out duplicate pushes.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import webpush from 'https://esm.sh/web-push@3.6.7';
-import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
+import { verifyRequiredCronSecret, securityJsonError } from '../_shared/requestSecurity.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-edge-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 type SubscriberType = 'staff' | 'client_portal' | 'finance_portal';
+const VALID_SUBSCRIBERS: readonly SubscriberType[] = ['staff', 'client_portal', 'finance_portal'];
 
 interface DispatchPayload {
-  notification_id?: string;
-  user_id: string;
-  subscriber_type?: SubscriberType;
-  title: string;
-  body?: string;
-  url?: string | null;
-  category?: string | null;
+  notification_id: string;
+  attempt_id?: string;
+}
+
+/**
+ * URL allowlist: accept in-app paths ("/foo/bar"), same-app absolute URLs, and
+ * reject dangerous schemes (javascript:, data:, vbscript:, file:) plus
+ * external origins. Fails closed to "/" if the persisted metadata is unsafe.
+ */
+function sanitizeUrl(raw: unknown): string {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > 2048) return '/';
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
+  try {
+    const u = new URL(trimmed);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '/';
+    // Restrict to the app's own public host, if configured. Otherwise reject
+    // any absolute URL (relative in-app paths are the intended shape).
+    const allowedHost = (Deno.env.get('WEB_PUSH_ALLOWED_HOST') || '').trim().toLowerCase();
+    if (!allowedHost) return '/';
+    return u.hostname.toLowerCase() === allowedHost ? u.pathname + u.search + u.hash : '/';
+  } catch {
+    return '/';
+  }
+}
+
+function clamp(text: unknown, max: number): string {
+  const s = typeof text === 'string' ? text : '';
+  return s.length > max ? s.slice(0, max) : s;
 }
 
 Deno.serve(async (req) => {
@@ -28,33 +54,34 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Auth: signed internal caller only. DB trigger path forwards
+    // x-internal-edge-secret via _shared/internalCall.ts.
     if (!verifyRequiredCronSecret(Deno.env.get('INTERNAL_EDGE_SECRET'), req.headers.get('x-internal-edge-secret'))) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return securityJsonError(401, 'unauthorized');
     }
+
     const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY');
     const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY');
     const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT_EMAIL') || 'admin@example.com';
-
     if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
       console.error('[send-web-push] VAPID keys not configured');
-      return new Response(JSON.stringify({ error: 'service unavailable' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return securityJsonError(503, 'service_unavailable');
     }
-
     webpush.setVapidDetails(
       VAPID_SUBJECT.startsWith('mailto:') ? VAPID_SUBJECT : `mailto:${VAPID_SUBJECT}`,
       VAPID_PUBLIC,
       VAPID_PRIVATE,
     );
 
-    const payload: DispatchPayload = await req.json();
-    if (!payload?.user_id || !payload?.title) {
-      return new Response(JSON.stringify({ error: 'user_id and title required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let payload: DispatchPayload;
+    try {
+      payload = await req.json();
+    } catch {
+      return securityJsonError(400, 'invalid_request');
+    }
+    const notificationId = typeof payload?.notification_id === 'string' ? payload.notification_id.trim() : '';
+    if (!/^[0-9a-fA-F-]{16,64}$/.test(notificationId)) {
+      return securityJsonError(400, 'invalid_request');
     }
 
     const supabase = createClient(
@@ -62,12 +89,36 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch active subscriptions for the user (scoped to subscriber pool when provided)
-    const subscriberType: SubscriberType = payload.subscriber_type || 'staff';
+    // Derive every field server-side from the persisted notification row.
+    const { data: notif, error: notifErr } = await supabase
+      .from('notifications')
+      .select('id, type, title, message, target_user_id, metadata')
+      .eq('id', notificationId)
+      .maybeSingle();
+
+    if (notifErr) {
+      console.error('[send-web-push] notification lookup failed', notifErr.message);
+      return securityJsonError(503, 'service_unavailable');
+    }
+    if (!notif || !notif.target_user_id) {
+      return new Response(JSON.stringify({ success: true, sent: 0, message: 'No target' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // subscriber_type is derived from notification metadata (never trusted from caller).
+    const metaSub = (notif.metadata && typeof notif.metadata === 'object' ? (notif.metadata as any).subscriber_type : null);
+    const subscriberType: SubscriberType = VALID_SUBSCRIBERS.includes(metaSub) ? metaSub : 'staff';
+    const title = clamp(notif.title, 120) || 'Notification';
+    const body = clamp(notif.message, 400);
+    const url = sanitizeUrl((notif.metadata as any)?.link_path);
+    const category = clamp(notif.type, 64) || null;
+    const targetUserId = notif.target_user_id as string;
+
     const { data: subs, error } = await supabase
       .from('push_subscriptions')
       .select('id, endpoint, p256dh, auth')
-      .eq('user_id', payload.user_id)
+      .eq('user_id', targetUserId)
       .eq('subscriber_type', subscriberType)
       .eq('is_active', true);
 
@@ -78,16 +129,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Idempotency: skip subscriptions that already have a successful delivery
+    // recorded for this notification_id. Protects retries + duplicate trigger fires.
+    const { data: existing } = await supabase
+      .from('push_delivery_log')
+      .select('subscription_id')
+      .eq('notification_id', notificationId)
+      .eq('status', 'sent');
+    const already = new Set((existing ?? []).map((r: any) => r.subscription_id));
+    const targets = subs.filter((s) => !already.has(s.id));
+
+    if (targets.length === 0) {
+      return new Response(JSON.stringify({ success: true, sent: 0, total: subs.length, skipped: 'idempotent' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const pushPayload = JSON.stringify({
-      title: payload.title,
-      body: payload.body || '',
-      url: payload.url || '/',
-      category: payload.category || null,
-      notification_id: payload.notification_id || null,
+      title,
+      body,
+      url,
+      category,
+      notification_id: notificationId,
     });
 
     const results = await Promise.all(
-      subs.map(async (sub) => {
+      targets.map(async (sub) => {
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -95,45 +162,39 @@ Deno.serve(async (req) => {
           );
           await supabase.from('push_delivery_log').insert({
             subscription_id: sub.id,
-            user_id: payload.user_id,
-            notification_id: payload.notification_id,
+            user_id: targetUserId,
+            notification_id: notificationId,
             status: 'sent',
             status_code: 201,
-            payload_title: payload.title,
+            payload_title: title,
           });
           return { id: sub.id, ok: true };
         } catch (err: any) {
           const code = err?.statusCode || 0;
-          // 404/410 = subscription expired/invalid → mark inactive
           if (code === 404 || code === 410) {
-            await supabase
-              .from('push_subscriptions')
-              .update({ is_active: false })
-              .eq('id', sub.id);
+            await supabase.from('push_subscriptions').update({ is_active: false }).eq('id', sub.id);
           }
           await supabase.from('push_delivery_log').insert({
             subscription_id: sub.id,
-            user_id: payload.user_id,
-            notification_id: payload.notification_id,
+            user_id: targetUserId,
+            notification_id: notificationId,
             status: 'failed',
             status_code: code,
+            // Redact provider error details from client-visible responses; only log server-side.
             error_message: String(err?.body || err?.message || err).slice(0, 500),
-            payload_title: payload.title,
+            payload_title: title,
           });
-          return { id: sub.id, ok: false, code };
+          return { id: sub.id, ok: false };
         }
       }),
     );
 
     const sent = results.filter((r) => r.ok).length;
-    return new Response(JSON.stringify({ success: true, sent, total: subs.length, results }), {
+    return new Response(JSON.stringify({ success: true, sent, total: subs.length }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
     console.error('[send-web-push] error', err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return securityJsonError(503, 'service_unavailable');
   }
 });
