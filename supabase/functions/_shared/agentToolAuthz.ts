@@ -22,9 +22,13 @@ export const TOOL_SECURITY_POLICIES:Record<string,ToolSecurityPolicy>={
   'add_game_plan_milestone':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
   'add_game_plan_note':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
   'add_game_plan_phase':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
-  'bulk_create_reminders':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human','internal']},
-  'bulk_set_follow_up_dates':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human','internal']},
-  'bulk_update_clients':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human','internal']},
+  // WP-05C — bulk tools carry an explicit batch ceiling and a service-role
+  // caller allowlist. agent-task-runner is the only internal caller today; add
+  // future runners here by name (matches ctx.internalCaller passed by the
+  // execute-tool handler in ai-dashboard-agent/index.ts).
+  'bulk_create_reminders':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human','internal'],maxBatchSize:100,allowedInternalCallers:['agent-task-runner']},
+  'bulk_set_follow_up_dates':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human','internal'],maxBatchSize:100,allowedInternalCallers:['agent-task-runner']},
+  'bulk_update_clients':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human','internal'],maxBatchSize:50,allowedInternalCallers:['agent-task-runner']},
   'calculate_equity_position':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
   'calculate_lmi':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
   'calculate_loan_repayment':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
@@ -349,12 +353,21 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
   if (!policy.allowedActorTypes.includes(ctx.actorType)) {
     throw new AgentToolAuthzError('actor_denied', `Tool '${name}' cannot be invoked by actor '${ctx.actorType}'`);
   }
-  // Batch ceiling (defensive; policies may set maxBatchSize in WP-05C).
+  // Batch ceiling (WP-05C). Every bulk_* policy MUST declare maxBatchSize; the
+  // gate scans every array-valued top-level arg and rejects the largest one
+  // that exceeds the ceiling. This blocks callers from renaming the payload
+  // (e.g. `client_ids` vs `updates`) to slip past a hard-coded key check.
   if (typeof policy.maxBatchSize === 'number') {
-    const arr = (Array.isArray(args?.ids) && args.ids) || (Array.isArray(args?.items) && args.items) || null;
-    if (arr && arr.length > policy.maxBatchSize) {
-      throw new AgentToolAuthzError('batch_too_large', `Tool '${name}' batch of ${arr.length} exceeds ceiling ${policy.maxBatchSize}`);
+    let largest = 0;
+    for (const v of Object.values(args || {})) {
+      if (Array.isArray(v) && v.length > largest) largest = v.length;
     }
+    if (largest > policy.maxBatchSize) {
+      throw new AgentToolAuthzError('batch_too_large', `Tool '${name}' batch of ${largest} exceeds ceiling ${policy.maxBatchSize}`);
+    }
+  } else if (name.startsWith('bulk_')) {
+    // Defense-in-depth: an un-ceilinged bulk tool is a config bug — refuse.
+    throw new AgentToolAuthzError('policy_denied', `Tool '${name}' is a bulk operation without a maxBatchSize policy`);
   }
   // Step-up gate (deletes, bulk_*, or explicit requiresStepUp).
   if (toolRequiresStepUp(name, policy) && !ctx.stepUpVerified) {
