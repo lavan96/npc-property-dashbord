@@ -111,6 +111,7 @@ jobs:
           node scripts/security/check-step-up-default.mjs
           node scripts/security/check-step-up-mfa-fail-closed.mjs
           node scripts/security/check-totp-enrollment-client-storage.mjs
+          node scripts/security/check-totp-settings-integration.mjs
           node scripts/security/check-step-up-consumption.mjs
           node scripts/security/check-step-up-audit-schema.mjs
           node scripts/security/check-step-up-session-binding.mjs
