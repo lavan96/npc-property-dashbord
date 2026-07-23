@@ -66,21 +66,30 @@ Deno.serve(async (req) => {
   // signed cron tick to fail with `invalid_internal_signature` under
   // INTERNAL_STRICT_SIGNED=true.
   const rawBody = await req.text();
+  const _u = new URL(req.url);
+  const _hash = async (s: string) => {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  };
+  const _bodyHash = await _hash(rawBody);
+  console.log('[dispatcher] incoming', {
+    pathname: _u.pathname, method: req.method, bodyLen: rawBody.length,
+    rawBody, bodyHash: _bodyHash,
+    ts: req.headers.get('x-internal-timestamp'),
+    nonce: req.headers.get('x-internal-nonce'),
+    caller: req.headers.get('x-internal-caller'),
+    keyId: req.headers.get('x-internal-key-id'),
+    sigPrefix: (req.headers.get('x-internal-signature')||'').slice(0,12),
+  });
   const gate = await verifyInternal(supabase, req, rawBody);
   if (!gate.ok) {
-    console.warn('[dispatcher] verifyInternal denied', {
-      errorCode: (gate as any).errorCode,
-      bodyLen: rawBody.length,
-      hasSig: !!req.headers.get('x-internal-signature'),
-      hasTs: !!req.headers.get('x-internal-timestamp'),
-      keyId: req.headers.get('x-internal-key-id'),
-      caller: req.headers.get('x-internal-caller'),
-    });
+    console.warn('[dispatcher] verifyInternal denied', { errorCode: (gate as any).errorCode });
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
 
 
   const startedAt = Date.now();
