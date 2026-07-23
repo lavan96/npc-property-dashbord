@@ -3,6 +3,7 @@
 // cadence and drops the fresh answer into notifications.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyAuth } from '../_shared/auth.ts';
+import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -37,7 +38,7 @@ Deno.serve(async (req) => {
     // Cron-triggered — accept either matching cron secret, or fall back to public
     // (align with existing market-* cron functions which are public).
     const secret = req.headers.get('x-cron-secret');
-    if (CRON_SECRET && secret && secret !== CRON_SECRET) return json({ error: 'unauthorized' }, 401);
+    if (!verifyRequiredCronSecret(CRON_SECRET, secret)) return json({ error: 'unauthorized' }, 401);
     return await runDue(sb);
   }
 
@@ -173,8 +174,8 @@ async function runOne(sb: any, sub: any): Promise<{ question_id: string | null; 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SERVICE_KEY}`,
-        'apikey': SERVICE_KEY,
+        'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
+        'x-internal-edge-secret': Deno.env.get('INTERNAL_EDGE_SECRET') || '',
       },
       body: JSON.stringify({ question: sub.question_template }),
     });

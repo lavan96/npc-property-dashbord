@@ -110,6 +110,7 @@ export async function verifyHuman(
   const authHeader = req.headers.get('authorization') || '';
   const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
 
+  let bearerWasRejected = false;
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7).trim();
     if (token && token !== anonKey && token.includes('.')) {
@@ -133,9 +134,13 @@ export async function verifyHuman(
           errorCode: null,
         });
       }
-      // A Bearer JWT that fails verification is NOT silently ignored in v2 —
-      // unless it is the anon key, treat it as a failed credential and also
-      // allow session fallback only when a separate session token exists.
+      // A Bearer JWT that fails verification is not identity. A separate
+      // opaque session can still authenticate the request during migration.
+      bearerWasRejected = true;
+    } else {
+      // The public anon key, a malformed JWT, or an arbitrary Bearer string
+      // must never silently become an anonymous caller.
+      bearerWasRejected = true;
     }
   }
 
@@ -156,7 +161,7 @@ export async function verifyHuman(
     return ctx({ errorCode: 'invalid_session' });
   }
 
-  return ctx({ errorCode: 'missing_credentials' });
+  return ctx({ errorCode: bearerWasRejected ? 'invalid_jwt' : 'missing_credentials' });
 }
 
 // ── Internal service authentication (AUTH-002) ────────────────────────────
@@ -227,7 +232,7 @@ export async function signInternalRequest(
   callerFunction: string
 ): Promise<Record<string, string>> {
   const secret = Deno.env.get('INTERNAL_EDGE_SECRET');
-  if (!secret) throw new Error('INTERNAL_EDGE_SECRET is not configured');
+  if (!secret || secret.trim().length < 16) throw new Error('INTERNAL_EDGE_SECRET is not configured or is too short');
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
   const nonce = [...nonceBytes].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -249,8 +254,11 @@ export async function signInternalRequest(
 export async function verifyInternal(
   supabase: any,
   req: Request,
-  rawBody: string
+  rawBody: string,
+  options: { allowLegacyStaticSecret?: boolean; allowLegacyServiceRoleKey?: boolean } = {},
 ): Promise<AuthContext> {
+  const allowLegacyStaticSecret = options.allowLegacyStaticSecret !== false;
+  const allowLegacyServiceRoleKey = options.allowLegacyServiceRoleKey !== false;
   // Preferred internal-auth path (AUTH-002): a dedicated INTERNAL_EDGE_SECRET
   // presented in x-internal-edge-secret, constant-time compared. Callers use
   // this instead of the crown-jewel service-role key, so a leak of this header
@@ -261,10 +269,11 @@ export async function verifyInternal(
   const presentedInternal = (req.headers.get('x-internal-edge-secret') || '').trim();
   const bearerForInternal = (req.headers.get('authorization') || '').startsWith('Bearer ')
     ? (req.headers.get('authorization') || '').slice(7).trim() : '';
-  if (internalSecret.length >= 16 && (
+  if (allowLegacyStaticSecret && internalSecret.length >= 16 && (
         (presentedInternal.length > 0 && constantTimeEqual(internalSecret, presentedInternal)) ||
         (bearerForInternal.length > 0 && constantTimeEqual(internalSecret, bearerForInternal))
       )) {
+    console.warn('[auth_v2] deprecated static internal secret accepted; migrate caller to signed envelope');
     return ctx({
       ok: true,
       authType: 'internal_service',
@@ -276,10 +285,13 @@ export async function verifyInternal(
     });
   }
 
+  // Deprecated compatibility path: this static credential is not accepted by verifySignedInternal.
+
   // Legacy path: direct service-role key comparison (shared-secret check).
   const authHeader = req.headers.get('authorization') || '';
   const serviceRoleKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
-  if (serviceRoleKey && authHeader.startsWith('Bearer ') && authHeader.slice(7).trim() === serviceRoleKey) {
+  if (allowLegacyServiceRoleKey && serviceRoleKey && authHeader.startsWith('Bearer ') && authHeader.slice(7).trim() === serviceRoleKey) {
+    console.warn('[auth_v2] deprecated service-role HTTP credential accepted; migrate caller to signed envelope');
     return ctx({
       ok: true,
       authType: 'internal_service',
