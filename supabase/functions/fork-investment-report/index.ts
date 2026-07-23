@@ -1,7 +1,7 @@
 /**
  * fork-investment-report
  * ----------------------
- * Takes a completed composite Investment Report and deterministically produces
+ * Takes a completed Compass-base Investment Report and deterministically produces
  * two derived client-facing reports:
  *
  *   - 'financial'      → Client Investment Feasibility & Financial Performance
@@ -161,8 +161,10 @@ async function loadComposite(supabase: any, id: string) {
     .maybeSingle();
   if (error) throw new Error(`Failed to load composite: ${error.message}`);
   if (!data) throw new Error(`Composite report ${id} not found`);
-  if (data.report_variant !== 'composite') {
-    throw new Error(`Report ${id} is not a composite (variant=${data.report_variant})`);
+  // `composite` is a legacy storage value for the Compass base engine. New
+  // records persist `compass`; accept both so historical reports remain usable.
+  if (data.report_variant !== 'composite' && data.report_variant !== 'compass') {
+    throw new Error(`Report ${id} is not a Compass base report (variant=${data.report_variant})`);
   }
   if (data.status !== 'completed') {
     throw new Error(`Composite report ${id} is not yet completed (status=${data.status})`);

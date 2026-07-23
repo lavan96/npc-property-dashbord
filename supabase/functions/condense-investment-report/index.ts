@@ -374,6 +374,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    // The client-facing variant is required at creation time. Never rely on
+    // the database default here: that would mislabel a Briefing/Snapshot as a
+    // Compass base report in the generated report library.
+    const reportVariant = targetTier as 'briefing' | 'snapshot' | 'financial';
+
     // Supabase client already initialized above for auth verification
 
     // Fetch the parent (Compass) report
@@ -426,6 +431,7 @@ Deno.serve(async (req) => {
         report_content: `Generating ${TIER_CONFIG[targetTier].name}...`,
         status: 'pending',
         report_tier: targetTier,
+        report_variant: reportVariant,
         parent_report_id: parentReportId,
         report_scope: parentReport.report_scope,
         property_specs: parentReport.property_specs,

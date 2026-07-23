@@ -1,4 +1,4 @@
-import { ArrowLeft, Calculator, Download, Edit, Images, MoreHorizontal, Send, Settings } from 'lucide-react';
+import { ArrowLeft, Calculator, Download, Edit, FolderOpen, Images, MoreHorizontal, Send, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,13 +12,14 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ReportVariantControls } from '@/components/reports/ReportVariantControls';
 import type { ClientInfo, InvestmentReport } from './types';
-import { getReportStatusLabel, getReportTierLabel } from './utils';
+import { getReportTierLabel } from './utils';
 
 interface Props {
   report: InvestmentReport;
   clientInfo: ClientInfo | null;
   isClientReport: boolean;
   onBack: () => void;
+  onReportsHome: () => void;
   onBackToClient: () => void;
   onNavigateToReport: (reportId: string) => void;
   onSendToClient: () => void;
@@ -34,6 +35,7 @@ export function InvestmentReportCommandHeader({
   clientInfo,
   isClientReport,
   onBack,
+  onReportsHome,
   onBackToClient,
   onNavigateToReport,
   onSendToClient,
@@ -44,12 +46,16 @@ export function InvestmentReportCommandHeader({
   onDownload,
 }: Props) {
   const reportTierLabel = getReportTierLabel(report);
-  const reportStatusLabel = getReportStatusLabel(report);
 
   return (
     <div className="sticky top-0 z-30 border-b bg-background/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 flex-shrink-0 sm:px-4">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <div className="flex min-w-0 items-center gap-3">
+          <Button variant="outline" size="sm" onClick={onReportsHome} className="shrink-0 bg-background/80 px-2 shadow-sm sm:px-3">
+            <FolderOpen className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Generated Reports</span>
+            <span className="sr-only sm:hidden">Generated Reports home</span>
+          </Button>
           {isClientReport && clientInfo ? (
             <Button variant="ghost" size="sm" onClick={onBackToClient} className="shrink-0 px-2 sm:px-3">
               <ArrowLeft className="h-4 w-4 sm:mr-2" />
@@ -83,11 +89,6 @@ export function InvestmentReportCommandHeader({
               onNavigate={onNavigateToReport}
             />
           </div>
-          {report.status && (
-            <Badge variant="secondary" className="max-w-[140px] truncate capitalize">
-              {reportStatusLabel}
-            </Badge>
-          )}
         </div>
 
         <div className="flex min-w-0 items-center justify-end gap-2">
@@ -95,11 +96,6 @@ export function InvestmentReportCommandHeader({
             <Badge variant="outline" className="max-w-[120px] truncate capitalize">
               {reportTierLabel}
             </Badge>
-            {report.status && (
-              <Badge variant="secondary" className="max-w-[120px] truncate capitalize">
-                {reportStatusLabel}
-              </Badge>
-            )}
           </div>
 
           <div className="hidden rounded-lg border bg-card/70 p-1 shadow-sm md:block xl:hidden">

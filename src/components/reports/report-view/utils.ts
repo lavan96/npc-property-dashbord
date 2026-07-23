@@ -13,7 +13,7 @@ export function getReportTierLabel(report: InvestmentReport | null) {
 }
 
 export function getReportVariantLabel(report: InvestmentReport | null) {
-  return getCanonicalReportVariantLabel(report?.report_variant);
+  return getCanonicalReportVariantLabel(report);
 }
 
 export function getReportStatusLabel(report: InvestmentReport | null) {

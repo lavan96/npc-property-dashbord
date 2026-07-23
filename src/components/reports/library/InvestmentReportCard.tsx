@@ -105,9 +105,9 @@ export function InvestmentReportCard({
                 </Badge>
               )}
               {report.report_tier && <TierBadge tier={report.report_tier} showIcon={false} />}
-              {report.report_variant && report.report_variant !== 'composite' && (
+              {report.report_variant && (
                 <Badge variant="outline" className="text-xs">
-                  {getReportVariantLabel(report.report_variant)}
+                  {getReportVariantLabel(report)}
                 </Badge>
               )}
             </div>
