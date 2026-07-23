@@ -3882,9 +3882,10 @@ ${cleanContent.length + 500}
 
       // WP-06 Phase B — bind the export object to the conversation owner so
       // future reads authorize through storage_object_bindings.
+      // (WP-07 fix: report_qa_conversations owner column is `created_by`.)
       const { data: convRow } = await supabase
         .from('report_qa_conversations')
-        .select('user_id, client_id')
+        .select('created_by, client_id')
         .eq('id', conversationId)
         .maybeSingle();
       const { error: qaBindErr } = await supabase.from('storage_object_bindings').upsert({
@@ -3893,10 +3894,11 @@ ${cleanContent.length + 500}
         resource_type: 'qa_export',
         resource_id: conversationId,
         client_id: convRow?.client_id ?? null,
-        owner_user_id: convRow?.user_id ?? null,
+        owner_user_id: convRow?.created_by ?? userId ?? null,
         sensitivity: 'sensitive',
-        created_by: convRow?.user_id ?? null,
+        created_by: convRow?.created_by ?? userId ?? null,
       }, { onConflict: 'bucket,object_path' });
+
       if (qaBindErr) {
         await supabase.storage.from('qa_exports').remove([fileName]).catch(() => {});
         throw new Error(`Failed to bind PDF object: ${qaBindErr.message}`);
