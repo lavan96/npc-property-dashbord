@@ -115,20 +115,14 @@ Deno.serve(async (req) => {
         return;
       }
 
-      const url = `${supabaseUrl}/functions/v1/${workerName}`;
+      // WP-12 Phase B: sign the worker call with the HMAC envelope. The
+      // worker verifies `strict: true, allowedCallers: ['migration-dispatcher']`
+      // and will reject any caller that isn't us — legacy static-secret and
+      // service-role fallbacks are disabled on those receivers.
       try {
-        const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
-        const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
-        const r = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // AUTH-002: internal secret, not the service-role key (header or body).
-            Authorization: `Bearer ${_anon}`,
-            ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
-            'x-internal-call': 'true',
-          },
-          body: JSON.stringify({
+        const r = await callInternalFunction(
+          workerName,
+          {
             job_id: job.id,
             source_account: job.source_account,
             target_account: job.target_account,
@@ -136,17 +130,18 @@ Deno.serve(async (req) => {
             payload: job.payload || {},
             _dispatched_by: 'cron',
             _dispatch_count: job.dispatch_count,
-          }),
-        });
+          },
+          'migration-dispatcher',
+          { timeoutMs: 120000 },
+        );
         if (!r.ok) {
-          const t = await r.text().catch(() => '');
           console.error(
-            `[dispatcher] Worker ${workerName} returned ${r.status} for job ${job.id}: ${t.substring(0, 200)}`,
+            `[dispatcher] Worker ${workerName} returned ${r.status} for job ${job.id}: ${String(r.error || '').substring(0, 200)}`,
           );
         }
       } catch (e: any) {
         console.error(
-          `[dispatcher] Dispatch fetch threw for job ${job.id}:`,
+          `[dispatcher] Dispatch call threw for job ${job.id}:`,
           e?.message || e,
         );
       }
