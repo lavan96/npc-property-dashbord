@@ -25,6 +25,13 @@ import { generateStepUpToken, hashStepUpToken, resolveActiveStaffSession } from 
 import { createEncryptedTotpSecret, verifyEncryptedTotp } from '../_shared/totp.ts';
 import { generateRecoveryCodes, hashRecoveryCode, hashRecoveryCodes, isRecoveryCode, isRecoveryCodeHashConfigured } from '../_shared/recoveryCodes.ts';
 import { consumeRateLimit, getTrustedClientIp } from '../_shared/requestSecurity.ts';
+import {
+  loadWebAuthnConfig,
+  buildRegistrationOptions,
+  verifyRegistration,
+  buildAssertionOptions,
+  verifyAssertion,
+} from '../_shared/webauthn.ts';
 
 const corsHeaders = createCorsHeaders();
 const STEP_UP_TTL_MS = 15 * 60 * 1000; // 15 min
