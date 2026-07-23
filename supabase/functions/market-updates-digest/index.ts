@@ -4,6 +4,8 @@
 // narrative, and persists one row per (period, period_start) in market_digests.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyRequiredCronSecret, securityJsonError } from "../_shared/requestSecurity.ts";
+import { verifyAuth } from "../_shared/auth.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
