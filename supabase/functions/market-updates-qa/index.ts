@@ -1,10 +1,12 @@
 // Market Updates Q&A — Phase 6: hybrid retrieval, adaptive model, conversation history,
 // richer grounded schema (key figures, follow-ups, sentiment, time horizon).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireModulePermission } from '../_shared/authz.ts';
+import { consumeRateLimit, enforceJsonBodyLimit, getTrustedClientIp, securityJsonError, verifyHuman } from '../_shared/requestSecurity.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-portal-session-token, x-cron-secret',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (body: unknown, status = 200) =>
@@ -155,6 +157,7 @@ STRICT RULES:
       },
     }],
     tool_choice: { type: 'function', function: { name: 'submit_market_answer' } },
+    max_tokens: 900,
   };
 
   try {
@@ -197,75 +200,28 @@ const RATE_LIMIT_DAY = Number(Deno.env.get('MARKET_QA_RATE_LIMIT_DAY') || 200);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
-  const auth = req.headers.get('authorization');
-  const cron = req.headers.get('x-cron-secret');
-  if (!auth && cron !== Deno.env.get('MARKET_INGESTION_CRON_SECRET')) {
-    return json({ error: 'Authenticated user required.' }, 401);
-  }
-
-  // Service-role client for retrieval + persistence (bypasses RLS so we can
-  // read published market updates and log Q&A history regardless of caller role).
-  const sb = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
-
-  // Separate anon-key client that carries the caller's JWT — used only to
-  // resolve their identity for rate-limiting + attribution. Never used for
-  // data queries (would re-enable RLS and hide published rows).
-  let userId: string | null = null;
-  if (auth) {
-    try {
-      const anonClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: auth } } },
-      );
-      const { data: u } = await anonClient.auth.getUser(auth.replace(/^Bearer\s+/i, ''));
-      userId = u?.user?.id ?? null;
-    } catch { /* ignore — anonymous callers still get an answer */ }
-  }
-
-  const payload = await req.json().catch(() => ({}));
-  const question = String(payload?.question ?? '').trim();
-  const updateIds: string[] = Array.isArray(payload?.updateIds) ? payload.updateIds : [];
-  const segment: string | undefined = payload?.segment;
-  const stream: boolean = Boolean(payload?.stream);
-  const conversation_id: string | null = typeof payload?.conversation_id === 'string' ? payload.conversation_id : null;
-  const history: HistoryTurn[] = Array.isArray(payload?.history)
-    ? payload.history
-        .filter((h: any) => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
-        .map((h: any) => ({ role: h.role, content: String(h.content).slice(0, 1200) }))
-        .slice(-8)
-    : [];
-
-  if (question.length < 4) {
-    return json({
-      answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0,
-      limitations: ['A specific question is required.'],
-      follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
-      retrieved: [], question_id: null,
-    });
-  }
-
-  // Rate limiting — per authenticated user.
-  if (userId) {
-    const oneHourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-    const [{ count: hourCount }, { count: dayCount }] = await Promise.all([
-      sb.from('market_update_questions').select('id', { count: 'exact', head: true }).eq('created_by', userId).gte('created_at', oneHourAgo),
-      sb.from('market_update_questions').select('id', { count: 'exact', head: true }).eq('created_by', userId).gte('created_at', oneDayAgo),
-    ]);
-    if ((hourCount ?? 0) >= RATE_LIMIT_HOUR || (dayCount ?? 0) >= RATE_LIMIT_DAY) {
-      return json({
-        answer: `You have reached the Market Q&A rate limit (${RATE_LIMIT_HOUR}/hour, ${RATE_LIMIT_DAY}/day). Please wait and try again.`,
-        citations: [], source_update_ids: [], confidence_score: 0,
-        limitations: ['Rate limit exceeded — protects the shared model budget.'],
-        follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral',
-        retrieved: [], question_id: null, rate_limited: true,
-      }, 429);
-    }
-  }
+  if (req.method !== 'POST') return json({ error: 'Invalid request.' }, 400);
+  const parsed = await enforceJsonBodyLimit<any>(req, 100_000);
+  if (!parsed.ok) return new Response(parsed.error.body, { status: parsed.error.status, headers: { ...cors, 'content-type': 'application/json' } });
+  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const auth = await verifyHuman(sb, req, parsed.value);
+  if (!auth.ok || !auth.actorId) return new Response(securityJsonError(401, 'authentication_required', auth.correlationId).body, { status: 401, headers: { ...cors, 'content-type': 'application/json' } });
+  const permission = await requireModulePermission(sb, { userId: auth.actorId, authMethod: auth.method }, 'market_updates', 'can_view');
+  if (!permission.ok) return new Response(securityJsonError(403, 'market_access_denied', auth.correlationId).body, { status: 403, headers: { ...cors, 'content-type': 'application/json' } });
+  const payload = parsed.value;
+  const question = typeof payload?.question === 'string' ? payload.question.trim().slice(0, 4000) : '';
+  const updateIds: string[] = Array.isArray(payload?.updateIds) ? payload.updateIds.filter((id: unknown) => typeof id === 'string').slice(0, 20) : [];
+  const segment: string | undefined = typeof payload?.segment === 'string' && payload.segment.length <= 80 ? payload.segment : undefined;
+  const stream = payload?.stream === true;
+  const conversation_id: string | null = typeof payload?.conversation_id === 'string' && payload.conversation_id.length <= 100 ? payload.conversation_id : null;
+  const history: HistoryTurn[] = Array.isArray(payload?.history) ? payload.history.filter((h: any) => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string').map((h: any) => ({ role: h.role, content: String(h.content).slice(0, 1200) })).slice(-6) : [];
+  if (question.length < 4) return json({ answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0, limitations: ['A specific question is required.'], follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral', retrieved: [], question_id: null });
+  const ip = getTrustedClientIp(req.headers);
+  try {
+    const limits = await Promise.all([consumeRateLimit(sb, `marketqa:user:${auth.actorId}`, RATE_LIMIT_HOUR, 3600), consumeRateLimit(sb, `marketqa:daily:${auth.actorId}`, RATE_LIMIT_DAY, 86400), consumeRateLimit(sb, 'marketqa:global', Number(Deno.env.get('MARKET_QA_GLOBAL_DAILY_LIMIT') || 2000), 86400), ...(ip ? [consumeRateLimit(sb, `marketqa:ip:${ip}`, 60, 3600)] : [])]);
+    if (limits.some((limit) => !limit.allowed)) return new Response(securityJsonError(429, 'rate_limited', auth.correlationId).body, { status: 429, headers: { ...cors, 'content-type': 'application/json' } });
+  } catch { return new Response(securityJsonError(503, 'metering_unavailable', auth.correlationId).body, { status: 503, headers: { ...cors, 'content-type': 'application/json' } }); }
+  const userId = auth.actorId;
 
   const terms = pickTerms(question);
 
