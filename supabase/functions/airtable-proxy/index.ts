@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { checkModuleView } from '../_shared/permissions.ts';
+import { isSuperadmin, rateLimit, redactUpstreamError } from '../_shared/wp08Guards.ts';
 
 interface AirtableRecord {
   id: string;
