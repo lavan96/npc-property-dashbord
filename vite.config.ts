@@ -16,6 +16,12 @@ export default defineConfig(() => ({
     },
   },
   build: {
+    commonjsOptions: {
+      // The vendored QRCode library under src/lib/security/vendor/qrcode is
+      // CommonJS. Rollup's commonjs plugin only scans node_modules by default,
+      // so opt this path in explicitly to allow `import QRCode from '...'`.
+      include: [/node_modules/, /src\/lib\/security\/vendor\/qrcode/],
+    },
     rollupOptions: {
       output: {
         manualChunks: {
