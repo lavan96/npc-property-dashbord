@@ -2982,7 +2982,13 @@ ${transcript}`;
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // WP-07 — only owner/admin can (re)share; sharees cannot expand access.
+      const shareAccess = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canAdminister(shareAccess.role)) return denyResponse('Only the owner can share this conversation');
+
       const { error: shareError } = await supabase
+
         .from("report_qa_conversation_shares")
         .insert({
           conversation_id: conversationId,
