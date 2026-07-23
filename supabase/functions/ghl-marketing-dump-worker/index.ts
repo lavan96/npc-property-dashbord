@@ -30,11 +30,11 @@ Deno.serve(async (req) => {
     // service-role key), not the spoofable `x-internal-call: true` header that
     // any caller could set. rawBody is read once for verification + parsing.
     const rawBody = await req.text().catch(() => '');
-    const internal = await verifyInternal(supabase, req, rawBody);
+    const internal = await verifyInternal(supabase, req, rawBody, {
+      strict: true,
+      allowedCallers: ['ghl-marketing-dump-enqueue', 'ghl-marketing-dump-worker'],
+    });
     if (!internal.ok) {
-      return new Response(JSON.stringify({ success: false, error: 'internal-only' }), { status: 403, headers: corsHeaders });
-    }
-    // Strict-lock will be enabled below via verifyInternal opts
       return new Response(JSON.stringify({ success: false, error: 'internal-only' }), { status: 403, headers: corsHeaders });
     }
 
