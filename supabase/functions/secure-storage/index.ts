@@ -284,6 +284,44 @@ Deno.serve(async (req) => {
           return jsonResponse({ success: false, error: 'Upload failed' }, corsHeaders, 500);
         }
 
+        // WP-06 Phase B — persist a storage_object_bindings row so this object
+        // is authorizable on future reads. Sensitive buckets require a resource
+        // reference (client_id OR owner_user_id); if the caller omitted both we
+        // fall back to owner_user_id = actorId and log `binding_owner_fallback`
+        // so producers still-missing metadata are visible in telemetry.
+        const sensitivityAtUpload = BUCKET_SENSITIVITY[bucket];
+        if (sensitivityAtUpload && sensitivityAtUpload !== 'public_asset') {
+          const resolvedOwner = bindingOwnerUserId || (isInternal ? null : actorId);
+          const bindingRes = await createStorageBinding(supabase, {
+            bucket,
+            object_path: data.path,
+            resource_type: typeof resource_type === 'string' && resource_type ? resource_type : 'generic',
+            resource_id: typeof resource_id === 'string' ? resource_id : null,
+            client_id: typeof bindingClientId === 'string' ? bindingClientId : null,
+            owner_user_id: resolvedOwner,
+            sensitivity: sensitivityAtUpload,
+            created_by: actorId,
+          });
+          if (!bindingRes.ok) {
+            // Rollback: remove the just-uploaded object so we never leave an
+            // orphan that reads cannot authorize against.
+            await rollbackStorageObject(supabase, bucket, data.path);
+            await logSecurityEvent(supabase, {
+              action: 'storage.upload', decision: 'deny', reason_code: 'binding_create_failed',
+              actor_type: isInternal ? 'internal_service' : 'human', actor_id: actorId,
+              target_type: 'storage_object', target_id: `${bucket}/${data.path}`,
+            });
+            return jsonResponse({ success: false, error: 'Upload failed' }, corsHeaders, 500);
+          }
+          if (!bindingClientId && !bindingOwnerUserId && !isInternal) {
+            await logSecurityEvent(supabase, {
+              action: 'storage.upload', decision: 'allow', reason_code: 'binding_owner_fallback',
+              actor_type: 'human', actor_id: actorId,
+              target_type: 'storage_object', target_id: `${bucket}/${data.path}`,
+            });
+          }
+        }
+
         console.log(`[Secure Storage] Uploaded: ${bucket}/${path}`);
         return jsonResponse({ success: true, data: { path: data.path, fullPath: data.fullPath } }, corsHeaders);
       }
