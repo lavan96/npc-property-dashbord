@@ -1167,8 +1167,26 @@ Deno.serve(async (req) => {
       return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log(`[report-qa] Authenticated user: ${userId}`);
-    
+
+    // WP-07 — resolve superadmin once; all access decisions route through the
+    // shared resolver so we never "select then filter in JS".
+    let isSuperadmin = false;
+    if (userId) {
+      const { data: roleRow } = await supabase
+        .from('custom_users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      isSuperadmin = (roleRow?.role || '').toString().toLowerCase() === 'superadmin';
+    }
+    const denyResponse = (msg = 'Not authorized for this conversation') =>
+      new Response(JSON.stringify({ error: msg }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
     const { action } = body;
+
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
