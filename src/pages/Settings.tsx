@@ -39,6 +39,7 @@ import { PurchaseHistoryCard } from "@/components/settings/PurchaseHistoryCard";
 import { DeviceManagementCard } from "@/components/settings/DeviceManagementCard";
 import { TotpEnrollmentCard } from "@/components/settings/TotpEnrollmentCard";
 import { RecoveryCodeCard } from "@/components/settings/RecoveryCodeCard";
+import { WebAuthnSettings } from "@/components/settings/WebAuthnSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
