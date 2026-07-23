@@ -353,12 +353,21 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
   if (!policy.allowedActorTypes.includes(ctx.actorType)) {
     throw new AgentToolAuthzError('actor_denied', `Tool '${name}' cannot be invoked by actor '${ctx.actorType}'`);
   }
-  // Batch ceiling (defensive; policies may set maxBatchSize in WP-05C).
+  // Batch ceiling (WP-05C). Every bulk_* policy MUST declare maxBatchSize; the
+  // gate scans every array-valued top-level arg and rejects the largest one
+  // that exceeds the ceiling. This blocks callers from renaming the payload
+  // (e.g. `client_ids` vs `updates`) to slip past a hard-coded key check.
   if (typeof policy.maxBatchSize === 'number') {
-    const arr = (Array.isArray(args?.ids) && args.ids) || (Array.isArray(args?.items) && args.items) || null;
-    if (arr && arr.length > policy.maxBatchSize) {
-      throw new AgentToolAuthzError('batch_too_large', `Tool '${name}' batch of ${arr.length} exceeds ceiling ${policy.maxBatchSize}`);
+    let largest = 0;
+    for (const v of Object.values(args || {})) {
+      if (Array.isArray(v) && v.length > largest) largest = v.length;
     }
+    if (largest > policy.maxBatchSize) {
+      throw new AgentToolAuthzError('batch_too_large', `Tool '${name}' batch of ${largest} exceeds ceiling ${policy.maxBatchSize}`);
+    }
+  } else if (name.startsWith('bulk_')) {
+    // Defense-in-depth: an un-ceilinged bulk tool is a config bug — refuse.
+    throw new AgentToolAuthzError('policy_denied', `Tool '${name}' is a bulk operation without a maxBatchSize policy`);
   }
   // Step-up gate (deletes, bulk_*, or explicit requiresStepUp).
   if (toolRequiresStepUp(name, policy) && !ctx.stepUpVerified) {
