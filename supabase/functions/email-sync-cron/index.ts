@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
   // field is NOT. rawBody is read for signature verification.
   const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const rawBody = await req.text().catch(() => '');
-  const internal = await verifyInternal(authClient, req, rawBody);
+  const internal = await verifyInternal(authClient, req, rawBody, { strict: true, allowedCallers: ['pg_cron'] });
   if (!internal.ok) {
     await logSecurityEvent(authClient, {
       action: 'email_sync_cron.invoke',
