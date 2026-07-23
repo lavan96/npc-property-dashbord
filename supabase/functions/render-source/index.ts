@@ -73,9 +73,15 @@ Deno.serve(async (req) => {
     if (!url && !jsx && !zipBase64 && (!html || !html.trim())) {
       return json({ error: 'Provide `html`, `url`, `jsx`, or `zipBase64`.' }, 400, cors);
     }
+    // WP-13: cap zip payload size before forwarding (guards against
+    // decompression bombs and memory exhaustion at the sidecar).
+    if (zipBase64 && zipBase64.length > MAX_ZIP_B64_BYTES) {
+      return json({ error: 'zipBase64 exceeds maximum size.' }, 413, cors);
+    }
     if (url) {
       try { assertFetchable(url); } catch (e) { return json({ error: (e as Error).message }, 400, cors); }
     }
+
 
     const width = Math.min(MAX_DIM, Math.max(320, Number(body.width) || 1280));
     const height = Math.min(MAX_DIM, Math.max(320, Number(body.height) || 1600));
