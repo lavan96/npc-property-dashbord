@@ -4651,33 +4651,60 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          idle_expires_at: string | null
           impersonator_finance_contact_id: string | null
           impersonator_finance_user_id: string | null
           impersonator_staff_user_id: string | null
+          ip_address: string | null
           is_readonly: boolean
+          last_used_at: string | null
+          portal_scope: string
+          revocation_reason: string | null
+          revoked_at: string | null
+          rotated_from_session_id: string | null
           session_token: string
+          token_hash: string | null
+          user_agent: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           expires_at: string
           id?: string
+          idle_expires_at?: string | null
           impersonator_finance_contact_id?: string | null
           impersonator_finance_user_id?: string | null
           impersonator_staff_user_id?: string | null
+          ip_address?: string | null
           is_readonly?: boolean
+          last_used_at?: string | null
+          portal_scope?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          rotated_from_session_id?: string | null
           session_token: string
+          token_hash?: string | null
+          user_agent?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           expires_at?: string
           id?: string
+          idle_expires_at?: string | null
           impersonator_finance_contact_id?: string | null
           impersonator_finance_user_id?: string | null
           impersonator_staff_user_id?: string | null
+          ip_address?: string | null
           is_readonly?: boolean
+          last_used_at?: string | null
+          portal_scope?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          rotated_from_session_id?: string | null
           session_token?: string
+          token_hash?: string | null
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: [
@@ -9950,7 +9977,13 @@ export type Database = {
           revoked_at: string | null
           revoked_by: string | null
           session_expires_at: string | null
+          session_idle_expires_at: string | null
+          session_ip_address: string | null
+          session_last_used_at: string | null
+          session_revocation_reason: string | null
           session_token: string | null
+          session_token_hash: string | null
+          session_user_agent: string | null
           streak_freeze_until: string | null
           terms_accepted_at: string | null
           updated_at: string
@@ -9983,7 +10016,13 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           session_expires_at?: string | null
+          session_idle_expires_at?: string | null
+          session_ip_address?: string | null
+          session_last_used_at?: string | null
+          session_revocation_reason?: string | null
           session_token?: string | null
+          session_token_hash?: string | null
+          session_user_agent?: string | null
           streak_freeze_until?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
@@ -10016,7 +10055,13 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           session_expires_at?: string | null
+          session_idle_expires_at?: string | null
+          session_ip_address?: string | null
+          session_last_used_at?: string | null
+          session_revocation_reason?: string | null
           session_token?: string | null
+          session_token_hash?: string | null
+          session_user_agent?: string | null
           streak_freeze_until?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
@@ -19926,21 +19971,48 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          idle_expires_at: string | null
+          ip_address: string | null
+          last_used_at: string | null
+          portal_scope: string
+          revocation_reason: string | null
+          revoked_at: string | null
+          rotated_from_session_id: string | null
           session_token: string
+          token_hash: string | null
+          user_agent: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           expires_at: string
           id?: string
+          idle_expires_at?: string | null
+          ip_address?: string | null
+          last_used_at?: string | null
+          portal_scope?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          rotated_from_session_id?: string | null
           session_token: string
+          token_hash?: string | null
+          user_agent?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           expires_at?: string
           id?: string
+          idle_expires_at?: string | null
+          ip_address?: string | null
+          last_used_at?: string | null
+          portal_scope?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          rotated_from_session_id?: string | null
           session_token?: string
+          token_hash?: string | null
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: [

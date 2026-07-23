@@ -10,6 +10,7 @@
  */
 
 import { verifySupabaseJWT } from './jwt.ts';
+import { hashSessionToken, isSessionHashConfigured, computeIdleExpiry, isSessionUsable } from './sessionHash.ts';
 
 /** Constant-time string comparison (avoids leaking a secret via timing). */
 function constantTimeEqualStr(a: string, b: string): boolean {
@@ -41,47 +42,84 @@ export async function verifySession(
     return { error: 'Authentication required', userId: null, username: null };
   }
 
-  console.log('[verifySession] Verifying session token:', sessionToken.substring(0, 8) + '...');
+  // WP-11A: never log a preview of the token; hash-derived id is what we key on.
+  console.log('[verifySession] Verifying session token (length:', sessionToken.length, ')');
 
   try {
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select('user_id, expires_at')
-      .eq('session_token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle(); // Use maybeSingle() to avoid "Cannot coerce" errors
+    // WP-11A: dual-read. Prefer HMAC hash lookup so a DB dump cannot be
+    // replayed as a live cookie; fall back to the legacy plaintext column
+    // for sessions issued before the migration window closed.
+    const hash = isSessionHashConfigured() ? await hashSessionToken(sessionToken) : null;
 
-    if (sessionError) {
-      console.log('[verifySession] Session query error:', sessionError.code, sessionError.message);
+    type Row = {
+      id: string;
+      user_id: string;
+      expires_at: string;
+      token_hash: string | null;
+      revoked_at: string | null;
+      idle_expires_at: string | null;
+    };
+
+    let session: Row | null = null;
+
+    if (hash) {
+      const { data } = await supabase
+        .from('user_sessions')
+        .select('id, user_id, expires_at, token_hash, revoked_at, idle_expires_at')
+        .eq('token_hash', hash)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      session = (data as Row | null) ?? null;
     }
 
-    if (sessionError || !session) {
-      const errorMsg = sessionError?.message || 'Session not found or expired';
-      console.log('[verifySession] Session validation failed:', errorMsg, {
-        errorCode: sessionError?.code,
-        hasSession: !!session,
-        sessionTokenPreview: sessionToken.substring(0, 8) + '...'
-      });
-      // Provide more specific error message
-      if (sessionError?.code === 'PGRST116') {
-        return { error: 'Session not found', userId: null, username: null };
+    let matchedByPlaintext = false;
+    if (!session) {
+      const { data, error: sessionError } = await supabase
+        .from('user_sessions')
+        .select('id, user_id, expires_at, token_hash, revoked_at, idle_expires_at')
+        .eq('session_token', sessionToken)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      if (sessionError) {
+        console.log('[verifySession] Session query error:', sessionError.code, sessionError.message);
       }
+      if (data) {
+        session = data as Row;
+        matchedByPlaintext = true;
+      }
+    }
+
+    if (!session) {
       return { error: 'Invalid or expired session', userId: null, username: null };
     }
 
-    console.log('[verifySession] Session found, user_id:', session.user_id?.substring(0, 8) + '...');
+    // WP-11A: idle-expiry and revocation checks.
+    const usable = isSessionUsable(session);
+    if (!usable.ok) {
+      console.log('[verifySession] Session unusable:', usable.reason);
+      return { error: 'Session revoked or expired', userId: null, username: null };
+    }
+
+    // WP-11A: lazily backfill token_hash + last_used_at + idle_expires_at.
+    try {
+      const patch: Record<string, unknown> = { last_used_at: new Date().toISOString() };
+      if (hash && (matchedByPlaintext || !session.token_hash)) patch.token_hash = hash;
+      if (!session.idle_expires_at) patch.idle_expires_at = computeIdleExpiry().toISOString();
+      await supabase.from('user_sessions').update(patch).eq('id', session.id);
+    } catch (bfErr) {
+      console.log('[verifySession] Backfill non-fatal error:', (bfErr as Error).message);
+    }
 
     // Optionally fetch username for logging
     const { data: user } = await supabase
       .from('custom_users')
       .select('username')
       .eq('id', session.user_id)
-      .maybeSingle(); // Use maybeSingle() to avoid errors if user doesn't exist
+      .maybeSingle();
 
-    console.log('[verifySession] Session authentication successful:', {
-      userId: session.user_id?.substring(0, 8) + '...',
-      username: user?.username || 'not found'
-    });
+    console.log('[verifySession] Session authentication successful (userId 8-prefix:',
+      session.user_id?.substring(0, 8) + '...',
+      'username:', user?.username || 'not found', ')');
 
     return {
       error: null,
