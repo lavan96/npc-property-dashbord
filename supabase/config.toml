@@ -882,11 +882,11 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.market-updates-qa]
-# Auth enforced in-function (any Authorization header or cron secret).
+# Auth enforced in-function: verified human session/JWT plus market_updates permission.
 verify_jwt = false
 
 [functions.market-updates-voice-transcribe]
-# Auth enforced in-function (Bearer required).
+# Auth enforced in-function: verified human session/JWT plus market_updates permission.
 verify_jwt = false
 
 [functions.market-updates-source-admin]

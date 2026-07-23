@@ -1,119 +1,52 @@
-// Market Updates Q&A voice-to-text.
-// Thin authenticated wrapper around Lovable AI Gateway's transcription endpoint.
-// Accepts { audio_base64, mime_type } and returns { transcript }.
-// No persistence — the transcript is inserted client-side into the Q&A composer.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireModulePermission } from '../_shared/authz.ts';
+import { consumeRateLimit, enforceBase64Limit, enforceJsonBodyLimit, getTrustedClientIp, securityJsonError, verifyHuman } from '../_shared/requestSecurity.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token, x-command-centre-session-token', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
+const MIME_TO_EXT: Record<string, string> = { 'audio/webm': 'webm', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/ogg': 'ogg' };
+const MAX_REQUEST_BYTES = 6_000_000;
+const MAX_AUDIO_BYTES = 4_000_000;
+const MAX_AUDIO_CHARS = 5_400_000;
+const MAX_ATTEMPTS = 2;
+const jsonError = (status: 400 | 401 | 403 | 413 | 429 | 503, code: string, correlationId?: string) => {
+  const response = securityJsonError(status, code, correlationId);
+  return new Response(response.body, { status: response.status, headers: { ...corsHeaders, ...Object.fromEntries(response.headers) } });
 };
-
-const MIME_TO_EXT: Record<string, string> = {
-  'audio/webm': 'webm',
-  'audio/webm;codecs=opus': 'webm',
-  'audio/mp4': 'mp4',
-  'audio/mpeg': 'mp3',
-  'audio/wav': 'wav',
-  'audio/ogg': 'ogg',
-};
-
-function base64ToBytes(b64: string): Uint8Array {
-  const clean = b64.includes(',') ? b64.split(',')[1] : b64;
-  const bin = atob(clean);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-
+  if (req.method !== 'POST') return jsonError(400, 'invalid_request');
+  const parsed = await enforceJsonBodyLimit<{ audio_base64?: unknown; mime_type?: unknown }>(req, MAX_REQUEST_BYTES);
+  if (!parsed.ok) return jsonError(parsed.error.status as 400 | 413, 'invalid_request');
+  const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const auth = await verifyHuman(sb, req, parsed.value);
+  if (!auth.ok || !auth.actorId) return jsonError(401, 'authentication_required', auth.correlationId);
+  const permission = await requireModulePermission(sb, { userId: auth.actorId, authMethod: auth.method }, 'market_updates', 'can_view');
+  if (!permission.ok) return jsonError(403, 'market_access_denied', auth.correlationId);
+  const audio = enforceBase64Limit(parsed.value.audio_base64, MAX_AUDIO_CHARS, MAX_AUDIO_BYTES);
+  if (!audio.ok) return jsonError(audio.error.status as 400 | 413, 'invalid_audio', auth.correlationId);
+  if (audio.decodedBytes < 512) return jsonError(400, 'invalid_audio', auth.correlationId);
+  const mimeType = typeof parsed.value.mime_type === 'string' ? parsed.value.mime_type.toLowerCase().split(';')[0] : 'audio/webm';
+  const ext = MIME_TO_EXT[mimeType];
+  if (!ext) return jsonError(400, 'unsupported_audio', auth.correlationId);
+  const ip = getTrustedClientIp(req.headers);
   try {
-    const auth = req.headers.get('Authorization') || '';
-    if (!auth.toLowerCase().startsWith('bearer ')) {
-      return new Response(JSON.stringify({ error: 'unauthenticated' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!lovableKey) {
-      return new Response(JSON.stringify({ error: 'missing_lovable_api_key' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const body = await req.json().catch(() => null);
-    const audioBase64: string | undefined = body?.audio_base64;
-    const mimeType: string = body?.mime_type || 'audio/webm';
-
-    if (!audioBase64 || typeof audioBase64 !== 'string') {
-      return new Response(JSON.stringify({ error: 'missing_audio' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const bytes = base64ToBytes(audioBase64);
-    if (bytes.length < 512) {
-      return new Response(JSON.stringify({ error: 'audio_too_short' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const ext = MIME_TO_EXT[mimeType.split(';')[0]] ?? 'webm';
-    // Fallback chain — cost-efficient first, then higher-accuracy.
-    // Both are the supported Lovable AI Gateway transcription model IDs.
-    const MODELS = ['openai/gpt-4o-mini-transcribe', 'openai/gpt-4o-transcribe'];
-    let transcript = '';
-    let lastStatus = 0;
-    let lastDetails = '';
-    let lastModel = '';
-    for (const model of MODELS) {
-      const form = new FormData();
-      form.append('model', model);
-      form.append('file', new Blob([bytes], { type: mimeType }), `recording.${ext}`);
-      const upstream = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${lovableKey}` },
-        body: form,
-      });
-      lastStatus = upstream.status;
-      lastModel = model;
-      if (upstream.ok) {
-        const data = await upstream.json().catch(() => ({}));
-        transcript = String(data?.text ?? '').trim();
-        break;
-      }
-      lastDetails = await upstream.text().catch(() => '');
-      // Only fall back on 400/404/422 (bad model/audio); stop on auth/rate/credit issues.
+    const limits = await Promise.all([consumeRateLimit(sb, `marketvoice:user:${auth.actorId}`, 10, 3600), ...(ip ? [consumeRateLimit(sb, `marketvoice:ip:${ip}`, 20, 3600)] : [])]);
+    if (limits.some((limit) => !limit.allowed)) return jsonError(429, 'rate_limited', auth.correlationId);
+  } catch { return jsonError(503, 'metering_unavailable', auth.correlationId); }
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) return jsonError(503, 'provider_unavailable', auth.correlationId);
+  const bytes = Uint8Array.from(atob(audio.normalized), (char) => char.charCodeAt(0));
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 20_000);
+  try {
+    for (const model of ['openai/gpt-4o-mini-transcribe', 'openai/gpt-4o-transcribe'].slice(0, MAX_ATTEMPTS)) {
+      const form = new FormData(); form.append('model', model); form.append('file', new Blob([bytes], { type: mimeType }), `recording.${ext}`);
+      const upstream = await fetch('https://ai.gateway.lovable.dev/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${key}` }, body: form, signal: controller.signal });
+      if (upstream.ok) { const data = await upstream.json().catch(() => ({})); return new Response(JSON.stringify({ transcript: String(data?.text ?? '').trim() }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
+      console.warn('[market-voice] provider rejected request', { status: upstream.status, correlationId: auth.correlationId, model });
       if (![400, 404, 422].includes(upstream.status)) break;
     }
-
-    if (!transcript && lastStatus && lastStatus >= 400) {
-      return new Response(JSON.stringify({
-        error: 'transcription_failed',
-        status: lastStatus,
-        model: lastModel,
-        details: lastDetails,
-      }), {
-        status: lastStatus,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ transcript, model: lastModel }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'internal_error', details: err instanceof Error ? err.message : String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+    return jsonError(503, 'transcription_unavailable', auth.correlationId);
+  } catch (error) { console.warn('[market-voice] provider failure', { correlationId: auth.correlationId, error: error instanceof Error ? error.name : 'unknown' }); return jsonError(503, 'transcription_unavailable', auth.correlationId); }
+  finally { clearTimeout(timeout); }
 });

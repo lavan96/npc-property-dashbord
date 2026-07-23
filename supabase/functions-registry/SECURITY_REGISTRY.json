@@ -1189,8 +1189,10 @@
     },
     "market-updates-qa": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "wp-02-market-ai-containment"
     },
     "market-updates-source-admin": {
       "verify_jwt": false,
@@ -1199,8 +1201,10 @@
     },
     "market-updates-voice-transcribe": {
       "verify_jwt": false,
-      "exposure_class": "needs-review",
-      "owner": "security-remediation-program"
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "reviewed_in": "wp-02-market-ai-containment"
     },
     "mcp": {
       "verify_jwt": true,

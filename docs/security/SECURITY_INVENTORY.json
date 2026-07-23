@@ -9,17 +9,17 @@
     "authenticated-or-service": 1,
     "authenticated-staff": 5,
     "cron-worker": 31,
-    "human-authenticated": 20,
+    "human-authenticated": 22,
     "internal-service": 2,
     "module-gated": 7,
-    "needs-review": 232,
+    "needs-review": 230,
     "public-auth": 16,
     "superadmin-only": 1,
     "webhook": 2,
     "webhook-clientstate": 1,
     "webhook-secret": 3
   },
-  "needs_review_count": 232,
+  "needs_review_count": 230,
   "functions_importing_shared_auth_modules": {
     "auth.ts": [
       "abs-data-service/index.ts",
@@ -194,7 +194,9 @@
       "market-qa-quality-report/index.ts",
       "market-qa-share/index.ts",
       "market-qa-subscriptions/index.ts",
+      "market-updates-qa/index.ts",
       "market-updates-source-admin/index.ts",
+      "market-updates-voice-transcribe/index.ts",
       "message-governance/index.ts",
       "migrate-comparison-scores/index.ts",
       "migration-dispatcher/index.ts",
@@ -310,6 +312,8 @@
       "manage-commission-ledger/index.ts",
       "manage-compliance-records/index.ts",
       "manage-generated-documents/index.ts",
+      "market-updates-qa/index.ts",
+      "market-updates-voice-transcribe/index.ts",
       "outlook-manage-subscription/index.ts"
     ],
     "permissions.ts": [
@@ -349,6 +353,10 @@
       "generate-market-intelligence-report/index.ts",
       "generate-portfolio-analysis/index.ts",
       "regenerate-report-qualitative/index.ts"
+    ],
+    "requestSecurity.ts": [
+      "market-updates-qa/index.ts",
+      "market-updates-voice-transcribe/index.ts"
     ]
   },
   "statically_derivable_inter_function_graph": [

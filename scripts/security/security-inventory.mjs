@@ -26,8 +26,8 @@ const walk = (directory) => readdirSync(directory, { withFileTypes: true }).flat
   const file = join(directory, entry.name);
   return entry.isDirectory() ? walk(file) : /\.(?:ts|tsx|js)$/.test(entry.name) ? [file] : [];
 });
-const files = walk(functionsDir).sort();
-const sharedAuthModules = ['auth.ts', 'auth_v2.ts', 'authz.ts', 'permissions.ts', 'internalCall.ts', 'resetTokens.ts', 'notify.ts', 'reportMetering.ts'];
+const files = walk(functionsDir).filter((file) => !file.includes('/_shared/tests/')).sort();
+const sharedAuthModules = ['auth.ts', 'auth_v2.ts', 'authz.ts', 'permissions.ts', 'internalCall.ts', 'resetTokens.ts', 'notify.ts', 'reportMetering.ts', 'requestSecurity.ts'];
 const sharedImports = Object.fromEntries(sharedAuthModules.map((module) => [module, []]));
 const internalEdges = new Set();
 for (const file of files) {
