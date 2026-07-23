@@ -147,7 +147,7 @@ export function StepUpDialog({
                 setBusy(true); setError(null);
                 const r = await requestStepUpWithWebAuthn(capability, password);
                 setBusy(false);
-                if (!r.ok) { setError(r.error || 'Verification failed.'); return; }
+                if (!r.ok) { setError((r as { ok: false; error: string }).error || 'Verification failed.'); return; }
                 setPassword(''); onSuccess();
               }}
               disabled={busy || !password}
