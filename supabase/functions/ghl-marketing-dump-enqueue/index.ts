@@ -12,6 +12,7 @@ import {
 } from '../_shared/auth.ts';
 import { getGhlCredentials, validateGhlCredentials, buildGhlHeaders, type GhlAccount } from '../_shared/ghl-account.ts';
 import { buildQueue } from '../_shared/ghl-asset-harvester.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
