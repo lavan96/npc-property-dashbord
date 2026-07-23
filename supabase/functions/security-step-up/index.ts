@@ -9,7 +9,8 @@
  * Actions:
  *   - enroll_totp_begin → { password } → one-time provisioning URI/token
  *   - enroll_totp_confirm → { enrollment_token, mfa_code } → activate TOTP
- *   - challenge  → { capability, password } / optional { mfa_code }
+ *   - regenerate_recovery_codes → { password, mfa_code } → replacement codes
+ *   - challenge  → { capability, password } / optional { mfa_code | recovery_code }
  *                → { success, token, expires_at, capability }
  *   - revoke     → { capability?, all? } → revoke active step-up sessions
  *
@@ -22,9 +23,13 @@ import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_s
 import { verifyPassword } from '../_shared/password.ts';
 import { generateStepUpToken, hashStepUpToken, resolveActiveStaffSession } from '../_shared/stepUp.ts';
 import { createEncryptedTotpSecret, verifyEncryptedTotp } from '../_shared/totp.ts';
+import { generateRecoveryCodes, hashRecoveryCode, hashRecoveryCodes, isRecoveryCode, isRecoveryCodeHashConfigured } from '../_shared/recoveryCodes.ts';
+import { consumeRateLimit, getTrustedClientIp } from '../_shared/requestSecurity.ts';
 
 const corsHeaders = createCorsHeaders();
 const STEP_UP_TTL_MS = 15 * 60 * 1000; // 15 min
+const RECOVERY_CODE_ATTEMPTS_PER_WINDOW = 5;
+const RECOVERY_CODE_WINDOW_SECONDS = 15 * 60;
 
 async function verifyUserPassword(admin: any, userId: string, plaintext: string): Promise<boolean> {
   if (!plaintext || plaintext.length < 4) return false;
@@ -135,6 +140,12 @@ Deno.serve(async (req) => {
       if (challengeError || !challenge) return j({ success: false, error: 'invalid_enrollment_confirmation' }, 401);
       const verification = await verifyEncryptedTotp(challenge.encrypted_secret, mfaCode);
       if (!verification.valid) return j({ success: false, error: 'invalid_mfa_code' }, 401);
+      // Fail before consuming the enrollment challenge when the recovery-code
+      // pepper is unavailable, so staff can retry safely after configuration is fixed.
+      if (!isRecoveryCodeHashConfigured()) return j({ success: false, error: 'mfa_configuration_invalid' }, 503);
+      const recoveryCodes = generateRecoveryCodes();
+      const recoveryCodeHashes = await hashRecoveryCodes(auth.userId, recoveryCodes);
+      if (!recoveryCodeHashes) return j({ success: false, error: 'mfa_configuration_invalid' }, 503);
       // Consume the one-time enrollment record before enabling MFA. A concurrent
       // confirmation cannot then activate a secret twice or race a replacement.
       const { data: consumed, error: consumeError } = await admin
@@ -153,6 +164,7 @@ Deno.serve(async (req) => {
           mfa_secret_encrypted: challenge.encrypted_secret,
           mfa_last_verified_at: new Date().toISOString(),
           mfa_last_totp_counter: verification.counter,
+          mfa_recovery_codes_hash: recoveryCodeHashes,
           mfa_required: true,
         })
         .eq('id', auth.userId)
@@ -163,7 +175,25 @@ Deno.serve(async (req) => {
       try {
         await admin.from('security_events').insert({ action: 'mfa.totp_enrolled', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { staff_session_id: staffSession.id } });
       } catch { /* ignore */ }
-      return j({ success: true, method: 'totp' });
+      return j({ success: true, method: 'totp', recovery_codes: recoveryCodes });
+    }
+
+    if (action === 'regenerate_recovery_codes') {
+      if (!await verifyUserPassword(admin, auth.userId, String(body?.password ?? ''))) return j({ success: false, error: 'invalid_credentials' }, 401);
+      if (!isRecoveryCodeHashConfigured()) return j({ success: false, error: 'mfa_configuration_invalid' }, 503);
+      const { data: userRow } = await admin.from('custom_users').select('mfa_enrolled_at, mfa_method, mfa_secret_encrypted, mfa_last_totp_counter').eq('id', auth.userId).maybeSingle();
+      if (!userRow?.mfa_enrolled_at || userRow.mfa_method !== 'totp' || !userRow.mfa_secret_encrypted) return j({ success: false, error: 'mfa_configuration_invalid' }, 503);
+      const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, String(body?.mfa_code ?? ''));
+      if (!totp.valid) return j({ success: false, error: 'invalid_mfa_code' }, 401);
+      const rate = await consumeRateLimit(admin, `mfa:recovery-regenerate:user:${auth.userId}`, 3, 60 * 60);
+      if (!rate.allowed) return j({ success: false, error: 'rate_limited' }, 429);
+      const recoveryCodes = generateRecoveryCodes();
+      const recoveryCodeHashes = await hashRecoveryCodes(auth.userId, recoveryCodes);
+      if (!recoveryCodeHashes) return j({ success: false, error: 'mfa_configuration_invalid' }, 503);
+      const { data: updated, error } = await admin.from('custom_users').update({ mfa_recovery_codes_hash: recoveryCodeHashes, mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter }).eq('id', auth.userId).or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`).select('id').maybeSingle();
+      if (error || !updated) return j({ success: false, error: 'mfa_code_replayed' }, 401);
+      try { await admin.from('security_events').insert({ action: 'mfa.recovery_codes_regenerated', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { staff_session_id: staffSession.id, count: recoveryCodes.length } }); } catch { /* ignore */ }
+      return j({ success: true, recovery_codes: recoveryCodes });
     }
 
     if (action !== 'challenge') return j({ success: false, error: 'unknown_action' }, 400);
@@ -186,7 +216,7 @@ Deno.serve(async (req) => {
     // registered TOTP possession before a high-assurance proof is minted.
     const { data: userRow, error: mfaStateError } = await admin
       .from('custom_users')
-      .select('mfa_enrolled_at, mfa_required, mfa_method, mfa_secret_encrypted, mfa_last_totp_counter')
+      .select('mfa_enrolled_at, mfa_required, mfa_method, mfa_secret_encrypted, mfa_last_totp_counter, mfa_recovery_codes_hash')
       .eq('id', auth.userId)
       .maybeSingle();
     // A schema/configuration failure must never silently downgrade an enrolled
@@ -203,30 +233,33 @@ Deno.serve(async (req) => {
       if (userRow.mfa_method !== 'totp' || !userRow.mfa_secret_encrypted) {
         return j({ success: false, error: 'mfa_configuration_invalid', code: 'mfa_verification_required' }, 503);
       }
-      const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, String(body?.mfa_code ?? ''));
-      if (!totp.valid) {
-        try {
-          await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_totp', metadata_redacted: { capability } });
-        } catch { /* ignore */ }
-        return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+      const suppliedFactor = String(body?.mfa_code || body?.recovery_code || '');
+      const recoveryCode = isRecoveryCode(suppliedFactor);
+      if (recoveryCode) {
+        const hash = await hashRecoveryCode(auth.userId, suppliedFactor);
+        const ip = getTrustedClientIp(req);
+        const userRate = await consumeRateLimit(admin, `mfa:recovery:user:${auth.userId}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS);
+        const ipRate = ip ? await consumeRateLimit(admin, `mfa:recovery:ip:${ip}`, RECOVERY_CODE_ATTEMPTS_PER_WINDOW, RECOVERY_CODE_WINDOW_SECONDS) : { allowed: true };
+        if (!userRate.allowed || !ipRate.allowed || !hash) return j({ success: false, error: !hash ? 'mfa_configuration_invalid' : 'rate_limited', code: 'mfa_verification_required' }, !hash ? 503 : 429);
+        const { data: consumed, error: consumeError } = await admin.rpc('consume_mfa_recovery_code', { p_user_id: auth.userId, p_code_hash: hash });
+        if (consumeError || consumed !== true) {
+          try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_or_used_recovery_code', metadata_redacted: { capability } }); } catch { /* ignore */ }
+          return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+        }
+        method = 'password+recovery_code';
+        assuranceLevel = 2;
+        try { await admin.from('security_events').insert({ action: 'step_up.recovery_code_consumed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, staff_session_id: staffSession.id } }); } catch { /* ignore */ }
+      } else {
+        const totp = await verifyEncryptedTotp(userRow.mfa_secret_encrypted, suppliedFactor);
+        if (!totp.valid) {
+          try { await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'invalid_totp', metadata_redacted: { capability } }); } catch { /* ignore */ }
+          return j({ success: false, error: 'invalid_mfa_code', code: 'mfa_verification_required' }, 401);
+        }
+        const { data: updatedMfa, error: updateMfaError } = await admin.from('custom_users').update({ mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter }).eq('id', auth.userId).or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`).select('id').maybeSingle();
+        if (updateMfaError || !updatedMfa) return j({ success: false, error: 'mfa_code_replayed', code: 'mfa_verification_required' }, 401);
+        method = 'password+totp';
+        assuranceLevel = 2;
       }
-      // A TOTP counter can be accepted only once. The conditional update makes
-      // a concurrent/replayed code fail even when it hits another Edge instance.
-      const { data: updatedMfa, error: updateMfaError } = await admin
-        .from('custom_users')
-        .update({ mfa_last_verified_at: new Date().toISOString(), mfa_last_totp_counter: totp.counter })
-        .eq('id', auth.userId)
-        .or(`mfa_last_totp_counter.is.null,mfa_last_totp_counter.lt.${totp.counter}`)
-        .select('id')
-        .maybeSingle();
-      if (updateMfaError || !updatedMfa) {
-        try {
-          await admin.from('security_events').insert({ action: 'step_up.mfa_failed', decision: 'deny', actor_type: 'human', actor_id: auth.userId, reason_code: 'replayed_totp', metadata_redacted: { capability } });
-        } catch { /* ignore */ }
-        return j({ success: false, error: 'mfa_code_replayed', code: 'mfa_verification_required' }, 401);
-      }
-      method = 'password+totp';
-      assuranceLevel = 2;
     }
 
     const token = generateStepUpToken(32);

@@ -26,6 +26,8 @@ interface StepUpDialogProps {
   onCancel: () => void;
 }
 
+const MFA_FACTOR_PATTERN = /^(?:\d{6}|[A-HJ-NP-Z2-9]{4}-?[A-HJ-NP-Z2-9]{4}-?[A-HJ-NP-Z2-9]{4})$/;
+
 const CAP_LABEL: Record<string, string> = {
   'role.change': 'Assign a role',
   'role.remove': 'Remove a role',
@@ -62,9 +64,9 @@ export function StepUpDialog({
     if (!password) { setError('Enter your current password'); return; }
     setBusy(true);
     setError(null);
-    if (requiresMfa && !/^\d{6}$/.test(mfaCode)) {
+    if (requiresMfa && !MFA_FACTOR_PATTERN.test(mfaCode)) {
       setBusy(false);
-      setError('Enter the 6-digit code from your authenticator app.');
+      setError('Enter an authenticator or recovery code.');
       return;
     }
     const result = await requestStepUpChallenge(capability, password, requiresMfa ? mfaCode : undefined);
@@ -74,7 +76,7 @@ export function StepUpDialog({
       setError(
         err === 'invalid_credentials' ? 'Incorrect password.' :
         err === 'mfa_enrollment_required' ? 'MFA enrolment is required for this account.' :
-        err === 'invalid_mfa_code' ? 'Enter the 6-digit code from your authenticator app.' :
+        err === 'invalid_mfa_code' ? 'Enter an authenticator or recovery code.' :
         err || 'Verification failed.',
       );
       if (err === 'invalid_mfa_code') setRequiresMfa(true);
@@ -121,16 +123,15 @@ export function StepUpDialog({
 
         {requiresMfa ? (
           <div className="space-y-2">
-            <Label htmlFor="stepup-totp">Authenticator code</Label>
+            <Label htmlFor="stepup-totp">Authenticator or recovery code</Label>
             <Input
               id="stepup-totp"
-              inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
+              maxLength={14}
               value={mfaCode}
-              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              onChange={(e) => setMfaCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
               onKeyDown={(e) => { if (e.key === 'Enter' && !busy) handleConfirm(); }}
-              placeholder="000000"
+              placeholder="000000 or XXXX-XXXX-XXXX"
               disabled={busy}
             />
           </div>
@@ -138,7 +139,7 @@ export function StepUpDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={busy || !password || (requiresMfa && mfaCode.length !== 6)}>
+          <Button onClick={handleConfirm} disabled={busy || !password || (requiresMfa && !MFA_FACTOR_PATTERN.test(mfaCode))}>
             {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying…</> : 'Confirm'}
           </Button>
         </DialogFooter>
