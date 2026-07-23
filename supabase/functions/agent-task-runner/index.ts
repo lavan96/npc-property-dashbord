@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     // Authorization header, so a public caller could drive privileged
     // scheduled automation. Body fields are never a trust signal.
     const rawBody = await req.text().catch(() => '');
-    const internal = await verifyInternal(sb, req, rawBody);
+    const internal = await verifyInternal(sb, req, rawBody, { strict: true, allowedCallers: ['pg_cron'] });
     if (!internal.ok) {
       await logSecurityEvent(sb, {
         action: 'agent_task_runner.invoke',
