@@ -67,6 +67,40 @@ Deno.serve(async (req) => {
       );
     }
 
+    // WP-08 — bound message length and reject control characters.
+    const messageText = String(message);
+    if (messageText.length > MAX_MESSAGE_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Message exceeds ${MAX_MESSAGE_LENGTH}-character limit.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // WP-08 — require conversations module edit permission (superadmin bypasses).
+    const perm = await checkPermission(supabase, userId!, 'conversations', 'can_edit');
+    if (!perm.allowed) {
+      return new Response(
+        JSON.stringify({ error: perm.reason || 'You cannot send CRM messages.' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // WP-08 — per-user quota: burst 10/sec, sustained 100/min.
+    const burst = rateLimit(`ghl-send:burst:${userId}`, 10, 1_000);
+    if (!burst.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Sending too quickly. Please slow down.' }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", 'Retry-After': '1' } }
+      );
+    }
+    const minute = rateLimit(`ghl-send:minute:${userId}`, 100, 60_000);
+    if (!minute.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Hourly message quota exceeded.' }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", 'Retry-After': String(Math.ceil((minute.retryAfterMs || 1000)/1000)) } }
+      );
+    }
+
     // Get GHL API key from env (preferred) or integration_secrets
     const _ghlCreds = await getEffectiveGhlCredentials(supabase);
     let apiKey = _ghlCreds.apiKey;
