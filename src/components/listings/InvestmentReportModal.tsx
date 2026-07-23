@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Download, Copy, Check, Eye, X } from 'lucide-react';
+import { Loader2, Download, Copy, Check, Eye, X, PanelTopClose } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -434,6 +434,17 @@ export function InvestmentReportModal({
     }
   };
 
+  const continueInBackground = () => {
+    // The preliminary processing record and in-flight request are intentionally
+    // left intact. Closing this view must never restart or cancel a queued job.
+    setIsBackgroundGeneration(true);
+    setReportContent('');
+    setSourcesContent('');
+    setHasStartedGeneration(false);
+    setIsCopied(false);
+    onClose();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col" onPointerDownOutside={(e) => {
@@ -449,11 +460,13 @@ export function InvestmentReportModal({
           </DialogDescription>
           {isGenerating && !isBackgroundGeneration && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="absolute right-12 top-4"
-              onClick={() => generateReport(true)}
+              className="absolute right-12 top-3 gap-2 border-primary/40 bg-primary/5 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
+              onClick={continueInBackground}
+              aria-label="Continue generating this investment report in the background"
             >
+              <PanelTopClose className="h-4 w-4" />
               Continue in Background
             </Button>
           )}

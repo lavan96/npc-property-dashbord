@@ -1,4 +1,5 @@
 import type { InvestmentReport, OverriddenField } from './types';
+import { getReportVariantLabel as getCanonicalReportVariantLabel } from '@/lib/reports/reportVariants';
 
 export function getReportScore(report: InvestmentReport | null) {
   const score = report?.investment_score;
@@ -12,7 +13,7 @@ export function getReportTierLabel(report: InvestmentReport | null) {
 }
 
 export function getReportVariantLabel(report: InvestmentReport | null) {
-  return report?.report_variant ? report.report_variant.replace(/_/g, ' ') : 'Primary';
+  return getCanonicalReportVariantLabel(report?.report_variant);
 }
 
 export function getReportStatusLabel(report: InvestmentReport | null) {

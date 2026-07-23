@@ -5,7 +5,7 @@
  * two derived client-facing reports:
  *
  *   - 'financial'      → Client Investment Feasibility & Financial Performance
- *   - 'due_diligence'  → Property & Location Due Diligence
+ *   - 'strategic'      → Property & Location strategic assessment
  *
  * The forks are real `investment_reports` rows linked back to the composite
  * via `derived_from_report_id`. No new LLM calls are made; routing is
@@ -13,10 +13,10 @@
  * existing child rows instead of duplicating them.
  *
  * Request:
- *   { composite_report_id: string; force?: boolean }
+ *   { composite_report_id: string; variants?: ('financial' | 'strategic')[]; force?: boolean }
  *
  * Response:
- *   { ok: true, financial: { id, ... }, due_diligence: { id, ... } }
+ *   { ok: true, financial?: { id, ... }, strategic?: { id, ... } }
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -170,7 +170,9 @@ async function loadComposite(supabase: any, id: string) {
   return data;
 }
 
-async function findExistingFork(supabase: any, parentId: string, variant: ForkVariant) {
+type PersistedVariant = 'financial' | 'strategic';
+
+async function findExistingFork(supabase: any, parentId: string, variant: PersistedVariant) {
   const { data } = await supabase
     .from('investment_reports')
     .select('id')
@@ -184,6 +186,7 @@ async function upsertFork(
   supabase: any,
   parent: any,
   variant: ForkVariant,
+  persistedVariant: PersistedVariant,
   reportContent: string,
   scoreInputRaw: any,
   force: boolean,
@@ -192,7 +195,7 @@ async function upsertFork(
     ? scoreFinancial(scoreInputRaw)
     : scorePropertyFundamentals(scoreInputRaw);
 
-  const existingId = await findExistingFork(supabase, parent.id, variant);
+  const existingId = await findExistingFork(supabase, parent.id, persistedVariant);
   const sourcesContent = parent.sources_content || null;
 
   const sharedFields = {
@@ -232,7 +235,7 @@ async function upsertFork(
       property_listing_id: parent.property_listing_id,
       client_property_id: parent.client_property_id,
       generated_by: parent.generated_by,
-      report_variant: variant,
+      report_variant: persistedVariant,
       derived_from_report_id: parent.id,
       ...sharedFields,
     })
@@ -264,6 +267,9 @@ Deno.serve(async (req) => {
 
     const compositeId = body.composite_report_id || body.compositeReportId || body.reportId;
     const force = body.force === true;
+    const requestedVariants = Array.isArray(body.variants) && body.variants.length > 0 ? body.variants : ['financial', 'strategic'];
+    const variants = requestedVariants.filter((variant: unknown): variant is PersistedVariant => variant === 'financial' || variant === 'strategic');
+    if (!variants.length) throw new Error('At least one valid client report pathway is required');
     if (!compositeId) {
       return new Response(JSON.stringify({ error: 'composite_report_id is required' }), {
         status: 400,
@@ -312,21 +318,21 @@ Deno.serve(async (req) => {
       state: parent.property_specs?.state || parent.demographics_data?.state,
     };
 
-    const [financial, due_diligence] = await Promise.all([
-      upsertFork(supabase, parent, 'financial', financialMd, scoreInputRaw, force),
-      upsertFork(supabase, parent, 'due_diligence', dueDiligenceMd, scoreInputRaw, force),
-    ]);
+    const generated = await Promise.all(variants.map(async (variant) => {
+      if (variant === 'financial') return ['financial', await upsertFork(supabase, parent, 'financial', 'financial', financialMd, scoreInputRaw, force)] as const;
+      return ['strategic', await upsertFork(supabase, parent, 'due_diligence', 'strategic', dueDiligenceMd, scoreInputRaw, force)] as const;
+    }));
+    const result = Object.fromEntries(generated);
 
     return new Response(
       JSON.stringify({
         ok: true,
         composite_report_id: parent.id,
-        financial,
-        due_diligence,
+        ...result,
         section_counts: {
           composite: sections.length,
-          financial: financialSections.length,
-          due_diligence: dueDiligenceSections.length,
+          financial: variants.includes('financial') ? financialSections.length : 0,
+          strategic: variants.includes('strategic') ? dueDiligenceSections.length : 0,
         },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

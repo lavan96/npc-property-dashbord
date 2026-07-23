@@ -23,6 +23,7 @@ import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/
 import { TierBadge, type ReportTier } from '@/components/reports/TierBadge';
 import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from '@/components/reports/report-view/utils';
 import type { InvestmentReport } from './types';
+import { getReportVariantLabel } from '@/lib/reports/reportVariants';
 
 interface InvestmentReportCardProps {
   report: InvestmentReport;
@@ -106,7 +107,7 @@ export function InvestmentReportCard({
               {report.report_tier && <TierBadge tier={report.report_tier} showIcon={false} />}
               {report.report_variant && report.report_variant !== 'composite' && (
                 <Badge variant="outline" className="text-xs">
-                  {report.report_variant === 'financial' ? 'FIN' : 'PLDD'}
+                  {getReportVariantLabel(report.report_variant)}
                 </Badge>
               )}
             </div>
