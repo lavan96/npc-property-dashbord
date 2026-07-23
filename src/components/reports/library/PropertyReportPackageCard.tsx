@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { ChevronDown, MapPin, Package } from 'lucide-react';
+import { Archive, ArchiveRestore, ChevronDown, MapPin, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ReportTypeBadge } from '@/components/reports/ReportTypeBadge';
@@ -7,15 +7,17 @@ import { InvestmentReportCard } from './InvestmentReportCard';
 import type { InvestmentReport } from './types';
 import { normalizeReportVariant, REPORT_VARIANT_ORDER, resolveInvestmentReportType } from '@/lib/reports/reportVariants';
 import type { ReportTier } from '@/components/reports/TierBadge';
+import { Button } from '@/components/ui/button';
 
-type Props = Omit<React.ComponentProps<typeof InvestmentReportCard>, 'report' | 'isSelected' | 'generatingTier'> & { reports: InvestmentReport[]; isSelected: (id: string) => boolean; generatingTier: { reportId: string; tier: ReportTier } | null };
+type Props = Omit<React.ComponentProps<typeof InvestmentReportCard>, 'report' | 'isSelected' | 'generatingTier'> & { reports: InvestmentReport[]; isSelected: (id: string) => boolean; generatingTier: { reportId: string; tier: ReportTier } | null; onTogglePackageArchive?: (reports: InvestmentReport[]) => void };
 
-export function PropertyReportPackageCard({ reports, isSelected, generatingTier, ...cardProps }: Props) {
+export function PropertyReportPackageCard({ reports, isSelected, generatingTier, onTogglePackageArchive, ...cardProps }: Props) {
   const [open, setOpen] = useState(false);
   const contentId = useId();
   const ordered = [...reports].sort((a, b) => REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(a)) - REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(b)) || +new Date(b.created_at) - +new Date(a.created_at));
   const availableVariants = REPORT_VARIANT_ORDER.filter((variant) => ordered.some((report) => resolveInvestmentReportType(report) === variant));
   const latest = ordered.reduce((newest, item) => new Date(item.created_at) > new Date(newest.created_at) ? item : newest, ordered[0]);
+  const packageArchived = ordered.length > 0 && ordered.every(report => report.is_archived === true);
   const toggle = () => setOpen(value => !value);
   const onHeaderKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -44,9 +46,12 @@ export function PropertyReportPackageCard({ reports, isSelected, generatingTier,
             <div className="mt-2 flex flex-wrap gap-1.5" aria-label={`${availableVariants.length} available report types`}>{availableVariants.map(variant => <ReportTypeBadge key={variant} type={variant} />)}</div>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-background/60 px-2 py-1.5 text-sm font-medium" aria-hidden="true">
+        <div className="flex shrink-0 items-center gap-1">
+        {cardProps.canEditReports && onTogglePackageArchive && <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary" aria-label={`${packageArchived ? 'Restore' : 'Archive'} property package ${latest.property_address}`} onClick={(event) => { event.stopPropagation(); onTogglePackageArchive(ordered); }}><span className="sr-only">{packageArchived ? 'Restore property package' : 'Archive property package'}</span>{packageArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}</Button>}
+        <div className="flex items-center gap-1 rounded-md border border-border/70 bg-background/60 px-2 py-1.5 text-sm font-medium" aria-hidden="true">
           <Package className="h-4 w-4" />{ordered.length}
           <ChevronDown className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
+        </div>
         </div>
       </div>
     </CardHeader>
