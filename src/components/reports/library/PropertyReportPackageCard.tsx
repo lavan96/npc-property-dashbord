@@ -2,10 +2,10 @@ import { useId, useState } from 'react';
 import { ChevronDown, MapPin, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { ReportTypeBadge } from '@/components/reports/ReportTypeBadge';
 import { InvestmentReportCard } from './InvestmentReportCard';
 import type { InvestmentReport } from './types';
-import { getReportVariantLabel, normalizeReportVariant, REPORT_VARIANT_ORDER } from '@/lib/reports/reportVariants';
+import { normalizeReportVariant, REPORT_VARIANT_ORDER, resolveInvestmentReportType } from '@/lib/reports/reportVariants';
 import type { ReportTier } from '@/components/reports/TierBadge';
 
 type Props = Omit<React.ComponentProps<typeof InvestmentReportCard>, 'report' | 'isSelected' | 'generatingTier'> & { reports: InvestmentReport[]; isSelected: (id: string) => boolean; generatingTier: { reportId: string; tier: ReportTier } | null };
@@ -14,7 +14,7 @@ export function PropertyReportPackageCard({ reports, isSelected, generatingTier,
   const [open, setOpen] = useState(false);
   const contentId = useId();
   const ordered = [...reports].sort((a, b) => REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(a)) - REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(b)) || +new Date(b.created_at) - +new Date(a.created_at));
-  const availableVariants = REPORT_VARIANT_ORDER.filter((variant) => ordered.some((report) => normalizeReportVariant(report) === variant));
+  const availableVariants = REPORT_VARIANT_ORDER.filter((variant) => ordered.some((report) => resolveInvestmentReportType(report) === variant));
   const latest = ordered.reduce((newest, item) => new Date(item.created_at) > new Date(newest.created_at) ? item : newest, ordered[0]);
   const toggle = () => setOpen(value => !value);
   const onHeaderKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -41,7 +41,7 @@ export function PropertyReportPackageCard({ reports, isSelected, generatingTier,
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-lg font-semibold leading-snug">{latest.property_address}</h3>
             <p className="mt-1 text-xs text-muted-foreground">Latest {format(new Date(latest.created_at), 'PPp')} · {latest.status || 'completed'}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5" aria-label={`${availableVariants.length} available report types`}>{availableVariants.map(variant => <Badge key={variant} variant="outline" className="text-xs">{getReportVariantLabel(variant)}</Badge>)}</div>
+            <div className="mt-2 flex flex-wrap gap-1.5" aria-label={`${availableVariants.length} available report types`}>{availableVariants.map(variant => <ReportTypeBadge key={variant} type={variant} />)}</div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-background/60 px-2 py-1.5 text-sm font-medium" aria-hidden="true">

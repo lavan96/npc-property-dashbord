@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, ExternalLink, Calculator, Compass, FileText, Zap } from 'lucide-react';
+import { Loader2, Calculator, Compass, FileText, Zap } from 'lucide-react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { getReportVariantLabel, normalizeReportVariant } from '@/lib/reports/reportVariants';
@@ -14,12 +13,11 @@ interface Props {
   onNavigate: (reportId: string) => void;
 }
 
-export function ReportVariantControls({ compositeReportId, reportVariant, derivedFromReportId, onNavigate }: Props) {
+export function ReportVariantControls({ compositeReportId, reportVariant, onNavigate }: Props) {
   const { toast } = useToast();
   const [forking, setForking] = useState<string | null>(null);
 
-  const isComposite = !derivedFromReportId && normalizeReportVariant(reportVariant) === 'compass';
-  const isFork = !!derivedFromReportId;
+  const activeVariant = normalizeReportVariant(reportVariant);
 
   const handleFork = async (pathway: 'financial' | 'strategic' | 'briefing' | 'snapshot') => {
     setForking(pathway);
@@ -46,24 +44,6 @@ export function ReportVariantControls({ compositeReportId, reportVariant, derive
     }
   };
 
-  if (isFork) {
-    return (
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant="secondary" className="text-xs">
-          {getReportVariantLabel(reportVariant)}
-        </Badge>
-        {derivedFromReportId && (
-          <Button variant="ghost" size="sm" onClick={() => onNavigate(derivedFromReportId)}>
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Back to composite
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  if (!isComposite) return null;
-
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5" aria-label="Client report generation controls">
       {([
@@ -74,6 +54,7 @@ export function ReportVariantControls({ compositeReportId, reportVariant, derive
       ] as Array<[string, string, string, typeof Calculator, string]>).map(([id, title, description, Icon, accentClass]) => {
         const pathway = id as 'financial' | 'strategic' | 'briefing' | 'snapshot';
         const processing = forking === pathway;
+        const active = activeVariant === pathway;
         return <Tooltip key={pathway}>
           <TooltipTrigger asChild>
             <Button
@@ -84,7 +65,8 @@ export function ReportVariantControls({ compositeReportId, reportVariant, derive
               aria-busy={processing}
               aria-label={processing ? `Generating ${title}` : `${title}: ${description}`}
               onClick={() => handleFork(pathway)}
-              className={`h-10 min-w-[112px] border px-3 font-medium shadow-sm transition-[transform,border-color,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:shadow-inner disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none ${accentClass}`}
+              aria-pressed={active}
+              className={`h-10 min-w-[112px] shrink-0 border px-3 font-medium shadow-sm transition-[transform,border-color,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:shadow-inner disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none ${active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''} ${accentClass}`}
             >
               <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-md border border-current/25 bg-background/20">
                 {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Icon className="h-3.5 w-3.5" aria-hidden="true" />}

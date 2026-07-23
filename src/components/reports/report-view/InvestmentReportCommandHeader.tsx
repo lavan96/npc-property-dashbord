@@ -1,5 +1,4 @@
 import { ArrowLeft, Calculator, Download, Edit, FolderOpen, Images, MoreHorizontal, Send, Settings } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,7 +11,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ReportVariantControls } from '@/components/reports/ReportVariantControls';
 import type { ClientInfo, InvestmentReport } from './types';
-import { getReportTierLabel } from './utils';
+import { resolveInvestmentReportType } from '@/lib/reports/reportVariants';
+import { ReportTypeBadge } from '@/components/reports/ReportTypeBadge';
 
 interface Props {
   report: InvestmentReport;
@@ -45,12 +45,12 @@ export function InvestmentReportCommandHeader({
   onManageHeroImages,
   onDownload,
 }: Props) {
-  const reportTierLabel = getReportTierLabel(report);
+  const reportType = resolveInvestmentReportType(report);
 
   return (
     <div className="sticky top-0 z-30 border-b bg-background/95 px-3 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 flex-shrink-0 sm:px-4">
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-4 gap-y-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
           <Button variant="outline" size="sm" onClick={onReportsHome} className="shrink-0 bg-background/80 px-2 shadow-sm sm:px-3">
             <FolderOpen className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Generated Reports</span>
@@ -67,46 +67,24 @@ export function InvestmentReportCommandHeader({
               <span className="hidden sm:inline">Back</span>
             </Button>
           )}
-          <Separator orientation="vertical" className="hidden h-7 sm:block" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-semibold">Report Workspace</p>
-              {isClientReport && <Badge variant="secondary" className="hidden text-xs sm:inline-flex">Client Report</Badge>}
-            </div>
-            <p className="truncate text-xs text-muted-foreground">{report.property_address}</p>
+          <Separator orientation="vertical" className="hidden h-7 lg:block" />
+          <div className="hidden min-w-[14rem] flex-1 items-center gap-2 lg:flex" aria-label={`Report workspace for ${report.property_address}`}>
+            <ReportTypeBadge type={reportType} className="shrink-0" />
+            <span className="min-w-0 break-words text-sm font-medium leading-snug text-foreground">{report.property_address}</span>
           </div>
         </div>
 
-        <div className="hidden min-w-0 items-center justify-center gap-2 xl:flex">
-          <Badge variant="outline" className="max-w-[140px] truncate capitalize">
-            {reportTierLabel}
-          </Badge>
+        <div className="order-3 flex w-full flex-wrap items-center gap-2 lg:order-2 lg:w-auto lg:flex-1 lg:justify-center">
           <div className="rounded-lg border bg-card/70 p-1 shadow-sm">
             <ReportVariantControls
-              compositeReportId={report.derived_from_report_id || report.id}
+              compositeReportId={report.derived_from_report_id || report.parent_report_id || report.id}
               reportVariant={report.report_variant}
-              derivedFromReportId={report.derived_from_report_id}
               onNavigate={onNavigateToReport}
             />
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center justify-end gap-2">
-          <div className="hidden min-w-0 items-center gap-2 md:flex xl:hidden">
-            <Badge variant="outline" className="max-w-[120px] truncate capitalize">
-              {reportTierLabel}
-            </Badge>
-          </div>
-
-          <div className="hidden rounded-lg border bg-card/70 p-1 shadow-sm md:block xl:hidden">
-            <ReportVariantControls
-              compositeReportId={report.derived_from_report_id || report.id}
-              reportVariant={report.report_variant}
-              derivedFromReportId={report.derived_from_report_id}
-              onNavigate={onNavigateToReport}
-            />
-          </div>
-
+        <div className="order-2 ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 lg:order-3">
           <Button variant="default" size="sm" onClick={onDownload} className="shrink-0 shadow-sm">
             <Download className="h-4 w-4 sm:mr-1" />
             <span className="hidden sm:inline">Download</span>
