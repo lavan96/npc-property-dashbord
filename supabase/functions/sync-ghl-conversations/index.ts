@@ -181,6 +181,12 @@ Deno.serve(async (req) => {
           );
 
           totalMessages += messagesResult.synced;
+          if (messagesResult.channels.length > 0) {
+            await supabase
+              .from('ghl_conversations')
+              .update({ available_channels: messagesResult.channels })
+              .eq('id', upsertedConv.id);
+          }
           if (messagesResult.error) {
             errors.push({ contactId: ghlContactId, error: messagesResult.error });
           }
@@ -237,9 +243,11 @@ function mapChannelType(ghlType: string | number | undefined): string {
     'phone': 'sms',
     'type_phone': 'sms',
     'email': 'email',
+    'mail': 'email',
     '2': 'email',
     'type_email': 'email',
     'whatsapp': 'whatsapp',
+    'whats_app': 'whatsapp',
     '3': 'whatsapp',
     'type_whatsapp': 'whatsapp',
     'fb': 'facebook',
@@ -296,8 +304,9 @@ async function fetchConversationMessages(
   ghlHeaders: Record<string, string>,
   supabase: any,
   mode: string
-): Promise<{ synced: number; error?: string }> {
+): Promise<{ synced: number; channels: string[]; error?: string }> {
   let synced = 0;
+  const channels = new Set<string>();
   let lastMessageId: string | undefined;
   let hasMore = true;
   const maxPages = mode === 'incremental' ? 2 : 10; // Limit pages for incremental
@@ -319,7 +328,7 @@ async function fetchConversationMessages(
       if (!res.ok) {
         const errText = await res.text();
         console.error(`[sync-ghl-conversations] Messages fetch failed for ${ghlConversationId}: ${errText}`);
-        return { synced, error: `Messages fetch: ${res.status}` };
+        return { synced, channels: [...channels], error: `Messages fetch: ${res.status}` };
       }
 
       const data = await res.json();
@@ -344,11 +353,14 @@ async function fetchConversationMessages(
       console.log(`[sync-ghl-conversations] Sample msg direction fields:`, messages.length > 0 ? JSON.stringify({ direction: messages[0].direction, incoming: messages[0].incoming, type: messages[0].type, userId: messages[0].userId }) : 'none');
 
       // Batch upsert messages
-      const messageRows = messages.map((msg: any) => ({
+      const messageRows = messages.map((msg: any) => {
+        const channel = mapChannelType(msg.messageType || msg.source || msg.type);
+        if (['sms', 'email', 'whatsapp'].includes(channel)) channels.add(channel);
+        return {
         conversation_id: localConversationId,
         ghl_message_id: msg.id,
         direction: mapMessageDirection(msg),
-        channel_type: mapChannelType(msg.messageType || msg.source),
+        channel_type: channel,
         body: msg.body || msg.message || msg.text || null,
         content_type: mapContentType(msg.contentType),
         attachment_urls: msg.attachments?.map((a: any) => a.url).filter(Boolean) || null,
@@ -357,7 +369,7 @@ async function fetchConversationMessages(
         recipient_number: msg.phone || msg.to || null,
         message_status: msg.status || 'sent',
         ghl_date_added: parseGhlDate(msg.dateAdded || msg.createdAt),
-      }));
+      }});
 
       const { error: insertError } = await supabase
         .from('ghl_conversation_messages')
@@ -369,7 +381,7 @@ async function fetchConversationMessages(
           console.log(`[sync-ghl-conversations] Some duplicate messages skipped for ${ghlConversationId}`);
         } else {
           console.error(`[sync-ghl-conversations] Messages upsert error:`, insertError.message);
-          return { synced, error: `Messages upsert: ${insertError.message}` };
+          return { synced, channels: [...channels], error: `Messages upsert: ${insertError.message}` };
         }
       }
 
@@ -385,9 +397,9 @@ async function fetchConversationMessages(
       await delay(300);
     }
 
-    return { synced };
+    return { synced, channels: [...channels] };
   } catch (err) {
     console.error(`[sync-ghl-conversations] Messages fetch exception:`, err);
-    return { synced, error: err.message };
+    return { synced, channels: [...channels], error: err.message };
   }
 }
