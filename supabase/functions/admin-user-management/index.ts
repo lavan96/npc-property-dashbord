@@ -3,6 +3,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { requireStepUp } from "../_shared/stepUp.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
 import { reserveSeat, commitSeat, releaseSeat } from "../_shared/missionControlSeats.ts";
 import { releaseDevice } from "../_shared/missionControlDevices.ts";
@@ -619,6 +620,26 @@ Deno.serve(async (req: Request) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // WP-11C — Require recent reauth for role/permission mutations.
+    const ROLE_MUTATION_ACTIONS = new Set([
+      'assign_role', 'remove_role', 'set_aml_roles',
+      'promote_to_superadmin', 'demote_from_superadmin', 'update_permissions',
+    ]);
+    if (ROLE_MUTATION_ACTIONS.has(action)) {
+      const stepUpCap = action === 'set_aml_roles' ? 'aml.role.set'
+        : action === 'remove_role' ? 'role.remove'
+        : 'role.change';
+      const gate = await requireStepUp(supabase, {
+        userId: adminUser.id,
+        capability: stepUpCap,
+        req,
+        body,
+        logAudit: true,
+      });
+      if (gate) return gate;
+    }
+
 
     if (action === 'list_users') {
       const includeDeleted = (body as any).include_deleted === true;
