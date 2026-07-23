@@ -89,3 +89,83 @@ export async function regenerateRecoveryCodes(password: string, mfaCode: string)
   if (error || !data?.success || !Array.isArray(data?.recovery_codes)) return { ok: false as const, error: error?.message ?? data?.error ?? 'mfa_recovery_regeneration_failed' };
   return { ok: true as const, recoveryCodes: data.recovery_codes as string[] };
 }
+
+// ---------------- WebAuthn (passkey / security key) ----------------
+
+import { startRegistration, startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser';
+
+export const webauthnSupported = () => {
+  try { return browserSupportsWebAuthn(); } catch { return false; }
+};
+
+export interface WebAuthnCredentialRow {
+  id: string;
+  credential_id: string;
+  device_name: string | null;
+  device_type: string | null;
+  backed_up: boolean | null;
+  transports: string[] | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export async function listWebAuthnCredentials() {
+  const { data, error } = await invokeSecureFunction<any>('security-step-up', { action: 'webauthn_list' });
+  if (error || !data?.success) return { ok: false as const, error: error?.message ?? data?.error ?? 'webauthn_list_failed' };
+  return { ok: true as const, credentials: (data.credentials ?? []) as WebAuthnCredentialRow[] };
+}
+
+export async function deleteWebAuthnCredential(credentialRowId: string) {
+  const { data, error } = await invokeSecureFunction<any>('security-step-up', { action: 'webauthn_delete', credential_id: credentialRowId });
+  if (error || !data?.success) return { ok: false as const, error: error?.message ?? data?.error ?? 'webauthn_delete_failed' };
+  return { ok: true as const };
+}
+
+export async function enrollWebAuthn(password: string, deviceName?: string) {
+  const begin = await invokeSecureFunction<any>('security-step-up', { action: 'enroll_webauthn_begin', password });
+  if (begin.error || !begin.data?.success) return { ok: false as const, error: begin.error?.message ?? begin.data?.error ?? 'webauthn_begin_failed' };
+  let attResp;
+  try {
+    attResp = await startRegistration(begin.data.options);
+  } catch (e: any) {
+    return { ok: false as const, error: e?.name === 'InvalidStateError' ? 'This authenticator is already registered.' : (e?.message ?? 'webauthn_cancelled') };
+  }
+  const finish = await invokeSecureFunction<any>('security-step-up', {
+    action: 'enroll_webauthn_finish',
+    enrollment_token: begin.data.enrollment_token,
+    credential: attResp,
+    device_name: deviceName ?? null,
+  });
+  if (finish.error || !finish.data?.success) return { ok: false as const, error: finish.error?.message ?? finish.data?.error ?? 'webauthn_finish_failed' };
+  return { ok: true as const };
+}
+
+/**
+ * Run a WebAuthn assertion for a step-up capability, then call `challenge`
+ * with the resulting token + assertion payload. Returns the freshly minted
+ * step-up token which is also stored under `step_up:<capability>`.
+ */
+export async function requestStepUpWithWebAuthn(
+  capability: string,
+  password: string,
+): Promise<{ ok: true; token: string; expires_at: string } | { ok: false; error: string }> {
+  const begin = await invokeSecureFunction<any>('security-step-up', { action: 'webauthn_assertion_begin', capability });
+  if (begin.error || !begin.data?.success) return { ok: false, error: begin.error?.message ?? begin.data?.error ?? 'webauthn_begin_failed' };
+  let assertion;
+  try {
+    assertion = await startAuthentication(begin.data.options);
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'webauthn_cancelled' };
+  }
+  const { data, error } = await invokeSecureFunction<any>('security-step-up', {
+    action: 'challenge',
+    capability,
+    password,
+    assertion_token: begin.data.assertion_token,
+    assertion,
+  });
+  if (error) return { ok: false, error: error.message ?? 'challenge_failed' };
+  if (!data?.success) return { ok: false, error: data?.error ?? 'challenge_failed' };
+  storeStepUpToken(capability, data.token, data.expires_at);
+  return { ok: true, token: data.token, expires_at: data.expires_at };
+}

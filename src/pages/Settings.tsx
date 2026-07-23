@@ -39,6 +39,7 @@ import { PurchaseHistoryCard } from "@/components/settings/PurchaseHistoryCard";
 import { DeviceManagementCard } from "@/components/settings/DeviceManagementCard";
 import { TotpEnrollmentCard } from "@/components/settings/TotpEnrollmentCard";
 import { RecoveryCodeCard } from "@/components/settings/RecoveryCodeCard";
+import { WebAuthnSettings } from "@/components/settings/WebAuthnSettings";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
@@ -470,6 +471,13 @@ export default function Settings() {
           <div className={settingsCx(settingsPanelClass, "space-y-4")}>
             <h4 className="text-sm font-semibold">Recovery codes</h4>
             <RecoveryCodeCard disabled={!canEditSettings} />
+          </div>
+
+          <Separator />
+
+          <div className={settingsCx(settingsPanelClass, "space-y-4")}>
+            <h4 className="text-sm font-semibold">Security keys & passkeys</h4>
+            <WebAuthnSettings disabled={!canEditSettings} />
           </div>
 
           <Separator />
