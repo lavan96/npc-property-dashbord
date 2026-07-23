@@ -214,17 +214,11 @@ Deno.serve(async (req) => {
           },
         });
       } else {
-        // Non-sort error — surface it as before
+        // Non-sort error — redact upstream body (WP-08).
         console.error('Airtable API error:', airtableResponse.status, errorText);
         return new Response(
-          JSON.stringify({
-            error: `Airtable API error: ${airtableResponse.status}`,
-            details: errorText
-          }),
-          {
-            status: airtableResponse.status,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
+          JSON.stringify({ error: redactUpstreamError(airtableResponse.status, 'Airtable') }),
+          { status: airtableResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
@@ -233,14 +227,8 @@ Deno.serve(async (req) => {
       const errorText = await airtableResponse.text();
       console.error('Airtable API error:', airtableResponse.status, errorText);
       return new Response(
-        JSON.stringify({
-          error: `Airtable API error: ${airtableResponse.status}`,
-          details: errorText
-        }),
-        {
-          status: airtableResponse.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ error: redactUpstreamError(airtableResponse.status, 'Airtable') }),
+        { status: airtableResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
