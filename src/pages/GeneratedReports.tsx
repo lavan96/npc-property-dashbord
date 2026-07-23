@@ -62,6 +62,11 @@ const ModalLoader = () => (
   </div>
 );
 
+const toViewerReportTier = (report: InvestmentReport): ReportTier => {
+  const tier = getCanonicalReportType(report);
+  return tier === 'other' ? 'compass' : tier;
+};
+
 export default function GeneratedReports() {
   const { canEdit: canEditReports } = useModulePermissions('generated_reports');
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
@@ -1050,7 +1055,11 @@ export default function GeneratedReports() {
       {investmentViewerOpen && selectedInvestmentReport && selectedInvestmentReport.report_content && (
         <Suspense fallback={<ModalLoader />}>
           <InvestmentReportViewer
-            report={selectedInvestmentReport as InvestmentReport & { report_content: string }}
+            report={{
+              ...selectedInvestmentReport,
+              report_content: selectedInvestmentReport.report_content,
+              report_tier: toViewerReportTier(selectedInvestmentReport),
+            }}
             isOpen={investmentViewerOpen}
             onClose={() => {
               setInvestmentViewerOpen(false);
