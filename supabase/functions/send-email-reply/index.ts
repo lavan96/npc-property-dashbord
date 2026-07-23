@@ -25,6 +25,8 @@ interface SendEmailRequest {
   originalEmailId?: string;
   attachments?: EmailAttachment[];
   mailboxSource?: 'admin' | 'personal';
+  /** Authoritative custom_users ID for a personal mailbox send. */
+  senderMailboxId?: string;
   source?: 'agent' | 'user'; // 'agent' triggers branded HTML template
   ghlConversationId?: string; // Internal conversation ID for persisting in thread
 }
@@ -295,7 +297,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, source, ghlConversationId }: SendEmailRequest = body;
+    const { to, subject, body: emailBody, cc, bcc, originalEmailId, attachments, mailboxSource, senderMailboxId, source, ghlConversationId }: SendEmailRequest = body;
     
     // SECURITY: Verify authentication
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -340,6 +342,29 @@ Deno.serve(async (req) => {
 
     if (!to || !subject || !emailBody) {
       throw new Error('Missing required fields: to, subject, body');
+    }
+
+    // A personal sender is an authenticated identity, never a browser-provided
+    // email string. This also prevents one staff member impersonating another
+    // by changing the Select value in DevTools.
+    let resolvedMailbox = mailboxEmail;
+    if (mailboxSource === 'personal') {
+      if (!senderMailboxId || senderMailboxId !== userId) {
+        return new Response(JSON.stringify({ success: false, error: 'The selected sender mailbox is not authorised for this user' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: sender } = await supabase
+        .from('custom_users')
+        .select('personal_mailbox')
+        .eq('id', userId)
+        .maybeSingle();
+      if (!sender?.personal_mailbox?.trim()) {
+        return new Response(JSON.stringify({ success: false, error: 'No connected sender mailbox is available. Connect a mailbox in Settings and try again.' }), {
+          status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      resolvedMailbox = sender.personal_mailbox.trim();
     }
 
     console.log(`[Send Email] Sending email to: ${to}, Subject: ${subject}, Source: ${source || 'user'}, Attachments: ${attachments?.length || 0}`);
@@ -518,7 +543,7 @@ Deno.serve(async (req) => {
     }
 
     // Send email via Microsoft Graph API
-    const sendUrl = `https://graph.microsoft.com/v1.0/users/${mailboxEmail}/sendMail`;
+    const sendUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(resolvedMailbox!)}/sendMail`;
     
     const sendResponse = await fetch(sendUrl, {
       method: 'POST',
