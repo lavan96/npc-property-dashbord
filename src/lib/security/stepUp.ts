@@ -153,7 +153,7 @@ export async function requestStepUpWithWebAuthn(
   if (begin.error || !begin.data?.success) return { ok: false, error: begin.error?.message ?? begin.data?.error ?? 'webauthn_begin_failed' };
   let assertion;
   try {
-    assertion = await startAuthentication({ optionsJSON: begin.data.options });
+    assertion = await startAuthentication(begin.data.options);
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'webauthn_cancelled' };
   }
