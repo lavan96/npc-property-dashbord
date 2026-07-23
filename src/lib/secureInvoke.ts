@@ -140,7 +140,7 @@ async function tryRefreshAccessToken(): Promise<string | null> {
 export async function invokeSecureFunction<T = any>(
   functionName: string,
   body?: Record<string, any>,
-  options?: { timeoutMs?: number; _isRetry?: boolean }
+  options?: { timeoutMs?: number; _isRetry?: boolean; stepUpCapability?: string }
 ): Promise<InvokeResult<T>> {
   try {
     const sessionToken = getSessionToken();
@@ -158,17 +158,29 @@ export async function invokeSecureFunction<T = any>(
 
     const isCommandCentreMessagingFunction = COMMAND_CENTRE_MESSAGING_FUNCTIONS.has(functionName);
     const tokenInBodyOnly = BODY_TOKEN_FUNCTIONS.has(functionName);
-    const requestBody = body 
+
+    // WP-11C: attach a live step-up token when the caller declares a capability.
+    let stepUpToken: string | null = null;
+    if (options?.stepUpCapability) {
+      try {
+        const { getStepUpToken } = await import('@/lib/security/stepUp');
+        stepUpToken = getStepUpToken(options.stepUpCapability);
+      } catch { /* module optional at boot */ }
+    }
+
+    const requestBody = body
       ? {
         ...body,
         session_token: sessionToken,
         ...(isCommandCentreMessagingFunction ? { command_centre_session_token: sessionToken } : {}),
+        ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
       }
       : {
         session_token: sessionToken,
         ...(isCommandCentreMessagingFunction ? { command_centre_session_token: sessionToken } : {}),
+        ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
       };
-    
+
     const controller = new AbortController();
     const timeoutMs = options?.timeoutMs || 60000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -183,6 +195,7 @@ export async function invokeSecureFunction<T = any>(
           'x-session-token': sessionToken,
           ...(isCommandCentreMessagingFunction ? { 'x-command-centre-session-token': sessionToken } : {}),
         } : {}),
+        ...(stepUpToken ? { 'x-step-up-token': stepUpToken } : {}),
       },
       credentials: 'omit',
       body: JSON.stringify(requestBody),
