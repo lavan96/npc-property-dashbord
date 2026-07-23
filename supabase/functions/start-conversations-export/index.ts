@@ -17,6 +17,7 @@ import {
   createCorsHeaders,
   createUnauthorizedResponse,
 } from '../_shared/auth.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -63,24 +64,12 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to create export job: ${insertErr?.message || 'unknown'}`);
     }
 
-    // Fire-and-forget the worker. We do NOT await — we want this function
-    // to return the job_id within ~1s so the client can start polling.
-    const _anon = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
-    const _internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
-    const workerUrl = `${supabaseUrl}/functions/v1/build-conversations-export-worker`;
-    const workerCall = fetch(workerUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // AUTH-002: internal secret, not the service-role key (in header or body).
-        Authorization: `Bearer ${_anon}`,
-        ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
-        'x-internal-call': 'true',
-      },
-      body: JSON.stringify({
-        job_id: job.id,
-      }),
-    }).catch((e) => {
+    // Fire-and-forget the worker via signed internal call (WP-12).
+    const workerCall = callInternalFunction(
+      'build-conversations-export-worker',
+      { job_id: job.id },
+      'start-conversations-export',
+    ).catch((e: any) => {
       console.error(`[start-conversations-export] worker dispatch threw: ${e?.message || e}`);
     });
 
