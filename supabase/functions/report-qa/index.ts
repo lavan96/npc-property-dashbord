@@ -8,6 +8,8 @@ import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 import { runAgentLoop, agentLoopHasTools, type AgentLoopProvider } from '../_shared/agent-loop.ts';
 import { listTools } from '../_shared/agent-tools.ts';
+import { resolveReportQaAccess, canRead, canWrite, canAdminister } from '../_shared/reportQaAccess.ts';
+
 import { extractReportMetrics } from '../_shared/calculators.ts';
 import { fitMessagesToBudget, inputBudgetForModel } from '../_shared/contextBudget.ts';
 // Side-effect import: registers calculator + live-data tools into the
