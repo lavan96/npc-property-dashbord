@@ -247,13 +247,15 @@ Deno.serve(async (req) => {
         // Resolve membership on the server so restore includes active siblings hidden
         // by the archived filter. A listing ID is the stable key; exact address is only
         // used for legacy rows that have no listing reference.
-        const { data: anchor, error: anchorError } = await supabase
+        const uniqueIds = [...new Set(reportIds)];
+        const { data: anchorRows, error: anchorError } = await supabase
           .from('investment_reports')
           .select('id, property_listing_id, property_address')
-          .in('id', [...new Set(reportIds)])
-          .limit(1)
-          .maybeSingle();
+          .in('id', uniqueIds)
+          .limit(1);
+        const anchor = anchorRows?.[0];
         if (anchorError || !anchor) {
+          console.error('Package anchor lookup failed:', anchorError, { uniqueIds });
           return new Response(JSON.stringify({ error: 'Property package was not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         let packageQuery = supabase.from('investment_reports').update({ is_archived: action === 'archivePackage', updated_at: new Date().toISOString() });
