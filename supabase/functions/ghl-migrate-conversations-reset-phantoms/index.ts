@@ -29,8 +29,10 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const body = await req.json().catch(() => ({}));
-  if (!(await verifyInternal(createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!), req, '')).ok) {
+  const rawBody = await req.text();
+  let body: any = {};
+  try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { body = {}; }
+  if (!(await verifyInternal(createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!), req, rawBody, { strict: true, allowedCallers: ['migration-dispatcher'] })).ok) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
   const since = body.since || '2026-04-28T03:00:00+00:00';
