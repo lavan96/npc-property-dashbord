@@ -328,6 +328,11 @@ Deno.serve(async (req) => {
           return jsonResponse({ success: false, error: 'Delete failed' }, corsHeaders, 500);
         }
 
+        // WP-06: clean up bindings for the deleted objects (best-effort).
+        for (const p of paths) {
+          await deleteStorageBinding(supabase, bucket, p);
+        }
+
         await logSecurityEvent(supabase, {
           action: 'storage.delete', decision: 'allow',
           actor_type: isInternal ? 'internal_service' : 'human', actor_id: actorId,
