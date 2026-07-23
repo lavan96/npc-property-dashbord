@@ -3,7 +3,7 @@ import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/b
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { isSuperadmin, logSecurityEvent } from '../_shared/auth_v2.ts';
 import { checkPermission, checkModuleView } from '../_shared/permissions.ts';
-import { authorizeObjectAccess, deleteStorageBinding, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
+import { authorizeObjectAccess, authorizedBindingsForList, createStorageBinding, deleteStorageBinding, rollbackStorageObject, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
