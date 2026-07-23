@@ -613,7 +613,7 @@ Deno.serve(async (req) => {
               'Content-Type': 'application/json',
               'apikey': _anon,
               // AUTH-002: internal secret, not the service-role key.
-              'Authorization': `Bearer ${_internalSecret ? _anon : (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '')}`,
+              'Authorization': `Bearer ${_anon}`,
               ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             },
             body: JSON.stringify(syncBody),

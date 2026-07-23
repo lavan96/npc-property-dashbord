@@ -30,22 +30,13 @@ const R1_ALLOWLIST = new Set([
   'ghl-calendar-test/index.ts'  // decodes a GHL API key for diagnostics output
 ]);
 
-// R6 (AUTH-002): inter-function calls must authenticate with the dedicated
-// INTERNAL_EDGE_SECRET (x-internal-edge-secret) — see _shared/internalCall.ts —
-// not the crown-jewel service-role key. These functions still pass the
-// service-role key as a Bearer to another function and are grandfathered
-// pending migration; NEW occurrences are blocked. Remove an entry once migrated.
-const R6_SERVICE_KEY_CALLER_ALLOWLIST = new Set([
-  'ai-dashboard-agent/index.ts', 'auto-report-sync/index.ts', 'auto-report-webhook/index.ts',
-  'dispatch-marketing-reports/index.ts', 'finance-portal-automations/index.ts',
-  'finance-portal-client-data/index.ts', 'finance-portal-lender-intelligence/index.ts',
-  'generate-investment-report/index.ts', 'ghl-conversations-cron/index.ts',
-  'ghl-legacy-wipe-orchestrator/index.ts', 'ghl-legacy-wipe-worker/index.ts',
-  'ghl-marketing-dump-enqueue/index.ts', 'ghl-marketing-dump-worker/index.ts',
-  'migration-dispatcher/index.ts', 'migration-job-control/index.ts',
-  'migration-orchestrator/index.ts', 'process-scheduled-emails/index.ts',
-  'start-conversations-export/index.ts', '_shared/bulkReportWorker.ts',
-]);
+// R6 (AUTH-002 / AUTH-004): inter-function calls must authenticate with the
+// dedicated INTERNAL_EDGE_SECRET (x-internal-edge-secret) — see
+// _shared/internalCall.ts — never the crown-jewel service-role key. The Phase 2
+// migration + the AUTH-004 fallback retirement removed every service-role Bearer
+// from inter-function calls, so the allowlist is now EMPTY: any new occurrence
+// (including a `secret ? anon : serviceKey` ternary fallback) fails the gate.
+const R6_SERVICE_KEY_CALLER_ALLOWLIST = new Set([]);
 
 const files = [];
 (function walk(dir) {

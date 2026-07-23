@@ -12,9 +12,11 @@
  *
  * The gateway still needs an apikey; the public anon key is used for routing
  * (functions invoked internally run with verify_jwt=false or accept the
- * internal secret in-function). If INTERNAL_EDGE_SECRET is not configured we
- * fall back to the service-role key so nothing breaks — but that path should be
- * retired once the secret is set fleet-wide.
+ * internal secret in-function).
+ *
+ * AUTH-004: the legacy service-role-key fallback has been RETIRED. Inter-function
+ * calls authenticate ONLY with INTERNAL_EDGE_SECRET; if it is unset the call
+ * fails closed (no service-role key is ever placed on an inter-function request).
  */
 
 export interface InternalCallResult<T = any> {
@@ -43,24 +45,23 @@ export async function callInternalFunction<T = any>(
 ): Promise<InternalCallResult<T>> {
   const anonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
   const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
-  const serviceKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
+
+  // AUTH-004: fail closed. Inter-function calls authenticate ONLY with the
+  // dedicated internal secret — never the service-role key. If the secret is
+  // missing/too short we refuse the call rather than degrade to a service-role
+  // Bearer that bypasses all RLS.
+  if (internalSecret.length < 16) {
+    console.error(`[internalCall] INTERNAL_EDGE_SECRET not configured — refusing internal call to ${functionName}`);
+    return { ok: false, status: 0, data: null, error: 'internal auth not configured' };
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'apikey': anonKey,
     'x-internal-caller': callerName,
+    'x-internal-edge-secret': internalSecret,
+    'Authorization': `Bearer ${anonKey}`,
   };
-
-  if (internalSecret.length >= 16) {
-    // Preferred: dedicated internal secret, NOT the service-role key.
-    headers['x-internal-edge-secret'] = internalSecret;
-    headers['Authorization'] = `Bearer ${anonKey}`;
-  } else {
-    // Fallback (unconfigured secret): legacy service-role Bearer. Warn so this
-    // is visible in logs and can be eliminated once the secret is set.
-    console.warn(`[internalCall] INTERNAL_EDGE_SECRET not set — falling back to service-role Bearer for ${functionName}`);
-    headers['Authorization'] = `Bearer ${serviceKey}`;
-  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts?.timeoutMs ?? 60000);

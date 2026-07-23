@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${internalEdgeSecret ? anonKey : serviceRoleKey}`,
+        Authorization: `Bearer ${anonKey}`,
         ...(internalEdgeSecret ? { 'x-internal-edge-secret': internalEdgeSecret } : {}),
         'x-internal-call': 'true',
       },

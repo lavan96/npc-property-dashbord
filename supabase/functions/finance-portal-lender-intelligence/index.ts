@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
             headers: {
               'Content-Type': 'application/json',
               // AUTH-002: internal secret, not the service-role key.
-              Authorization: `Bearer ${_internalSecret ? _anon : serviceKey}`,
+              Authorization: `Bearer ${_anon}`,
               apikey: _internalSecret ? _anon : serviceKey,
               ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
             },
