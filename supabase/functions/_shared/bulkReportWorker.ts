@@ -96,7 +96,7 @@ async function callInvestmentReport(
       signal,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || serviceRoleKey}`,
+        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
         'apikey': anonKey,
       },
       body: JSON.stringify({

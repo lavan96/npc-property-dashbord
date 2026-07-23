@@ -1212,7 +1212,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+            'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
           },
           body: JSON.stringify(reportPayload),
         });

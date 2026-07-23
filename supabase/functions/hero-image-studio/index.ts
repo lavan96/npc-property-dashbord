@@ -13,6 +13,25 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
+import { signStoragePath, signStoragePaths } from "../_shared/storageSign.ts";
+
+// investment-reports is private (STOR-005): resolve display URLs by signing each
+// row's storage_path. The signed URL is returned in the same public_url/
+// thumbnail_url fields the frontend already reads, so no client change is needed.
+async function withSignedHeroUrls<T extends { storage_path?: string | null; public_url?: string | null; thumbnail_url?: string | null }>(
+  supabase: any,
+  rows: T[],
+): Promise<T[]> {
+  const signed = await signStoragePaths(supabase, BUCKET, rows.map((r) => r?.storage_path), 60 * 60);
+  for (const r of rows) {
+    const url = r?.storage_path ? signed[r.storage_path] : null;
+    if (url) {
+      r.public_url = url;
+      if (r.thumbnail_url !== undefined) r.thumbnail_url = url;
+    }
+  }
+  return rows;
+}
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -228,7 +247,7 @@ Deno.serve(async (req) => {
           errors.push(String(err?.message || err));
         }
       }
-      return jsonOk({ images: results, errors }, corsHeaders);
+      return jsonOk({ images: await withSignedHeroUrls(supabase, results), errors }, corsHeaders);
     }
 
     // ── library_list ──────────────────────────────────────────────────────
@@ -254,7 +273,7 @@ Deno.serve(async (req) => {
       if (body?.orientation === "landscape") images = images.filter((r: any) => r.width >= r.height);
       if (body?.orientation === "portrait") images = images.filter((r: any) => r.height > r.width);
       if (body?.orientation === "square") images = images.filter((r: any) => r.width === r.height);
-      return jsonOk({ images, total: count ?? images.length }, corsHeaders);
+      return jsonOk({ images: await withSignedHeroUrls(supabase, images), total: count ?? images.length }, corsHeaders);
     }
 
     // ── library_update / library_delete ──────────────────────────────────
@@ -356,7 +375,7 @@ Deno.serve(async (req) => {
         .select()
         .single();
       if (insErr) return jsonErr(insErr.message, corsHeaders, 500);
-      return jsonOk({ image: inserted }, corsHeaders);
+      return jsonOk({ image: (await withSignedHeroUrls(supabase, [inserted]))[0] }, corsHeaders);
     }
 
     // ── chapters_list ────────────────────────────────────────────────────
@@ -388,12 +407,14 @@ Deno.serve(async (req) => {
           id, report_id, section_key, section_title, library_image_id,
           render_height, render_width, object_fit, focal, rounded, position_order, updated_at,
           library:hero_image_library!report_hero_placements_library_image_id_fkey (
-            id, prompt, enhanced_prompt, model, aspect_ratio, width, height, public_url, thumbnail_url
+            id, prompt, enhanced_prompt, model, aspect_ratio, width, height, storage_path, public_url, thumbnail_url
           )
         `)
         .eq("report_id", reportId)
         .order("position_order", { ascending: true });
       if (error) return jsonErr(error.message, corsHeaders, 500);
+      const libs = (placements || []).map((p: any) => p.library).filter(Boolean);
+      await withSignedHeroUrls(supabase, libs); // signs public_url/thumbnail_url in place
       return jsonOk({ placements: placements || [] }, corsHeaders);
     }
 

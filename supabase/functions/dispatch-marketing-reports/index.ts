@@ -367,7 +367,7 @@ async function processScheduleDispatch(
         headers: {
           'Content-Type': 'application/json',
           // AUTH-002: internal secret, not the service-role key.
-          'Authorization': `Bearer ${_internalSecret ? anonKey.trim() : serviceKey.trim()}`,
+          'Authorization': `Bearer ${anonKey.trim()}`,
           'apikey': anonKey.trim(),
           ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
         },
@@ -432,7 +432,7 @@ async function getOrGenerateReport(supabase: any, supabaseUrl: string, serviceKe
     headers: {
       'Content-Type': 'application/json',
       // AUTH-002: internal secret, not the service-role key.
-      'Authorization': `Bearer ${_internalSecret ? anonKey.trim() : serviceKey.trim()}`,
+      'Authorization': `Bearer ${anonKey.trim()}`,
       'apikey': anonKey.trim(),
       ...(_internalSecret ? { 'x-internal-edge-secret': _internalSecret } : {}),
     },

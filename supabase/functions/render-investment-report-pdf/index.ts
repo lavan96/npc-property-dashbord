@@ -7,6 +7,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { marked } from "https://esm.sh/marked@12.0.2";
 import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
+import { signStoragePaths } from "../_shared/storageSign.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -2584,11 +2585,28 @@ async function loadHeroPlacements(reportId: string): Promise<Record<string, Hero
       .from("report_hero_placements")
       .select(`
         section_key, render_height, render_width, object_fit, focal, rounded,
-        library:hero_image_library!report_hero_placements_library_image_id_fkey ( public_url )
+        library:hero_image_library!report_hero_placements_library_image_id_fkey ( storage_path, public_url )
       `)
       .eq("report_id", reportId);
+    // 2. Legacy fallback for slugs not in placements
+    const { data: legacy } = await supabase
+      .from("report_visual_assets")
+      .select("section_key, storage_path, public_url")
+      .eq("report_id", reportId)
+      .eq("status", "ready")
+      .eq("include_in_report", true);
+
+    // investment-reports is private (STOR-005): sign every hero object from its
+    // storage_path in one batch. Fall back to any stored public_url only for
+    // rows that have no storage_path (e.g. an external image).
+    const paths: string[] = [];
+    for (const p of (placements || []) as any[]) if (p?.library?.storage_path) paths.push(p.library.storage_path);
+    for (const r of (legacy || []) as any[]) if (r?.storage_path) paths.push(r.storage_path);
+    const signed = await signStoragePaths(supabase, PDF_BUCKET, paths, 60 * 60);
+
     for (const p of (placements || []) as any[]) {
-      const url = p?.library?.public_url;
+      const sp = p?.library?.storage_path;
+      const url = (sp && signed[sp]) || p?.library?.public_url;
       if (!url || !p.section_key) continue;
       out[p.section_key] = {
         url,
@@ -2599,17 +2617,11 @@ async function loadHeroPlacements(reportId: string): Promise<Record<string, Hero
         rounded: p.rounded !== false,
       };
     }
-    // 2. Legacy fallback for slugs not in placements
-    const { data: legacy } = await supabase
-      .from("report_visual_assets")
-      .select("section_key, public_url")
-      .eq("report_id", reportId)
-      .eq("status", "ready")
-      .eq("include_in_report", true);
-    for (const r of (legacy || []) as Array<{ section_key: string; public_url: string }>) {
-      if (!r.public_url || out[r.section_key]) continue;
+    for (const r of (legacy || []) as Array<{ section_key: string; storage_path: string; public_url: string }>) {
+      const url = (r.storage_path && signed[r.storage_path]) || r.public_url;
+      if (!url || out[r.section_key]) continue;
       out[r.section_key] = {
-        url: r.public_url,
+        url,
         height: "standard",
         width: "full_bleed",
         fit: "cover",

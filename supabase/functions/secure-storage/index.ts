@@ -39,10 +39,10 @@ const BUCKET_POLICIES: Record<string, BucketPolicy> = {
   'client-files':         { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', readModuleKey: 'clients', maxUploadBytes: DEFAULT_MAX_UPLOAD },
   'client-documents':     { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', readModuleKey: 'clients', maxUploadBytes: DEFAULT_MAX_UPLOAD },
   'vownet-forms':         { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'client_files', readModuleKey: 'clients', maxUploadBytes: DEFAULT_MAX_UPLOAD },
-  // NOTE: investment-reports is currently a PUBLIC bucket and the report
-  // pipeline persists public pdf_url links; publicUrl stays allowed until the
-  // coordinated signed-URL migration (STOR-004) flips the bucket private.
-  'investment-reports':   { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], superadminDelete: true, allowPublicUrl: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  // investment-reports is PRIVATE (STOR-005). Report PDFs and hero/visual
+  // assets are served via short-lived signed URLs (report pipeline + hero
+  // functions sign from storage_path); publicUrl is no longer offered.
+  'investment-reports':   { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
   'quantitative-reports': { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], readModuleKey: 'reports', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
   // report-templates is a public bucket whose asset URLs are embedded in
   // rendered templates; publicUrl remains available (no client PII stored).

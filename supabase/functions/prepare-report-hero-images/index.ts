@@ -9,6 +9,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
+import { signStoragePaths } from "../_shared/storageSign.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -197,6 +198,10 @@ Deno.serve(async (req) => {
         .eq("report_id", reportId)
         .order("created_at", { ascending: true });
       (counts as any).selected = (assets || []).filter((a: any) => a.include_in_report && a.status === "ready").length;
+      // investment-reports is private (STOR-005): return a signed URL in public_url
+      // (resolved from storage_path) so the frontend can render each asset.
+      const signed = await signStoragePaths(supabase, BUCKET, (assets || []).map((a: any) => a.storage_path), 60 * 60);
+      for (const a of (assets || []) as any[]) if (a.storage_path && signed[a.storage_path]) a.public_url = signed[a.storage_path];
       return jsonOk({ ...counts, assets: assets || [] }, corsHeaders);
     }
 

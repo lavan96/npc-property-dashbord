@@ -2227,7 +2227,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
       // Service role is recognized by verifyAuth as a valid internal caller
       const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+        'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
         ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
       };
 
@@ -2406,7 +2406,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-                'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+                'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
                 ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
@@ -2453,7 +2453,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
               ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
@@ -2549,7 +2549,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+                  'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
                   ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
                 },
                 body: JSON.stringify({
@@ -2593,7 +2593,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+            'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
             ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
           },
           body: JSON.stringify({
@@ -2636,7 +2636,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
               ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
@@ -2684,7 +2684,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
               ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({
@@ -2811,7 +2811,7 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET || supabaseServiceKey}`,
+              'Authorization': `Bearer ${INTERNAL_EDGE_SECRET}`,
               ...(supabaseAnonKey ? { 'apikey': supabaseAnonKey } : {})
             },
             body: JSON.stringify({ 
