@@ -88,15 +88,22 @@ Deno.serve(async (req) => {
     const webhookUrl = `${SUPABASE_URL}/functions/v1/outlook-email-webhook`;
 
     if (action === 'create') {
+      // WP-13: require a high-entropy OUTLOOK_WEBHOOK_CLIENT_STATE. Legacy
+      // constant fallback is removed — refuse to create a subscription with a
+      // weak/predictable clientState.
+      const clientStateSecret = (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || '').trim();
+      if (clientStateSecret.length < 16) {
+        return new Response(JSON.stringify({
+          error: 'OUTLOOK_WEBHOOK_CLIENT_STATE is not configured (min 16 chars). Ask an administrator to set it before creating a subscription.',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
       // Create a new subscription for mail notifications
       const subscription = {
         changeType: 'created',
         notificationUrl: webhookUrl,
         resource: `/users/${MICROSOFT_MAILBOX_EMAIL}/messages`,
         expirationDateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days max
-        // Prefer a high-entropy secret so the receiving webhook can authenticate
-        // notifications via clientState; fall back to the legacy constant.
-        clientState: (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || 'npc-email-copilot-webhook').trim(),
+        clientState: clientStateSecret,
       };
 
       console.log('Creating subscription:', subscription);
