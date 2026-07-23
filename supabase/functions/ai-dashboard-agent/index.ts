@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { authorizeAgentTool, AgentToolAuthzError, type AgentToolAuthzContext } from "../_shared/agentToolAuthz.ts";
 import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApiUsage.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
 
@@ -5672,7 +5673,19 @@ async function executeGetDepreciationSummary(sb: any) {
 //  TOOL DISPATCHER
 // ============================================================
 
-async function executeTool(sb: any, name: string, args: any, userId: string): Promise<any> {
+async function executeTool(sb: any, name: string, args: any, userId: string, authzCtx?: AgentToolAuthzContext): Promise<any> {
+  // WP-05B: fail-closed authorization gate. Every tool dispatch is checked
+  // for actor-type, step-up (deletes/bulk), and resource ownership. Read
+  // tools (can_view) are still scoped by their own queries.
+  const ctx: AgentToolAuthzContext = authzCtx ?? { actorType: 'human', stepUpVerified: false };
+  try {
+    await authorizeAgentTool(sb, name, args || {}, userId, ctx);
+  } catch (err) {
+    if (err instanceof AgentToolAuthzError) {
+      return { success: false, error: err.message, code: err.code };
+    }
+    return { success: false, error: (err as Error)?.message || 'Authorization failed', code: 'policy_denied' };
+  }
   switch (name) {
     // Client
     case 'search_clients': return executeSearchClients(sb, args);
@@ -7604,7 +7617,9 @@ async function handleConfirmAction(sb: any, body: any, cors: Record<string, stri
   if (pendingMsg?.tool_calls) {
     const results: any[] = [];
     for (const tc of pendingMsg.tool_calls) {
-      const result = await executeTool(sb, tc.function.name, JSON.parse(tc.function.arguments), body.user_id || 'service_role');
+      // WP-05B: the pending-message approval flow satisfies the step-up gate
+      // for delete_*/bulk_* tools. Ownership + actor-type gates still apply.
+      const result = await executeTool(sb, tc.function.name, JSON.parse(tc.function.arguments), body.user_id || 'service_role', { actorType: 'human', stepUpVerified: true });
       results.push({ tool_call_id: tc.id, result });
     }
     const content = results.map(r => r.result.success ? r.result.message : `⚠️ Error: ${r.result.error || 'Unknown'}`).join('\n');
@@ -8553,7 +8568,14 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
         }
         const targetUserId = body.user_id || userId!;
-        const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId);
+        // WP-05B: verified service-role callers (agent-task-runner et al.)
+        // act as 'internal'. Ownership check is bypassed but actor-type,
+        // step-up, and any WP-05C internal-caller allowlist still apply.
+        const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId, {
+          actorType: 'internal',
+          stepUpVerified: true,
+          internalCaller: body.internal_caller || 'service_role',
+        });
         return new Response(JSON.stringify({ success: true, result: toolResult }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       // ============= Phase 5: Memory analytics, insights feed, skills, evals =============
