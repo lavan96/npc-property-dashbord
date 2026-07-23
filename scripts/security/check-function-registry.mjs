@@ -51,14 +51,12 @@ for (const [name, entry] of Object.entries(registry)) {
 }
 const needsReview = Object.entries(registry).filter(([, entry]) => entry.exposure_class === 'needs-review').map(([name]) => name).sort();
 const unreviewed = Object.entries(registry).filter(([, entry]) => entry.reviewed !== true).map(([name]) => name).sort();
-const baselineNeedsReview = new Set(baseline.needs_review_functions);
-const baselineUnreviewed = new Set(baseline.unreviewed_functions);
-const newNeedsReview = needsReview.filter((name) => !baselineNeedsReview.has(name));
-const newUnreviewed = unreviewed.filter((name) => !baselineUnreviewed.has(name));
-if (needsReview.length > baseline.needs_review_functions.length) errors.push(`needs-review backlog increased from ${baseline.needs_review_functions.length} to ${needsReview.length}: ${newNeedsReview.join(', ') || 'unknown entry'}.`);
-if (newNeedsReview.length) errors.push(`New needs-review function(s) are not allowed: ${newNeedsReview.join(', ')}.`);
-if (newUnreviewed.length) errors.push(`New unreviewed function(s) are not allowed: ${newUnreviewed.join(', ')}. Set reviewed: true only after a security review.`);
-console.log(`Registry: ${Object.keys(registry).length} entries; ${onDisk.length} functions on disk; ${needsReview.length}/${baseline.needs_review_functions.length} needs-review; ${unreviewed.length}/${baseline.unreviewed_functions.length} unreviewed.`);
+// WP-14: baseline is now zero and strictly enforced. Any needs-review or
+// unreviewed entry fails the gate — the historical grandfathering window is
+// closed.
+if (needsReview.length > 0) errors.push(`WP-14: needs-review must be zero. Offenders: ${needsReview.join(', ')}.`);
+if (unreviewed.length > 0) errors.push(`WP-14: every registry entry must be reviewed: true. Offenders: ${unreviewed.join(', ')}.`);
+console.log(`Registry: ${Object.keys(registry).length} entries; ${onDisk.length} functions on disk; ${needsReview.length} needs-review; ${unreviewed.length} unreviewed.`);
 if (errors.length) {
   console.error('\nSecurity registry check FAILED:\n');
   for (const error of errors) console.error(` - ${error}`);
