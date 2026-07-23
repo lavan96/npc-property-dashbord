@@ -157,11 +157,25 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error('[portal-upload-file] DB insert error:', insertError.message);
+      // Rollback storage upload on DB insert failure so no orphan object remains.
+      await supabase.storage.from('client-files').remove([filePath]).catch(() => {});
       return new Response(
         JSON.stringify({ error: 'File uploaded but record creation failed', success: false }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // WP-06 Phase B — record the object binding so future reads are authorizable.
+    await supabase.from('storage_object_bindings').upsert({
+      bucket: 'client-files',
+      object_path: filePath,
+      resource_type: 'client_file',
+      resource_id: fileRecord.id,
+      client_id: clientId,
+      owner_user_id: null,
+      sensitivity: 'sensitive',
+      created_by: session.client_portal_users.id ?? null,
+    }, { onConflict: 'bucket,object_path' });
 
     await logClientActivity(supabase, {
       clientId,
