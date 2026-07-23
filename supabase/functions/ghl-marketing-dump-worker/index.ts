@@ -11,6 +11,7 @@ import { createCorsHeaders } from '../_shared/auth.ts';
 import { verifyInternal } from '../_shared/auth_v2.ts';
 import { getGhlCredentials, buildGhlHeaders, type GhlAccount } from '../_shared/ghl-account.ts';
 import { processAsset, type AssetTask, type DumpRow } from '../_shared/ghl-asset-harvester.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 const TIME_BUDGET_MS = 50_000;
 const CHUNK_SIZE = 3;
