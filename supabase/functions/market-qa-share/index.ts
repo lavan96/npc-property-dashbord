@@ -53,8 +53,8 @@ Deno.serve(async (req) => {
       if (!slug) return json({ error: 'slug required' }, 400);
 
       const ip = getClientIp(req);
-      if (!enforceIpQuota(ip, 'market_qa_resolve', { limit: 60, windowMs: 60_000 }).ok) return json({ error: 'rate_limited' }, 429);
-      if (!enforceKeyQuota(slug, 'market_qa_resolve_slug', { limit: 300, windowMs: 60 * 60_000 }).ok) return json({ error: 'rate_limited' }, 429);
+      if (!(await enforceIpQuota(sb, ip, 'market_qa_resolve', { limit: 60, windowMs: 60_000 })).ok) return json({ error: 'rate_limited' }, 429);
+      if (!(await enforceKeyQuota(sb, slug, 'market_qa_resolve_slug', { limit: 300, windowMs: 60 * 60_000 })).ok) return json({ error: 'rate_limited' }, 429);
 
       const { data: share, error } = await sb
         .from('market_update_qa_shares')

@@ -46,6 +46,10 @@ Store results at `docs/security/wp15-evidence/<date>/negative-tests.jsonl`.
 | NT-30 | Cookie theft / session fixation | Reuse portal cookie from another IP after idle timeout | 401 `session_expired` |
 | NT-31 | Oversized attachment on ingest endpoints | > declared cap | 413 |
 | NT-32 | Enumerate cross-user IDs on finance / clients / reports | UUID from another tenant | 403/404 (never leak existence) |
+| NT-33 | `security-step-up` enrolled TOTP user | Missing, malformed, or incorrect `mfa_code` | 401 `mfa_verification_required`; no proof minted |
+| NT-34 | `security-step-up` enrolled TOTP user | Reuse a previously accepted 30-second TOTP code | 401 `mfa_code_replayed`; no proof minted |
+| NT-35 | Step-up gated endpoint | Present a valid proof with a different/revoked staff session | 401 `step_up_required` |
+| NT-36 | `security-step-up` TOTP enrollment confirmation | Use another staff session's enrollment token or an expired token | 401 `invalid_enrollment_confirmation`; no MFA activation |
 
 ## Automation hooks
 

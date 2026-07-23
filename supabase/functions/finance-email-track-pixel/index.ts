@@ -40,16 +40,17 @@ Deno.serve(async (req) => {
   // Always return pixel regardless of downstream outcome.
   if (!token || !VALID_TOKEN.test(token)) return respondPixel();
 
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+
   const ip = getClientIp(req);
   // Silent rate limits (still return pixel to caller).
-  if (!enforceIpQuota(ip, 'email_pixel', { limit: 120, windowMs: 60_000 }).ok) return respondPixel();
-  if (!enforceKeyQuota(token, 'email_pixel_token', { limit: 30, windowMs: 60 * 60_000 }).ok) return respondPixel();
+  if (!(await enforceIpQuota(supabase, ip, 'email_pixel', { limit: 120, windowMs: 60_000 })).ok) return respondPixel();
+  if (!(await enforceKeyQuota(supabase, token, 'email_pixel_token', { limit: 30, windowMs: 60 * 60_000 })).ok) return respondPixel();
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
 
     // Authoritative outbound row — REQUIRED. No stub rows are ever created.
     const { data: outbound } = await supabase

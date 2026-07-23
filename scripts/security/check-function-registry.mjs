@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const functionsDir = join(root, 'supabase', 'functions');
-const registryPath = join(root, 'supabase', 'functions-registry', 'SECURITY_REGISTRY.json');
+const registryPath = process.env.SECURITY_REGISTRY_PATH || join(root, 'supabase', 'functions-registry', 'SECURITY_REGISTRY.json');
 const baselinePath = join(root, 'supabase', 'functions-registry', 'needs-review-baseline.json');
 const configPath = join(root, 'supabase', 'config.toml');
 const exposureClasses = new Set([

@@ -2,7 +2,7 @@
 // richer grounded schema (key figures, follow-ups, sentiment, time horizon).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireModulePermission } from '../_shared/authz.ts';
-import { consumeRateLimit, enforceJsonBodyLimit, getTrustedClientIp, securityJsonError, verifyHuman } from '../_shared/requestSecurity.ts';
+import { consumeRateLimit, enforceJsonBodyLimit, getTrustedClientIp, requireHumanOrSignedInternal, securityJsonError } from '../_shared/requestSecurity.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -204,9 +204,17 @@ Deno.serve(async (req) => {
   const parsed = await enforceJsonBodyLimit<any>(req, 100_000);
   if (!parsed.ok) return new Response(parsed.error.body, { status: parsed.error.status, headers: { ...cors, 'content-type': 'application/json' } });
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const auth = await verifyHuman(sb, req, parsed.value);
+  // Human requests and scheduled work have distinct trust paths. Scheduled
+  // callers must present a signed internal envelope and be on this target's
+  // allowlist; they never impersonate a browser Bearer token.
+  const auth = await requireHumanOrSignedInternal(sb, req, parsed.raw, ['market-qa-subscriptions', 'market-qa-digest-runner'], parsed.value);
   if (!auth.ok || !auth.actorId) return new Response(securityJsonError(401, 'authentication_required', auth.correlationId).body, { status: 401, headers: { ...cors, 'content-type': 'application/json' } });
-  const permission = await requireModulePermission(sb, { userId: auth.actorId, authMethod: auth.method }, 'market_updates', 'can_view');
+  const isScheduledInternal = auth.method === 'internal_hmac';
+  if (isScheduledInternal && parsed.value?.internal_action !== 'scheduled_qa') return new Response(securityJsonError(403, 'internal_action_denied', auth.correlationId).body, { status: 403, headers: { ...cors, 'content-type': 'application/json' } });
+  const targetUserId = isScheduledInternal && typeof parsed.value?.target_user_id === 'string' && /^[0-9a-f-]{36}$/i.test(parsed.value.target_user_id)
+    ? parsed.value.target_user_id : auth.actorId;
+  if (isScheduledInternal && targetUserId === auth.actorId) return new Response(securityJsonError(400, 'target_user_required', auth.correlationId).body, { status: 400, headers: { ...cors, 'content-type': 'application/json' } });
+  const permission = await requireModulePermission(sb, { userId: targetUserId, authMethod: isScheduledInternal ? 'human' : auth.method }, 'market_updates', 'can_view');
   if (!permission.ok) return new Response(securityJsonError(403, 'market_access_denied', auth.correlationId).body, { status: 403, headers: { ...cors, 'content-type': 'application/json' } });
   const payload = parsed.value;
   const question = typeof payload?.question === 'string' ? payload.question.trim().slice(0, 4000) : '';
@@ -218,10 +226,10 @@ Deno.serve(async (req) => {
   if (question.length < 4) return json({ answer: REFUSAL, citations: [], source_update_ids: [], confidence_score: 0, limitations: ['A specific question is required.'], follow_up_questions: [], key_figures: [], time_horizon: 'unclear', sentiment: 'neutral', retrieved: [], question_id: null });
   const ip = getTrustedClientIp(req.headers);
   try {
-    const limits = await Promise.all([consumeRateLimit(sb, `marketqa:user:${auth.actorId}`, RATE_LIMIT_HOUR, 3600), consumeRateLimit(sb, `marketqa:daily:${auth.actorId}`, RATE_LIMIT_DAY, 86400), consumeRateLimit(sb, 'marketqa:global', Number(Deno.env.get('MARKET_QA_GLOBAL_DAILY_LIMIT') || 2000), 86400), ...(ip ? [consumeRateLimit(sb, `marketqa:ip:${ip}`, 60, 3600)] : [])]);
+    const limits = await Promise.all([consumeRateLimit(sb, `marketqa:user:${targetUserId}`, RATE_LIMIT_HOUR, 3600), consumeRateLimit(sb, `marketqa:daily:${targetUserId}`, RATE_LIMIT_DAY, 86400), consumeRateLimit(sb, 'marketqa:global', Number(Deno.env.get('MARKET_QA_GLOBAL_DAILY_LIMIT') || 2000), 86400), ...(!isScheduledInternal && ip ? [consumeRateLimit(sb, `marketqa:ip:${ip}`, 60, 3600)] : [])]);
     if (limits.some((limit) => !limit.allowed)) return new Response(securityJsonError(429, 'rate_limited', auth.correlationId).body, { status: 429, headers: { ...cors, 'content-type': 'application/json' } });
   } catch { return new Response(securityJsonError(503, 'metering_unavailable', auth.correlationId).body, { status: 503, headers: { ...cors, 'content-type': 'application/json' } }); }
-  const userId = auth.actorId;
+  const userId = targetUserId;
 
   const terms = pickTerms(question);
 
@@ -467,5 +475,4 @@ Deno.serve(async (req) => {
     headers: { ...cors, 'content-type': 'text/event-stream', 'cache-control': 'no-cache', 'x-accel-buffering': 'no' },
   });
 });
-
 

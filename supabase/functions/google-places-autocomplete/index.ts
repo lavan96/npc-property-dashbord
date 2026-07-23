@@ -1,14 +1,11 @@
 import { createCorsHeaders } from "../_shared/auth.ts";
 import {
-  enforceGlobalCircuitBreaker,
   enforceGlobalDailyQuota,
   enforceIpQuota,
   enforceKeyQuota,
   fetchWithTimeout,
   getClientIp,
   killSwitchActive,
-  recordProviderFailure,
-  recordProviderSuccess,
   redactError,
   sanitizeShortText,
 } from "../_shared/publicAbuseControls.ts";
@@ -37,10 +34,11 @@ Deno.serve(async (req) => {
     return j({ error: 'temporarily_unavailable', success: false }, 503);
   }
 
-  const breaker = enforceGlobalCircuitBreaker(CIRCUIT_SCOPE, { failureThreshold: 20, openMs: 60_000 });
-  if (!breaker.ok) return j({ error: 'temporarily_unavailable', success: false }, 503);
-
   try {
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data: circuitOpen, error: circuitReadError } = await supabase.rpc('provider_circuit_is_open', { p_scope: CIRCUIT_SCOPE });
+    if (circuitReadError) return j({ error: 'temporarily_unavailable', success: false }, 503);
+    if (circuitOpen === true) return j({ error: 'temporarily_unavailable', success: false }, 503);
     const apiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
     if (!apiKey) return j({ error: 'Places service not configured', success: false }, 500);
 
@@ -53,14 +51,14 @@ Deno.serve(async (req) => {
     const ip = getClientIp(req);
 
     // Atomic quotas — layered.
-    const ipCheck = enforceIpQuota(ip, 'google_places', { limit: 30, windowMs: 60_000 });
+    const ipCheck = await enforceIpQuota(supabase, ip, 'google_places', { limit: 30, windowMs: 60_000 });
     if (!ipCheck.ok) return j({ error: 'rate_limited', success: false }, 429);
     if (sessionToken) {
-      const sess = enforceKeyQuota(sessionToken, 'google_places_session', { limit: 60, windowMs: 60_000 });
+      const sess = await enforceKeyQuota(supabase, sessionToken, 'google_places_session', { limit: 60, windowMs: 60_000 });
       if (!sess.ok) return j({ error: 'rate_limited', success: false }, 429);
     }
     const dailyCap = Number(Deno.env.get('GOOGLE_PLACES_DAILY_LIMIT') ?? '5000');
-    const globalCheck = enforceGlobalDailyQuota('google_places', dailyCap);
+    const globalCheck = await enforceGlobalDailyQuota(supabase, 'google_places', dailyCap);
     if (!globalCheck.ok) return j({ error: 'daily_quota_exceeded', success: false }, 429);
 
     const params = new URLSearchParams({
@@ -79,7 +77,8 @@ Deno.serve(async (req) => {
         5000,
       );
     } catch (e) {
-      recordProviderFailure(CIRCUIT_SCOPE, { failureThreshold: 20, openMs: 60_000 });
+      const { error: circuitWriteError } = await supabase.rpc('provider_circuit_record_failure', { p_scope: CIRCUIT_SCOPE, p_threshold: 20, p_open_seconds: 60 });
+      if (circuitWriteError) return j({ error: 'temporarily_unavailable', success: false }, 503);
       console.warn('[google-places-autocomplete] upstream timeout/abort', redactError(e));
       return j({ error: 'upstream_timeout', success: false }, 504);
     }
@@ -87,12 +86,14 @@ Deno.serve(async (req) => {
     const data = await response.json().catch(() => ({}));
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      recordProviderFailure(CIRCUIT_SCOPE, { failureThreshold: 20, openMs: 60_000 });
+      const { error: circuitWriteError } = await supabase.rpc('provider_circuit_record_failure', { p_scope: CIRCUIT_SCOPE, p_threshold: 20, p_open_seconds: 60 });
+      if (circuitWriteError) return j({ error: 'temporarily_unavailable', success: false }, 503);
       console.error('Google Places API error:', data.status);
       return j({ error: 'upstream_error', success: false }, 502);
     }
 
-    recordProviderSuccess(CIRCUIT_SCOPE);
+    const { error: circuitResetError } = await supabase.rpc('provider_circuit_record_success', { p_scope: CIRCUIT_SCOPE });
+    if (circuitResetError) return j({ error: 'temporarily_unavailable', success: false }, 503);
 
     // Response projection — never leak arbitrary provider fields.
     const predictions = (data.predictions || []).slice(0, 10).map((p: Record<string, unknown>) => ({

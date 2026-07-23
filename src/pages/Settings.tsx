@@ -37,6 +37,7 @@ import { SeatEntitlementCard } from "@/components/settings/SeatEntitlementCard";
 import { PricingCatalogCard } from "@/components/settings/PricingCatalogCard";
 import { PurchaseHistoryCard } from "@/components/settings/PurchaseHistoryCard";
 import { DeviceManagementCard } from "@/components/settings/DeviceManagementCard";
+import { TotpEnrollmentCard } from "@/components/settings/TotpEnrollmentCard";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
@@ -454,6 +455,13 @@ export default function Settings() {
             <Badge variant="success" className={settingsBadgePillClass}>
               Configured
             </Badge>
+          </div>
+
+          <Separator />
+
+          <div className={settingsCx(settingsPanelClass, "space-y-4")}>
+            <h4 className="text-sm font-semibold">Authenticator app</h4>
+            <TotpEnrollmentCard disabled={!canEditSettings} />
           </div>
 
           <Separator />

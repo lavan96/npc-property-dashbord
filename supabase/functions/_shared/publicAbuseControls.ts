@@ -4,8 +4,8 @@
  * Provides:
  *   - `verifyTurnstile(token, ip)`  Cloudflare Turnstile verification, fail-closed
  *                                   when REQUIRE_TURNSTILE=true.
- *   - `enforceIpQuota` / `enforceActorQuota` / `enforceKeyQuota`   in-memory
- *                                   sliding-window counters keyed per instance.
+ *   - `enforceIpQuota` / `enforceActorQuota` / `enforceKeyQuota`   database
+ *                                   atomic counters shared across instances.
  *   - `enforceGlobalCircuitBreaker` last-N-failure trip for paid providers.
  *   - `reserveUsage/commit/release` optimistic atomic global counters.
  *   - `killSwitchActive(name)`      env-flag gate.
@@ -15,46 +15,21 @@
  *   - `hashToken(token)`            SHA-256 hex for tracking-token equality.
  *   - `redactError(e)`              user-safe error message.
  *
- * NOTE: The in-memory limiters are per edge-function instance. For strict
- * global caps in production, WP-08 already documents the need for a
- * DB-backed layer; this helper leaves clear extension points but does not
- * add a new table.
+ * Quotas use security_consume_rate_limit so horizontal scaling cannot evade
+ * the ceiling. Circuit-breaker migration remains a separate provider task.
  */
 
-interface WindowState { count: number; resetAt: number }
-const _windows = new Map<string, WindowState>();
 const _breaker = new Map<string, { failures: number; openedAt: number }>();
-
-function bump(key: string, windowMs: number, limit: number): { ok: boolean; retryAfterMs: number } {
-  const now = Date.now();
-  const w = _windows.get(key);
-  if (!w || w.resetAt <= now) {
-    _windows.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true, retryAfterMs: 0 };
-  }
-  if (w.count >= limit) {
-    return { ok: false, retryAfterMs: w.resetAt - now };
-  }
-  w.count += 1;
-  return { ok: true, retryAfterMs: 0 };
+async function consumeQuota(supabase: any, key: string, opts: { limit: number; windowMs: number }): Promise<{ ok: boolean; retryAfterMs: number }> {
+  const { data, error } = await supabase.rpc('security_consume_rate_limit', { p_key: key, p_max: opts.limit, p_window_seconds: Math.max(1, Math.ceil(opts.windowMs / 1000)) });
+  if (error || !data?.[0]) return { ok: false, retryAfterMs: 1000 };
+  return { ok: data[0].allowed === true, retryAfterMs: Number(data[0].retry_after_seconds || 0) * 1000 };
 }
+export async function enforceIpQuota(supabase: any, ip: string | null, scope: string, opts: { limit: number; windowMs: number }) { return consumeQuota(supabase, `public:ip:${ip || 'unknown'}:${scope}`, opts); }
+export async function enforceActorQuota(supabase: any, actorId: string, scope: string, opts: { limit: number; windowMs: number }) { return consumeQuota(supabase, `public:actor:${actorId}:${scope}`, opts); }
+export async function enforceKeyQuota(supabase: any, key: string, scope: string, opts: { limit: number; windowMs: number }) { return consumeQuota(supabase, `public:key:${key}:${scope}`, opts); }
 
-export function enforceIpQuota(ip: string | null, scope: string, opts: { limit: number; windowMs: number }): { ok: boolean; retryAfterMs: number } {
-  if (!ip) return bump(`ip:unknown:${scope}`, opts.windowMs, opts.limit);
-  return bump(`ip:${ip}:${scope}`, opts.windowMs, opts.limit);
-}
-
-export function enforceActorQuota(actorId: string, scope: string, opts: { limit: number; windowMs: number }): { ok: boolean; retryAfterMs: number } {
-  return bump(`actor:${actorId}:${scope}`, opts.windowMs, opts.limit);
-}
-
-export function enforceKeyQuota(key: string, scope: string, opts: { limit: number; windowMs: number }): { ok: boolean; retryAfterMs: number } {
-  return bump(`key:${key}:${scope}`, opts.windowMs, opts.limit);
-}
-
-export function enforceGlobalDailyQuota(scope: string, limit: number): { ok: boolean; retryAfterMs: number } {
-  return bump(`global:${scope}:daily`, 24 * 60 * 60 * 1000, limit);
-}
+export async function enforceGlobalDailyQuota(supabase: any, scope: string, limit: number) { return consumeQuota(supabase, `public:global:${scope}:daily`, { limit, windowMs: 24 * 60 * 60 * 1000 }); }
 
 // ---------------------------------------------------------------- Circuit breaker
 export function enforceGlobalCircuitBreaker(scope: string, opts: { failureThreshold: number; openMs: number }): { ok: boolean; reason?: string } {

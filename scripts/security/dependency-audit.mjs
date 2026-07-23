@@ -6,7 +6,7 @@
  * the blocking severity is present and not explicitly accepted.
  *
  * Design notes:
- *  - Blocks on `critical` by default (override with SECURITY_AUDIT_LEVEL:
+ *  - Blocks on `high` by default (override with SECURITY_AUDIT_LEVEL:
  *    low|moderate|high|critical). Findings below the threshold are reported as
  *    warnings so they stay visible without breaking every unrelated PR.
  *  - Accepted advisories are listed in
@@ -29,7 +29,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ALLOWLIST_PATH = join(root, 'scripts', 'security', 'dependency-audit-allowlist.json');
 
 const RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
-const blockLevel = (process.env.SECURITY_AUDIT_LEVEL || 'critical').toLowerCase();
+const blockLevel = (process.env.SECURITY_AUDIT_LEVEL || 'high').toLowerCase();
 const blockRank = RANK[blockLevel] ?? RANK.critical;
 
 let allow = { advisories: [] };

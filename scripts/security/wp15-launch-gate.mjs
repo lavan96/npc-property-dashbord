@@ -32,11 +32,14 @@ function must(path, label) {
 // 1 + 2. Registry cleanliness — WP-14 already guarantees this, we re-check as
 // a launch-time invariant so a regression can't slip in without WP-15 noticing.
 try {
-  const registryPath = join(root, 'supabase/functions-registry/SECURITY_REGISTRY.json');
+  const registryPath = process.env.SECURITY_REGISTRY_PATH || join(root, 'supabase/functions-registry/SECURITY_REGISTRY.json');
   const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
-  const entries = Array.isArray(registry?.functions) ? registry.functions : [];
-  const needsReview = entries.filter((e) => e?.exposure_class === 'needs-review');
-  const unreviewed  = entries.filter((e) => e?.reviewed !== true);
+  if (!registry?.functions || Array.isArray(registry.functions) || typeof registry.functions !== 'object') {
+    throw new Error('SECURITY_REGISTRY.functions must be an object keyed by function name.');
+  }
+  const entries = Object.entries(registry.functions);
+  const needsReview = entries.filter(([, entry]) => entry?.exposure_class === 'needs-review');
+  const unreviewed  = entries.filter(([, entry]) => entry?.reviewed !== true);
   if (needsReview.length) errors.push(`SECURITY_REGISTRY has ${needsReview.length} needs-review entries.`);
   if (unreviewed.length)  errors.push(`SECURITY_REGISTRY has ${unreviewed.length} entries with reviewed !== true.`);
 } catch (e) {

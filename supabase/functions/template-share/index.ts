@@ -34,14 +34,15 @@ Deno.serve(async (req) => {
   const token = (url.searchParams.get('token') || '').trim();
   if (!token || !VALID_TOKEN.test(token)) return j({ error: 'token required' }, 400);
 
-  const ip = getClientIp(req);
-  if (!enforceIpQuota(ip, 'template_share', { limit: 60, windowMs: 60_000 }).ok) return j({ error: 'rate_limited' }, 429);
-  if (!enforceKeyQuota(token, 'template_share_token', { limit: 300, windowMs: 60 * 60_000 }).ok) return j({ error: 'rate_limited' }, 429);
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
+
+  const ip = getClientIp(req);
+  if (!(await enforceIpQuota(supabase, ip, 'template_share', { limit: 60, windowMs: 60_000 })).ok) return j({ error: 'rate_limited' }, 429);
+  if (!(await enforceKeyQuota(supabase, token, 'template_share_token', { limit: 300, windowMs: 60 * 60_000 })).ok) return j({ error: 'rate_limited' }, 429);
+
 
   try {
     const { data: link, error: linkErr } = await supabase
