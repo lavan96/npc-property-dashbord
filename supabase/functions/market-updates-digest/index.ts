@@ -4,8 +4,9 @@
 // narrative, and persists one row per (period, period_start) in market_digests.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { verifyRequiredCronSecret, securityJsonError } from "../_shared/requestSecurity.ts";
+import { consumeRateLimit, verifyRequiredCronSecret, securityJsonError } from "../_shared/requestSecurity.ts";
 import { verifyAuth } from "../_shared/auth.ts";
+import { requireModulePermission } from '../_shared/authz.ts';
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -189,17 +190,37 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  let interactiveUserId: string | null = null;
   if (!cronOk) {
     let bodyPreview: any = {};
     try { bodyPreview = await req.clone().json(); } catch {}
     const auth = await verifyAuth(sb, req.headers, bodyPreview);
     if (auth.error || !auth.userId) return securityJsonError(401, "unauthorized");
+    const permission = await requireModulePermission(sb, { userId: auth.userId, authMethod: auth.authMethod }, 'market_updates', 'can_edit');
+    if (!permission.ok) return securityJsonError(403, 'market_digest_admin_required');
+    interactiveUserId = auth.userId;
   }
 
   const payload = await req.json().catch(() => ({}));
   const period: Period = VALID_PERIODS.includes(payload?.period) ? payload.period : "24h";
   const { start, end } = periodWindow(period);
   const windowLabel = `${start.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)}`;
+
+  // Cron and manual retries are idempotent per period window. Return the
+  // authoritative existing digest before any provider call.
+  const { data: existingDigest } = await sb.from('market_digests')
+    .select('*').eq('period', period).eq('period_start', start.toISOString()).maybeSingle();
+  if (existingDigest) return json({ digest: existingDigest, noData: false, period, period_start: start.toISOString(), period_end: end.toISOString(), idempotent: true, message: 'Market digest already exists for this period.' });
+
+  if (interactiveUserId) {
+    try {
+      const [userLimit, globalLimit] = await Promise.all([
+        consumeRateLimit(sb, `market-digest:user:${interactiveUserId}`, Number(Deno.env.get('MARKET_DIGEST_USER_DAILY_LIMIT') || 3), 86400),
+        consumeRateLimit(sb, 'market-digest:global', Number(Deno.env.get('MARKET_DIGEST_GLOBAL_DAILY_LIMIT') || 24), 86400),
+      ]);
+      if (!userLimit.allowed || !globalLimit.allowed) return securityJsonError(429, 'rate_limited');
+    } catch { return securityJsonError(503, 'metering_unavailable'); }
+  }
 
   const { data: updates, error } = await sb
     .from("market_updates")

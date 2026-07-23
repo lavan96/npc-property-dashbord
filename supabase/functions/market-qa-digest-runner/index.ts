@@ -4,6 +4,7 @@
 // digest via Lovable AI, writes market_qa_digests, and drops a notification.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -25,14 +26,10 @@ function nextRunAt(cadence: string, from = new Date()): string {
   return d.toISOString();
 }
 
-async function askQA(question: string): Promise<{ answer: string; question_id: string | null; citations: string[] }> {
-  const r = await fetch(`${SUPABASE_URL}/functions/v1/market-updates-qa`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '', 'x-internal-edge-secret': Deno.env.get('INTERNAL_EDGE_SECRET') || '' },
-    body: JSON.stringify({ question }),
-  });
+async function askQA(question: string, targetUserId: string): Promise<{ answer: string; question_id: string | null; citations: string[] }> {
+  const r = await callInternalFunction('market-updates-qa', { question, internal_action: 'scheduled_qa', target_user_id: targetUserId }, 'market-qa-digest-runner');
   if (!r.ok) return { answer: '', question_id: null, citations: [] };
-  const j = await r.json();
+  const j: any = r.data ?? {};
   return { answer: j?.answer ?? '', question_id: j?.question_id ?? null, citations: j?.citations ?? [] };
 }
 
@@ -89,7 +86,7 @@ async function runDue(sb: any) {
     try {
       const items: Array<{ q: string; a: string; citations: string[]; question_id: string | null }> = [];
       for (const sub of subs) {
-        const r = await askQA(sub.question_template);
+        const r = await askQA(sub.question_template, user_id);
         items.push({ q: sub.question_template, a: r.answer, citations: r.citations, question_id: r.question_id });
       }
       const summary_md = await synthesise(digest_group, cadence, items);

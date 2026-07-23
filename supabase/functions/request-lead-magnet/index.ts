@@ -49,6 +49,7 @@ Deno.serve(async (req) => {
   const ip = getClientIp(req);
 
   try {
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
 
     // Bot filters — cheap and silent (return generic error, don't leak reason).
@@ -74,19 +75,15 @@ Deno.serve(async (req) => {
     }
 
     // Atomic quotas — cheap in-memory sliding windows.
-    const ipCheck = enforceIpQuota(ip, 'lead_magnet', { limit: 8, windowMs: 60 * 60 * 1000 });
+    const ipCheck = await enforceIpQuota(supabase, ip, 'lead_magnet', { limit: 8, windowMs: 60 * 60 * 1000 });
     if (!ipCheck.ok) return j({ error: 'rate_limited' }, 429);
-    const emailCheck = enforceKeyQuota(email, 'lead_magnet_email', { limit: 5, windowMs: 24 * 60 * 60 * 1000 });
+    const emailCheck = await enforceKeyQuota(supabase, email, 'lead_magnet_email', { limit: 5, windowMs: 24 * 60 * 60 * 1000 });
     if (!emailCheck.ok) return j({ error: 'rate_limited' }, 429);
-    const magnetCheck = enforceKeyQuota(slug, 'lead_magnet_magnet', { limit: 500, windowMs: 60 * 60 * 1000 });
+    const magnetCheck = await enforceKeyQuota(supabase, slug, 'lead_magnet_magnet', { limit: 500, windowMs: 60 * 60 * 1000 });
     if (!magnetCheck.ok) return j({ error: 'rate_limited' }, 429);
-    const globalCheck = enforceGlobalDailyQuota('lead_magnet', 5000);
+    const globalCheck = await enforceGlobalDailyQuota(supabase, 'lead_magnet', 5000);
     if (!globalCheck.ok) return j({ error: 'rate_limited' }, 429);
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
 
     // Look up the magnet
     const { data: magnet, error: magnetErr } = await supabase

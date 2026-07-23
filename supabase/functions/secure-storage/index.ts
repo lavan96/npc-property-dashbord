@@ -4,6 +4,7 @@ import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, create
 import { isSuperadmin, logSecurityEvent } from '../_shared/auth_v2.ts';
 import { checkPermission, checkModuleView } from '../_shared/permissions.ts';
 import { authorizeObjectAccess, authorizedBindingsForList, createStorageBinding, deleteStorageBinding, rollbackStorageObject, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
+import { requireModulePermission } from '../_shared/authz.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -43,13 +44,13 @@ const BUCKET_POLICIES: Record<string, BucketPolicy> = {
   // investment-reports is PRIVATE (STOR-005). Report PDFs and hero/visual
   // assets are served via short-lived signed URLs (report pipeline + hero
   // functions sign from storage_path); publicUrl is no longer offered.
-  'investment-reports':   { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
-  'quantitative-reports': { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], readModuleKey: 'reports', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'investment-reports':   { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'investment_reports', readModuleKey: 'reports', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'quantitative-reports': { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'investment_reports', readModuleKey: 'reports', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
   // report-templates is a public bucket whose asset URLs are embedded in
   // rendered templates; publicUrl remains available (no client PII stored).
   'report-templates':     { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], permissionTable: 'report_templates', allowPublicUrl: true, allowSvg: true, maxUploadBytes: 50 * 1024 * 1024 },
-  'branding-assets':      { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], superadminDelete: true, allowPublicUrl: true, allowSvg: true, maxUploadBytes: 10 * 1024 * 1024 },
-  'qa_exports':           { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], readModuleKey: 'report_qa', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
+  'branding-assets':      { operations: ['upload', 'download', 'delete', 'signedUrl', 'list', 'publicUrl'], permissionTable: 'branding_profiles', superadminDelete: true, allowPublicUrl: true, allowSvg: true, maxUploadBytes: 10 * 1024 * 1024 },
+  'qa_exports':           { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'report_qa_conversations', readModuleKey: 'report_qa', superadminDelete: true, maxUploadBytes: DEFAULT_MAX_UPLOAD },
   'email-attachments':    { operations: ['upload', 'download', 'delete', 'signedUrl', 'list'], permissionTable: 'email_copilot_emails', readModuleKey: 'email_copilot', maxUploadBytes: DEFAULT_MAX_UPLOAD },
 };
 
@@ -85,6 +86,36 @@ function jsonResponse(body: Record<string, unknown>, corsHeaders: Record<string,
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
+}
+
+function safeFileName(value: unknown): string {
+  const raw = typeof value === 'string' ? value : 'upload.bin';
+  const base = raw.split('/').pop()?.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '') || 'upload.bin';
+  return base.slice(0, 120);
+}
+
+/** Resolve browser upload binding fields exclusively from authoritative rows. */
+async function resolveHumanUploadBinding(supabase: any, bucket: string, resourceId: unknown, actorId: string) {
+  if (bucket === 'branding-assets') {
+    if (!(await isSuperadmin(supabase, actorId))) return { ok: false as const, reason: 'superadmin_required' };
+    return { ok: true as const, resourceType: 'branding_asset', resourceId: null, clientId: null, ownerUserId: actorId };
+  }
+  if (typeof resourceId !== 'string' || !/^[0-9a-f-]{36}$/i.test(resourceId)) return { ok: false as const, reason: 'resource_required' };
+  if (bucket === 'qa_exports') {
+    const { data } = await supabase.from('report_qa_conversations').select('id, created_by, client_id').eq('id', resourceId).maybeSingle();
+    if (!data) return { ok: false as const, reason: 'resource_not_found' };
+    return { ok: true as const, resourceType: 'report_qa_conversation', resourceId: data.id, clientId: data.client_id, ownerUserId: data.created_by };
+  }
+  if (bucket === 'investment-reports') {
+    const { data } = await supabase.from('investment_reports').select('id, client_id, created_by').eq('id', resourceId).maybeSingle();
+    if (!data) return { ok: false as const, reason: 'resource_not_found' };
+    return { ok: true as const, resourceType: 'investment_report', resourceId: data.id, clientId: data.client_id, ownerUserId: data.created_by };
+  }
+  // Client/document uploads use the client record itself as the authoritative
+  // resource; callers never provide owner or client metadata separately.
+  const { data } = await supabase.from('clients').select('id, created_by, assigned_team_user_id').eq('id', resourceId).maybeSingle();
+  if (!data) return { ok: false as const, reason: 'resource_not_found' };
+  return { ok: true as const, resourceType: 'client', resourceId: data.id, clientId: data.id, ownerUserId: data.created_by || data.assigned_team_user_id || null };
 }
 
 Deno.serve(async (req) => {
@@ -159,6 +190,12 @@ Deno.serve(async (req) => {
 
     // Permission gating for mutating operations (internal service calls bypass)
     if (!isInternal && (operation === 'upload' || operation === 'delete')) {
+      const writeModule = bucket === 'qa_exports' ? 'report_qa'
+        : bucket === 'investment-reports' || bucket === 'quantitative-reports' ? 'reports'
+        : bucket === 'branding-assets' ? 'platform_administration'
+        : 'clients';
+      const modulePerm = await requireModulePermission(supabase, { userId: actorId, authMethod: 'human' }, writeModule, operation === 'delete' ? 'can_delete' : 'can_edit');
+      if (!modulePerm.ok) return createForbiddenResponse('Permission denied', corsHeaders);
       if (operation === 'delete' && policy.superadminDelete) {
         if (!(await isSuperadmin(supabase, actorId))) {
           await logSecurityEvent(supabase, {
@@ -240,8 +277,29 @@ Deno.serve(async (req) => {
     // Handle operations
     switch (operation) {
       case 'upload': {
-        if (!path || !file_data || typeof file_data !== 'string') {
-          return jsonResponse({ success: false, error: 'Missing path or file_data' }, corsHeaders, 400);
+        if (!file_data || typeof file_data !== 'string') {
+          return jsonResponse({ success: false, error: 'Missing file_data' }, corsHeaders, 400);
+        }
+
+        // Human callers cannot choose paths, overwrite flags, binding type,
+        // owner, or client. Those fields are derived below from a server-side
+        // authoritative resource row. Internal producers retain their explicit
+        // paths while still creating an immutable binding.
+        let uploadPath = path as string;
+        let uploadBinding: any = null;
+        if (!isInternal) {
+          if (upsert === true) return createForbiddenResponse('Use an authorized replace operation', corsHeaders);
+          uploadBinding = await resolveHumanUploadBinding(supabase, bucket, resource_id, actorId);
+          if (!uploadBinding.ok) return jsonResponse({ success: false, error: 'Invalid upload resource' }, corsHeaders, 403);
+          // The probe has no binding; use the canonical client ownership check
+          // directly so an arbitrary client UUID cannot be attached.
+          if (uploadBinding.clientId) {
+            const { data: client } = await supabase.from('clients').select('created_by, assigned_team_user_id').eq('id', uploadBinding.clientId).maybeSingle();
+            if (!client || (client.created_by !== actorId && client.assigned_team_user_id !== actorId && !(await isSuperadmin(supabase, actorId)))) return jsonResponse({ success: false, error: 'Not found' }, corsHeaders, 404);
+          } else if (uploadBinding.ownerUserId !== actorId && !(await isSuperadmin(supabase, actorId))) {
+            return jsonResponse({ success: false, error: 'Not found' }, corsHeaders, 404);
+          }
+          uploadPath = `${uploadBinding.clientId || uploadBinding.ownerUserId || actorId}/${crypto.randomUUID()}-${safeFileName(path)}`;
         }
 
         // Enforce size cap BEFORE decoding (base64 is ~4/3 of binary size)
@@ -257,7 +315,7 @@ Deno.serve(async (req) => {
 
         // Block browser-executable / active content on all buckets
         const declaredType = (content_type || 'application/octet-stream').toLowerCase().split(';')[0].trim();
-        const svgAttempt = declaredType === 'image/svg+xml' || /\.svg$/i.test(path);
+        const svgAttempt = declaredType === 'image/svg+xml' || /\.svg$/i.test(uploadPath);
         const blocked = svgAttempt
           ? !policy.allowSvg
           : (FORBIDDEN_CONTENT_TYPES.has(declaredType) || FORBIDDEN_EXTENSIONS.test(path));
@@ -274,9 +332,9 @@ Deno.serve(async (req) => {
 
         const { data, error } = await supabase.storage
           .from(bucket)
-          .upload(path, fileBytes, {
+          .upload(uploadPath, fileBytes, {
             contentType: content_type || 'application/octet-stream',
-            upsert: upsert || false
+            upsert: isInternal ? upsert === true : false,
           });
 
         if (error) {
@@ -291,13 +349,13 @@ Deno.serve(async (req) => {
         // so producers still-missing metadata are visible in telemetry.
         const sensitivityAtUpload = BUCKET_SENSITIVITY[bucket];
         if (sensitivityAtUpload && sensitivityAtUpload !== 'public_asset') {
-          const resolvedOwner = bindingOwnerUserId || (isInternal ? null : actorId);
+          const resolvedOwner = isInternal ? (typeof bindingOwnerUserId === 'string' ? bindingOwnerUserId : null) : uploadBinding.ownerUserId;
           const bindingRes = await createStorageBinding(supabase, {
             bucket,
             object_path: data.path,
-            resource_type: typeof resource_type === 'string' && resource_type ? resource_type : 'generic',
-            resource_id: typeof resource_id === 'string' ? resource_id : null,
-            client_id: typeof bindingClientId === 'string' ? bindingClientId : null,
+            resource_type: isInternal ? (typeof resource_type === 'string' && resource_type ? resource_type : 'generic') : uploadBinding.resourceType,
+            resource_id: isInternal ? (typeof resource_id === 'string' ? resource_id : null) : uploadBinding.resourceId,
+            client_id: isInternal ? (typeof bindingClientId === 'string' ? bindingClientId : null) : uploadBinding.clientId,
             owner_user_id: resolvedOwner,
             sensitivity: sensitivityAtUpload,
             created_by: actorId,
@@ -312,13 +370,6 @@ Deno.serve(async (req) => {
               target_type: 'storage_object', target_id: `${bucket}/${data.path}`,
             });
             return jsonResponse({ success: false, error: 'Upload failed' }, corsHeaders, 500);
-          }
-          if (!bindingClientId && !bindingOwnerUserId && !isInternal) {
-            await logSecurityEvent(supabase, {
-              action: 'storage.upload', decision: 'allow', reason_code: 'binding_owner_fallback',
-              actor_type: 'human', actor_id: actorId,
-              target_type: 'storage_object', target_id: `${bucket}/${data.path}`,
-            });
           }
         }
 

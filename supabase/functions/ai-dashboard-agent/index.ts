@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
 import { authorizeAgentTool, AgentToolAuthzError, type AgentToolAuthzContext } from "../_shared/agentToolAuthz.ts";
+import { requireModulePermission } from "../_shared/authz.ts";
 import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApiUsage.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
 
@@ -8475,6 +8476,28 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { error: authErr, userId, username } = await verifyAuth(sb, req.headers, body);
     if (authErr) return createUnauthorizedResponse(authErr, cors);
+
+    // The dashboard agent is not a backdoor around the workspace model. Gate
+    // chat and every direct helper action before any service-role query. The
+    // execute-tool path below is the sole internal-service exception and is
+    // independently restricted to verified service credentials.
+    if (body.action !== 'execute-tool') {
+      const directActionPermission: 'can_view' | 'can_edit' | 'can_delete' = /^(create-|delete-|rename-|confirm-|share-|index-|memory-feedback$|update-|prune-)/.test(String(body.action || ''))
+        ? (String(body.action || '').startsWith('delete-') ? 'can_delete' : 'can_edit')
+        : 'can_view';
+      const dashboardPermission = await requireModulePermission(
+        sb,
+        { userId, authMethod: 'human' },
+        'ai_dashboard',
+        directActionPermission,
+      );
+      if (!dashboardPermission.ok) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     switch (body.action) {
       case 'list-conversations': return handleListConversations(sb, userId!, cors);

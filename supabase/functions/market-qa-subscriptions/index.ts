@@ -4,6 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyAuth } from '../_shared/auth.ts';
 import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -170,16 +171,10 @@ async function runDue(sb: any) {
 
 async function runOne(sb: any, sub: any): Promise<{ question_id: string | null; error?: string }> {
   try {
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/market-updates-qa`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
-        'x-internal-edge-secret': Deno.env.get('INTERNAL_EDGE_SECRET') || '',
-      },
-      body: JSON.stringify({ question: sub.question_template }),
-    });
-    const j = await resp.json();
+    const resp = await callInternalFunction('market-updates-qa', {
+      question: sub.question_template, internal_action: 'scheduled_qa', target_user_id: sub.user_id,
+    }, 'market-qa-subscriptions');
+    const j: any = resp.data ?? {};
     const questionId: string | null = j?.question_id ?? null;
     const status = resp.ok ? 'ok' : 'failed';
     const errMsg = resp.ok ? null : (j?.error ?? `qa ${resp.status}`);
