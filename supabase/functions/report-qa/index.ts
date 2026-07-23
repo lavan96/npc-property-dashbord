@@ -3491,6 +3491,14 @@ ${cleanContent.length + 500}
         throw new Error("Missing required parameters: conversationId and messages");
       }
 
+      // WP-07 — must have read access to export a PDF for this conversation.
+      const pdfAccess = await resolveReportQaAccess(supabase, {
+        actorId: userId, isSuperadmin, conversationId,
+      });
+      if (!canRead(pdfAccess.role)) return denyResponse();
+
+
+
       // Fetch active QA export template from database
       const { data: activeTemplate, error: templateError } = await supabase
         .from('report_structure_templates')
