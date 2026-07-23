@@ -6013,19 +6013,74 @@ export type Database = {
           },
         ]
       }
+      commission_payout_audit: {
+        Row: {
+          actor_id: string | null
+          amount_gross: number | null
+          amount_net: number | null
+          approver_id: string | null
+          created_at: string
+          entry_count: number | null
+          event: string
+          id: string
+          metadata: Json
+          payout_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          amount_gross?: number | null
+          amount_net?: number | null
+          approver_id?: string | null
+          created_at?: string
+          entry_count?: number | null
+          event: string
+          id?: string
+          metadata?: Json
+          payout_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          amount_gross?: number | null
+          amount_net?: number | null
+          approver_id?: string | null
+          created_at?: string
+          entry_count?: number | null
+          event?: string
+          id?: string
+          metadata?: Json
+          payout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_payout_audit_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "commission_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_payouts: {
         Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
           broker_id: string
           broker_name: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           created_at: string
           entry_count: number
           generated_by: string | null
           id: string
+          idempotency_key: string | null
           ledger_entry_ids: string[] | null
           notes: string | null
           paid_at: string | null
           payment_method: string | null
           payment_reference: string | null
+          pdf_hash: string | null
           pdf_storage_path: string | null
           period_end: string
           period_start: string
@@ -6036,17 +6091,25 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           broker_id: string
           broker_name?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           entry_count?: number
           generated_by?: string | null
           id?: string
+          idempotency_key?: string | null
           ledger_entry_ids?: string[] | null
           notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          pdf_hash?: string | null
           pdf_storage_path?: string | null
           period_end: string
           period_start: string
@@ -6057,17 +6120,25 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           broker_id?: string
           broker_name?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           created_at?: string
           entry_count?: number
           generated_by?: string | null
           id?: string
+          idempotency_key?: string | null
           ledger_entry_ids?: string[] | null
           notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          pdf_hash?: string | null
           pdf_storage_path?: string | null
           period_end?: string
           period_start?: string
@@ -20314,6 +20385,44 @@ export type Database = {
         Args: { report_id: string }
         Returns: number
       }
+      cancel_commission_payout: {
+        Args: { p_actor_id: string; p_payout_id: string; p_reason: string }
+        Returns: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          broker_id: string
+          broker_name: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          entry_count: number
+          generated_by: string | null
+          id: string
+          idempotency_key: string | null
+          ledger_entry_ids: string[] | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          pdf_hash: string | null
+          pdf_storage_path: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payout_status"]
+          total_gross: number
+          total_gst: number
+          total_net: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commission_payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_migration_job: {
         Args: { p_immediate?: boolean; p_job_id: string }
         Returns: undefined
@@ -20408,6 +20517,51 @@ export type Database = {
         }[]
       }
       gc_pdf_import_jobs: { Args: never; Returns: undefined }
+      generate_commission_payout: {
+        Args: {
+          p_actor_id: string
+          p_broker_id: string
+          p_broker_name: string
+          p_idempotency_key: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          broker_id: string
+          broker_name: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          entry_count: number
+          generated_by: string | null
+          id: string
+          idempotency_key: string | null
+          ledger_entry_ids: string[] | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          pdf_hash: string | null
+          pdf_storage_path: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payout_status"]
+          total_gross: number
+          total_gst: number
+          total_net: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commission_payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_all_cache_stats: {
         Args: never
         Returns: {
@@ -20606,6 +20760,50 @@ export type Database = {
           p_username: string
         }
         Returns: string
+      }
+      mark_commission_payout_paid: {
+        Args: {
+          p_approval_note: string
+          p_approver_id: string
+          p_payment_method: string
+          p_payment_reference: string
+          p_payout_id: string
+        }
+        Returns: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          broker_id: string
+          broker_name: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          entry_count: number
+          generated_by: string | null
+          id: string
+          idempotency_key: string | null
+          ledger_entry_ids: string[] | null
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          pdf_hash: string | null
+          pdf_storage_path: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payout_status"]
+          total_gross: number
+          total_gst: number
+          total_net: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "commission_payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       match_agent_memories: {
         Args: {
