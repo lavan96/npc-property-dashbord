@@ -3,7 +3,7 @@ import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/b
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
 import { isSuperadmin, logSecurityEvent } from '../_shared/auth_v2.ts';
 import { checkPermission, checkModuleView } from '../_shared/permissions.ts';
-import { authorizeObjectAccess, deleteStorageBinding, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
+import { authorizeObjectAccess, authorizedBindingsForList, createStorageBinding, deleteStorageBinding, rollbackStorageObject, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -108,6 +108,13 @@ Deno.serve(async (req) => {
       content_type,   // MIME type for upload
       expires_in,     // Seconds for signed URL
       upsert,         // Boolean for upload
+      // WP-06 Phase B — binding metadata (upload) / list scope
+      resource_type,
+      resource_id,
+      client_id: bindingClientId,
+      owner_user_id: bindingOwnerUserId,
+      list_client_id,
+      list_owner_user_id,
     } = body;
 
     // Validate authentication (JWT first, then session token)
@@ -277,6 +284,44 @@ Deno.serve(async (req) => {
           return jsonResponse({ success: false, error: 'Upload failed' }, corsHeaders, 500);
         }
 
+        // WP-06 Phase B — persist a storage_object_bindings row so this object
+        // is authorizable on future reads. Sensitive buckets require a resource
+        // reference (client_id OR owner_user_id); if the caller omitted both we
+        // fall back to owner_user_id = actorId and log `binding_owner_fallback`
+        // so producers still-missing metadata are visible in telemetry.
+        const sensitivityAtUpload = BUCKET_SENSITIVITY[bucket];
+        if (sensitivityAtUpload && sensitivityAtUpload !== 'public_asset') {
+          const resolvedOwner = bindingOwnerUserId || (isInternal ? null : actorId);
+          const bindingRes = await createStorageBinding(supabase, {
+            bucket,
+            object_path: data.path,
+            resource_type: typeof resource_type === 'string' && resource_type ? resource_type : 'generic',
+            resource_id: typeof resource_id === 'string' ? resource_id : null,
+            client_id: typeof bindingClientId === 'string' ? bindingClientId : null,
+            owner_user_id: resolvedOwner,
+            sensitivity: sensitivityAtUpload,
+            created_by: actorId,
+          });
+          if (!bindingRes.ok) {
+            // Rollback: remove the just-uploaded object so we never leave an
+            // orphan that reads cannot authorize against.
+            await rollbackStorageObject(supabase, bucket, data.path);
+            await logSecurityEvent(supabase, {
+              action: 'storage.upload', decision: 'deny', reason_code: 'binding_create_failed',
+              actor_type: isInternal ? 'internal_service' : 'human', actor_id: actorId,
+              target_type: 'storage_object', target_id: `${bucket}/${data.path}`,
+            });
+            return jsonResponse({ success: false, error: 'Upload failed' }, corsHeaders, 500);
+          }
+          if (!bindingClientId && !bindingOwnerUserId && !isInternal) {
+            await logSecurityEvent(supabase, {
+              action: 'storage.upload', decision: 'allow', reason_code: 'binding_owner_fallback',
+              actor_type: 'human', actor_id: actorId,
+              target_type: 'storage_object', target_id: `${bucket}/${data.path}`,
+            });
+          }
+        }
+
         console.log(`[Secure Storage] Uploaded: ${bucket}/${path}`);
         return jsonResponse({ success: true, data: { path: data.path, fullPath: data.fullPath } }, corsHeaders);
       }
@@ -365,12 +410,37 @@ Deno.serve(async (req) => {
       }
 
       case 'list': {
+        // WP-06 Phase B — sensitive buckets require a resource scope so the
+        // caller cannot enumerate objects outside their assignment. We resolve
+        // the authorized set from storage_object_bindings, then intersect with
+        // the physical storage.list results. Public-asset buckets keep the
+        // existing prefix-based behaviour.
+        const sensitivityAtList = BUCKET_SENSITIVITY[bucket];
+        const requiresScope = !isInternal && sensitivityAtList && sensitivityAtList !== 'public_asset';
+        if (requiresScope) {
+          const scopeClient = typeof list_client_id === 'string' ? list_client_id : null;
+          const scopeOwner  = typeof list_owner_user_id === 'string' ? list_owner_user_id : null;
+          if (!scopeClient && !scopeOwner) {
+            await logSecurityEvent(supabase, {
+              action: 'storage.list', decision: 'deny', reason_code: 'list_scope_required',
+              actor_type: 'human', actor_id: actorId, target_type: 'bucket', target_id: bucket,
+            });
+            return jsonResponse({ success: false, error: 'A resource scope is required to list this bucket' }, corsHeaders, 400);
+          }
+          const superadminForList = await isSuperadmin(supabase, actorId);
+          const bindings = await authorizedBindingsForList(supabase, bucket, {
+            actorId, isSuperadmin: superadminForList, isInternalService: false, authMethod: sessionResult.authMethod,
+          }, { clientId: scopeClient, ownerUserId: scopeOwner });
+          console.log(`[Secure Storage] Listed (scoped): ${bucket} client=${scopeClient} owner=${scopeOwner} (${bindings.length} items)`);
+          return jsonResponse({
+            success: true,
+            data: { files: bindings.map((b) => ({ name: b.object_path, id: b.id, metadata: { resource_type: b.resource_type, resource_id: b.resource_id } })) },
+          }, corsHeaders);
+        }
+
         const { data, error } = await supabase.storage
           .from(bucket)
-          .list(typeof path === 'string' ? path : '', {
-            limit: 100,
-            offset: 0
-          });
+          .list(typeof path === 'string' ? path : '', { limit: 100, offset: 0 });
 
         if (error) {
           console.error(`[Secure Storage] List error:`, error);

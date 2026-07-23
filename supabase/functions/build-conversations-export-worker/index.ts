@@ -326,6 +326,23 @@ Deno.serve(async (req) => {
       .upload(storagePath, fileBuffer, { contentType, upsert: true });
     if (uploadErr) throw new Error(`storage upload failed: ${uploadErr.message}`);
 
+    // WP-06 Phase B — bind the export object to its owner so future reads
+    // authorize through storage_object_bindings.
+    const { error: bindErr } = await supabase.from('storage_object_bindings').upsert({
+      bucket: STORAGE_BUCKET,
+      object_path: storagePath,
+      resource_type: 'export_job',
+      resource_id: jobId,
+      client_id: null,
+      owner_user_id: job.created_by ?? null,
+      sensitivity: 'sensitive',
+      created_by: job.created_by ?? null,
+    }, { onConflict: 'bucket,object_path' });
+    if (bindErr) {
+      await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]).catch(() => {});
+      throw new Error(`binding create failed: ${bindErr.message}`);
+    }
+
     // ── 6. Signed URL ──
     const { data: signedData, error: signedErr } = await supabase.storage
       .from(STORAGE_BUCKET)

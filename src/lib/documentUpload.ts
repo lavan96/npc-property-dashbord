@@ -161,6 +161,12 @@ export async function uploadSecureStorageFileWithProgress(input: {
   contentType?: string;
   upsert?: boolean;
   onProgress?: (progress: number) => void;
+  // WP-06 Phase B — object-level binding metadata so the uploaded object is
+  // authorizable on future reads via storage_object_bindings.
+  resourceType?: string;
+  resourceId?: string | null;
+  clientId?: string | null;
+  ownerUserId?: string | null;
 }) {
   const fileData = await fileToBase64WithProgress(input.file, input.onProgress);
 
@@ -171,6 +177,10 @@ export async function uploadSecureStorageFileWithProgress(input: {
     file_data: fileData,
     content_type: input.contentType || (input.file instanceof File ? input.file.type : 'application/octet-stream'),
     upsert: input.upsert || false,
+    resource_type: input.resourceType,
+    resource_id: input.resourceId ?? null,
+    client_id: input.clientId ?? null,
+    owner_user_id: input.ownerUserId ?? null,
   });
 
   if (error) throw new Error(error.message || 'Upload failed');

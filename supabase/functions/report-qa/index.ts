@@ -3880,6 +3880,28 @@ ${cleanContent.length + 500}
         throw new Error(`Failed to upload PDF: ${uploadError.message}`);
       }
 
+      // WP-06 Phase B — bind the export object to the conversation owner so
+      // future reads authorize through storage_object_bindings.
+      const { data: convRow } = await supabase
+        .from('report_qa_conversations')
+        .select('user_id, client_id')
+        .eq('id', conversationId)
+        .maybeSingle();
+      const { error: qaBindErr } = await supabase.from('storage_object_bindings').upsert({
+        bucket: 'qa_exports',
+        object_path: fileName,
+        resource_type: 'qa_export',
+        resource_id: conversationId,
+        client_id: convRow?.client_id ?? null,
+        owner_user_id: convRow?.user_id ?? null,
+        sensitivity: 'sensitive',
+        created_by: convRow?.user_id ?? null,
+      }, { onConflict: 'bucket,object_path' });
+      if (qaBindErr) {
+        await supabase.storage.from('qa_exports').remove([fileName]).catch(() => {});
+        throw new Error(`Failed to bind PDF object: ${qaBindErr.message}`);
+      }
+
       // STOR-004: qa_exports is private — store a short-lived SIGNED URL plus the
       // object path (so the frontend can re-sign via secure-storage), not a
       // permanent public URL.
