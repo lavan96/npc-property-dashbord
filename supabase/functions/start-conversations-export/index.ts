@@ -17,6 +17,7 @@ import {
   createCorsHeaders,
   createUnauthorizedResponse,
 } from '../_shared/auth.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
