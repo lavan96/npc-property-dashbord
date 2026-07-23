@@ -122,11 +122,14 @@ export async function checkPermission(
     return { allowed: true };
   }
 
-  // WP-13: legacy allow-by-default behaviour is opt-in only. When
-  // LEGACY_PERMS_STRICT=true (default post-rollout), tables/modules that are
-  // not registered fail closed. Set it to `false` (legacy) only during a
-  // controlled migration window.
-  const strict = (Deno.env.get('LEGACY_PERMS_STRICT') || 'true').toLowerCase() !== 'false';
+  // WP-13: legacy allow-by-default behaviour is now toggleable. Flip
+  // LEGACY_PERMS_STRICT=true in the edge env to fail-closed on unmapped tables
+  // and unregistered modules. Left as `false` by default during the cutover
+  // window so a mapping gap does not lock a page out silently — flip to
+  // `true` once the mapping inventory is audited (tracked in
+  // docs/security/CODEX_SECURITY_REMEDIATION_TRACKER.md WP-13).
+  const strict = (Deno.env.get('LEGACY_PERMS_STRICT') || 'false').toLowerCase() === 'true';
+
 
   // Determine which module governs this table
   const moduleKey = TABLE_TO_MODULE_MAP[tableName];
