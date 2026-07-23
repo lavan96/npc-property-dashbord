@@ -476,6 +476,13 @@ export default function Settings() {
           <Separator />
 
           <div className={settingsCx(settingsPanelClass, "space-y-4")}>
+            <h4 className="text-sm font-semibold">Security keys & passkeys</h4>
+            <WebAuthnSettings disabled={!canEditSettings} />
+          </div>
+
+          <Separator />
+
+          <div className={settingsCx(settingsPanelClass, "space-y-4")}>
             <h4 className="text-sm font-semibold">User Permissions</h4>
             <div className="space-y-2">
               <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-muted/25 px-3 py-2">
