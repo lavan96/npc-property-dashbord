@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { format } from 'date-fns';
 import {
   Building2,
@@ -13,7 +14,9 @@ import {
   TrendingUp,
   User,
   Zap,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -24,6 +27,7 @@ import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from 
 import type { InvestmentReport } from './types';
 import { resolveInvestmentReportType } from '@/lib/reports/reportVariants';
 import { ReportTypeBadge } from '@/components/reports/ReportTypeBadge';
+import { downloadClientPdf } from '@/lib/reports/clientPdfDownload';
 
 interface InvestmentReportCardProps {
   report: InvestmentReport;
@@ -69,6 +73,7 @@ export function InvestmentReportCard({
   onToggleArchive,
   onGenerateTier,
 }: InvestmentReportCardProps) {
+  const [isDownloadingClientPdf, setIsDownloadingClientPdf] = useState(false);
   const scope = report.report_scope && report.report_scope in scopeMeta
     ? scopeMeta[report.report_scope as keyof typeof scopeMeta]
     : null;
@@ -79,6 +84,19 @@ export function InvestmentReportCard({
   const recommendation = scoreSummary?.recommendation || 'Score calculated from market, financial & location data';
   const hasAreaPlaceholder = !hasGradeDisplay && !report.investment_score && ['suburb', 'zipcode', 'state'].includes(report.report_scope || '');
   const reportType = resolveInvestmentReportType(report);
+  const handleClientPdfDownload = async () => {
+    if (isDownloadingClientPdf) return;
+    setIsDownloadingClientPdf(true);
+    try {
+      await downloadClientPdf(report.id, { report: { ...report, report_variant: report.report_variant || reportType } });
+      toast.success('Client PDF downloaded successfully.');
+    } catch (error) {
+      console.error('Client PDF download failed', { reportId: report.id, error });
+      toast.error(error instanceof Error ? error.message : 'Client PDF could not be retrieved. Please try again.');
+    } finally {
+      setIsDownloadingClientPdf(false);
+    }
+  };
 
   return (
     <Card
@@ -202,14 +220,14 @@ export function InvestmentReportCard({
       </CardContent>
 
       <CardFooter className="relative flex flex-col gap-2 border-t border-border/60 bg-muted/20 p-4">
-        <div className="flex w-full gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:flex-nowrap">
           <Button variant="default" size="sm" onClick={() => onView(report)} className="flex-1 gap-1.5 rounded-xl">
             <Eye className="h-3.5 w-3.5" />
             View
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onDownload(report)} className="flex-1 gap-1.5 rounded-xl">
-            <Download className="h-3.5 w-3.5" />
-            Download
+          <Button variant="outline" size="sm" onClick={handleClientPdfDownload} disabled={isDownloadingClientPdf} className="flex-1 gap-1.5 rounded-xl border-primary/40 hover:border-primary hover:bg-primary/10" aria-label={`Download client PDF for ${report.property_address}`} title="Download Client PDF">
+            {isDownloadingClientPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            <span className="sm:hidden">Client PDF</span><span className="hidden sm:inline">{isDownloadingClientPdf ? 'Preparing…' : 'Download Client PDF'}</span>
           </Button>
         </div>
         <RegenerateReportButton

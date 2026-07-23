@@ -14,6 +14,8 @@ interface InvestmentReportData {
   location_intelligence?: any;
   manual_overrides?: any;
   report_tier?: string;
+  report_variant?: string | null;
+  pdf_url?: string | null;
 }
 
 interface ClientPDFGeneratorProps {
@@ -89,6 +91,7 @@ export const ClientPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, Cli
     address: report.property_address || 'Property Report',
     content: report.report_content || '',
     created_at: new Date().toISOString(),
+    pdf_url: report.pdf_url,
     enhanced_data: {
       domainData: null,
       absData: report.demographics_data,
@@ -100,7 +103,7 @@ export const ClientPDFGenerator = forwardRef<PixelPerfectPDFGeneratorHandle, Cli
   };
 
   // Pass report tier to the PDF generator (defaults to 'compass' for backward compatibility)
-  const reportTier = (report.report_tier || 'compass') as ReportTier;
+  const reportTier = (report.report_variant || report.report_tier || 'compass') as ReportTier;
 
   return <PixelPerfectPDFGenerator ref={ref} report={transformedReport} includeSources={includeSources} includeScoring={includeScoring} reportTier={reportTier} />;
 });
