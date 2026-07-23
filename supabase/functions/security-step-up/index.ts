@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     }
 
     const password = String(body?.password ?? '');
-    const ok = await verifyPassword(admin, auth.userId, password);
+    const ok = await verifyUserPassword(admin, auth.userId, password);
     if (!ok) {
       try {
         await admin.from('security_events').insert({
