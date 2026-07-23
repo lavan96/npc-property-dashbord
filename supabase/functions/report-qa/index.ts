@@ -2931,13 +2931,19 @@ ${transcript}`;
     // Handle deleting conversation
     if (action === "delete-conversation") {
       const { conversationId } = body;
-      
+
       if (!conversationId) {
         return new Response(
           JSON.stringify({ error: "conversationId is required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // WP-07 — owner/admin only.
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canAdminister(access.role)) return denyResponse();
+
+
 
       // Delete messages first (foreign key constraint)
       await supabase
