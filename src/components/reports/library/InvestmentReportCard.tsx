@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
-import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
 import { type ReportTier } from '@/components/reports/TierBadge';
 import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from '@/components/reports/report-view/utils';
 import type { InvestmentReport } from './types';
@@ -122,26 +121,6 @@ export function InvestmentReportCard({
                 {report.status}
               </Badge>
             )}
-            <ReportActionMenu
-              surface="report-card"
-              label={report.property_address}
-              report={{
-                reportId: report.id,
-                status: (report.status as ReportActionStatus) || 'completed',
-                tier: report.report_tier,
-                scope: report.report_scope,
-                isArchived: !!report.is_archived,
-              }}
-              generatingTier={generatingTier as 'briefing' | 'snapshot' | null}
-              callbacks={{
-                onViewHistory: () => onViewHistory(report),
-                onToggleArchive: () => onToggleArchive(report),
-                onGenerateBriefing: report.report_tier === 'compass' ? () => onGenerateTier(report, 'briefing') : undefined,
-                onGenerateSnapshot: report.report_tier === 'compass' ? () => onGenerateTier(report, 'snapshot') : undefined,
-              }}
-              permissions={{ canArchive: canEditReports }}
-              triggerClassName="h-8 w-8 rounded-full"
-            />
           </div>
         </div>
 

@@ -9,6 +9,7 @@ export interface InvestmentReport {
   report_content: string;
   sources_content?: string | null;
   created_at: string;
+  current_version?: number | null;
   status?: string;
   manual_overrides?: any;
   financial_calculations?: any;
