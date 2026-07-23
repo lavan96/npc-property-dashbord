@@ -108,6 +108,13 @@ Deno.serve(async (req) => {
       content_type,   // MIME type for upload
       expires_in,     // Seconds for signed URL
       upsert,         // Boolean for upload
+      // WP-06 Phase B — binding metadata (upload) / list scope
+      resource_type,
+      resource_id,
+      client_id: bindingClientId,
+      owner_user_id: bindingOwnerUserId,
+      list_client_id,
+      list_owner_user_id,
     } = body;
 
     // Validate authentication (JWT first, then session token)
