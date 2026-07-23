@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse, createForbiddenResponse } from '../_shared/auth.ts';
+import { requireStepUp } from '../_shared/stepUp.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -114,8 +115,17 @@ Deno.serve(async (req) => {
       return createForbiddenResponse('Forbidden: Superadmin access required', corsHeaders);
     }
     console.log(`Superadmin ${authResult.userId} is updating integration secrets.`);
-    
-    if (!body.secrets || !Array.isArray(body.secrets) || body.secrets.length === 0) {
+
+    // WP-11C — Require recent reauth for secret rotation (dark-launch via STEP_UP_ENFORCED).
+    const stepUpGate = await requireStepUp(supabase, {
+      userId: authResult.userId,
+      capability: 'secrets.update',
+      req,
+      body,
+      logAudit: true,
+    });
+    if (stepUpGate) return stepUpGate;
+
       return new Response(
         JSON.stringify({ success: false, error: 'No secrets provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
