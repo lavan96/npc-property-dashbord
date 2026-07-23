@@ -5673,7 +5673,19 @@ async function executeGetDepreciationSummary(sb: any) {
 //  TOOL DISPATCHER
 // ============================================================
 
-async function executeTool(sb: any, name: string, args: any, userId: string): Promise<any> {
+async function executeTool(sb: any, name: string, args: any, userId: string, authzCtx?: AgentToolAuthzContext): Promise<any> {
+  // WP-05B: fail-closed authorization gate. Every tool dispatch is checked
+  // for actor-type, step-up (deletes/bulk), and resource ownership. Read
+  // tools (can_view) are still scoped by their own queries.
+  const ctx: AgentToolAuthzContext = authzCtx ?? { actorType: 'human', stepUpVerified: false };
+  try {
+    await authorizeAgentTool(sb, name, args || {}, userId, ctx);
+  } catch (err) {
+    if (err instanceof AgentToolAuthzError) {
+      return { success: false, error: err.message, code: err.code };
+    }
+    return { success: false, error: (err as Error)?.message || 'Authorization failed', code: 'policy_denied' };
+  }
   switch (name) {
     // Client
     case 'search_clients': return executeSearchClients(sb, args);
