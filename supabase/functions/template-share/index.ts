@@ -1,15 +1,15 @@
 /**
- * template-share
+ * template-share — public preview endpoint for `report_templates` via share token.
  *
- * Public-facing endpoint for previewing a `report_templates` row via a
- * share token. Returns the template schema + sample data so the client
- * can render an HTML preview. Increments view counters and respects
- * revoked / expired links.
- *
- * GET /template-share?token=...
+ * WP-10 hardening:
+ *   * Per-IP + per-token rate limits on resolve.
+ *   * Minimal public projection (no owner_id / share_link internals leaked).
+ *   * Token format is validated (fixed-length allowlist).
+ *   * Redacted error messages.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { enforceIpQuota, enforceKeyQuota, getClientIp, redactError } from '../_shared/publicAbuseControls.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,21 +17,26 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
+const VALID_TOKEN = /^[A-Za-z0-9_\-]{12,128}$/;
+
+function j(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'method not allowed' }), {
-      status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+  if (req.method !== 'GET') return j({ error: 'method not allowed' }, 405);
 
   const url = new URL(req.url);
   const token = (url.searchParams.get('token') || '').trim();
-  if (!token || token.length < 12) {
-    return new Response(JSON.stringify({ error: 'token required' }), {
-      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+  if (!token || !VALID_TOKEN.test(token)) return j({ error: 'token required' }, 400);
+
+  const ip = getClientIp(req);
+  if (!enforceIpQuota(ip, 'template_share', { limit: 60, windowMs: 60_000 }).ok) return j({ error: 'rate_limited' }, 429);
+  if (!enforceKeyQuota(token, 'template_share_token', { limit: 300, windowMs: 60 * 60_000 }).ok) return j({ error: 'rate_limited' }, 429);
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -45,21 +50,9 @@ Deno.serve(async (req) => {
       .eq('token', token)
       .maybeSingle();
 
-    if (linkErr || !link) {
-      return new Response(JSON.stringify({ error: 'link not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (link.revoked_at) {
-      return new Response(JSON.stringify({ error: 'link revoked' }), {
-        status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
-      return new Response(JSON.stringify({ error: 'link expired' }), {
-        status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (linkErr || !link) return j({ error: 'link not found' }, 404);
+    if (link.revoked_at) return j({ error: 'link revoked' }, 410);
+    if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) return j({ error: 'link expired' }, 410);
 
     const { data: tpl, error: tplErr } = await supabase
       .from('report_templates')
@@ -67,11 +60,7 @@ Deno.serve(async (req) => {
       .eq('id', link.template_id)
       .maybeSingle();
 
-    if (tplErr || !tpl) {
-      return new Response(JSON.stringify({ error: 'template missing' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (tplErr || !tpl) return j({ error: 'template missing' }, 404);
 
     // Fire-and-forget view counter + analytics event
     supabase
@@ -90,27 +79,22 @@ Deno.serve(async (req) => {
           mode: link.mode,
           label: link.label,
           user_agent: (req.headers.get('user-agent') || '').slice(0, 200),
+          ip: ip ?? null,
         },
       })
       .then(() => {}, () => {});
 
-    return new Response(
-      JSON.stringify({
-        template: tpl,
-        link: {
-          mode: link.mode,
-          theme_id: link.theme_id,
-          label: link.label,
-          expires_at: link.expires_at,
-        },
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error('[template-share]', msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return j({
+      template: tpl,
+      link: {
+        mode: link.mode,
+        theme_id: link.theme_id,
+        label: link.label,
+        expires_at: link.expires_at,
+      },
     });
+  } catch (e) {
+    console.error('[template-share]', e instanceof Error ? e.message : String(e));
+    return j({ error: redactError(e) }, 500);
   }
 });

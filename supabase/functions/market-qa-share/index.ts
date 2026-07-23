@@ -1,7 +1,17 @@
 // Phase 6 — Public share links for market Q&A answers.
-// Actions: create, resolve (public), list-mine, revoke.
+// WP-10 hardening:
+//   * `create` verifies caller owns the question (or is superadmin).
+//   * `resolve` rate-limited by IP + slug and returns minimal public projection.
+//   * View-count update is fired async without leaking outcome.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyAuth } from '../_shared/auth.ts';
+import {
+  enforceIpQuota,
+  enforceKeyQuota,
+  getClientIp,
+  redactError,
+  sanitizeShortText,
+} from '../_shared/publicAbuseControls.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -17,55 +27,99 @@ function makeSlug(): string {
   return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 12);
 }
 
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+async function isSuperadmin(sb: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
+  const { data } = await sb.from('user_roles').select('role').eq('user_id', userId);
+  return Array.isArray(data) && data.some((r: { role?: string }) => r.role === 'superadmin');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const action = body?.action ?? 'resolve';
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    const action = String(body?.action ?? 'resolve');
 
-    // Public resolve — no auth
+    // ---------------- Public resolve — no auth, rate-limited, minimal projection.
     if (action === 'resolve') {
-      const slug = String(body?.slug ?? '').trim();
+      const slug = sanitizeShortText(body?.slug, 32);
       if (!slug) return json({ error: 'slug required' }, 400);
+
+      const ip = getClientIp(req);
+      if (!enforceIpQuota(ip, 'market_qa_resolve', { limit: 60, windowMs: 60_000 }).ok) return json({ error: 'rate_limited' }, 429);
+      if (!enforceKeyQuota(slug, 'market_qa_resolve_slug', { limit: 300, windowMs: 60 * 60_000 }).ok) return json({ error: 'rate_limited' }, 429);
+
       const { data: share, error } = await sb
         .from('market_update_qa_shares')
-        .select('id, question_id, expires_at, is_revoked, view_count')
+        .select('id, question_id, expires_at, is_revoked, view_count, created_at')
         .eq('slug', slug)
         .maybeSingle();
       if (error || !share) return json({ error: 'not_found' }, 404);
       if (share.is_revoked) return json({ error: 'revoked' }, 410);
       if (share.expires_at && new Date(share.expires_at) < new Date()) return json({ error: 'expired' }, 410);
+
       const { data: question } = await sb
         .from('market_update_questions')
         .select('id, question, answer, used_ids, retrieved_ids, confidence, model, created_at, meta')
         .eq('id', share.question_id)
         .maybeSingle();
       if (!question) return json({ error: 'not_found' }, 404);
-      // Load source updates for citations
+
       const ids: string[] = (question.used_ids ?? question.retrieved_ids ?? []) as string[];
       const { data: sources } = ids.length
         ? await sb.from('market_updates').select('id, title, summary, source_url, source_name, published_at, impact_level').in('id', ids)
-        : { data: [] as any[] };
-      // Increment view count (fire and forget)
+        : { data: [] as unknown[] };
+
+      // Fire-and-forget view-count bump.
       sb.from('market_update_qa_shares').update({
         view_count: (share.view_count ?? 0) + 1,
         last_viewed_at: new Date().toISOString(),
-      }).eq('id', share.id).then(() => {});
-      return json({ share, question, sources: sources ?? [] });
+      }).eq('id', share.id).then(() => {}, () => {});
+
+      // Minimal public projection — never expose creator/owner fields.
+      return json({
+        share: {
+          id: share.id,
+          question_id: share.question_id,
+          expires_at: share.expires_at,
+          created_at: share.created_at,
+        },
+        question,
+        sources: sources ?? [],
+      });
     }
 
-    // Authed actions
+    // ---------------- Authed actions
     const auth = await verifyAuth(sb, req.headers, body);
     if (auth.error || !auth.userId) return json({ error: 'unauthorized' }, 401);
     const userId = auth.userId as string;
 
     if (action === 'create') {
-      const questionId = String(body?.question_id ?? '');
+      const questionId = sanitizeShortText(body?.question_id, 64);
       if (!questionId) return json({ error: 'question_id required' }, 400);
       const expiresAt = body?.expires_at ? String(body.expires_at) : null;
-      // Attempt up to 3 slug retries
+
+      // Verify caller owns the source question (or is superadmin).
+      const { data: question, error: qErr } = await sb
+        .from('market_update_questions')
+        .select('id, asked_by, created_by, user_id')
+        .eq('id', questionId)
+        .maybeSingle();
+      if (qErr || !question) return json({ error: 'question_not_found' }, 404);
+      const ownerId = (question as Record<string, unknown>).asked_by
+        ?? (question as Record<string, unknown>).created_by
+        ?? (question as Record<string, unknown>).user_id
+        ?? null;
+      const superadmin = await isSuperadmin(sb, userId);
+      if (!superadmin && ownerId && ownerId !== userId) return json({ error: 'forbidden' }, 403);
+
       let slug = makeSlug();
       for (let i = 0; i < 3; i += 1) {
         const { data, error } = await sb
@@ -91,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'revoke') {
-      const id = String(body?.id ?? '');
+      const id = sanitizeShortText(body?.id, 64);
       const { error } = await sb.from('market_update_qa_shares').update({ is_revoked: true }).eq('id', id).eq('created_by', userId);
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
@@ -99,13 +153,6 @@ Deno.serve(async (req) => {
 
     return json({ error: 'unknown_action' }, 400);
   } catch (err) {
-    return json({ error: String((err as Error).message) }, 500);
-  }
-
-  function json(payload: any, status = 200) {
-    return new Response(JSON.stringify(payload), {
-      status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: redactError(err) }, 500);
   }
 });
