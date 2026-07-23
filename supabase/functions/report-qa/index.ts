@@ -8,6 +8,8 @@ import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
 import { runAgentLoop, agentLoopHasTools, type AgentLoopProvider } from '../_shared/agent-loop.ts';
 import { listTools } from '../_shared/agent-tools.ts';
+import { resolveReportQaAccess, canRead, canWrite, canAdminister } from '../_shared/reportQaAccess.ts';
+
 import { extractReportMetrics } from '../_shared/calculators.ts';
 import { fitMessagesToBudget, inputBudgetForModel } from '../_shared/contextBudget.ts';
 // Side-effect import: registers calculator + live-data tools into the
@@ -1131,31 +1133,69 @@ Deno.serve(async (req) => {
 
     // PUBLIC action (no auth) — shared answer lookup must be reachable
     // without a session so anyone with the link can view a single answer.
+    // WP-07 hardening: hashed-token lookup via RPC, IP-based rate limit,
+    // audit outcome without ever logging the raw token.
     if (body?.action === "get-shared-answer-public") {
       const shareToken = body?.shareToken;
-      if (!shareToken) {
+      if (!shareToken || typeof shareToken !== 'string' || shareToken.length < 16) {
         return new Response(JSON.stringify({ error: "shareToken required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const sbPub = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+      const ipHeader = req.headers.get('cf-connecting-ip')
+        || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || 'unknown';
+      const ua = (req.headers.get('user-agent') || '').slice(0, 240);
+      const prefix = shareToken.slice(0, 8);
+
+      // Rate limit: 60 lookups per IP+prefix per hour.
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: recent } = await sbPub
+        .from('report_qa_share_access_log')
+        .select('*', { count: 'exact', head: true })
+        .eq('share_token_prefix', prefix)
+        .eq('requester_ip', ipHeader)
+        .gte('created_at', oneHourAgo);
+      if ((recent ?? 0) > 60) {
+        await sbPub.from('report_qa_share_access_log').insert({
+          share_token_prefix: prefix, outcome: 'rate_limited', requester_ip: ipHeader, requester_ua: ua,
+        });
+        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const { data, error } = await sbPub.rpc("get_shared_qa_answer", { _share_token: shareToken });
       if (error) {
         console.error('[report-qa] get-shared-answer-public error:', error);
+        await sbPub.from('report_qa_share_access_log').insert({
+          share_token_prefix: prefix, outcome: 'not_found', requester_ip: ipHeader, requester_ua: ua,
+        });
         return new Response(JSON.stringify({ error: "Lookup failed" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) {
+        await sbPub.from('report_qa_share_access_log').insert({
+          share_token_prefix: prefix, outcome: 'not_found', requester_ip: ipHeader, requester_ua: ua,
+        });
         return new Response(JSON.stringify({ error: "Not found or revoked" }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      await sbPub.from('report_qa_share_access_log').insert({
+        share_token_prefix: prefix, message_id: row.message_id, outcome: 'ok',
+        requester_ip: ipHeader, requester_ua: ua,
+      });
       return new Response(JSON.stringify({ answer: row }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     
     // SECURITY: Verify authentication
     // IMPORTANT: verifyAuth checks headers/cookies first, then body
@@ -1165,8 +1205,26 @@ Deno.serve(async (req) => {
       return createUnauthorizedResponse(authError, corsHeaders);
     }
     console.log(`[report-qa] Authenticated user: ${userId}`);
-    
+
+    // WP-07 — resolve superadmin once; all access decisions route through the
+    // shared resolver so we never "select then filter in JS".
+    let isSuperadmin = false;
+    if (userId) {
+      const { data: roleRow } = await supabase
+        .from('custom_users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      isSuperadmin = (roleRow?.role || '').toString().toLowerCase() === 'superadmin';
+    }
+    const denyResponse = (msg = 'Not authorized for this conversation') =>
+      new Response(JSON.stringify({ error: msg }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
     const { action } = body;
+
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -2705,20 +2763,18 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
       const { conversationId, limit, offset } = body;
       const pageLimit = limit || 50;
       const pageOffset = offset || 0;
-      
-      const { data: conversation, error: convError } = await supabase
-        .from("report_qa_conversations")
-        .select("*")
-        .eq("id", conversationId)
-        .single();
 
-      if (convError) throw convError;
+      // WP-07 — resolve effective access before touching messages/metadata.
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canRead(access.role) || !access.conversation) return denyResponse();
+      const conversation = access.conversation;
 
-      // Get total message count
+      // Get total message count (DB-scoped, not select-all-then-filter)
       const { count: totalCount, error: countError } = await supabase
         .from("report_qa_messages")
         .select("*", { count: 'exact', head: true })
         .eq("conversation_id", conversationId);
+
 
       if (countError) throw countError;
 
@@ -2747,7 +2803,7 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
     // Handle updating conversation (e.g., title)
     if (action === "update-conversation") {
       const { conversationId, title, clientId, reportNames, reportContents } = body;
-      
+
       if (!conversationId) {
         return new Response(
           JSON.stringify({ error: "conversationId is required" }),
@@ -2755,13 +2811,26 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
         );
       }
 
+      // WP-07 — owner/admin only for title/client rewiring; collaborate may
+      // update report_names/report_contents but not re-link client_id.
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canWrite(access.role)) return denyResponse();
+      const isAdminOfConv = canAdminister(access.role);
+
       const updateData: any = {};
-      if (title !== undefined) updateData.title = title;
+      if (title !== undefined) {
+        if (!isAdminOfConv) return denyResponse('Only the owner can rename this conversation');
+        updateData.title = title;
+      }
       if (reportNames !== undefined) updateData.report_names = Array.isArray(reportNames) ? reportNames : [];
       if (reportContents !== undefined) updateData.report_contents = Array.isArray(reportContents) ? reportContents : [];
-      // clientId may be a uuid string or null (to unlink)
-      if (clientId !== undefined) updateData.client_id = clientId || null;
+      if (clientId !== undefined) {
+        if (!isAdminOfConv) return denyResponse('Only the owner can re-link the client');
+        updateData.client_id = clientId || null;
+      }
+
       updateData.updated_at = new Date().toISOString();
+
 
       const { data, error } = await supabase
         .from("report_qa_conversations")
@@ -2900,13 +2969,19 @@ ${transcript}`;
     // Handle deleting conversation
     if (action === "delete-conversation") {
       const { conversationId } = body;
-      
+
       if (!conversationId) {
         return new Response(
           JSON.stringify({ error: "conversationId is required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // WP-07 — owner/admin only.
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canAdminister(access.role)) return denyResponse();
+
+
 
       // Delete messages first (foreign key constraint)
       await supabase
@@ -2945,7 +3020,13 @@ ${transcript}`;
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // WP-07 — only owner/admin can (re)share; sharees cannot expand access.
+      const shareAccess = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canAdminister(shareAccess.role)) return denyResponse('Only the owner can share this conversation');
+
       const { error: shareError } = await supabase
+
         .from("report_qa_conversation_shares")
         .insert({
           conversation_id: conversationId,
@@ -2980,12 +3061,21 @@ ${transcript}`;
     // Handle revoking a share
     if (action === "revoke-share") {
       const { conversationId: convId, targetUserId: revokeUserId } = body;
+      if (!convId || !revokeUserId) {
+        return new Response(JSON.stringify({ error: "conversationId and targetUserId are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      // WP-07 — only owner/admin can revoke.
+      const revokeAccess = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId: convId });
+      if (!canAdminister(revokeAccess.role)) return denyResponse('Only the owner can revoke shares');
+
       const { error: revokeError } = await supabase
         .from("report_qa_conversation_shares")
         .update({ is_active: false })
         .eq("conversation_id", convId)
         .eq("shared_with", revokeUserId);
       if (revokeError) throw revokeError;
+
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -3054,29 +3144,55 @@ ${transcript}`;
     }
 
     // Phase 4.5 — Per-answer shareable links
+    // WP-07 — public share links are 128-bit random tokens; we store only a
+    // sha256 hash + 8-char prefix + expiry, never the plaintext.
     if (action === "generate-share-link") {
-      const { messageId } = body;
+      const { messageId, ttlDays } = body;
       if (!messageId) {
         return new Response(JSON.stringify({ error: "messageId required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Generate stable token if none exists
-      const { data: existing } = await supabase
+      // Resolve the parent conversation and authorize.
+      const { data: msgRow } = await supabase
         .from("report_qa_messages")
-        .select("share_token")
+        .select("id, conversation_id")
         .eq("id", messageId)
         .maybeSingle();
-      let token = existing?.share_token as string | null;
-      if (!token) {
-        token = crypto.randomUUID();
-        const { error: updErr } = await supabase
-          .from("report_qa_messages")
-          .update({ share_token: token })
-          .eq("id", messageId);
-        if (updErr) throw updErr;
-      }
-      return new Response(JSON.stringify({ shareToken: token }), {
+      if (!msgRow) return denyResponse('Message not found');
+      const linkAccess = await resolveReportQaAccess(supabase, {
+        actorId: userId, isSuperadmin, conversationId: msgRow.conversation_id,
+      });
+      if (!canAdminister(linkAccess.role)) return denyResponse('Only the owner can create share links');
+
+      // 32-byte random → base64url (256 bits of entropy).
+      const raw = new Uint8Array(32);
+      crypto.getRandomValues(raw);
+      const token = btoa(String.fromCharCode(...raw))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const prefix = token.slice(0, 8);
+
+      const enc = new TextEncoder();
+      const digest = await crypto.subtle.digest('SHA-256', enc.encode(token));
+      const hash = Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0')).join('');
+
+      const days = Math.min(Math.max(Number(ttlDays) || 30, 1), 90);
+      const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+      const { error: updErr } = await supabase
+        .from("report_qa_messages")
+        .update({
+          share_token: null,
+          share_token_hash: hash,
+          share_token_prefix: prefix,
+          share_expires_at: expiresAt,
+          share_revoked_at: null,
+        })
+        .eq("id", messageId);
+      if (updErr) throw updErr;
+
+      return new Response(JSON.stringify({ shareToken: token, expiresAt }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -3088,15 +3204,32 @@ ${transcript}`;
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const { data: msgRow } = await supabase
+        .from("report_qa_messages")
+        .select("id, conversation_id")
+        .eq("id", messageId)
+        .maybeSingle();
+      if (!msgRow) return denyResponse('Message not found');
+      const revokeLinkAccess = await resolveReportQaAccess(supabase, {
+        actorId: userId, isSuperadmin, conversationId: msgRow.conversation_id,
+      });
+      if (!canAdminister(revokeLinkAccess.role)) return denyResponse('Only the owner can revoke share links');
+
       const { error } = await supabase
         .from("report_qa_messages")
-        .update({ share_token: null })
+        .update({
+          share_token: null,
+          share_token_hash: null,
+          share_token_prefix: null,
+          share_revoked_at: new Date().toISOString(),
+        })
         .eq("id", messageId);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     // Phase 5.4 — Branch a conversation from a specific message.
     // Copies all messages up to and including `branchFromMessageId` into a
@@ -3357,6 +3490,14 @@ ${cleanContent.length + 500}
       if (!conversationId || !messages || messages.length === 0) {
         throw new Error("Missing required parameters: conversationId and messages");
       }
+
+      // WP-07 — must have read access to export a PDF for this conversation.
+      const pdfAccess = await resolveReportQaAccess(supabase, {
+        actorId: userId, isSuperadmin, conversationId,
+      });
+      if (!canRead(pdfAccess.role)) return denyResponse();
+
+
 
       // Fetch active QA export template from database
       const { data: activeTemplate, error: templateError } = await supabase
@@ -3882,9 +4023,10 @@ ${cleanContent.length + 500}
 
       // WP-06 Phase B — bind the export object to the conversation owner so
       // future reads authorize through storage_object_bindings.
+      // (WP-07 fix: report_qa_conversations owner column is `created_by`.)
       const { data: convRow } = await supabase
         .from('report_qa_conversations')
-        .select('user_id, client_id')
+        .select('created_by, client_id')
         .eq('id', conversationId)
         .maybeSingle();
       const { error: qaBindErr } = await supabase.from('storage_object_bindings').upsert({
@@ -3893,10 +4035,11 @@ ${cleanContent.length + 500}
         resource_type: 'qa_export',
         resource_id: conversationId,
         client_id: convRow?.client_id ?? null,
-        owner_user_id: convRow?.user_id ?? null,
+        owner_user_id: convRow?.created_by ?? userId ?? null,
         sensitivity: 'sensitive',
-        created_by: convRow?.user_id ?? null,
+        created_by: convRow?.created_by ?? userId ?? null,
       }, { onConflict: 'bucket,object_path' });
+
       if (qaBindErr) {
         await supabase.storage.from('qa_exports').remove([fileName]).catch(() => {});
         throw new Error(`Failed to bind PDF object: ${qaBindErr.message}`);
