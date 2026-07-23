@@ -103,7 +103,7 @@ async function runDue(sb: any) {
       }).select().single();
 
       await sb.from('notifications').insert({
-        user_id,
+        target_user_id: user_id,
         type: 'market_qa_digest',
         title: `Your ${cadence} ${digest_group} digest is ready`,
         message: `${items.length} question${items.length === 1 ? '' : 's'} refreshed`,

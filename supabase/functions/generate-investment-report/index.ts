@@ -4,6 +4,7 @@ import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_s
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
+import { insertTargetedNotification } from '../_shared/notify.ts';
 import { compassSections, financialSections, type CompassSectionDefinition as CanonicalSectionDefinition } from '../_shared/compassSectionRegistry.ts';
 import { startRun as traceStartRun, recordChunk as traceRecordChunk, finishRun as traceFinishRun, packetKeysAttached as tracePacketKeys } from '../_shared/generation-trace.ts';
 const INTERNAL_EDGE_SECRET = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
@@ -5849,16 +5850,16 @@ YOUR DEDICATED PROPERTY PARTNER
       
       // Add success notification
       try {
-        await supabaseClient
-          .from('notifications')
-          .insert({
+        await insertTargetedNotification(supabaseClient, {
+          moduleKey: 'reports',
+          notification: {
             type: 'report_generation_completed',
             title: 'Report Generated',
             message: `Investment report for ${propertyAddress} is ready to view`,
             report_id: reportId,
             entity_id: reportId,
-            read: false
-          });
+          },
+        });
         console.log('✓ Success notification created');
       } catch (notifError) {
         console.error('Failed to create notification:', notifError);
@@ -5916,16 +5917,16 @@ YOUR DEDICATED PROPERTY PARTNER
             .eq('id', requestBody.reportId);
           
           // Add failure notification
-          await supabaseClient
-            .from('notifications')
-            .insert({
+          await insertTargetedNotification(supabaseClient, {
+            moduleKey: 'reports',
+            notification: {
               type: 'report_generation_failed',
               title: 'Report Generation Failed',
               message: `Failed to generate report: ${error?.message || 'Unknown error'}`,
               report_id: requestBody.reportId,
               entity_id: requestBody.reportId,
-              read: false
-            });
+            },
+          });
           
           console.log('Updated report status to failed');
         }

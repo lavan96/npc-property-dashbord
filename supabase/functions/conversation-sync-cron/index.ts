@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getEffectiveGhlCredentials } from '../_shared/ghl-account.ts';
+import { insertTargetedNotification } from '../_shared/notify.ts';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
@@ -222,15 +223,15 @@ Deno.serve(async (req) => {
                   const preview = (msg.body || msg.message || '(Attachment)').substring(0, 100);
                   const channelLabel = channelType.toUpperCase();
 
-                  await supabase
-                    .from('notifications')
-                    .insert({
+                  await insertTargetedNotification(supabase, {
+                    moduleKey: 'conversations',
+                    notification: {
                       type: 'conversation_reply',
                       title: `New ${channelLabel} from ${clientName}`,
                       message: preview,
                       entity_id: clientId || upsertedConv.id,
-                      read: false,
-                    });
+                    },
+                  });
 
                   console.log(`[conversation-sync-cron] 📬 Notification for inbound from ${clientName}`);
                 }

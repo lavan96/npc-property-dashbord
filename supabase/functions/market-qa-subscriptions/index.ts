@@ -198,7 +198,7 @@ async function runOne(sb: any, sub: any): Promise<{ question_id: string | null; 
     if (status === 'ok' && (sub.channels ?? []).includes('in_app')) {
       const preview = String(j?.answer ?? '').slice(0, 180);
       await sb.from('notifications').insert({
-        user_id: sub.user_id,
+        target_user_id: sub.user_id,
         type: 'market_qa_subscription',
         title: 'New answer for your subscribed question',
         message: preview || sub.question_template,

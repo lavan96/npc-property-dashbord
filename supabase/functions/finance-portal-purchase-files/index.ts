@@ -13,6 +13,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.55.0";
 import { notifyFinancePortalAssignees } from "../_shared/finance-portal-notify.ts";
 import { notifyClientPortal } from "../_shared/client-portal-notify.ts";
+import { insertTargetedNotification } from "../_shared/notify.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,11 +86,14 @@ function mapPurchaseTypeToDealType(value: string | null | undefined) {
 
 async function notifyCommandCentreOfPurchaseFile(supabase: any, input: { clientId: string; fileId: string; title: string; financeEmail: string | null }) {
   try {
-    await supabase.from('notifications').insert({
-      type: 'info',
-      title: 'New finance portal purchase file',
-      message: `${input.title} was created from the Finance Portal${input.financeEmail ? ` by ${input.financeEmail}` : ''}.`,
-      entity_id: input.fileId,
+    await insertTargetedNotification(supabase, {
+      moduleKey: 'finance_portal_admin',
+      notification: {
+        type: 'info',
+        title: 'New finance portal purchase file',
+        message: `${input.title} was created from the Finance Portal${input.financeEmail ? ` by ${input.financeEmail}` : ''}.`,
+        entity_id: input.fileId,
+      },
     });
   } catch (error) {
     console.error('[finance-portal-purchase-files] command centre notification failed', error);

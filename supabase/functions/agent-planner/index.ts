@@ -395,7 +395,7 @@ async function runScheduled(sb: any) {
         }).eq('id', run!.id);
       } else {
         await sb.from('notifications').insert({
-          user_id: plan.user_id, type: 'agent_plan_scheduled',
+          target_user_id: plan.user_id, type: 'agent_plan_scheduled',
           title: 'Scheduled plan is ready',
           message: `${plan.title} is awaiting your approval.`,
           metadata: { plan_id: plan.id, run_id: run?.id },

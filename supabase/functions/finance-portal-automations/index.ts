@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (existing) return false;
     await supabase.from('notifications').insert({
-      user_id: userId, type, title, message,
+      target_user_id: userId, type, title, message,
       metadata: { purchase_file_id: fileId, ...extra },
     });
     return true;
