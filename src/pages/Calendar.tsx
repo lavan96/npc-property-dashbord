@@ -889,7 +889,7 @@ export default function Calendar() {
                     <div className="shrink-0 overflow-x-auto border-b border-border px-4 py-3">
                       <div className="inline-flex flex-wrap gap-2">
                         {orderedSidebarTabs.map(tab => (
-                          <ContextMenu key={tab.id} open={contextMenuTab === tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
+                          <ContextMenu key={tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
                           <ContextMenuTrigger asChild>
                           <button
                             aria-pressed={sidebarTab === tab.id}
@@ -1462,7 +1462,7 @@ export default function Calendar() {
                 {orderedSidebarTabs.map((tab) => {
                   const isPinned = pinnedTabs.includes(tab.id);
                   return (
-                    <ContextMenu key={tab.id} open={contextMenuTab === tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
+                    <ContextMenu key={tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <ContextMenuTrigger asChild>
@@ -1565,7 +1565,7 @@ export default function Calendar() {
                       {orderedSidebarTabs.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
-                          <ContextMenu key={tab.id} open={contextMenuTab === tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
+                          <ContextMenu key={tab.id} onOpenChange={(open) => setContextMenuTab(open ? tab.id : null)}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <ContextMenuTrigger asChild>
