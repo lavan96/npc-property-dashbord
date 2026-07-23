@@ -2,6 +2,7 @@
 // Sends VAPID-signed Web Push notifications to all of a user's active push subscriptions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import webpush from 'https://esm.sh/web-push@3.6.7';
+import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,13 +28,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (!verifyRequiredCronSecret(Deno.env.get('INTERNAL_EDGE_SECRET'), req.headers.get('x-internal-edge-secret'))) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY');
     const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY');
     const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT_EMAIL') || 'admin@example.com';
 
     if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
       console.error('[send-web-push] VAPID keys not configured');
-      return new Response(JSON.stringify({ error: 'VAPID keys not configured' }), {
+      return new Response(JSON.stringify({ error: 'service unavailable' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
