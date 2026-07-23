@@ -7617,7 +7617,9 @@ async function handleConfirmAction(sb: any, body: any, cors: Record<string, stri
   if (pendingMsg?.tool_calls) {
     const results: any[] = [];
     for (const tc of pendingMsg.tool_calls) {
-      const result = await executeTool(sb, tc.function.name, JSON.parse(tc.function.arguments), body.user_id || 'service_role');
+      // WP-05B: the pending-message approval flow satisfies the step-up gate
+      // for delete_*/bulk_* tools. Ownership + actor-type gates still apply.
+      const result = await executeTool(sb, tc.function.name, JSON.parse(tc.function.arguments), body.user_id || 'service_role', { actorType: 'human', stepUpVerified: true });
       results.push({ tool_call_id: tc.id, result });
     }
     const content = results.map(r => r.result.success ? r.result.message : `⚠️ Error: ${r.result.error || 'Unknown'}`).join('\n');
