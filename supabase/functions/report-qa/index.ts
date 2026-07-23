@@ -2725,20 +2725,18 @@ Be thorough and include ALL specific numbers, percentages, and data points menti
       const { conversationId, limit, offset } = body;
       const pageLimit = limit || 50;
       const pageOffset = offset || 0;
-      
-      const { data: conversation, error: convError } = await supabase
-        .from("report_qa_conversations")
-        .select("*")
-        .eq("id", conversationId)
-        .single();
 
-      if (convError) throw convError;
+      // WP-07 — resolve effective access before touching messages/metadata.
+      const access = await resolveReportQaAccess(supabase, { actorId: userId, isSuperadmin, conversationId });
+      if (!canRead(access.role) || !access.conversation) return denyResponse();
+      const conversation = access.conversation;
 
-      // Get total message count
+      // Get total message count (DB-scoped, not select-all-then-filter)
       const { count: totalCount, error: countError } = await supabase
         .from("report_qa_messages")
         .select("*", { count: 'exact', head: true })
         .eq("conversation_id", conversationId);
+
 
       if (countError) throw countError;
 
