@@ -164,19 +164,34 @@ export async function verifyHuman(
   return ctx({ errorCode: bearerWasRejected ? 'invalid_jwt' : 'missing_credentials' });
 }
 
-// ── Internal service authentication (AUTH-002) ────────────────────────────
+// ── Internal service authentication (AUTH-002 / WP-12) ────────────────────
 //
 // Signed request envelope:
 //   X-Internal-Timestamp: unix seconds
 //   X-Internal-Nonce:     128-bit random hex
 //   X-Internal-Caller:    calling function name
-//   X-Internal-Signature: hex(HMAC-SHA256(secret, method\npath\ntimestamp\nnonce\ncaller\nsha256(body)))
+//   X-Internal-Key-Id:    key version id (default "v1"). Enables overlap rotation.
+//   X-Internal-Signature: hex(HMAC-SHA256(secret, method\npath\ntimestamp\nnonce\ncaller\nkeyId\nsha256(body)))
+//
+// Key rotation: signer picks the newest configured key (V2 if set, else V1).
+// Verifier honours the presented key id against BOTH the current and previous
+// secret so a rotation can run with a documented overlap window.
 //
 // Replay defence: timestamp within ±90s, nonce single-use (stored in
 // internal_request_nonces when available, else per-instance memory).
 
 const INTERNAL_SKEW_SECONDS = 90;
 const memoryNonces = new Map<string, number>();
+
+/** Ordered map of accepted key ids → secret. First entry is the current signer. */
+function loadInternalKeys(): Array<{ id: string; secret: string }> {
+  const out: Array<{ id: string; secret: string }> = [];
+  const v2 = (Deno.env.get('INTERNAL_EDGE_SECRET_V2') || '').trim();
+  const v1 = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
+  if (v2.length >= 16) out.push({ id: 'v2', secret: v2 });
+  if (v1.length >= 16) out.push({ id: 'v1', secret: v1 });
+  return out;
+}
 
 async function hmacHex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -220,8 +235,8 @@ export function verifyWebhookSecret(
   return constantTimeEqual(secret, given);
 }
 
-function internalMessage(method: string, path: string, timestamp: string, nonce: string, caller: string, bodyHash: string): string {
-  return [method.toUpperCase(), path, timestamp, nonce, caller, bodyHash].join('\n');
+function internalMessage(method: string, path: string, timestamp: string, nonce: string, caller: string, keyId: string, bodyHash: string): string {
+  return [method.toUpperCase(), path, timestamp, nonce, caller, keyId, bodyHash].join('\n');
 }
 
 /** Produce signed headers for an internal edge-function-to-edge-function call. */
@@ -231,17 +246,19 @@ export async function signInternalRequest(
   body: string,
   callerFunction: string
 ): Promise<Record<string, string>> {
-  const secret = Deno.env.get('INTERNAL_EDGE_SECRET');
-  if (!secret || secret.trim().length < 16) throw new Error('INTERNAL_EDGE_SECRET is not configured or is too short');
+  const keys = loadInternalKeys();
+  if (keys.length === 0) throw new Error('INTERNAL_EDGE_SECRET is not configured or is too short');
+  const { id: keyId, secret } = keys[0]; // newest key signs
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonceBytes = crypto.getRandomValues(new Uint8Array(16));
   const nonce = [...nonceBytes].map((b) => b.toString(16).padStart(2, '0')).join('');
   const bodyHash = await sha256Hex(body);
-  const signature = await hmacHex(secret, internalMessage(method, path, timestamp, nonce, callerFunction, bodyHash));
+  const signature = await hmacHex(secret, internalMessage(method, path, timestamp, nonce, callerFunction, keyId, bodyHash));
   return {
     'X-Internal-Timestamp': timestamp,
     'X-Internal-Nonce': nonce,
     'X-Internal-Caller': callerFunction,
+    'X-Internal-Key-Id': keyId,
     'X-Internal-Signature': signature,
   };
 }
