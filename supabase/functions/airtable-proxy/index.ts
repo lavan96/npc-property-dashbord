@@ -45,6 +45,24 @@ Deno.serve(async (req) => {
       return createUnauthorizedResponse(auth.error || 'Authentication required', corsHeaders);
     }
 
+    // WP-08 — module gate: requires `listings` module view. Superadmin bypasses.
+    const moduleCheck = await checkModuleView(supabaseAuthClient, auth.userId, 'listings', auth.authMethod);
+    if (!moduleCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: moduleCheck.reason || 'You do not have access to listings.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Best-effort per-user rate limit: 120 calls / minute.
+    const rl = rateLimit(`airtable:${auth.userId}`, 120, 60_000);
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please slow down.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil((rl.retryAfterMs || 1000)/1000)) } }
+      );
+    }
+
     // Get secrets from environment variables (managed by Supabase)
     const token = Deno.env.get('AIRTABLE_TOKEN');
     const baseId = Deno.env.get('AIRTABLE_BASE_ID');
