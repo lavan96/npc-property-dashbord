@@ -267,50 +267,78 @@ export async function signInternalRequest(
 
 /**
  * Verify an internal signed request. `rawBody` must be the exact request body
- * string. Falls back to service-role-key Bearer comparison for legacy callers
- * (to be retired at the end of the migration window).
+ * string.
+ *
+ * WP-12 hardening:
+ *   - Signed envelope is the primary path; keyed by `X-Internal-Key-Id` against
+ *     BOTH the current and previous secret to support overlap rotation.
+ *   - `allowedCallers` enforces a per-receiver caller allowlist so a valid
+ *     signature from an unrelated function is still denied.
+ *   - Legacy static-secret and service-role-Bearer fallbacks remain accepted
+ *     during the migration window, but the env flag `INTERNAL_STRICT_SIGNED=true`
+ *     (or per-call `strict: true`) forces them off globally.
  */
 export async function verifyInternal(
   supabase: any,
   req: Request,
   rawBody: string,
-  options: { allowLegacyStaticSecret?: boolean; allowLegacyServiceRoleKey?: boolean } = {},
+  options: {
+    allowLegacyStaticSecret?: boolean;
+    allowLegacyServiceRoleKey?: boolean;
+    allowedCallers?: string[];
+    strict?: boolean;
+  } = {},
 ): Promise<AuthContext> {
-  const allowLegacyStaticSecret = options.allowLegacyStaticSecret !== false;
-  const allowLegacyServiceRoleKey = options.allowLegacyServiceRoleKey !== false;
-  // Preferred internal-auth path (AUTH-002): a dedicated INTERNAL_EDGE_SECRET
-  // presented in x-internal-edge-secret, constant-time compared. Callers use
-  // this instead of the crown-jewel service-role key, so a leak of this header
-  // only permits internal function invocation — not full RLS-bypassing DB
-  // access. Headers-only, so it is robust to gateway path rewrites and does not
-  // require reading the raw body.
-  const internalSecret = (Deno.env.get('INTERNAL_EDGE_SECRET') || '').trim();
+  const strictEnv = (Deno.env.get('INTERNAL_STRICT_SIGNED') || '').trim().toLowerCase() === 'true';
+  const strict = options.strict === true || strictEnv;
+  const allowLegacyStaticSecret = !strict && options.allowLegacyStaticSecret !== false;
+  const allowLegacyServiceRoleKey = !strict && options.allowLegacyServiceRoleKey !== false;
+  const allowedCallers = options.allowedCallers && options.allowedCallers.length > 0
+    ? new Set(options.allowedCallers)
+    : null;
+
+  const enforceCallerAllowlist = (caller: string | null): AuthContext | null => {
+    if (!allowedCallers) return null;
+    if (!caller || !allowedCallers.has(caller)) {
+      console.warn('[auth_v2] internal caller not in receiver allowlist', { caller });
+      return ctx({ errorCode: 'internal_caller_not_allowed' });
+    }
+    return null;
+  };
+
+  // Deprecated static-secret shortcut (retained ONLY during rollout).
+  const keys = loadInternalKeys();
   const presentedInternal = (req.headers.get('x-internal-edge-secret') || '').trim();
-  const bearerForInternal = (req.headers.get('authorization') || '').startsWith('Bearer ')
-    ? (req.headers.get('authorization') || '').slice(7).trim() : '';
-  if (allowLegacyStaticSecret && internalSecret.length >= 16 && (
-        (presentedInternal.length > 0 && constantTimeEqual(internalSecret, presentedInternal)) ||
-        (bearerForInternal.length > 0 && constantTimeEqual(internalSecret, bearerForInternal))
-      )) {
-    console.warn('[auth_v2] deprecated static internal secret accepted; migrate caller to signed envelope');
-    return ctx({
-      ok: true,
-      authType: 'internal_service',
-      actorId: req.headers.get('x-internal-caller') || 'internal_service',
-      username: 'system',
-      roles: [],
-      method: 'internal_hmac',
-      errorCode: null,
-    });
+  const authHeader = req.headers.get('authorization') || '';
+  const bearerForInternal = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (allowLegacyStaticSecret && keys.length > 0 && (presentedInternal || bearerForInternal)) {
+    for (const { secret } of keys) {
+      if ((presentedInternal && constantTimeEqual(secret, presentedInternal)) ||
+          (bearerForInternal && constantTimeEqual(secret, bearerForInternal))) {
+        console.warn('[auth_v2] deprecated static internal secret accepted; migrate caller to signed envelope');
+        const caller = req.headers.get('x-internal-caller') || 'internal_service';
+        const denied = enforceCallerAllowlist(caller);
+        if (denied) return denied;
+        return ctx({
+          ok: true,
+          authType: 'internal_service',
+          actorId: caller,
+          username: 'system',
+          roles: [],
+          method: 'internal_hmac',
+          errorCode: null,
+        });
+      }
+    }
   }
 
-  // Deprecated compatibility path: this static credential is not accepted by verifySignedInternal.
-
-  // Legacy path: direct service-role key comparison (shared-secret check).
-  const authHeader = req.headers.get('authorization') || '';
+  // Legacy service-role Bearer fallback (retired under strict mode).
   const serviceRoleKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
-  if (allowLegacyServiceRoleKey && serviceRoleKey && authHeader.startsWith('Bearer ') && authHeader.slice(7).trim() === serviceRoleKey) {
+  if (allowLegacyServiceRoleKey && serviceRoleKey && bearerForInternal && constantTimeEqual(serviceRoleKey, bearerForInternal)) {
     console.warn('[auth_v2] deprecated service-role HTTP credential accepted; migrate caller to signed envelope');
+    const caller = req.headers.get('x-internal-caller') || 'service_role';
+    const denied = enforceCallerAllowlist(caller);
+    if (denied) return denied;
     return ctx({
       ok: true,
       authType: 'internal_service',
@@ -322,14 +350,17 @@ export async function verifyInternal(
     });
   }
 
-  const secret = Deno.env.get('INTERNAL_EDGE_SECRET');
+  // Preferred: signed envelope.
   const timestamp = req.headers.get('x-internal-timestamp');
   const nonce = req.headers.get('x-internal-nonce');
   const caller = req.headers.get('x-internal-caller');
   const signature = req.headers.get('x-internal-signature');
-  if (!secret || !timestamp || !nonce || !caller || !signature) {
+  const keyId = (req.headers.get('x-internal-key-id') || 'v1').trim();
+  if (keys.length === 0 || !timestamp || !nonce || !caller || !signature) {
     return ctx({ errorCode: 'missing_credentials' });
   }
+  const keyEntry = keys.find((k) => k.id === keyId);
+  if (!keyEntry) return ctx({ errorCode: 'internal_unknown_key' });
 
   const now = Math.floor(Date.now() / 1000);
   const ts = parseInt(timestamp, 10);
@@ -339,10 +370,13 @@ export async function verifyInternal(
 
   const path = new URL(req.url).pathname;
   const bodyHash = await sha256Hex(rawBody);
-  const expected = await hmacHex(secret, internalMessage(req.method, path, timestamp, nonce, caller, bodyHash));
+  const expected = await hmacHex(keyEntry.secret, internalMessage(req.method, path, timestamp, nonce, caller, keyId, bodyHash));
   if (!constantTimeEqual(expected, signature)) {
     return ctx({ errorCode: 'invalid_internal_signature' });
   }
+
+  const denied = enforceCallerAllowlist(caller);
+  if (denied) return denied;
 
   // Nonce replay check: durable table first, per-instance memory as fallback.
   try {
@@ -353,7 +387,6 @@ export async function verifyInternal(
       if (String(error.code) === '23505') {
         return ctx({ errorCode: 'internal_replay' });
       }
-      // Table missing or transient failure — fall back to memory check.
       if (memoryNonces.has(nonce)) return ctx({ errorCode: 'internal_replay' });
       memoryNonces.set(nonce, now);
     }
@@ -361,7 +394,6 @@ export async function verifyInternal(
     if (memoryNonces.has(nonce)) return ctx({ errorCode: 'internal_replay' });
     memoryNonces.set(nonce, now);
   }
-  // Opportunistic memory-nonce GC
   if (memoryNonces.size > 10000) {
     for (const [n, t] of memoryNonces) if (now - t > INTERNAL_SKEW_SECONDS * 2) memoryNonces.delete(n);
   }
