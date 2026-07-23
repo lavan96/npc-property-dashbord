@@ -1,6 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
 import { getEffectiveGhlCredentials, resolveGhlAccessTokenForLocation } from '../_shared/ghl-account.ts';
+import { checkPermission } from '../_shared/permissions.ts';
+import { rateLimit } from '../_shared/wp08Guards.ts';
+import { logApiUsage } from '../_shared/logApiUsage.ts';
+
+// WP-08 — hard message length ceiling (SMS is 1600 across most providers).
+const MAX_MESSAGE_LENGTH = 1600;
 
 type SupportedChannel = 'sms' | 'whatsapp';
 
@@ -58,6 +64,40 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "conversationId and message are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // WP-08 — bound message length and reject control characters.
+    const messageText = String(message);
+    if (messageText.length > MAX_MESSAGE_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Message exceeds ${MAX_MESSAGE_LENGTH}-character limit.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // WP-08 — require conversations module edit permission (superadmin bypasses).
+    const perm = await checkPermission(supabase, userId!, 'conversations', 'can_edit');
+    if (!perm.allowed) {
+      return new Response(
+        JSON.stringify({ error: perm.reason || 'You cannot send CRM messages.' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // WP-08 — per-user quota: burst 10/sec, sustained 100/min.
+    const burst = rateLimit(`ghl-send:burst:${userId}`, 10, 1_000);
+    if (!burst.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Sending too quickly. Please slow down.' }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", 'Retry-After': '1' } }
+      );
+    }
+    const minute = rateLimit(`ghl-send:minute:${userId}`, 100, 60_000);
+    if (!minute.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Hourly message quota exceeded.' }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", 'Retry-After': String(Math.ceil((minute.retryAfterMs || 1000)/1000)) } }
       );
     }
 
@@ -247,6 +287,23 @@ Deno.serve(async (req) => {
         .eq("id", convRecord.id);
     }
 
+    // WP-08 — audit successful send. Body itself is not persisted here (kept
+    // in ghl_conversation_messages); metadata only.
+    await logApiUsage(supabase, {
+      service_name: 'ghl',
+      endpoint: '/conversations/messages',
+      status: 'success',
+      model_used: 'rest-api',
+      user_id: userId!,
+      metadata: {
+        channel,
+        conversation_id: convRecord.id,
+        client_id: convRecord.client_id || null,
+        provider_message_id: ghlData.messageId || ghlData.id || null,
+        message_length: messageText.length,
+      },
+    });
+
     return new Response(
       JSON.stringify({ success: true, messageId: ghlData.messageId || ghlData.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -254,7 +311,7 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error("[send-ghl-message] Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'CRM messaging is temporarily unavailable.' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
