@@ -548,10 +548,24 @@ Deno.serve(async (req) => {
       if (!emails?.length) {
         return jsonResponse({ error: 'emails array is required' }, corsHeaders, 400);
       }
+      // WP-13: every entry in `emails` must belong to the caller (or superadmin).
+      // Previously only body.targetEmail was ownership-checked, so a caller could
+      // read arbitrary tenant users' free/busy via the array.
+      if (userId !== 'service_role') {
+        const caller = await loadCallerAccount(supabase, effectiveUserId!);
+        for (const em of emails) {
+          const check = assertMailboxOwnership(em, caller);
+          if (!check.ok) {
+            console.log(`[outlook-calendar] Rejected freeBusy email for ${userId}: ${check.error}`);
+            return jsonResponse({ error: check.error }, corsHeaders, 403);
+          }
+        }
+      }
       const { startTime, endTime } = body;
       const schedule = await getFreeBusy(accessToken, emails, startTime, endTime);
       return jsonResponse({ success: true, schedule }, corsHeaders);
     }
+
 
     if (action === 'teamAvailability') {
       const { startTime, endTime } = body;
