@@ -1897,6 +1897,27 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_rate_limits: {
+        Row: {
+          bucket_key: string
+          count: number
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          bucket_key: string
+          count?: number
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          bucket_key?: string
+          count?: number
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       auto_report_generation_log: {
         Row: {
           completed_at: string | null
@@ -20211,6 +20232,10 @@ export type Database = {
         Returns: undefined
       }
       chart_config_is_live: { Args: { cfg: Json }; Returns: boolean }
+      check_and_bump_rate_limit: {
+        Args: { p_key: string; p_max: number; p_window_seconds: number }
+        Returns: boolean
+      }
       check_pdf_import_success_rate: { Args: never; Returns: undefined }
       claim_migration_jobs: {
         Args: { p_lease_seconds?: number; p_limit?: number }
@@ -20259,6 +20284,22 @@ export type Database = {
           _target_type: string
         }
         Returns: string
+      }
+      consume_client_portal_reset_attempt: {
+        Args: { p_email: string; p_max: number }
+        Returns: {
+          reset_token: string
+          status: string
+          user_id: string
+        }[]
+      }
+      consume_finance_portal_reset_attempt: {
+        Args: { p_email: string; p_max: number }
+        Returns: {
+          reset_token: string
+          status: string
+          user_id: string
+        }[]
       }
       cron_service_role_headers: { Args: { extra?: Json }; Returns: Json }
       extract_email_address: { Args: { raw_text: string }; Returns: string }
