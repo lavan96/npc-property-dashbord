@@ -1133,31 +1133,69 @@ Deno.serve(async (req) => {
 
     // PUBLIC action (no auth) — shared answer lookup must be reachable
     // without a session so anyone with the link can view a single answer.
+    // WP-07 hardening: hashed-token lookup via RPC, IP-based rate limit,
+    // audit outcome without ever logging the raw token.
     if (body?.action === "get-shared-answer-public") {
       const shareToken = body?.shareToken;
-      if (!shareToken) {
+      if (!shareToken || typeof shareToken !== 'string' || shareToken.length < 16) {
         return new Response(JSON.stringify({ error: "shareToken required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const sbPub = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+      const ipHeader = req.headers.get('cf-connecting-ip')
+        || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        || req.headers.get('x-real-ip')
+        || 'unknown';
+      const ua = (req.headers.get('user-agent') || '').slice(0, 240);
+      const prefix = shareToken.slice(0, 8);
+
+      // Rate limit: 60 lookups per IP+prefix per hour.
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: recent } = await sbPub
+        .from('report_qa_share_access_log')
+        .select('*', { count: 'exact', head: true })
+        .eq('share_token_prefix', prefix)
+        .eq('requester_ip', ipHeader)
+        .gte('created_at', oneHourAgo);
+      if ((recent ?? 0) > 60) {
+        await sbPub.from('report_qa_share_access_log').insert({
+          share_token_prefix: prefix, outcome: 'rate_limited', requester_ip: ipHeader, requester_ua: ua,
+        });
+        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const { data, error } = await sbPub.rpc("get_shared_qa_answer", { _share_token: shareToken });
       if (error) {
         console.error('[report-qa] get-shared-answer-public error:', error);
+        await sbPub.from('report_qa_share_access_log').insert({
+          share_token_prefix: prefix, outcome: 'not_found', requester_ip: ipHeader, requester_ua: ua,
+        });
         return new Response(JSON.stringify({ error: "Lookup failed" }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const row = Array.isArray(data) ? data[0] : data;
       if (!row) {
+        await sbPub.from('report_qa_share_access_log').insert({
+          share_token_prefix: prefix, outcome: 'not_found', requester_ip: ipHeader, requester_ua: ua,
+        });
         return new Response(JSON.stringify({ error: "Not found or revoked" }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      await sbPub.from('report_qa_share_access_log').insert({
+        share_token_prefix: prefix, message_id: row.message_id, outcome: 'ok',
+        requester_ip: ipHeader, requester_ua: ua,
+      });
       return new Response(JSON.stringify({ answer: row }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
     
     // SECURITY: Verify authentication
     // IMPORTANT: verifyAuth checks headers/cookies first, then body
