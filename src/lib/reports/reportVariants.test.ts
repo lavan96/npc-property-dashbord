@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { REPORT_VARIANT_ORDER, getReportVariantLabel, resolveInvestmentReportType } from './reportVariants';
+import {
+  CLIENT_REPORT_VARIANTS,
+  REPORT_VARIANT_ORDER,
+  getReportVariantLabel,
+  isClientReportVariant,
+  resolveInvestmentReportType,
+} from './reportVariants';
 
 describe('resolveInvestmentReportType', () => {
   it('prefers an explicit specific tier over the legacy Compass engine', () => {
@@ -21,5 +27,12 @@ describe('resolveInvestmentReportType', () => {
 
   it('uses the fixed package-summary business order', () => {
     expect(REPORT_VARIANT_ORDER).toEqual(['compass', 'financial', 'strategic', 'snapshot', 'briefing']);
+  });
+
+  it('exposes only the four independently generated client report types as actions', () => {
+    expect(CLIENT_REPORT_VARIANTS).toEqual(['financial', 'strategic', 'briefing', 'snapshot']);
+    expect(CLIENT_REPORT_VARIANTS.every(isClientReportVariant)).toBe(true);
+    expect(isClientReportVariant('compass')).toBe(false);
+    expect(isClientReportVariant('PLDD')).toBe(false);
   });
 });
