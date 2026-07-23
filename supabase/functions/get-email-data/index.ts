@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { createCorsHeaders, verifyAuth, createUnauthorizedResponse, createForbiddenResponse } from "../_shared/auth.ts";
 import { isSuperadmin, logSecurityEvent } from "../_shared/auth_v2.ts";
+import { checkModuleView } from "../_shared/permissions.ts";
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -8,13 +9,15 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 /**
  * Can `userId` see a personal-mailbox email row? (MAIL-003)
  * Owned rows: owner_user_id (preferred) or created_by (legacy attribution).
- * Rows with no attribution at all are legacy shared data and stay visible
- * until backfill completes.
+ * Rows with no attribution at all are treated as NOT owned by regular staff
+ * (superadmins bypass upstream) — closes the legacy shared-visibility gap.
  */
 function ownsPersonalEmail(row: { owner_user_id?: string | null; created_by?: string | null }, userId: string): boolean {
   if (row.owner_user_id) return row.owner_user_id === userId;
   if (row.created_by) return row.created_by === userId;
-  return true; // unattributed legacy rows
+  // Unattributed legacy personal rows: no longer shared to arbitrary staff.
+  // Superadmins bypass this check upstream, so they retain access for admin.
+  return false;
 }
 
 Deno.serve(async (req) => {
@@ -36,6 +39,20 @@ Deno.serve(async (req) => {
     }
     const isService = authMethod === 'service_role';
     const superadmin = !isService && (await isSuperadmin(supabase, userId));
+
+    // AUTHZ (email visibility): reading the Email Copilot — especially the shared
+    // ADMIN/central mailbox, which has no per-row owner — requires the
+    // email_copilot module view permission. Superadmin + verified service bypass.
+    if (!isService && !superadmin) {
+      const perm = await checkModuleView(supabase, userId, 'email_copilot', authMethod);
+      if (!perm.allowed) {
+        await logSecurityEvent(supabase, {
+          action: 'email.read', decision: 'deny', reason_code: 'module_permission_denied',
+          actor_type: 'human', actor_id: userId,
+        });
+        return createForbiddenResponse(perm.reason || 'Access denied', corsHeaders);
+      }
+    }
 
     const { action, mailbox_source, email_id } = body;
 
@@ -59,7 +76,7 @@ Deno.serve(async (req) => {
       // connected the mailbox. Non-superadmin callers only see their own
       // (plus unattributed legacy rows until backfill completes).
       if (mailboxFilter === 'personal' && !isService && !superadmin) {
-        query = query.or(`owner_user_id.eq.${userId},and(owner_user_id.is.null,created_by.eq.${userId}),and(owner_user_id.is.null,created_by.is.null)`);
+        query = query.or(`owner_user_id.eq.${userId},and(owner_user_id.is.null,created_by.eq.${userId})`);
       }
 
       const { data: emails, error } = await query;
@@ -151,7 +168,7 @@ Deno.serve(async (req) => {
         .order('sent_at', { ascending: false });
 
       if (mailboxFilter === 'personal' && !isService && !superadmin) {
-        query = query.or(`owner_user_id.eq.${userId},and(owner_user_id.is.null,created_by.eq.${userId}),and(owner_user_id.is.null,created_by.is.null)`);
+        query = query.or(`owner_user_id.eq.${userId},and(owner_user_id.is.null,created_by.eq.${userId})`);
       }
 
       const { data, error } = await query;
