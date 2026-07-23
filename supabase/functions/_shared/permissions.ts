@@ -122,11 +122,20 @@ export async function checkPermission(
     return { allowed: true };
   }
 
+  // WP-13: legacy allow-by-default behaviour is opt-in only. When
+  // LEGACY_PERMS_STRICT=true (default post-rollout), tables/modules that are
+  // not registered fail closed. Set it to `false` (legacy) only during a
+  // controlled migration window.
+  const strict = (Deno.env.get('LEGACY_PERMS_STRICT') || 'true').toLowerCase() !== 'false';
+
   // Determine which module governs this table
   const moduleKey = TABLE_TO_MODULE_MAP[tableName];
   if (!moduleKey) {
-    // If table isn't mapped, allow by default (legacy tables not yet in module system)
-    console.log(`[permissions] Table "${tableName}" not mapped to any module, allowing by default`);
+    if (strict) {
+      console.warn(`[permissions] Table "${tableName}" not mapped to any module (strict deny).`);
+      return { allowed: false, reason: 'unmapped_table' };
+    }
+    console.log(`[permissions] Table "${tableName}" not mapped to any module, allowing (LEGACY_PERMS_STRICT=false)`);
     return { allowed: true };
   }
 
@@ -147,10 +156,14 @@ export async function checkPermission(
     .maybeSingle();
 
   if (!moduleData) {
-    // Module not registered → allow (don't break functionality for unregistered modules)
-    console.log(`[permissions] Module "${moduleKey}" not found in registry, allowing by default`);
+    if (strict) {
+      console.warn(`[permissions] Module "${moduleKey}" not registered (strict deny).`);
+      return { allowed: false, reason: 'unregistered_module' };
+    }
+    console.log(`[permissions] Module "${moduleKey}" not found in registry, allowing (LEGACY_PERMS_STRICT=false)`);
     return { allowed: true };
   }
+
 
   // Check the user's permission for this module
   const { data: userPerm } = await supabase
