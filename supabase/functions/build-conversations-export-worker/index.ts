@@ -149,7 +149,10 @@ Deno.serve(async (req) => {
 
     // AUTH-002: internal-only gate via a real credential (signed envelope or,
     // during rollout, INTERNAL_EDGE_SECRET / service-role key).
-    const internal = await verifyInternal(supabase, req, rawBody);
+    const internal = await verifyInternal(supabase, req, rawBody, {
+      strict: true,
+      allowedCallers: ['start-conversations-export'],
+    });
     if (!internal.ok) {
       return new Response(
         JSON.stringify({ success: false, error: 'Internal-only endpoint' }),
