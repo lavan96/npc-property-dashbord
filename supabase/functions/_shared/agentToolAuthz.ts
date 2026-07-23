@@ -1,4 +1,20 @@
-export type ToolSecurityPolicy={moduleKey:string|null;permission:'can_view'|'can_edit'|'can_delete';allowedActorTypes:Array<'human'|'scheduled'|'internal'>;requiresConfirmation?:boolean};
+// WP-05A base type + WP-05B/C forward-compatible fields (all optional so the
+// existing 217 policy rows below remain valid). WP-05B will add per-tool
+// resourceType/resolveResource + requiresStepUp; WP-05C will add
+// allowedInternalCallers + maxBatchSize on the bulk_* tools.
+export type ToolSecurityPolicy = {
+  moduleKey: string | null;
+  permission: 'can_view' | 'can_edit' | 'can_delete';
+  allowedActorTypes: Array<'human' | 'scheduled' | 'internal'>;
+  requiresConfirmation?: boolean;
+  // WP-05B — resource-scoped authorization
+  resourceType?: 'client' | 'deal' | 'appointment' | 'reminder' | 'game_plan' | 'note' | 'file' | 'playbook' | 'agreement' | 'checklist' | 'outlook_event' | 'scheduled_task' | 'chart' | 'report' | 'none';
+  resolveResource?: (args: Record<string, unknown>) => { resourceType: string; resourceId: string } | null;
+  requiresStepUp?: boolean;
+  // WP-05C — internal-caller allowlist + bulk-tool ceilings
+  allowedInternalCallers?: readonly string[];
+  maxBatchSize?: number;
+};
 export const TOOL_SECURITY_POLICIES:Record<string,ToolSecurityPolicy>={
   'add_additional_contact':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
   'add_game_plan_action':{moduleKey:'ai_dashboard',permission:'can_view',allowedActorTypes:['human','internal']},
