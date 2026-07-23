@@ -65,11 +65,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Edge Function security registry check (EDGE-001)
-        run: node scripts/security/check-function-registry.mjs
+      - name: Generate deterministic security inventory (WP-00)
+        run: npm run security:inventory && git diff --exit-code -- docs/security/SECURITY_INVENTORY.json
+
+      - name: Edge Function registry and baseline check (WP-00)
+        run: npm run security:registry
 
       - name: Static auth-pattern scan (F-01/F-06/CORS/body-trust/public-URL rules)
-        run: node scripts/security/scan-auth-patterns.mjs
+        run: npm run security:static
 
       # Type-check the shared trust libraries with Deno. A type error in these
       # (auth, authz, permissions, notify, reset tokens) breaks the whole
