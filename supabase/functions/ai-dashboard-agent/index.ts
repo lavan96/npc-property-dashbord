@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { authorizeAgentTool, AgentToolAuthzError, type AgentToolAuthzContext } from "../_shared/agentToolAuthz.ts";
 import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApiUsage.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
 
