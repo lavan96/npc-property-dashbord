@@ -203,6 +203,139 @@ Deno.serve(async (req) => {
       return j({ success: true, recovery_codes: recoveryCodes });
     }
 
+    // ---------------- WebAuthn (passkey) lifecycle ----------------
+    if (action === 'webauthn_list') {
+      const { data: creds } = await admin.from('user_webauthn_credentials')
+        .select('id, credential_id, device_name, device_type, backed_up, transports, last_used_at, created_at')
+        .eq('user_id', auth.userId)
+        .order('created_at', { ascending: false });
+      return j({ success: true, credentials: creds ?? [] });
+    }
+
+    if (action === 'webauthn_delete') {
+      const credentialRowId = String(body?.credential_id ?? '');
+      if (!credentialRowId) return j({ success: false, error: 'credential_id_required' }, 400);
+      const { error } = await admin.from('user_webauthn_credentials')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('id', credentialRowId);
+      if (error) return j({ success: false, error: 'delete_failed' }, 500);
+      // If this was the last webauthn credential, clear webauthn_enrolled_at.
+      const { count } = await admin.from('user_webauthn_credentials')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', auth.userId);
+      if ((count ?? 0) === 0) {
+        await admin.from('custom_users').update({ webauthn_enrolled_at: null }).eq('id', auth.userId);
+      }
+      try { await admin.from('security_events').insert({ action: 'mfa.webauthn_removed', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { staff_session_id: staffSession.id, credential_row_id: credentialRowId } }); } catch { /* ignore */ }
+      return j({ success: true });
+    }
+
+    if (action === 'enroll_webauthn_begin') {
+      const cfg = loadWebAuthnConfig();
+      if (!cfg) return j({ success: false, error: 'webauthn_not_configured' }, 503);
+      if (!await verifyUserPassword(admin, auth.userId, String(body?.password ?? ''))) {
+        return j({ success: false, error: 'invalid_credentials' }, 401);
+      }
+      const { data: existing } = await admin.from('user_webauthn_credentials')
+        .select('credential_id').eq('user_id', auth.userId);
+      const options = await buildRegistrationOptions({
+        cfg,
+        userId: auth.userId,
+        userName: auth.username || auth.userId,
+        existingCredentialIds: (existing ?? []).map((r: any) => r.credential_id),
+      });
+      const enrollmentToken = generateStepUpToken(32);
+      const tokenHash = await hashStepUpToken(auth.userId, 'webauthn.registration', enrollmentToken);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      await admin.from('mfa_webauthn_challenges')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('purpose', 'registration');
+      const { error: insErr } = await admin.from('mfa_webauthn_challenges').insert({
+        user_id: auth.userId,
+        staff_session_id: staffSession.id,
+        purpose: 'registration',
+        challenge_b64url: options.challenge,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+      });
+      if (insErr) return j({ success: false, error: 'webauthn_challenge_unavailable' }, 503);
+      return j({ success: true, enrollment_token: enrollmentToken, options, expires_at: expiresAt });
+    }
+
+    if (action === 'enroll_webauthn_finish') {
+      const cfg = loadWebAuthnConfig();
+      if (!cfg) return j({ success: false, error: 'webauthn_not_configured' }, 503);
+      const enrollmentToken = String(body?.enrollment_token ?? '');
+      const clientResponse = body?.credential;
+      const deviceName = typeof body?.device_name === 'string' ? String(body.device_name).slice(0, 120) : null;
+      if (enrollmentToken.length < 16 || !clientResponse?.id) {
+        return j({ success: false, error: 'invalid_registration' }, 400);
+      }
+      const tokenHash = await hashStepUpToken(auth.userId, 'webauthn.registration', enrollmentToken);
+      const { data: challenge } = await admin.from('mfa_webauthn_challenges')
+        .select('id, challenge_b64url, expires_at, staff_session_id')
+        .eq('user_id', auth.userId)
+        .eq('purpose', 'registration')
+        .eq('token_hash', tokenHash)
+        .eq('staff_session_id', staffSession.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      if (!challenge) return j({ success: false, error: 'invalid_registration' }, 401);
+      const verified = await verifyRegistration({ cfg, expectedChallenge: challenge.challenge_b64url, response: clientResponse });
+      if (!verified) return j({ success: false, error: 'webauthn_verification_failed' }, 401);
+      // Consume the challenge before persisting the credential.
+      await admin.from('mfa_webauthn_challenges').delete().eq('id', challenge.id);
+      const { error: credErr } = await admin.from('user_webauthn_credentials').insert({
+        user_id: auth.userId,
+        credential_id: verified.credentialId,
+        public_key: verified.publicKey,
+        counter: verified.counter,
+        transports: Array.isArray(clientResponse?.response?.transports) ? clientResponse.response.transports : [],
+        aaguid: verified.aaguid,
+        device_type: verified.deviceType,
+        backed_up: verified.backedUp,
+        device_name: deviceName,
+      });
+      if (credErr) return j({ success: false, error: 'credential_persist_failed', detail: credErr.message }, 500);
+      await admin.from('custom_users').update({ webauthn_enrolled_at: new Date().toISOString() }).eq('id', auth.userId);
+      try { await admin.from('security_events').insert({ action: 'mfa.webauthn_enrolled', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { staff_session_id: staffSession.id, device_type: verified.deviceType } }); } catch { /* ignore */ }
+      return j({ success: true, method: 'webauthn' });
+    }
+
+    if (action === 'webauthn_assertion_begin') {
+      const cfg = loadWebAuthnConfig();
+      if (!cfg) return j({ success: false, error: 'webauthn_not_configured' }, 503);
+      const capability = String(body?.capability ?? '').trim();
+      if (!capability || capability.length > 64) return j({ success: false, error: 'capability_required' }, 400);
+      const { data: creds } = await admin.from('user_webauthn_credentials')
+        .select('credential_id').eq('user_id', auth.userId);
+      if (!creds || creds.length === 0) return j({ success: false, error: 'no_webauthn_credentials' }, 404);
+      const options = await buildAssertionOptions({
+        cfg,
+        allowCredentialIds: creds.map((r: any) => r.credential_id),
+      });
+      const assertionToken = generateStepUpToken(32);
+      const tokenHash = await hashStepUpToken(auth.userId, `webauthn.assertion:${capability}`, assertionToken);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      await admin.from('mfa_webauthn_challenges')
+        .delete()
+        .eq('user_id', auth.userId)
+        .eq('purpose', 'assertion');
+      const { error: insErr } = await admin.from('mfa_webauthn_challenges').insert({
+        user_id: auth.userId,
+        staff_session_id: staffSession.id,
+        purpose: 'assertion',
+        challenge_b64url: options.challenge,
+        token_hash: tokenHash,
+        capability,
+        expires_at: expiresAt,
+      });
+      if (insErr) return j({ success: false, error: 'webauthn_challenge_unavailable' }, 503);
+      return j({ success: true, assertion_token: assertionToken, options, expires_at: expiresAt });
+    }
+
     if (action !== 'challenge') return j({ success: false, error: 'unknown_action' }, 400);
 
     const capability = String(body?.capability ?? '').trim();
