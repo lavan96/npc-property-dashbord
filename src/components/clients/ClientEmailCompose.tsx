@@ -34,6 +34,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { secureStorageDownload } from '@/hooks/useSecureStorage';
+
+interface SenderMailbox {
+  id: string;
+  emailAddress: string;
+  displayName: string;
+  provider: 'outlook';
+  isDefault: boolean;
+}
 
 interface ClientEmailComposeProps {
   open: boolean;
@@ -76,7 +85,7 @@ export function ClientEmailCompose({
   const { user } = useAuth();
 
   // Fetch current user's mailbox only (session isolation)
-  const { data: mailboxes = [] } = useQuery({
+  const { data: mailboxes = [], isLoading: isLoadingMailboxes, error: mailboxesError, refetch: refetchMailboxes } = useQuery<SenderMailbox[]>({
     queryKey: ['mailboxes-for-email', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -88,8 +97,14 @@ export function ClientEmailCompose({
         .maybeSingle();
 
       if (error) throw error;
-      if (!data?.personal_mailbox) return [];
-      return [data];
+      if (!data?.personal_mailbox?.trim()) return [];
+      return [{
+        id: data.id,
+        emailAddress: data.personal_mailbox.trim(),
+        displayName: data.email || data.personal_mailbox.trim(),
+        provider: 'outlook',
+        isDefault: true,
+      }];
     },
     enabled: open && !!user?.id
   });
@@ -109,8 +124,7 @@ export function ClientEmailCompose({
       
       // Set default mailbox
       if (mailboxes.length > 0 && !selectedMailbox) {
-        const userMailbox = mailboxes.find(m => m.id === user?.id);
-        setSelectedMailbox(userMailbox?.personal_mailbox || mailboxes[0]?.personal_mailbox || '');
+        setSelectedMailbox(mailboxes.find(m => m.isDefault)?.id || mailboxes[0]?.id || '');
       }
     }
   }, [open, clientEmail, clientName, preSelectedAttachmentId, mailboxes, user?.id, defaultSubject, defaultBody]);
@@ -140,20 +154,22 @@ export function ClientEmailCompose({
     setIsSending(true);
 
     try {
-      // Get signed URLs for selected attachments
+      // Read attachments through the authenticated storage proxy. The email
+      // function expects file content, not a user-visible signed URL.
       const attachmentData = await Promise.all(
         selectedAttachments.map(async (attachmentId) => {
           const attachment = attachments.find(a => a.id === attachmentId);
           if (!attachment) return null;
 
-          const { data } = await supabase.storage
-            .from('client-documents')
-            .createSignedUrl(attachment.file_path, 3600); // 1 hour expiry
+          const result = await secureStorageDownload('client-documents', attachment.file_path);
+          if (!result.success || !result.content) {
+            throw new Error(`Unable to attach ${attachment.file_name}`);
+          }
 
           return {
             name: attachment.file_name,
-            url: data?.signedUrl,
-            path: attachment.file_path
+            contentType: 'application/pdf',
+            contentBytes: result.content,
           };
         })
       );
@@ -170,7 +186,8 @@ export function ClientEmailCompose({
         bcc: bccEmails,
         subject: subject.trim(),
         body: body,
-        senderMailbox: selectedMailbox,
+        senderMailboxId: selectedMailbox,
+        mailboxSource: 'personal',
         attachments: validAttachments,
         clientId,
       });
@@ -219,22 +236,28 @@ export function ClientEmailCompose({
         <div className="space-y-4 py-4">
           {/* Sender */}
           <div className="space-y-2">
-            <Label>From</Label>
-            <Select value={selectedMailbox} onValueChange={setSelectedMailbox} disabled={mailboxes.length === 0}>
-              <SelectTrigger>
-                <SelectValue placeholder={mailboxes.length === 0 ? 'No personal mailbox configured — set one in Settings' : 'Select sender mailbox'} />
+            <Label htmlFor="client-email-sender">From</Label>
+            <Select value={selectedMailbox} onValueChange={setSelectedMailbox} disabled={isLoadingMailboxes || mailboxes.length === 0}>
+              <SelectTrigger id="client-email-sender" aria-label="Sender mailbox" className="w-full">
+                <SelectValue placeholder={isLoadingMailboxes ? 'Loading sender mailboxes…' : mailboxes.length === 0 ? 'No sender mailbox connected' : 'Select sender mailbox'} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]" position="popper">
                 {mailboxes.map((mailbox) => (
-                  <SelectItem key={mailbox.id} value={mailbox.personal_mailbox || ''}>
-                    {mailbox.personal_mailbox}
+                  <SelectItem key={mailbox.id} value={mailbox.id}>
+                    {mailbox.displayName} — {mailbox.emailAddress} ({mailbox.provider})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {mailboxes.length === 0 && (
+            {mailboxesError && (
+              <div className="flex items-center justify-between gap-2 text-xs text-destructive" role="alert">
+                <span>Unable to load sender mailboxes.</span>
+                <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => refetchMailboxes()}>Retry</Button>
+              </div>
+            )}
+            {!isLoadingMailboxes && !mailboxesError && mailboxes.length === 0 && (
               <p className="text-xs text-muted-foreground">
-                Configure your personal mailbox in Settings → Profile to send emails from here.
+                No sender mailbox is connected. Connect a mailbox in Settings to send this email.
               </p>
             )}
           </div>

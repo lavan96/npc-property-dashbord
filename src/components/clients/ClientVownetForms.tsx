@@ -62,9 +62,17 @@ interface ImportSummary {
  * The actual files live in the "client-files" bucket under the "vownet-forms/" prefix
  * (legacy upload behaviour), even though new uploads target the "vownet-forms" bucket.
  */
-function resolveStorageLocation(raw: string): { bucket: 'vownet-forms' | 'client-files'; key: string } {
-  if (!raw) return { bucket: 'client-files', key: raw };
-  const trimmed = raw.trim();
+type VownetStorageBucket = 'vownet-forms' | 'client-files' | 'client-documents';
+
+function resolveStorageLocations(raw: string, storageBucket?: string | null): Array<{ bucket: VownetStorageBucket; key: string }> {
+  if (!raw) return [];
+  let trimmed = raw.trim();
+  const candidates: Array<{ bucket: VownetStorageBucket; key: string }> = [];
+  const add = (bucket: VownetStorageBucket, key: string) => {
+    const normalized = key.replace(/^\/+/, '').replace(/\\/g, '/');
+    if (!normalized || normalized.split('/').some((part) => part === '..' || !part)) return;
+    if (!candidates.some((candidate) => candidate.bucket === bucket && candidate.key === normalized)) candidates.push({ bucket, key: normalized });
+  };
 
   // Legacy: stored the JSON response object
   if (trimmed.startsWith('{')) {
@@ -73,30 +81,46 @@ function resolveStorageLocation(raw: string): { bucket: 'vownet-forms' | 'client
       const fullPath: string = parsed?.fullPath || '';
       const path: string = parsed?.path || '';
       if (fullPath.startsWith('client-files/')) {
-        return { bucket: 'client-files', key: fullPath.replace(/^client-files\//, '') };
+        add('client-files', fullPath.replace(/^client-files\//, ''));
       }
       if (fullPath.startsWith('vownet-forms/')) {
         // fullPath prefixed with bucket "vownet-forms" but files actually live in client-files
-        return { bucket: 'client-files', key: fullPath };
+        add('vownet-forms', fullPath.replace(/^vownet-forms\//, ''));
+        add('client-files', fullPath);
       }
       if (path) {
         // Path from upload response is typically "vownet-forms/<clientId>/<file>" —
         // the object physically lives in the client-files bucket with that full key.
-        return { bucket: 'client-files', key: path.startsWith('vownet-forms/') ? path : `vownet-forms/${path}` };
+        add('vownet-forms', path.replace(/^vownet-forms\//, ''));
+        add('client-files', path.startsWith('vownet-forms/') ? path : `vownet-forms/${path}`);
       }
     } catch {
       /* fall through */
     }
   }
 
-  // Plain path — vownet uploads are routed to the client-files bucket, even
-  // though the stored key starts with "vownet-forms/". Keep the key intact.
-  if (trimmed.startsWith('vownet-forms/')) {
-    return { bucket: 'client-files', key: trimmed };
+  // Stored full signed/public URLs are legacy metadata, not storage keys.
+  // Strip query signatures and extract only the object path after /object/.
+  try {
+    const url = new URL(trimmed);
+    const marker = '/object/';
+    const objectPath = url.pathname.slice(url.pathname.indexOf(marker) + marker.length);
+    if (url.pathname.includes(marker)) trimmed = decodeURIComponent(objectPath);
+  } catch {
+    // Plain storage key; continue below.
   }
-
-  // Any other plain path is a client-files key as-is.
-  return { bucket: 'client-files', key: trimmed };
+  trimmed = trimmed.replace(/^\/+/, '');
+  const configuredBucket = storageBucket === 'vownet-forms' || storageBucket === 'client-files' || storageBucket === 'client-documents'
+    ? storageBucket : null;
+  if (configuredBucket) add(configuredBucket, trimmed.replace(new RegExp(`^${configuredBucket}/`), ''));
+  if (trimmed.startsWith('vownet-forms/')) {
+    add('vownet-forms', trimmed.replace(/^vownet-forms\//, ''));
+    add('client-files', trimmed);
+  } else {
+    add('client-documents', trimmed.replace(/^client-documents\//, ''));
+    add('client-files', trimmed.replace(/^client-files\//, ''));
+  }
+  return candidates;
 }
 
 export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsProps) {
@@ -433,6 +457,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
             client_id: clientId,
             file_name: file.name,
             file_path: uploadResult.path || filePath,
+            storage_bucket: 'vownet-forms',
             file_size: file.size,
             file_type: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             category: 'vownet',
@@ -475,7 +500,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
   };
 
   const deleteMutation = useMutation({
-    mutationFn: async (file: { id: string; file_path: string }) => {
+    mutationFn: async (file: { id: string; file_path: string; storage_bucket?: string | null }) => {
       // 1. Delete associated data from all related tables via secure Edge Function
       const tablesToDelete = ['client_employment', 'client_income', 'client_assets', 'client_liabilities', 'client_properties'];
       
@@ -503,8 +528,8 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
       });
 
       // 3. Delete file from storage via secure Edge Function
-      const loc = resolveStorageLocation(file.file_path);
-      const deleteResult = await secureStorageDelete(loc.bucket, loc.key);
+      const loc = resolveStorageLocations(file.file_path, file.storage_bucket)[0];
+      const deleteResult = loc ? await secureStorageDelete(loc.bucket, loc.key) : { success: false };
 
       if (!deleteResult.success) console.warn('Storage delete failed:', deleteResult.error);
 
@@ -557,12 +582,15 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
     disabled: uploadStatus === 'parsing' || uploadStatus === 'importing'
   });
 
-  const downloadFile = async (file: { file_path: string; file_name: string }) => {
-    const loc = resolveStorageLocation(file.file_path);
-    const result = await secureStorageDownload(loc.bucket, loc.key);
-
-    if (!result.success || !result.blob) {
-      toast.error('Failed to download file: ' + (result.error || 'Unknown error'));
+  const downloadFile = async (file: { file_path: string; file_name: string; storage_bucket?: string | null }) => {
+    const locations = resolveStorageLocations(file.file_path, file.storage_bucket);
+    let result: Awaited<ReturnType<typeof secureStorageDownload>> | undefined;
+    for (const location of locations) {
+      const attempt = await secureStorageDownload(location.bucket, location.key);
+      if (attempt.success && attempt.blob) { result = attempt; break; }
+    }
+    if (!result?.blob) {
+      toast.error('The original file could not be found or accessed. The record remains available, but the source PDF may need to be uploaded again.');
       return;
     }
 

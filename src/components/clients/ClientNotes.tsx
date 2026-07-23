@@ -156,11 +156,11 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
   }, [clientId, queryClient]);
 
   const addNoteMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (content: string) => {
       if (!visibility) throw new Error('Choose a visibility');
       const payload = {
         note_type: noteType,
-        content: newNote.trim(),
+        content,
         visibility,
       };
 
@@ -175,8 +175,8 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       if (!data?.success) throw new Error(data?.error || 'Failed to add note');
       return data.result;
     },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ['client-notes', clientId] });
       logActivityDirect({
         actionType: 'client_note_added',
         entityType: 'client_note',
@@ -189,7 +189,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
           action: 'create',
           clientId,
           noteId: result?.id,
-          noteContent: newNote.trim(),
+          noteContent: result?.content || newNote.trim(),
           noteType,
         }).catch(err => console.warn('GHL note sync failed:', err));
       }
@@ -197,7 +197,7 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
       setNewNote('');
       setVisibility('internal_npc');
       setIsAdding(false);
-      toast.success(`${label} note saved`);
+      toast.success('Note saved successfully.');
     },
     onError: (error: any) => {
       toast.error('Failed to add note: ' + error.message);
@@ -325,13 +325,20 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
           <div className="flex gap-2">
             <Button
               size="sm"
-              onClick={() => addNoteMutation.mutate()}
+              onClick={() => {
+                const content = newNote.trim();
+                if (!content) {
+                  toast.error('Enter a note before saving.');
+                  return;
+                }
+                addNoteMutation.mutate(content);
+              }}
               disabled={!newNote.trim() || !visibility || addNoteMutation.isPending}
             >
               {addNoteMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
-              Save Note
+              {addNoteMutation.isPending ? 'Saving note…' : 'Save Note'}
             </Button>
             <Button
               size="sm"

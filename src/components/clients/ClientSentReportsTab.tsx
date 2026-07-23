@@ -381,7 +381,7 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
 
       {/* Publish Dialog */}
       <Dialog open={showPublishDialog} onOpenChange={handleClosePublish}>
-        <DialogContent className="w-full max-w-lg overflow-hidden p-6">
+        <DialogContent className="w-[92vw] max-w-[680px] max-h-[90vh] overflow-x-hidden overflow-y-auto p-4 sm:p-6">
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
@@ -389,9 +389,9 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </DialogTitle>
             <DialogDescription>Upload a file and publish it to {clientName}'s client portal.</DialogDescription>
           </DialogHeader>
-          <div className="w-full space-y-4 mt-2">
+          <div className="w-full max-w-full min-w-0 space-y-4 mt-2">
             {/* Drag & Drop Upload Zone */}
-            <div className="w-full">
+            <div className="w-full max-w-full min-w-0">
               <Label>Upload File *</Label>
               <input
                 ref={fileInputRef}
@@ -441,10 +441,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </div>
 
             {/* Report Title */}
-            <div className="w-full">
+            <div className="w-full max-w-full min-w-0">
               <Label>Report Title *</Label>
               <Input
-                className="w-full"
+                className="w-full max-w-full box-border"
                 value={newReport.report_title}
                 onChange={(e) => setNewReport(p => ({ ...p, report_title: e.target.value }))}
                 placeholder="e.g., Investment Analysis - 123 Main St"
@@ -452,10 +452,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </div>
 
             {/* Report Type - Optional */}
-            <div className="w-full">
+            <div className="w-full max-w-full min-w-0">
               <Label>Report Category <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Select value={newReport.report_type} onValueChange={(v) => setNewReport(p => ({ ...p, report_type: v }))}>
-                <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full max-w-full box-border">
                   <SelectValue placeholder="Select a category..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -469,10 +469,10 @@ export function ClientSentReportsTab({ clientId, clientName }: ClientSentReports
             </div>
 
             {/* Notes */}
-            <div className="w-full">
+            <div className="w-full max-w-full min-w-0">
               <Label>Notes <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Textarea
-                className="w-full"
+                className="w-full max-w-full box-border resize-y"
                 value={newReport.notes}
                 onChange={(e) => setNewReport(p => ({ ...p, notes: e.target.value }))}
                 placeholder="Brief note for internal tracking..."
