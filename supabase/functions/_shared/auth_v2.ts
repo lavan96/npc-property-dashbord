@@ -40,7 +40,9 @@ export interface AuthContext {
     | 'inactive_actor'
     | 'invalid_internal_signature'
     | 'internal_replay'
-    | 'internal_timestamp_skew';
+    | 'internal_timestamp_skew'
+    | 'internal_unknown_key'
+    | 'internal_caller_not_allowed';
 }
 
 function ctx(partial: Partial<AuthContext>): AuthContext {
