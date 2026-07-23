@@ -921,3 +921,4 @@ verify_jwt = false
 
 [functions.security-step-up]
 verify_jwt = false
+

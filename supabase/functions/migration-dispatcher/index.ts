@@ -60,13 +60,24 @@ Deno.serve(async (req) => {
   // INTERNAL_EDGE_SECRET to the workers, so its own trigger must be gated — the
   // previous "any Authorization header" check let anyone spin up the whole
   // migration pipeline.
-  const gate = await verifyInternal(supabase, req, '');
+  //
+  // WP-12 Phase B: read the raw body exactly once and hand it to verifyInternal,
+  // so the signed-envelope body hash matches. Passing '' here caused every
+  // signed cron tick to fail with `invalid_internal_signature` under
+  // INTERNAL_STRICT_SIGNED=true.
+  const rawBody = await req.text();
+  const gate = await verifyInternal(supabase, req, rawBody);
   if (!gate.ok) {
+    console.warn('[dispatcher] verifyInternal denied', { errorCode: (gate as any).errorCode });
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+
+
+
   const startedAt = Date.now();
 
   try {
