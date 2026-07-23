@@ -287,6 +287,23 @@ Deno.serve(async (req) => {
         .eq("id", convRecord.id);
     }
 
+    // WP-08 — audit successful send. Body itself is not persisted here (kept
+    // in ghl_conversation_messages); metadata only.
+    await logApiUsage(supabase, {
+      service_name: 'ghl',
+      endpoint: '/conversations/messages',
+      status: 'success',
+      model_used: 'rest-api',
+      user_id: userId!,
+      metadata: {
+        channel,
+        conversation_id: convRecord.id,
+        client_id: convRecord.client_id || null,
+        provider_message_id: ghlData.messageId || ghlData.id || null,
+        message_length: messageText.length,
+      },
+    });
+
     return new Response(
       JSON.stringify({ success: true, messageId: ghlData.messageId || ghlData.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -294,7 +311,7 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error("[send-ghl-message] Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'CRM messaging is temporarily unavailable.' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
