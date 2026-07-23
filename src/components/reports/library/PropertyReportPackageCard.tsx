@@ -13,7 +13,8 @@ type Props = Omit<React.ComponentProps<typeof InvestmentReportCard>, 'report' | 
 export function PropertyReportPackageCard({ reports, isSelected, generatingTier, ...cardProps }: Props) {
   const [open, setOpen] = useState(false);
   const contentId = useId();
-  const ordered = [...reports].sort((a, b) => REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(a.report_variant || a.report_tier)) - REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(b.report_variant || b.report_tier)) || +new Date(b.created_at) - +new Date(a.created_at));
+  const ordered = [...reports].sort((a, b) => REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(a)) - REPORT_VARIANT_ORDER.indexOf(normalizeReportVariant(b)) || +new Date(b.created_at) - +new Date(a.created_at));
+  const availableVariants = REPORT_VARIANT_ORDER.filter((variant) => ordered.some((report) => normalizeReportVariant(report) === variant));
   const latest = ordered.reduce((newest, item) => new Date(item.created_at) > new Date(newest.created_at) ? item : newest, ordered[0]);
   const toggle = () => setOpen(value => !value);
   const onHeaderKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -40,7 +41,7 @@ export function PropertyReportPackageCard({ reports, isSelected, generatingTier,
           <div className="min-w-0 flex-1">
             <h3 className="break-words text-lg font-semibold leading-snug">{latest.property_address}</h3>
             <p className="mt-1 text-xs text-muted-foreground">Latest {format(new Date(latest.created_at), 'PPp')} · {latest.status || 'completed'}</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">{ordered.map(r => <Badge key={r.id} variant="outline" className="text-xs">{getReportVariantLabel(r.report_variant || r.report_tier)}</Badge>)}</div>
+            <div className="mt-2 flex flex-wrap gap-1.5" aria-label={`${availableVariants.length} available report types`}>{availableVariants.map(variant => <Badge key={variant} variant="outline" className="text-xs">{getReportVariantLabel(variant)}</Badge>)}</div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-border/70 bg-background/60 px-2 py-1.5 text-sm font-medium" aria-hidden="true">

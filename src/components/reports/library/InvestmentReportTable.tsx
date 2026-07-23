@@ -99,9 +99,9 @@ export function InvestmentReportTable({
                 </td>
                 <td className="px-4 py-3 align-middle">
                   {report.report_tier ? <TierBadge tier={report.report_tier} showIcon={false} /> : <span className="text-muted-foreground">—</span>}
-                  {report.report_variant && report.report_variant !== 'composite' && (
+                  {report.report_variant && (
                     <Badge variant="outline" className="ml-2 text-xs">
-                      {getReportVariantLabel(report.report_variant)}
+                      {getReportVariantLabel(report)}
                     </Badge>
                   )}
                 </td>
