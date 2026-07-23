@@ -229,7 +229,7 @@ Deno.serve(async (req) => {
   try {
     ai = await synthesizeWithAI(period, windowLabel, grouped, updates);
   } catch (e) {
-    console.warn("AI digest failed:", String(e?.message ?? e));
+    console.warn("AI digest failed:", String((e as any)?.message ?? e));
   }
   const body = ai ?? fallbackDigest(period, updates, grouped);
 
