@@ -20,6 +20,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyInternal } from '../_shared/auth_v2.ts';
+import { callInternalFunction } from '../_shared/internalCall.ts';
 
 const WORKER_MAP: Record<string, string> = {
   contacts: 'ghl-migrate-contacts-worker',
