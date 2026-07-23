@@ -126,6 +126,7 @@ Deno.serve(async (req) => {
     });
     if (stepUpGate) return stepUpGate;
 
+    if (!body.secrets || !Array.isArray(body.secrets) || body.secrets.length === 0) {
       return new Response(
         JSON.stringify({ success: false, error: 'No secrets provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
