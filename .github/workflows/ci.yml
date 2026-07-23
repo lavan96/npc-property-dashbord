@@ -95,6 +95,20 @@ jobs:
             supabase/functions/_shared/resetTokens.ts \
             supabase/functions/_shared/jwt.ts
 
+      # WP-14: type-check every Edge Function entry point, not only shared modules.
+      - name: Deno type-check every Edge Function entry point (WP-14)
+        run: node scripts/security/check-edge-functions.mjs
+
+      # WP-12: block reintroduction of legacy internal-auth trust paths.
+      - name: Internal-auth legacy-fallback gate (WP-12)
+        run: node scripts/security/check-internal-legacy-fallback.mjs
+
+      # WP-05C: enforce agent-tool bulk ceilings and policy registration.
+      - name: Agent tool policy gate (WP-05A/05C)
+        run: |
+          node scripts/security/check-agent-tool-policies.mjs
+          node scripts/security/check-agent-bulk-ceilings.mjs
+
       - name: Secret scan (gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
