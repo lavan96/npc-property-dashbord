@@ -1,25 +1,26 @@
 {
   "schema_version": 1,
   "source": "repository-static-analysis",
-  "edge_function_count": 321,
-  "config_declared_function_count": 249,
-  "registry_function_count": 321,
-  "verify_jwt_false_count": 177,
+  "edge_function_count": 322,
+  "config_declared_function_count": 250,
+  "registry_function_count": 322,
+  "verify_jwt_false_count": 178,
   "exposure_class_counts": {
     "authenticated-or-service": 1,
     "authenticated-staff": 5,
-    "cron-worker": 31,
-    "human-authenticated": 22,
-    "internal-service": 2,
-    "module-gated": 7,
-    "needs-review": 230,
-    "public-auth": 16,
+    "cron-worker": 39,
+    "human-authenticated": 173,
+    "internal-service": 12,
+    "module-gated": 9,
+    "portal-authenticated": 47,
+    "public": 9,
+    "public-auth": 18,
     "superadmin-only": 1,
     "webhook": 2,
     "webhook-clientstate": 1,
-    "webhook-secret": 3
+    "webhook-secret": 5
   },
-  "needs_review_count": 230,
+  "needs_review_count": 0,
   "functions_importing_shared_auth_modules": {
     "auth.ts": [
       "abs-data-service/index.ts",
@@ -194,6 +195,7 @@
       "market-qa-quality-report/index.ts",
       "market-qa-share/index.ts",
       "market-qa-subscriptions/index.ts",
+      "market-updates-digest/index.ts",
       "market-updates-qa/index.ts",
       "market-updates-source-admin/index.ts",
       "market-updates-voice-transcribe/index.ts",
@@ -247,6 +249,7 @@
       "risk-assessment-service/index.ts",
       "scrape-property-listing/index.ts",
       "secure-storage/index.ts",
+      "security-step-up/index.ts",
       "send-appointment-notification/index.ts",
       "send-call-alert-email/index.ts",
       "send-email-reply/index.ts",
@@ -318,15 +321,19 @@
     ],
     "permissions.ts": [
       "_shared/authz.ts",
+      "airtable-proxy/index.ts",
       "get-email-data/index.ts",
       "manage-client-data/index.ts",
+      "manychat-proxy/index.ts",
       "outlook-email-sync/index.ts",
       "secure-storage/index.ts",
-      "send-email-reply/index.ts"
+      "send-email-reply/index.ts",
+      "send-ghl-message/index.ts"
     ],
     "internalCall.ts": [
       "agent-task-runner/index.ts",
-      "ghl-migrate-conversations-reset-phantoms/index.ts"
+      "ghl-migrate-conversations-reset-phantoms/index.ts",
+      "send-web-push/index.ts"
     ],
     "resetTokens.ts": [
       "admin-password-reset/index.ts",
@@ -355,8 +362,13 @@
       "regenerate-report-qualitative/index.ts"
     ],
     "requestSecurity.ts": [
+      "market-qa-digest-runner/index.ts",
+      "market-qa-quality-snapshot/index.ts",
+      "market-qa-subscriptions/index.ts",
+      "market-updates-digest/index.ts",
       "market-updates-qa/index.ts",
-      "market-updates-voice-transcribe/index.ts"
+      "market-updates-voice-transcribe/index.ts",
+      "send-web-push/index.ts"
     ]
   },
   "statically_derivable_inter_function_graph": [
@@ -377,7 +389,6 @@
     "auto-report-webhook->generate-investment-report",
     "dispatch-marketing-reports->generate-market-intelligence-report",
     "dispatch-marketing-reports->send-email-reply",
-    "finance-email-track-pixel->finance-email-track-pixel",
     "finance-portal-automations->finance-portal-nudges",
     "finance-portal-client-comms->finance-email-track-pixel",
     "finance-portal-client-data->sync-client-to-ghl",

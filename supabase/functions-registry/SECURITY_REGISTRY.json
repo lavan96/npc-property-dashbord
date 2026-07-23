@@ -2035,6 +2035,13 @@
       "reviewed": true,
       "reviewed_in": "second-round-audit-remediation"
     },
+    "security-step-up": {
+      "verify_jwt": false,
+      "exposure_class": "human-authenticated",
+      "owner": "security-remediation-program",
+      "reviewed": true,
+      "wp14_auto_classified": true
+    },
     "send-appointment-notification": {
       "verify_jwt": true,
       "exposure_class": "human-authenticated",
