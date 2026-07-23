@@ -271,24 +271,33 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    console.log('[Outlook Webhook] Notification received:', JSON.stringify(body, null, 2));
+    // WP-13: Do not log the full payload — Graph notifications include mailbox
+    // metadata + resource ids. Record only counts.
+    console.log('[Outlook Webhook] Notification received', {
+      count: Array.isArray(body?.value) ? body.value.length : 0,
+    });
 
     if (!body.value || !Array.isArray(body.value)) {
-      console.log('[Outlook Webhook] No notifications in payload');
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // SECURITY: validate the subscription clientState on every notification.
-    // Microsoft Graph echoes the clientState set at subscription time; a caller
-    // forging notifications will not know it. Prefer a high-entropy secret
-    // (OUTLOOK_WEBHOOK_CLIENT_STATE); fall back to the legacy constant so
-    // existing subscriptions keep working until they are recreated. Reject the
-    // whole batch if any notification's clientState does not match.
-    const expectedClientState = (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || 'npc-email-copilot-webhook').trim();
+    // SECURITY (WP-13): fail closed. OUTLOOK_WEBHOOK_CLIENT_STATE MUST be set
+    // to a high-entropy secret; the legacy shared constant is no longer
+    // accepted. Subscriptions created before rotation must be recreated.
+    const expectedClientState = (Deno.env.get('OUTLOOK_WEBHOOK_CLIENT_STATE') || '').trim();
+    if (expectedClientState.length < 16) {
+      console.error('[Outlook Webhook] OUTLOOK_WEBHOOK_CLIENT_STATE is not configured (fail-closed).');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     const clientStateOk = body.value.every(
-      (n: any) => (n?.clientState ?? '') === expectedClientState,
+      (n: any) => typeof n?.clientState === 'string'
+        && n.clientState.length === expectedClientState.length
+        && n.clientState === expectedClientState,
     );
     if (!clientStateOk) {
       console.warn('[Outlook Webhook] Rejected: clientState mismatch');
@@ -296,6 +305,25 @@ Deno.serve(async (req) => {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
+    }
+
+    // WP-13: idempotency. Skip notifications whose (subscriptionId, resource.id,
+    // changeType) tuple has already been processed. Best-effort: falls back to
+    // per-notification processing if the nonce table is unavailable.
+    async function claimNotification(n: any): Promise<boolean> {
+      const key = [
+        String(n?.subscriptionId ?? ''),
+        String(n?.resourceData?.id ?? ''),
+        String(n?.changeType ?? ''),
+      ].join('|');
+      if (!key || key === '||') return true;
+      try {
+        const { error } = await supabase
+          .from('internal_request_nonces')
+          .insert({ nonce: `outlook:${key}`, caller: 'outlook-email-webhook' });
+        if (error && (error as any).code === '23505') return false;
+        return true;
+      } catch { return true; }
     }
 
     if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET || !MICROSOFT_TENANT_ID || !MICROSOFT_MAILBOX_EMAIL) {
@@ -309,18 +337,21 @@ Deno.serve(async (req) => {
     const accessToken = await getAccessToken();
 
     for (const notification of body.value) {
-      console.log('[Outlook Webhook] Processing notification:', notification);
-
+      // WP-13: never log the full notification (contains resource ids + odata refs).
       if (notification.resourceData?.['@odata.type'] !== '#Microsoft.Graph.Message') {
-        console.log('[Outlook Webhook] Skipping non-message notification');
         continue;
       }
 
       const messageId = notification.resourceData?.id;
       if (!messageId) {
-        console.log('[Outlook Webhook] No message ID in notification');
         continue;
       }
+
+      // WP-13: idempotency — skip if we've already claimed this event.
+      if (!(await claimNotification(notification))) {
+        continue;
+      }
+
 
       const email = await fetchEmailById(accessToken, messageId);
       if (!email) {

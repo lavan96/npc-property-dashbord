@@ -9,6 +9,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // Generous enough for C4 (zip) builds; static/HTML/JSX/URL renders return far sooner.
 const RENDER_TIMEOUT_MS = 120000;
 const MAX_DIM = 4000;
+// WP-13: cap zipBase64 payload before decode to prevent decompression-bomb + oversized
+// uploads. Default 15MB base64 (~11MB binary); override with RENDER_SOURCE_MAX_ZIP_B64.
+const MAX_ZIP_B64_BYTES = Math.max(
+  1024 * 1024,
+  Number(Deno.env.get('RENDER_SOURCE_MAX_ZIP_B64') || 15 * 1024 * 1024),
+);
 
 function json(body: unknown, status: number, cors: Record<string, string>): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -23,7 +29,11 @@ function isPrivateHost(hostname: string): boolean {
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
   if (/^169\.254\./.test(h)) return true;
   if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(h)) return true;
-  if (h === '0.0.0.0' || h === '::1' || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80')) return true;
+  if (h === '0.0.0.0' || h === '::' || h === '::1' || h.startsWith('[') || h.startsWith('fc') || h.startsWith('fd') || h.startsWith('fe80')) return true;
+  // WP-13: reject alternate numeric encodings that could bypass string checks.
+  // Pure integer host (dotless decimal), hex/octal prefixes, or IPv6 bracket forms.
+  if (/^0x/i.test(h) || /^\d+$/.test(h)) return true;
+  if (/^0\d/.test(h)) return true;
   return false;
 }
 
@@ -32,6 +42,7 @@ function assertFetchable(rawUrl: string): void {
   if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Only http(s) URLs are allowed.');
   if (isPrivateHost(u.hostname)) throw new Error('Refusing to render a private/reserved host.');
 }
+
 
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();
@@ -62,9 +73,15 @@ Deno.serve(async (req) => {
     if (!url && !jsx && !zipBase64 && (!html || !html.trim())) {
       return json({ error: 'Provide `html`, `url`, `jsx`, or `zipBase64`.' }, 400, cors);
     }
+    // WP-13: cap zip payload size before forwarding (guards against
+    // decompression bombs and memory exhaustion at the sidecar).
+    if (zipBase64 && zipBase64.length > MAX_ZIP_B64_BYTES) {
+      return json({ error: 'zipBase64 exceeds maximum size.' }, 413, cors);
+    }
     if (url) {
       try { assertFetchable(url); } catch (e) { return json({ error: (e as Error).message }, 400, cors); }
     }
+
 
     const width = Math.min(MAX_DIM, Math.max(320, Number(body.width) || 1280));
     const height = Math.min(MAX_DIM, Math.max(320, Number(body.height) || 1600));
