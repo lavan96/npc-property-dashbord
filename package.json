@@ -21,7 +21,12 @@
     "pdf-import:release-gate:static": "node scripts/regression/pdf-import-release-gate.mjs --mode=static",
     "pdf-import:release-gate:no-build": "node scripts/regression/pdf-import-release-gate.mjs --no-build",
     "test:e2e": "playwright test",
-    "test:e2e:pdf-import": "playwright test tests-e2e/pdfImportRenderParity.e2e.ts"
+    "test:e2e:pdf-import": "playwright test tests-e2e/pdfImportRenderParity.e2e.ts",
+    "security:inventory": "node scripts/security/security-inventory.mjs --write",
+    "security:registry": "node scripts/security/check-function-registry.mjs",
+    "security:static": "node scripts/security/scan-auth-patterns.mjs",
+    "security:edge-check": "node scripts/security/check-edge-functions.mjs",
+    "security:test": "npm run security:registry && npm run security:static && npm run security:edge-check"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

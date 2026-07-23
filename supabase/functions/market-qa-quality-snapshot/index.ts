@@ -2,6 +2,8 @@
 // Cron: daily. Aggregates the last 24h of market_update_questions into one
 // row on market_qa_quality_baselines for the /admin/market-qa-quality trend view.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
+const CRON_SECRET = Deno.env.get('MARKET_INGESTION_CRON_SECRET') ?? '';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -13,6 +15,7 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (!verifyRequiredCronSecret(CRON_SECRET, req.headers.get('x-cron-secret'))) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
   const now = new Date();
