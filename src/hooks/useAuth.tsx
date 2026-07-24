@@ -209,18 +209,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = async () => {
     try {
-      const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
-      const storedAccessToken = getStoredValue(ACCESS_TOKEN_KEY);
-      
-      // If we have no tokens at all, skip the verify call entirely
-      // This prevents the 400 "Session token is required" errors on fresh/cleared sessions
-      if (!sessionToken && !storedAccessToken) {
-        console.log('[Auth] No stored tokens, skipping session check');
-        clearAuthState();
-        return;
-      }
-
+      // WP-11B/C — the session token now lives only in the HttpOnly
+      // `__Host-session_token` cookie, so we cannot preflight its presence
+      // from JavaScript. Always ask the server; `credentials: 'include'`
+      // sends the cookie. If neither the cookie nor a stored access token
+      // is available the server returns `valid:false` and we clear state.
       const { data, error } = await invokeEdgeFunction('custom-auth-verify');
+
 
       if (error) {
         if (error.status === 400 || error.status === 401) {
