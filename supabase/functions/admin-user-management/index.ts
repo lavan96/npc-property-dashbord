@@ -850,6 +850,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      await revokeUserSessions(user_id, 'privilege_change:permissions_updated');
       console.log(`Permissions updated for user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Permissions updated' }),
