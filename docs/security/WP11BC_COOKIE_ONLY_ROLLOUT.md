@@ -1,7 +1,52 @@
 # WP-11B/C — Cookie-only staff sessions rollout
 
-Status: **Phase B/C frontend cutover shipped** (backend + frontend hardened;
-legacy dual-read window still open on the receivers).
+Status: **Phase 3 in progress** — session-rotation helper landed, legacy
+auth-source telemetry live, Origin/Referer CSRF guard remains in force
+(`_shared/csrfGuard.ts`), legacy dual-read still open on receivers.
+
+## Phase 3 (this pass)
+
+1. `supabase/functions/_shared/sessionRotate.ts` (new)
+   - `rotateSession(supabase, oldSessionId, reason, ttlSeconds?)` mints a
+     fresh 256-bit `__Host-session_token`, backfills `token_hash` via
+     `sessionHash.ts`, revokes the old row with `revocation_reason =
+     rotated:<reason>`, and caps the new absolute expiry at the original
+     `expires_at` so rotation never extends total session lifetime.
+   - Callers: `security-step-up` (on proof consumption),
+     `custom-auth-change-password` (post reset), `admin-user-management`
+     (role/permission escalation). Each caller must set the returned token
+     via `createSessionCookie()` in the response `Set-Cookie` header.
+
+2. `supabase/functions/_shared/auth.ts`
+   - Every non-cookie session-token source now emits a tagged warning
+     `[wp11c.legacy_fallback] source=<origin>` so log aggregation can drive
+     these paths to zero before Phase 4 deletes them. Sources tracked:
+     `x-command-centre-session-token`, `x-session-token`,
+     `body.command_centre_session_token`, `body.session_token`,
+     `authorization_bearer`.
+   - Cookie extraction (`__Host-` preferred, legacy `session_token`
+     fallback) remains as-is — those are the *authoritative* paths.
+
+3. CSRF posture (unchanged, documented for completeness)
+   - `_shared/csrfGuard.ts` already enforces a strict Origin/Referer
+     allowlist for cookie-authenticated mutations. Cookies use
+     `SameSite=None; Secure; __Host-` prefix; the browser-side invariants
+     plus Origin allowlist give equivalent protection to a double-submit
+     token without a second round-trip.
+
+## Phase 3 remaining
+
+- Wire `rotateSession` into `security-step-up`, `custom-auth-change-password`,
+  and `admin-user-management` (helper is ready; receivers still call the
+  old cookie issuance directly). Each wire-up needs a unit test around
+  "old token rejected, new token accepted".
+- Add a Grafana / Logflare panel counting `wp11c.legacy_fallback` events
+  per function and per source. Target: <1 per hour before Phase 4 cutoff.
+- Add `rotated_from` + `rotation_reason` + `revocation_reason` columns on
+  `user_sessions` if not already present (migration to author before the
+  helper is wired live).
+
+
 
 ## What shipped in this pass (Phase 2 / frontend)
 
