@@ -114,7 +114,7 @@ async function tryRefreshAccessToken(): Promise<string | null> {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'x-session-token': sessionToken,
       },
-      credentials: 'omit',
+      credentials: 'include',
       body: JSON.stringify({ session_token: sessionToken }),
     });
     if (!resp.ok) return null;
@@ -197,7 +197,7 @@ export async function invokeSecureFunction<T = any>(
         } : {}),
         ...(stepUpToken ? { 'x-step-up-token': stepUpToken } : {}),
       },
-      credentials: 'omit',
+      credentials: 'include',
       body: JSON.stringify(requestBody),
       signal: controller.signal,
     });

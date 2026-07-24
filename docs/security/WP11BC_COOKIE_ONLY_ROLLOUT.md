@@ -1,8 +1,36 @@
 # WP-11B/C — Cookie-only staff sessions rollout
 
-Status: **Phase B in progress** (backend hardened, frontend migration staged).
+Status: **Phase B/C frontend cutover shipped** (backend + frontend hardened;
+legacy dual-read window still open on the receivers).
 
-## What shipped in this pass
+## What shipped in this pass (Phase 2 / frontend)
+
+1. `src/hooks/useAuth.tsx`
+   - Removed durable `localStorage` mirror. Access-token JWT persists only
+     in tab-scoped `sessionStorage`.
+   - Staff session token is no longer written to any web-storage backend;
+     an in-memory-only copy is kept as a legacy header/body fallback while
+     the `__Host-session_token` cookie is the authoritative carrier.
+   - `invokeEdgeFunction()` now sends `credentials: 'include'` so the
+     HttpOnly cookie is attached automatically.
+   - `checkSession()` no longer preflights web-storage; it always calls
+     `custom-auth-verify` and lets the cookie authenticate the request.
+
+2. `src/hooks/useFinancePortalAuth.tsx`
+   - Same treatment: in-memory-only session token, `credentials: 'include'`
+     on both the primary invoker and the 401 re-verify probe, scrub of
+     legacy `localStorage`/`sessionStorage` mirrors on module load,
+     unconditional server-side session verify on mount.
+
+3. `src/hooks/useAuthenticatedSupabase.ts`
+   - `getAuthenticatedSupabaseClient()` no longer reads from
+     `localStorage`; only tab-scoped `sessionStorage` is consulted.
+
+4. `src/lib/secureInvoke.ts`, `src/lib/streamSecureFunction.ts`
+   - Flipped from `credentials: 'omit'` to `credentials: 'include'` so
+     every staff edge-function call participates in the cookie session.
+
+## What shipped in earlier passes (Phase 1 / backend)
 
 1. `supabase/functions/_shared/auth.ts`
    - `extractSessionToken()` now prefers `__Host-session_token` and falls back
@@ -17,6 +45,7 @@ Status: **Phase B in progress** (backend hardened, frontend migration staged).
 2. `scripts/security/wp15-negative-tests.mjs` — runnable NT-05/06/07/09/09b/11
    harness against the deployed environment. Writes JSONL evidence under
    `docs/security/wp15-evidence/<date>/negative-tests.jsonl`.
+
 
 ## Remaining WP-11B/C work (frontend + login issuers)
 

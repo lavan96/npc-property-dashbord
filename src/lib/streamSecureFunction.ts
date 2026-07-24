@@ -63,7 +63,7 @@ export async function* streamSecureFunction(
       "Authorization": `Bearer ${bearerToken}`,
       ...(sessionToken ? { "x-session-token": sessionToken } : {}),
     },
-    credentials: "omit",
+    credentials: "include",
     body: JSON.stringify({ ...body, session_token: sessionToken }),
     signal: options.signal,
   });
