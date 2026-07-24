@@ -878,6 +878,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      await revokeUserSessions(user_id, `privilege_change:role_assigned:${role}`);
       console.log(`Role ${role} assigned to user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Role assigned' }),
