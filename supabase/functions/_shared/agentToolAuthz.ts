@@ -425,17 +425,25 @@ export function resolveToolBusinessModule(name: string): string | null {
   if (has('depreciation')) return 'depreciation_comps';
   if (has('borrowing')) return 'borrowing_capacity';
   if (has('report_qa')) return 'report_qa';
-  if (has('playbook', 'memory', 'semantic', 'scheduled_task', 'proactive_insight', 'system_health')) return 'agent';
+  if (has('qa_queue', 'qa_stats', 'quality')) return 'quality_assurance';
+  // memory/recall must resolve to agent before the 'call' rule below catches "reCALL".
+  if (has('playbook', 'memory', 'memories', 'recall', 'semantic', 'scheduled_task', 'proactive_insight', 'system_health')) return 'agent';
   if (has('portal')) return 'client_portal_admin';
   if (has('listing')) return 'listings';
   if (has('conversation')) return 'conversations';
   if (has('appointment', 'outlook', 'calendar', 'free_slot', 'prep_block')) return 'calendar';
-  if (has('call_')) return 'call_logs';
+  if (has('call')) return 'call_logs';
   if (has('cloudflare')) return 'cloudflare';
-  if (has('depreciation_comp')) return 'depreciation_comps';
+  if (has('monitoring', 'api_health', 'api_usage', 'cache_statistic', 'integration_status', 'performance_metric')) return 'monitoring';
+  if (has('preference')) return 'settings';
+  if (has('branding')) return 'white_label';
+  if (has('lmi', 'lender_rate', 'best_rate', 'lending_rate', 'loan_repayment', 'stamp_duty', 'rental_yield')) return 'borrowing_capacity';
+  if (has('recent_activity')) return 'activity_logs';
+  if (has('import_history')) return 'data_import';
+  if (has('data_source')) return 'sources';
   if (has('cash_flow', 'commission', 'pipeline', 'revenue', 'clawback', 'equity_position')) return 'cash_flow';
   if (has('checklist_template', 'template')) return 'templates';
-  if (has('investment_report', 'marketing_report', 'auto_report', 'report_details', 'report')) return 'reports';
+  if (has('investment_report', 'marketing_report', 'auto_report', 'report_details', 'bulk_generation', 'report')) return 'reports';
   if (has('build_progress', 'builder_invoice', 'build_payment')) return 'client_management';
   // client + deal + financial-position sub-data all live under client management
   if (has('client', 'deal', 'employment', 'income', 'expense', 'asset', 'liabilit',
