@@ -3,6 +3,7 @@
 // cadence and drops the fresh answer into notifications.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyAuth } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
 import { callInternalFunction } from '../_shared/internalCall.ts';
 
@@ -29,6 +30,11 @@ function nextRunAt(cadence: string, from = new Date()): string {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   let body: any = {};
   try { body = await req.json(); } catch {}

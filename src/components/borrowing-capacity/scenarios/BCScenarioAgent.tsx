@@ -332,7 +332,10 @@ export function BCScenarioAgent({
     setIsLoading(true);
 
     try {
-      const sessionToken = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+      // WP-11B/C cookie-only: this endpoint uses wildcard CORS (no cookies),
+      // so it authenticates via the access-token JWT Bearer (verifyAuth JWT
+      // path). The raw session token is no longer read or sent.
+      const accessToken = sessionStorage.getItem('supabase_access_token');
 
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bc-scenario-agent`,
@@ -340,12 +343,10 @@ export function BCScenarioAgent({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+            Authorization: `Bearer ${accessToken || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           credentials: 'omit',
           body: JSON.stringify({
-            session_token: sessionToken,
             messages: updatedMessages,
             clientContext: {
               baseInputs,

@@ -8,6 +8,7 @@
 // - Recipient/tab bounds; recipient emails validated
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { requireModulePermission, permForAction } from '../_shared/authz.ts';
 import { logSecurityEvent } from '../_shared/auth_v2.ts';
 import { getDocuSignAccessToken, getDocuSignRestBaseUrl } from '../_shared/docusign-auth.ts';
@@ -38,6 +39,11 @@ interface Body {
 Deno.serve(async (req) => {
   const cors = createCorsHeaders(req.headers.get('origin'));
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(cors, __csrf);
 
   try {
     const supabase = createClient(

@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
-import { extractSessionToken, verifyAuth, createCorsHeaders } from "../_shared/auth.ts"
+import { extractSessionToken, verifySession, createCorsHeaders } from "../_shared/auth.ts"
 import { generateSupabaseJWT } from "../_shared/jwt.ts"
 
 Deno.serve(async (req) => {
@@ -33,109 +33,38 @@ Deno.serve(async (req) => {
       sessionToken = null;
     }
 
-    // Helper: attempt JWT-based fallback authentication when session token is missing or invalid
-    const tryJwtFallback = async (reason: string) => {
-      console.log(`[custom-auth-verify] ${reason}, attempting JWT fallback...`);
-
-      const { error: jwtError, userId: jwtUserId, authMethod } = await verifyAuth(
-        supabase,
-        req.headers,
-        {}
-      );
-
-      if (jwtError || !jwtUserId || authMethod !== 'jwt') {
-        console.log('[custom-auth-verify] JWT fallback failed:', jwtError || 'no valid JWT');
-        return null;
-      }
-
-      const { data: jwtUser } = await supabase
-        .from('custom_users')
-        .select('id, username, role, is_active')
-        .eq('id', jwtUserId)
-        .maybeSingle();
-
-      if (!jwtUser || !jwtUser.is_active) {
-        console.log('[custom-auth-verify] JWT user not found or inactive');
-        return null;
-      }
-
-      const newSessionToken = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-
-      await supabase.from('user_sessions').insert({
-        user_id: jwtUser.id,
-        session_token: newSessionToken,
-        expires_at: expiresAt.toISOString(),
-      });
-
-      const { data: jwtUserRoles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', jwtUser.id);
-
-      const jwtRoles = jwtUserRoles?.map((r) => r.role) || [];
-
-      let freshAccessToken: string | null = null;
-      try {
-        freshAccessToken = await generateSupabaseJWT(jwtUser.id, 86400, {
-          roles: jwtRoles,
-          userMetadata: { username: jwtUser.username, custom_role: jwtUser.role },
-        });
-      } catch (e) {
-        console.error('[custom-auth-verify] JWT generation failed during fallback:', e);
-      }
-
-      console.log('[custom-auth-verify] Created fresh session via JWT fallback for:', jwtUser.username);
-
-      return {
-        valid: true,
-        user: { id: jwtUser.id, username: jwtUser.username, role: jwtUser.role },
-        roles: jwtRoles,
-        access_token: freshAccessToken,
-        session_token: newSessionToken,
-      };
-    };
-
+    // WP-11B/C: the JWT-based session-recreation fallback has been REMOVED.
+    // Minting a fresh session from a still-valid access-token JWT undermined
+    // logout / server-side revocation (a revoked session could be resurrected
+    // until the 24h JWT expired). Verification now relies solely on the
+    // `__Host-session_token` cookie.
     if (!sessionToken) {
-      const fallbackResult = await tryJwtFallback('No session token');
-      if (fallbackResult) {
-        return new Response(JSON.stringify(fallbackResult), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
       return new Response(
         JSON.stringify({ error: 'Session token is required', valid: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if session exists and is valid
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select(`
-        *,
-        custom_users:user_id (
-          id,
-          username,
-          role,
-          is_active
-        )
-      `)
-      .eq('session_token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
+    // WP-11A: verify through the hardened shared lifecycle — hash-first lookup,
+    // revocation check, and idle-expiry (not just absolute expiry). This closes
+    // the "verify checks only absolute expiry" gap and ensures a revoked or
+    // idle-expired session cannot be re-validated here.
+    const sessionResult = await verifySession(supabase, sessionToken);
+    if (sessionResult.error || !sessionResult.userId) {
+      // Invalid / expired / revoked cookie session — no JWT recreation.
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session', valid: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { data: customUser } = await supabase
+      .from('custom_users')
+      .select('id, username, role, is_active')
+      .eq('id', sessionResult.userId)
       .maybeSingle()
 
-    if (sessionError || !session || !session.custom_users?.is_active) {
-      // Session token was provided but is invalid/expired — try JWT fallback before giving up
-      const fallbackResult = await tryJwtFallback('Stale session token');
-      if (fallbackResult) {
-        return new Response(JSON.stringify(fallbackResult), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!customUser || !customUser.is_active) {
       return new Response(
         JSON.stringify({ error: 'Invalid or expired session', valid: false }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -146,18 +75,18 @@ Deno.serve(async (req) => {
     const { data: userRoles } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', session.custom_users.id)
+      .eq('user_id', customUser.id)
 
     const roles = userRoles?.map(r => r.role) || []
 
     // Generate fresh Supabase-compatible JWT for RLS
     let accessToken: string | null = null;
     try {
-      accessToken = await generateSupabaseJWT(session.custom_users.id, 86400, {
+      accessToken = await generateSupabaseJWT(customUser.id, 86400, {
         roles: roles,
         userMetadata: {
-          username: session.custom_users.username,
-          custom_role: session.custom_users.role,
+          username: customUser.username,
+          custom_role: customUser.role,
         },
       });
     } catch (jwtError) {
@@ -166,20 +95,20 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        valid: true, 
+      JSON.stringify({
+        valid: true,
         user: {
-          id: session.custom_users.id,
-          username: session.custom_users.username,
-          role: session.custom_users.role
+          id: customUser.id,
+          username: customUser.username,
+          role: customUser.role
         },
         roles,
         access_token: accessToken,  // Supabase-compatible JWT for direct queries
         session_token: sessionToken // Fallback token for secure function calls when JWT is unavailable
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
 

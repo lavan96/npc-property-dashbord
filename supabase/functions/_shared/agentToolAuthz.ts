@@ -26,27 +26,27 @@ export type ToolSecurityPolicy = {
  * authorized against the module that owns the underlying business data.
  */
 const REAL_MODULE_OVERRIDES: Record<string, Pick<ToolSecurityPolicy, 'moduleKey' | 'permission' | 'requiresSuperadmin'>> = {
-  search_clients: { moduleKey: 'clients', permission: 'can_view', requiresSuperadmin: true },
-  get_client_details: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_additional_contacts: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_activities: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_deals: { moduleKey: 'clients', permission: 'can_view' },
-  get_income_sources: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_expenses: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_liabilities: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_assets: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_properties: { moduleKey: 'clients', permission: 'can_view' },
-  get_employment_details: { moduleKey: 'clients', permission: 'can_view' },
-  update_client_field: { moduleKey: 'clients', permission: 'can_edit' },
-  create_client: { moduleKey: 'clients', permission: 'can_edit' },
-  delete_client: { moduleKey: 'clients', permission: 'can_delete' },
-  bulk_update_clients: { moduleKey: 'clients', permission: 'can_edit' },
-  get_clients_by_pipeline_status: { moduleKey: 'clients', permission: 'can_view', requiresSuperadmin: true },
-  get_clients_needing_follow_up: { moduleKey: 'clients', permission: 'can_view', requiresSuperadmin: true },
-  get_commission_actuals: { moduleKey: 'finance', permission: 'can_view' },
-  get_commission_forecast: { moduleKey: 'finance', permission: 'can_view' },
-  get_pipeline_overview: { moduleKey: 'finance', permission: 'can_view', requiresSuperadmin: true },
-  export_pipeline_data: { moduleKey: 'finance', permission: 'can_view', requiresSuperadmin: true },
+  search_clients: { moduleKey: 'client_management', permission: 'can_view', requiresSuperadmin: true },
+  get_client_details: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_additional_contacts: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_activities: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_deals: { moduleKey: 'client_management', permission: 'can_view' },
+  get_income_sources: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_expenses: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_liabilities: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_assets: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_properties: { moduleKey: 'client_management', permission: 'can_view' },
+  get_employment_details: { moduleKey: 'client_management', permission: 'can_view' },
+  update_client_field: { moduleKey: 'client_management', permission: 'can_edit' },
+  create_client: { moduleKey: 'client_management', permission: 'can_edit' },
+  delete_client: { moduleKey: 'client_management', permission: 'can_delete' },
+  bulk_update_clients: { moduleKey: 'client_management', permission: 'can_edit' },
+  get_clients_by_pipeline_status: { moduleKey: 'client_management', permission: 'can_view', requiresSuperadmin: true },
+  get_clients_needing_follow_up: { moduleKey: 'client_management', permission: 'can_view', requiresSuperadmin: true },
+  get_commission_actuals: { moduleKey: 'cash_flow', permission: 'can_view' },
+  get_commission_forecast: { moduleKey: 'cash_flow', permission: 'can_view' },
+  get_pipeline_overview: { moduleKey: 'cash_flow', permission: 'can_view', requiresSuperadmin: true },
+  export_pipeline_data: { moduleKey: 'cash_flow', permission: 'can_view', requiresSuperadmin: true },
   send_email: { moduleKey: 'email_copilot', permission: 'can_edit' },
   get_client_emails: { moduleKey: 'email_copilot', permission: 'can_view' },
   search_emails: { moduleKey: 'email_copilot', permission: 'can_view' },
@@ -55,11 +55,11 @@ const REAL_MODULE_OVERRIDES: Record<string, Pick<ToolSecurityPolicy, 'moduleKey'
   generate_agreement: { moduleKey: 'agreements', permission: 'can_edit' },
   get_agreement_details: { moduleKey: 'agreements', permission: 'can_view' },
   get_client_agreements: { moduleKey: 'agreements', permission: 'can_view' },
-  get_user_list: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_user_permissions: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_audit_trail: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_error_logs: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_error_summary: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
+  get_user_list: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_user_permissions: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_audit_trail: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_error_logs: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_error_summary: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
 };
 export const TOOL_SECURITY_POLICIES:Record<string,ToolSecurityPolicy>={
   'add_additional_contact':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human']},
@@ -322,7 +322,126 @@ const DEFAULT_ARG_TO_RESOURCE: Record<string, { table: string; ownerColumn: stri
   agreement_id:         { table: 'agency_agreements',      ownerColumn: 'created_by', parentClientColumn: 'client_id' },
   chart_id:             { table: 'charts',                 ownerColumn: 'user_id' },
   report_id:            { table: 'generated_reports',      ownerColumn: 'user_id' },
+  // P1.4: previously-unresolved identifiers now under central ownership.
+  memory_id:            { table: 'agent_semantic_memories', ownerColumn: 'user_id' },
 };
+
+// Multi-hop resource resolvers for identifiers whose ownership is reached by
+// walking a foreign-key chain the flat map above cannot express. Each returns
+// true only when `userId` owns the resource. Any missing row or error fails
+// closed (returns false). P1.4.
+const CUSTOM_OWNERSHIP_RESOLVERS: Record<string, (sb: any, userId: string, id: string) => Promise<boolean>> = {
+  // agent_conversations: owner OR an active share (mirrors userCanAccessConversation
+  // so shared-conversation tool access is not broken by ownership gating).
+  conversation_id: async (sb, userId, id) => {
+    const { data: conv } = await sb.from('agent_conversations').select('user_id').eq('id', id).maybeSingle();
+    if (conv && conv.user_id === userId) return true;
+    const { data: share } = await sb.from('agent_conversation_shares')
+      .select('id').eq('conversation_id', id).eq('shared_with', userId).eq('is_active', true).maybeSingle();
+    return !!share;
+  },
+  // game_plan_phases.plan_id -> game_plans.created_by
+  phase_id: async (sb, userId, id) => ownsGamePlanPhase(sb, userId, id),
+  // game_plan_milestones.phase_id -> phase -> plan -> created_by
+  milestone_id: async (sb, userId, id) => {
+    const { data } = await sb.from('game_plan_milestones').select('phase_id').eq('id', id).maybeSingle();
+    return data?.phase_id ? ownsGamePlanPhase(sb, userId, data.phase_id) : false;
+  },
+  // game_plan_kpis.phase_id -> phase -> plan -> created_by
+  kpi_id: async (sb, userId, id) => {
+    const { data } = await sb.from('game_plan_kpis').select('phase_id').eq('id', id).maybeSingle();
+    return data?.phase_id ? ownsGamePlanPhase(sb, userId, data.phase_id) : false;
+  },
+  // game_plan_actions.phase_id -> phase -> plan -> created_by
+  action_id: async (sb, userId, id) => {
+    const { data } = await sb.from('game_plan_actions').select('phase_id').eq('id', id).maybeSingle();
+    return data?.phase_id ? ownsGamePlanPhase(sb, userId, data.phase_id) : false;
+  },
+  // build_progress_payments.deal_id -> client_deals.client_id -> clients owner/assignee
+  payment_id: async (sb, userId, id) => {
+    const { data: pay } = await sb.from('build_progress_payments').select('deal_id').eq('id', id).maybeSingle();
+    if (!pay?.deal_id) return false;
+    const { data: deal } = await sb.from('client_deals').select('client_id, created_by').eq('id', pay.deal_id).maybeSingle();
+    if (!deal) return false;
+    if (deal.created_by === userId) return true;
+    if (!deal.client_id) return false;
+    const { data: c } = await sb.from('clients').select('created_by, assigned_team_user_id').eq('id', deal.client_id).maybeSingle();
+    return !!c && (c.created_by === userId || c.assigned_team_user_id === userId);
+  },
+};
+
+async function ownsGamePlanPhase(sb: any, userId: string, phaseId: string): Promise<boolean> {
+  const { data: phase } = await sb.from('game_plan_phases').select('plan_id').eq('id', phaseId).maybeSingle();
+  if (!phase?.plan_id) return false;
+  const { data: plan } = await sb.from('game_plans').select('created_by').eq('id', phase.plan_id).maybeSingle();
+  return !!plan && plan.created_by === userId;
+}
+
+/** All arg keys that carry an ownership-checked resource id (flat + custom). */
+const RESOURCE_ARG_KEYS = new Set<string>([
+  ...Object.keys(DEFAULT_ARG_TO_RESOURCE),
+  ...Object.keys(CUSTOM_OWNERSHIP_RESOLVERS),
+]);
+
+/**
+ * Snake_case `*_id` argument keys that are NOT ownership-scoped resources and so
+ * are exempt from the fail-closed unknown-id guard below (message/tool-call refs,
+ * child ids resolved via their parent, external provider ids, and the caller's
+ * own identity). Any NEW `*_id` argument a tool accepts must either be given an
+ * ownership resolver (RESOURCE_ARG_KEYS) or be listed here — otherwise the guard
+ * rejects it. Deny-by-default for identifiers.
+ */
+const NON_OWNERSHIP_ID_ARGS = new Set<string>([
+  'tool_call_id', 'message_id', 'source_message_id', 'branch_from_message_id',
+  'parent_message_id', 'library_image_id', 'source_report_id', 'source_conversation_id',
+  'template_id', 'target_user_id', 'user_id', 'thread_id', 'place_id', 'external_id',
+  'contact_id', 'ghl_contact_id', 'ghl_conversation_id', 'mailbox_id', 'subscription_id',
+  'envelope_id', 'session_id', 'task_id', 'run_id', 'job_id', 'request_id', 'correlation_id',
+]);
+
+/** True for a snake_case argument key that names a single resource identifier. */
+function looksLikeResourceId(key: string): boolean {
+  return /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_id$/.test(key);
+}
+
+/**
+ * Map an AI tool to its TRUE business module (registered dashboard_modules key)
+ * so tool authorization is scoped to the actual capability rather than the
+ * generic `ai_dashboard` gate. Ordered keyword match, most specific first; an
+ * unrecognized tool returns null and keeps the tool's declared module (the
+ * deny-by-default `ai_dashboard` for the un-remapped set), which stays
+ * superadmin-only until an admin grants it. Every returned key MUST exist in
+ * dashboard_modules.
+ */
+export function resolveToolBusinessModule(name: string): string | null {
+  const n = name.toLowerCase();
+  const has = (...s: string[]) => s.some((x) => n.includes(x));
+  if (has('game_plan')) return 'game_plans';
+  if (has('agreement')) return 'agreements';
+  if (has('email')) return 'email_copilot';
+  if (has('checklist')) return 'checklists';
+  if (has('reminder', 'follow_up')) return 'reminders';
+  if (has('chart')) return 'charts';
+  if (has('depreciation')) return 'depreciation_comps';
+  if (has('borrowing')) return 'borrowing_capacity';
+  if (has('report_qa')) return 'report_qa';
+  if (has('playbook', 'memory', 'semantic', 'scheduled_task', 'proactive_insight', 'system_health')) return 'agent';
+  if (has('portal')) return 'client_portal_admin';
+  if (has('listing')) return 'listings';
+  if (has('conversation')) return 'conversations';
+  if (has('appointment', 'outlook', 'calendar', 'free_slot', 'prep_block')) return 'calendar';
+  if (has('call_')) return 'call_logs';
+  if (has('cloudflare')) return 'cloudflare';
+  if (has('depreciation_comp')) return 'depreciation_comps';
+  if (has('cash_flow', 'commission', 'pipeline', 'revenue', 'clawback', 'equity_position')) return 'cash_flow';
+  if (has('checklist_template', 'template')) return 'templates';
+  if (has('investment_report', 'marketing_report', 'auto_report', 'report_details', 'report')) return 'reports';
+  if (has('build_progress', 'builder_invoice', 'build_payment')) return 'client_management';
+  // client + deal + financial-position sub-data all live under client management
+  if (has('client', 'deal', 'employment', 'income', 'expense', 'asset', 'liabilit',
+          'contact', 'portfolio', 'settlement', 'lead_source', 'document_readiness')) return 'client_management';
+  return null; // unrecognized → keep declared module (stays restricted)
+}
 
 // Tools that MUST have a caller-supplied step-up signal. Derived by prefix so
 // the 217-row policy table doesn't have to be re-audited; explicit policy
@@ -352,9 +471,14 @@ async function isSuperadmin(sb: any, userId: string): Promise<boolean> {
 }
 
 async function ownsResource(sb: any, userId: string, argKey: string, argValue: string): Promise<boolean> {
+  if (!argValue || typeof argValue !== 'string') return true;
+  // Multi-hop resolvers take precedence for the identifiers they cover.
+  const custom = CUSTOM_OWNERSHIP_RESOLVERS[argKey];
+  if (custom) {
+    try { return await custom(sb, userId, argValue); } catch { return false; }
+  }
   const spec = DEFAULT_ARG_TO_RESOURCE[argKey];
   if (!spec) return true; // unknown key → no resource gate (still gated by other args)
-  if (!argValue || typeof argValue !== 'string') return true;
   try {
     // First: direct ownership on the row itself.
     const columns = `${spec.ownerColumn}${spec.parentClientColumn ? ',' + spec.parentClientColumn : ''}${spec.table === 'clients' ? ',assigned_team_user_id' : ''}`;
@@ -410,6 +534,11 @@ async function auditToolDecision(sb: any, userId: string, tool: string, decision
 export async function authorizeAgentTool(sb: any, name: string, args: Record<string, any>, userId: string, ctx: AgentToolAuthzContext): Promise<void> {
   const basePolicy = TOOL_SECURITY_POLICIES[name];
   const policy = basePolicy ? { ...basePolicy, ...(REAL_MODULE_OVERRIDES[name] || {}) } : null;
+  // Scope any still-generic `ai_dashboard` tool to its true business module.
+  if (policy && policy.moduleKey === 'ai_dashboard') {
+    const businessModule = resolveToolBusinessModule(name);
+    if (businessModule) policy.moduleKey = businessModule;
+  }
   if (!policy) throw new AgentToolAuthzError('policy_denied', `No policy registered for tool '${name}'`);
   if (!policy.allowedActorTypes.includes(ctx.actorType)) {
     throw new AgentToolAuthzError('actor_denied', `Tool '${name}' cannot be invoked by actor '${ctx.actorType}'`);
@@ -417,7 +546,7 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
   if (ctx.actorType === 'internal' && !policy.allowedInternalCallers?.includes(ctx.internalCaller || '')) {
     throw new AgentToolAuthzError('actor_denied', `Internal caller is not allowlisted for tool '${name}'`);
   }
-  const resourceIds = Object.entries(args || {}).filter(([key, value]) => key in DEFAULT_ARG_TO_RESOURCE && typeof value === 'string').map(([, value]) => value as string);
+  const resourceIds = Object.entries(args || {}).filter(([key, value]) => RESOURCE_ARG_KEYS.has(key) && typeof value === 'string').map(([, value]) => value as string);
   if (ctx.actorType === 'human') {
     const module = await requireModulePermission(sb, { userId, authMethod: 'human' }, policy.moduleKey || '', policy.permission);
     if (!module.ok) {
@@ -462,6 +591,17 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
     return;
   }
   if (superadmin) { await auditToolDecision(sb, userId, name, 'allow', resourceIds); return; }
+  // Fail closed on identifiers we cannot ownership-resolve. Any snake_case
+  // `*_id` argument must be either an ownership resource (RESOURCE_ARG_KEYS) or
+  // an explicitly-listed non-ownership id (NON_OWNERSHIP_ID_ARGS). An unknown
+  // `*_id` means a tool can accept a resource reference that escapes the
+  // ownership loop below — reject rather than trust it.
+  for (const key of Object.keys(args || {})) {
+    if (!looksLikeResourceId(key)) continue;
+    if (RESOURCE_ARG_KEYS.has(key) || NON_OWNERSHIP_ID_ARGS.has(key)) continue;
+    await auditToolDecision(sb, userId, name, 'deny', resourceIds, 'unresolvable_resource_id');
+    throw new AgentToolAuthzError('resource_denied', `Tool '${name}' received an unrecognized resource id '${key}'`);
+  }
   // Use policy.resolveResource if provided, otherwise scan args for known keys.
   const explicit = policy.resolveResource?.(args);
   if (explicit) {
@@ -473,7 +613,7 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
     }
   } else {
     for (const [key, value] of Object.entries(args || {})) {
-      if (!(key in DEFAULT_ARG_TO_RESOURCE)) continue;
+      if (!RESOURCE_ARG_KEYS.has(key)) continue;
       if (typeof value !== 'string') continue;
       if (!(await ownsResource(sb, userId, key, value))) {
         await auditToolDecision(sb, userId, name, 'deny', resourceIds, 'resource_denied');

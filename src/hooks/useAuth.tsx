@@ -57,7 +57,9 @@ const SESSION_TOKEN_KEY = 'session_token';
 // Bump this number whenever the auth flow changes in a way that invalidates old tokens.
 // On mount, if the stored version doesn't match, stale tokens are auto-cleared
 // so users don't need to manually clear browser data.
-const AUTH_VERSION = 4;
+// v5 (WP-11B/C cookie-only): purge any legacy JS-stored session_token from
+// earlier builds so nothing replayable lingers in browser storage.
+const AUTH_VERSION = 5;
 const AUTH_VERSION_KEY = 'auth_version';
 
 // WP-11B/C — cookie-only staff sessions.
@@ -128,13 +130,12 @@ async function invokeEdgeFunction(
   body?: Record<string, any>
 ): Promise<{ data: any; error: any }> {
   try {
-    const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
+    // WP-11B/C cookie-only: staff session travels solely in the HttpOnly
+    // `__Host-session_token` cookie (`credentials: 'include'`). No raw session
+    // token is read from JS storage or sent in the body/header. The access-token
+    // JWT is still used as the Bearer for RLS-scoped direct queries.
     const accessToken = getStoredValue(ACCESS_TOKEN_KEY);
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
-
-    const requestBody = body
-      ? { ...body, ...(sessionToken ? { session_token: sessionToken } : {}) }
-      : (sessionToken ? { session_token: sessionToken } : {});
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
       method: 'POST',
@@ -142,10 +143,9 @@ async function invokeEdgeFunction(
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${bearerToken}`,
-        ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(body ?? {}),
     });
 
     const data = await response.json();
@@ -239,11 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
           setAccessToken(data.access_token);
         }
+        // Cookie-only: the session token is never returned or persisted in JS.
 
-        if (data.session_token) {
-          persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
-        }
-        
         sessionStorage.setItem('current_user', JSON.stringify({
           id: data.user.id,
           username: data.user.username
@@ -346,9 +343,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         persistStoredValue(ACCESS_TOKEN_KEY, data.access_token);
         setAccessToken(data.access_token);
       }
-      if (data.session_token) {
-        persistStoredValue(SESSION_TOKEN_KEY, data.session_token);
-      }
+      // Cookie-only: no session token is returned/persisted; the HttpOnly
+      // `__Host-session_token` cookie (Set-Cookie on the login response) is the
+      // sole carrier.
       try { localStorage.setItem(AUTH_VERSION_KEY, String(AUTH_VERSION)); } catch { /* ignore */ }
 
       pendingSessionRef.current = {

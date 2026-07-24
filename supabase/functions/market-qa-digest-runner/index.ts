@@ -5,6 +5,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { verifyRequiredCronSecret } from '../_shared/requestSecurity.ts';
 import { callInternalFunction } from '../_shared/internalCall.ts';
+import { enforceCsrf, csrfDenied } from '../_shared/csrfGuard.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -133,6 +134,7 @@ async function runDue(sb: any) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const __csrf = enforceCsrf(req); if (!__csrf.ok) return csrfDenied(cors, __csrf); // SEC5-CSRF (no-op for cron/no-cookie)
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   let body: any = {};
   try { body = await req.json(); } catch {}

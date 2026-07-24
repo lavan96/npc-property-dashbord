@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
               tool_name: 'run_playbook',
               tool_args: { playbook_id: task.playbook_id },
               user_id: task.user_id,
+              task_id: task.id,
               source: 'scheduled_task',
             });
           } else if (task.task_type === 'single_tool' && task.tool_name) {
@@ -84,6 +85,7 @@ Deno.serve(async (req) => {
               tool_name: task.tool_name,
               tool_args: task.tool_arguments || {},
               user_id: task.user_id,
+              task_id: task.id,
               source: 'scheduled_task',
             });
           } else {

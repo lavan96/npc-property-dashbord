@@ -13,6 +13,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders } from '../_shared/auth.ts';
 
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 function jsonResponse(data: unknown, status = 200, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -28,6 +29,11 @@ Deno.serve(async (req) => {
   };
 
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const supabase = createClient(

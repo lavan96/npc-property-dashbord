@@ -4,6 +4,7 @@
 // `{ raster, boxTree, pageWidthPx, pageHeightPx }`, or a clean 503 when the service
 // is not configured (raw-codebase ingestion stays "pending" until deployed).
 import { verifyAuthOrNativeUser, createTokenAuthCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // Generous enough for C4 (zip) builds; static/HTML/JSX/URL renders return far sooner.
@@ -47,6 +48,11 @@ function assertFetchable(rawUrl: string): void {
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(cors, __csrf);
 
   try {
     const body = await req.json().catch(() => ({}));

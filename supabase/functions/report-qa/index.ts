@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
@@ -1123,6 +1124,11 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
+
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1157,7 +1163,9 @@ Deno.serve(async (req) => {
       const ua = (req.headers.get('user-agent') || '').slice(0, 240);
       const prefix = shareToken.slice(0, 8);
 
-      // Rate limit: 60 lookups per IP+prefix per hour.
+      // Rate limit: 60 lookups per IP+prefix per hour. Block once the prior
+      // window count has reached the limit (>=), not only after it is exceeded
+      // (SEC-MED off-by-one — `>60` let a 61st request through).
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const { count: recent } = await sbPub
         .from('report_qa_share_access_log')
@@ -1165,7 +1173,7 @@ Deno.serve(async (req) => {
         .eq('share_token_prefix', prefix)
         .eq('requester_ip', ipHeader)
         .gte('created_at', oneHourAgo);
-      if ((recent ?? 0) > 60) {
+      if ((recent ?? 0) >= 60) {
         await sbPub.from('report_qa_share_access_log').insert({
           share_token_prefix: prefix, outcome: 'rate_limited', requester_ip: ipHeader, requester_ua: ua,
         });
@@ -1226,7 +1234,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     type ReportQaActionRequirement = 'none' | 'read' | 'write' | 'admin';
-    const reportQaActionPolicy: Record<string, { access: ReportQaActionRequirement; permission: ModulePerm; paid?: boolean }> = {
+    const reportQaActionPolicy: Record<string, { access: ReportQaActionRequirement; permission: ModulePerm; paid?: boolean; extraModule?: { module: string; permission: ModulePerm } }> = {
       'create-conversation': { access: 'none', permission: 'can_edit' },
       'get-conversations': { access: 'none', permission: 'can_view' },
       'load-conversation': { access: 'read', permission: 'can_view' },
@@ -1252,7 +1260,10 @@ Deno.serve(async (req) => {
       'get-knowledge-stats': { access: 'read', permission: 'can_view' },
       'get-team-members': { access: 'none', permission: 'can_view' },
       'get-mailboxes': { access: 'none', permission: 'can_view' },
-      'send-email': { access: 'none', permission: 'can_edit' },
+      // SEC-MED: outbound email requires the Email Copilot module too — Report
+      // Q&A edit permission alone must not confer send authority. Recipient DLP
+      // + per-sender rate quota are additionally enforced in the handler.
+      'send-email': { access: 'none', permission: 'can_edit', extraModule: { module: 'email_copilot', permission: 'can_edit' } },
       // The token itself is the credential for this legacy authenticated alias.
       'get-shared-answer': { access: 'none', permission: 'can_view' },
     };
@@ -1273,6 +1284,13 @@ Deno.serve(async (req) => {
 
       const module = await requireModulePermission(supabase, { userId, authMethod: 'human' }, 'report_qa', policy.permission);
       if (!module.ok) return denyResponse();
+
+      // Some actions require a second business module (e.g. send-email also
+      // needs email_copilot.can_edit). Deny-by-default: fail closed if missing.
+      if (policy.extraModule) {
+        const extra = await requireModulePermission(supabase, { userId, authMethod: 'human' }, policy.extraModule.module, policy.extraModule.permission);
+        if (!extra.ok) return denyResponse();
+      }
 
       let conversationId = typeof body.conversationId === 'string' ? body.conversationId : null;
       if (action === 'branch-conversation') conversationId = typeof body.sourceConversationId === 'string' ? body.sourceConversationId : null;
@@ -3485,6 +3503,35 @@ ${transcript}`;
 
       if (!RESEND_API_KEY) {
         throw new Error("RESEND_API_KEY is not configured");
+      }
+
+      if (typeof to !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+        return new Response(JSON.stringify({ success: false, error: 'A valid recipient is required.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Recipient-domain allowlist (DLP). When EMAIL_RECIPIENT_ALLOWLIST is set
+      // (comma-separated domains), the recipient must be within it. Unset = allow.
+      const allowlistRaw = (Deno.env.get('EMAIL_RECIPIENT_ALLOWLIST') || '').trim();
+      if (allowlistRaw) {
+        const allowedDomains = allowlistRaw.toLowerCase().split(',').map((d) => d.trim().replace(/^@/, '')).filter(Boolean);
+        const domain = (to.split('@')[1] || '').toLowerCase().trim();
+        if (!allowedDomains.includes(domain)) {
+          return new Response(JSON.stringify({ success: false, error: 'Recipient is outside the permitted domains.' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // Per-sender send-rate quota so a compromised session can't blast email.
+      if (userId && userId !== 'service_role') {
+        const quota = await consumeRateLimit(supabase, `report-qa:send-email:${userId}`, 60, 60 * 60);
+        if (!quota.allowed) {
+          return new Response(JSON.stringify({ success: false, error: 'Send rate limit reached. Please try again later.' }), {
+            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       const resend = new Resend(RESEND_API_KEY);

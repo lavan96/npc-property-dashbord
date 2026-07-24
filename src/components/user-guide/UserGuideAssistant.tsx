@@ -129,22 +129,21 @@ export function UserGuideAssistant({ onNavigateToSection }: UserGuideAssistantPr
     }));
 
     try {
-      // Get session token from sessionStorage for authentication
-      const sessionToken = sessionStorage.getItem('session_token');
-      
+      // WP-11B/C cookie-only: authenticated via the HttpOnly `__Host-session_token`
+      // cookie (`credentials: 'include'`). No raw session token is read or sent.
+      const accessToken = sessionStorage.getItem('supabase_access_token');
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/user-guide-assistant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
+          'Authorization': `Bearer ${accessToken || SUPABASE_ANON_KEY}`,
         },
-        credentials: 'include', // Required for HttpOnly cookies
+        credentials: 'include', // Sends the HttpOnly session cookie
         body: JSON.stringify({
           messages: apiMessages,
           knowledgeBase: knowledgeBaseRef.current,
-          session_token: sessionToken, // Add session token to body as fallback
         }),
       });
 

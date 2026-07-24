@@ -54,6 +54,11 @@ type StaffSession = { id: string };
  */
 function extractStaffSessionToken(req?: Request, body?: any): string | null {
   const cookie = req?.headers.get("cookie") ?? "";
+  // WP-11B/C cookie-only: the staff session lives in the host-prefixed
+  // `__Host-session_token` cookie. Match it first (the legacy `session_token`
+  // cookie name is kept as a transitional fallback).
+  const hostCookie = cookie.match(/(?:^|;\s*)__Host-session_token=([^;]+)/);
+  if (hostCookie?.[1]) return hostCookie[1];
   const cookieMatch = cookie.match(/(?:^|;\s*)session_token=([^;]+)/);
   if (cookieMatch?.[1]) return cookieMatch[1];
 

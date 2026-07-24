@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { extractSessionToken, createCorsHeaders, createClearSessionCookie } from "../_shared/auth.ts"
+import { hashSessionToken, isSessionHashConfigured } from "../_shared/sessionHash.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -41,11 +42,14 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Delete the session from database
+    // Revoke the session. Match on the peppered hash first (hash-only sessions
+    // have no plaintext at rest) and the legacy plaintext column as a fallback,
+    // so logout revokes regardless of which representation the row carries.
+    const hash = isSessionHashConfigured() ? await hashSessionToken(sessionToken) : null;
     const { error } = await supabase
       .from('user_sessions')
       .delete()
-      .eq('session_token', sessionToken)
+      .or(`${hash ? `token_hash.eq.${hash},` : ''}session_token.eq.${sessionToken}`)
 
     if (error) {
       console.error('Logout error:', error)

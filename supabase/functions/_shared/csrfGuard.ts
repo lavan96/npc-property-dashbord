@@ -10,10 +10,14 @@
  * Safe methods (GET, HEAD, OPTIONS) are allowed through — CORS handles them
  * and they are not supposed to mutate state.
  *
- * The allowlist is sourced from `ALLOWED_ORIGINS` (comma-separated) and the
- * hard-coded Lovable preview domains. If no cookie is present on the request
- * (auth is header-only), the CSRF check is bypassed because the classic CSRF
- * attack vector (ambient cookie authority) does not apply.
+ * The allowlist is sourced from `ALLOWED_ORIGINS` (comma-separated, exact
+ * fully-qualified URLs). SEC5-CORS: suffix trust for `*.lovable.app` /
+ * `*.lovableproject.com` was removed — the SameSite=None staff cookie makes
+ * exact-origin enforcement essential. The Lovable suffix is only honoured when
+ * `CORS_ALLOW_LOVABLE_PREVIEW=true` is explicitly set (non-production preview).
+ * If no cookie is present on the request (auth is header-only), the CSRF check
+ * is bypassed because the classic CSRF attack vector (ambient cookie authority)
+ * does not apply.
  */
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -31,6 +35,16 @@ function parseAllowedOrigins(): string[] {
   return fromEnv.length > 0 ? fromEnv : LEGACY_FALLBACK;
 }
 
+function lovablePreviewSuffixAllowed(origin: string): boolean {
+  if (((globalThis as any).Deno?.env?.get?.('CORS_ALLOW_LOVABLE_PREVIEW') || '').trim().toLowerCase() !== 'true') return false;
+  try {
+    const host = new URL(origin).hostname;
+    return host.endsWith('.lovable.app') || host.endsWith('.lovableproject.com');
+  } catch {
+    return false;
+  }
+}
+
 function originAllowed(origin: string | null): boolean {
   if (!origin) return false;
   const list = [
@@ -39,11 +53,9 @@ function originAllowed(origin: string | null): boolean {
     'http://localhost:8080',
   ];
   if (list.includes(origin)) return true;
-  try {
-    const host = new URL(origin).hostname;
-    if (host.endsWith('.lovable.app') || host.endsWith('.lovableproject.com')) return true;
-  } catch { /* ignore */ }
-  return false;
+  // SEC5-CORS: exact-origin only; suffix match is gated behind the default-off
+  // preview flag so production cookie mutations require an exact allowlisted origin.
+  return lovablePreviewSuffixAllowed(origin);
 }
 
 export interface CsrfCheckResult {

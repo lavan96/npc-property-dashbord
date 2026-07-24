@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { createCorsHeaders, createUnauthorizedResponse, verifyAuth } from "../_shared/auth.ts";
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { signStoragePath, signStoragePaths } from "../_shared/storageSign.ts";
 
 // investment-reports is private (STOR-005): resolve display URLs by signing each
@@ -170,6 +171,11 @@ async function generateOne(opts: {
 Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);

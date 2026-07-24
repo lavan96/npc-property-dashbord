@@ -19,6 +19,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth, createCorsHeaders } from "../_shared/auth.ts";
 
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 const BUCKET = 'finance-portal-messages';
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const SIGNED_URL_TTL = 60 * 10;
@@ -128,6 +129,11 @@ Deno.serve(async (req) => {
 
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -139,19 +145,24 @@ Deno.serve(async (req) => {
     if (!operation) return jsonResponse({ error: 'operation required' }, 400, corsHeaders);
 
     // ── Resolve actor (partner vs staff) ──
+    // WP-11B/C cookie-only: a staff caller is identified by the host-prefixed
+    // `__Host-session_token` cookie (verifyAuth reads it). The command-centre
+    // header/body token is kept as a transitional signal. Portal users never
+    // carry the staff cookie, so its presence unambiguously means "staff".
+    const hasStaffCookie = /(?:^|;\s*)__Host-session_token=/.test(req.headers.get('cookie') || '');
     const commandCentreToken = req.headers.get('x-command-centre-session-token') || body?.command_centre_session_token || null;
-    const financeToken = commandCentreToken ? null : extractFinancePortalToken(req.headers, body);
-    const portalToken = commandCentreToken ? null : (req.headers.get('x-portal-session-token') || body?.portal_session_token || null);
+    const isStaffCaller = hasStaffCookie || !!commandCentreToken;
+    const financeToken = isStaffCaller ? null : extractFinancePortalToken(req.headers, body);
+    const portalToken = isStaffCaller ? null : (req.headers.get('x-portal-session-token') || body?.portal_session_token || null);
     let actor: { type: 'partner'; portalUserId: string; email: string; name: string }
              | { type: 'staff'; userId: string; username: string }
              | { type: 'client'; portalUserId: string; clientId: string; name: string }
              | null = null;
 
-    if (commandCentreToken) {
+    if (isStaffCaller) {
       const auth = await verifyAuth(supabase, req.headers, {
         ...body,
-        session_token: commandCentreToken,
-        command_centre_session_token: commandCentreToken,
+        ...(commandCentreToken ? { session_token: commandCentreToken, command_centre_session_token: commandCentreToken } : {}),
       });
       if (auth.error || !auth.userId) {
         return jsonResponse({ error: auth.error || 'Authentication required' }, 401, corsHeaders);

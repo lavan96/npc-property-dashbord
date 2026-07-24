@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
 import { createCorsHeaders, verifyAuth } from "../_shared/auth.ts";
 
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const REPORT_BUCKET =
@@ -483,6 +484,11 @@ Deno.serve(async (req) => {
   const corsHeaders = createCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS")
     return new Response(null, { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
   const headerRunId = req.headers.get("x-generation-run-id");
   let generationRunId = headerRunId || runId();
   const started = Date.now();
