@@ -377,13 +377,21 @@ export function extractSessionToken(
   // Helper: reject falsy, "null", "undefined", empty strings
   const isValidToken = (t: any): t is string => 
     typeof t === 'string' && t.length > 0 && t !== 'null' && t !== 'undefined';
-  // Check Cookie header first (HttpOnly cookie - primary method)
+  // Check Cookie header first (HttpOnly cookie - primary method).
+  // WP-11B: prefer `__Host-session_token` (RFC 6265 host-prefix, Secure, Path=/,
+  // no Domain attribute) over the legacy `session_token` cookie. Both are
+  // parsed during the dual-read migration window; the __Host- form is emitted
+  // by createSessionCookie() so new logins land on the hardened cookie.
   const cookieHeader = headers.get('cookie');
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
     console.log('[extractSessionToken] Cookie header found, parsed cookies:', Object.keys(cookies));
+    if (isValidToken(cookies['__Host-session_token'])) {
+      console.log('[extractSessionToken] Found session_token in __Host- cookie');
+      return cookies['__Host-session_token'];
+    }
     if (isValidToken(cookies['session_token'])) {
-      console.log('[extractSessionToken] Found session_token in cookie');
+      console.log('[extractSessionToken] Found session_token in legacy cookie');
       return cookies['session_token'];
     }
   } else {
@@ -542,15 +550,30 @@ export function createSessionCookie(
   //  - strict Origin allow-listing in createCorsHeaders
   //  - required apikey header (not possible in CSRF form posts)
   // to preserve CSRF protection.
-  // Path=/: cookie available for all paths
-  return `session_token=${options?.clear ? '' : sessionToken}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}; Expires=${expires}; Path=/`;
+  // Path=/: cookie available for all paths.
+  // WP-11B: cookie name is `__Host-session_token` (host-prefixed per RFC 6265bis).
+  //         The prefix forces Secure, Path=/, and forbids Domain — browsers
+  //         reject the Set-Cookie if any of those invariants is violated,
+  //         which prevents cookie-jar contamination from sibling subdomains.
+  return `__Host-session_token=${options?.clear ? '' : sessionToken}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}; Expires=${expires}; Path=/`;
 }
 
 /**
- * Create a clear session cookie header for logout
+ * Create a clear session cookie header for logout.
+ * WP-11B: clears BOTH `__Host-session_token` and the legacy `session_token`
+ * so a mid-migration session cannot resurrect itself from the older name.
+ * Returns two Set-Cookie header values — callers should append both.
  */
 export function createClearSessionCookie(): string {
   return createSessionCookie('', new Date(0), { clear: true });
+}
+
+export function createClearSessionCookies(): string[] {
+  const past = new Date(0).toUTCString();
+  return [
+    `__Host-session_token=; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=${past}; Path=/`,
+    `session_token=; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=${past}; Path=/`,
+  ];
 }
 
 /**
