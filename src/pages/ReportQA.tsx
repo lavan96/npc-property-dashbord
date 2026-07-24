@@ -1349,7 +1349,7 @@ export default function ReportQA() {
           chatHistory: chatHistoryForRequest,
           conversationId: activeConversationId,
           stream: true,
-          session_token: sessionToken, // Add session token to body as fallback
+          
           agentKey: selectedAgentKey,
           modelProvider: selectedAgentKey,
           needsConversationSummary: needsSummary,
