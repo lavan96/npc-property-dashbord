@@ -187,20 +187,13 @@ export async function verifyAuth(
   if (authHeader?.startsWith('Bearer ')) {
     const jwtToken = authHeader.substring(7).trim();
 
-    // CRITICAL: Check if the bearer token is the service_role key by direct comparison
-    // This handles non-JWT service role keys (e.g., sb_secret_* format) used in
-    // service-to-service calls between edge functions. A direct secret match is a
-    // cryptographically sound shared-secret check.
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (serviceRoleKey && jwtToken === serviceRoleKey.trim()) {
-      console.log('[verifyAuth] Service role key matched by direct comparison - allowing internal service call');
-      return {
-        error: null,
-        userId: 'service_role',
-        username: 'system',
-        authMethod: 'service_role',
-      };
-    }
+    // AUTH-004 / SEC5-P0.2: the raw service-role key is NO LONGER accepted as a
+    // Bearer credential (the previous `sb_secret_*` direct-comparison put the
+    // crown-jewel key on the wire as an inter-function Authorization value).
+    // Internal callers present the dedicated INTERNAL_EDGE_SECRET via the
+    // `x-internal-edge-secret` header (handled above); pg_cron sends that header
+    // too. A cryptographically-verified service_role JWT is still honoured below
+    // (a signed token, not the raw key).
 
     // The anon key is public and identifies nobody; fall through to session auth.
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
