@@ -322,7 +322,66 @@ const DEFAULT_ARG_TO_RESOURCE: Record<string, { table: string; ownerColumn: stri
   agreement_id:         { table: 'agency_agreements',      ownerColumn: 'created_by', parentClientColumn: 'client_id' },
   chart_id:             { table: 'charts',                 ownerColumn: 'user_id' },
   report_id:            { table: 'generated_reports',      ownerColumn: 'user_id' },
+  // P1.4: previously-unresolved identifiers now under central ownership.
+  memory_id:            { table: 'agent_semantic_memories', ownerColumn: 'user_id' },
 };
+
+// Multi-hop resource resolvers for identifiers whose ownership is reached by
+// walking a foreign-key chain the flat map above cannot express. Each returns
+// true only when `userId` owns the resource. Any missing row or error fails
+// closed (returns false). P1.4.
+const CUSTOM_OWNERSHIP_RESOLVERS: Record<string, (sb: any, userId: string, id: string) => Promise<boolean>> = {
+  // agent_conversations: owner OR an active share (mirrors userCanAccessConversation
+  // so shared-conversation tool access is not broken by ownership gating).
+  conversation_id: async (sb, userId, id) => {
+    const { data: conv } = await sb.from('agent_conversations').select('user_id').eq('id', id).maybeSingle();
+    if (conv && conv.user_id === userId) return true;
+    const { data: share } = await sb.from('agent_conversation_shares')
+      .select('id').eq('conversation_id', id).eq('shared_with', userId).eq('is_active', true).maybeSingle();
+    return !!share;
+  },
+  // game_plan_phases.plan_id -> game_plans.created_by
+  phase_id: async (sb, userId, id) => ownsGamePlanPhase(sb, userId, id),
+  // game_plan_milestones.phase_id -> phase -> plan -> created_by
+  milestone_id: async (sb, userId, id) => {
+    const { data } = await sb.from('game_plan_milestones').select('phase_id').eq('id', id).maybeSingle();
+    return data?.phase_id ? ownsGamePlanPhase(sb, userId, data.phase_id) : false;
+  },
+  // game_plan_kpis.phase_id -> phase -> plan -> created_by
+  kpi_id: async (sb, userId, id) => {
+    const { data } = await sb.from('game_plan_kpis').select('phase_id').eq('id', id).maybeSingle();
+    return data?.phase_id ? ownsGamePlanPhase(sb, userId, data.phase_id) : false;
+  },
+  // game_plan_actions.phase_id -> phase -> plan -> created_by
+  action_id: async (sb, userId, id) => {
+    const { data } = await sb.from('game_plan_actions').select('phase_id').eq('id', id).maybeSingle();
+    return data?.phase_id ? ownsGamePlanPhase(sb, userId, data.phase_id) : false;
+  },
+  // build_progress_payments.deal_id -> client_deals.client_id -> clients owner/assignee
+  payment_id: async (sb, userId, id) => {
+    const { data: pay } = await sb.from('build_progress_payments').select('deal_id').eq('id', id).maybeSingle();
+    if (!pay?.deal_id) return false;
+    const { data: deal } = await sb.from('client_deals').select('client_id, created_by').eq('id', pay.deal_id).maybeSingle();
+    if (!deal) return false;
+    if (deal.created_by === userId) return true;
+    if (!deal.client_id) return false;
+    const { data: c } = await sb.from('clients').select('created_by, assigned_team_user_id').eq('id', deal.client_id).maybeSingle();
+    return !!c && (c.created_by === userId || c.assigned_team_user_id === userId);
+  },
+};
+
+async function ownsGamePlanPhase(sb: any, userId: string, phaseId: string): Promise<boolean> {
+  const { data: phase } = await sb.from('game_plan_phases').select('plan_id').eq('id', phaseId).maybeSingle();
+  if (!phase?.plan_id) return false;
+  const { data: plan } = await sb.from('game_plans').select('created_by').eq('id', phase.plan_id).maybeSingle();
+  return !!plan && plan.created_by === userId;
+}
+
+/** All arg keys that carry an ownership-checked resource id (flat + custom). */
+const RESOURCE_ARG_KEYS = new Set<string>([
+  ...Object.keys(DEFAULT_ARG_TO_RESOURCE),
+  ...Object.keys(CUSTOM_OWNERSHIP_RESOLVERS),
+]);
 
 // Tools that MUST have a caller-supplied step-up signal. Derived by prefix so
 // the 217-row policy table doesn't have to be re-audited; explicit policy
@@ -352,9 +411,14 @@ async function isSuperadmin(sb: any, userId: string): Promise<boolean> {
 }
 
 async function ownsResource(sb: any, userId: string, argKey: string, argValue: string): Promise<boolean> {
+  if (!argValue || typeof argValue !== 'string') return true;
+  // Multi-hop resolvers take precedence for the identifiers they cover.
+  const custom = CUSTOM_OWNERSHIP_RESOLVERS[argKey];
+  if (custom) {
+    try { return await custom(sb, userId, argValue); } catch { return false; }
+  }
   const spec = DEFAULT_ARG_TO_RESOURCE[argKey];
   if (!spec) return true; // unknown key → no resource gate (still gated by other args)
-  if (!argValue || typeof argValue !== 'string') return true;
   try {
     // First: direct ownership on the row itself.
     const columns = `${spec.ownerColumn}${spec.parentClientColumn ? ',' + spec.parentClientColumn : ''}${spec.table === 'clients' ? ',assigned_team_user_id' : ''}`;
@@ -417,7 +481,7 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
   if (ctx.actorType === 'internal' && !policy.allowedInternalCallers?.includes(ctx.internalCaller || '')) {
     throw new AgentToolAuthzError('actor_denied', `Internal caller is not allowlisted for tool '${name}'`);
   }
-  const resourceIds = Object.entries(args || {}).filter(([key, value]) => key in DEFAULT_ARG_TO_RESOURCE && typeof value === 'string').map(([, value]) => value as string);
+  const resourceIds = Object.entries(args || {}).filter(([key, value]) => RESOURCE_ARG_KEYS.has(key) && typeof value === 'string').map(([, value]) => value as string);
   if (ctx.actorType === 'human') {
     const module = await requireModulePermission(sb, { userId, authMethod: 'human' }, policy.moduleKey || '', policy.permission);
     if (!module.ok) {
@@ -473,7 +537,7 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
     }
   } else {
     for (const [key, value] of Object.entries(args || {})) {
-      if (!(key in DEFAULT_ARG_TO_RESOURCE)) continue;
+      if (!RESOURCE_ARG_KEYS.has(key)) continue;
       if (typeof value !== 'string') continue;
       if (!(await ownsResource(sb, userId, key, value))) {
         await auditToolDecision(sb, userId, name, 'deny', resourceIds, 'resource_denied');
