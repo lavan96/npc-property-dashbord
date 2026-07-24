@@ -559,10 +559,21 @@ export function createSessionCookie(
 }
 
 /**
- * Create a clear session cookie header for logout
+ * Create a clear session cookie header for logout.
+ * WP-11B: clears BOTH `__Host-session_token` and the legacy `session_token`
+ * so a mid-migration session cannot resurrect itself from the older name.
+ * Returns two Set-Cookie header values — callers should append both.
  */
 export function createClearSessionCookie(): string {
   return createSessionCookie('', new Date(0), { clear: true });
+}
+
+export function createClearSessionCookies(): string[] {
+  const past = new Date(0).toUTCString();
+  return [
+    `__Host-session_token=; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=${past}; Path=/`,
+    `session_token=; HttpOnly; Secure; SameSite=None; Max-Age=0; Expires=${past}; Path=/`,
+  ];
 }
 
 /**
