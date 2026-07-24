@@ -26,27 +26,27 @@ export type ToolSecurityPolicy = {
  * authorized against the module that owns the underlying business data.
  */
 const REAL_MODULE_OVERRIDES: Record<string, Pick<ToolSecurityPolicy, 'moduleKey' | 'permission' | 'requiresSuperadmin'>> = {
-  search_clients: { moduleKey: 'clients', permission: 'can_view', requiresSuperadmin: true },
-  get_client_details: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_additional_contacts: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_activities: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_deals: { moduleKey: 'clients', permission: 'can_view' },
-  get_income_sources: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_expenses: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_liabilities: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_assets: { moduleKey: 'clients', permission: 'can_view' },
-  get_client_properties: { moduleKey: 'clients', permission: 'can_view' },
-  get_employment_details: { moduleKey: 'clients', permission: 'can_view' },
-  update_client_field: { moduleKey: 'clients', permission: 'can_edit' },
-  create_client: { moduleKey: 'clients', permission: 'can_edit' },
-  delete_client: { moduleKey: 'clients', permission: 'can_delete' },
-  bulk_update_clients: { moduleKey: 'clients', permission: 'can_edit' },
-  get_clients_by_pipeline_status: { moduleKey: 'clients', permission: 'can_view', requiresSuperadmin: true },
-  get_clients_needing_follow_up: { moduleKey: 'clients', permission: 'can_view', requiresSuperadmin: true },
-  get_commission_actuals: { moduleKey: 'finance', permission: 'can_view' },
-  get_commission_forecast: { moduleKey: 'finance', permission: 'can_view' },
-  get_pipeline_overview: { moduleKey: 'finance', permission: 'can_view', requiresSuperadmin: true },
-  export_pipeline_data: { moduleKey: 'finance', permission: 'can_view', requiresSuperadmin: true },
+  search_clients: { moduleKey: 'client_management', permission: 'can_view', requiresSuperadmin: true },
+  get_client_details: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_additional_contacts: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_activities: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_deals: { moduleKey: 'client_management', permission: 'can_view' },
+  get_income_sources: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_expenses: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_liabilities: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_assets: { moduleKey: 'client_management', permission: 'can_view' },
+  get_client_properties: { moduleKey: 'client_management', permission: 'can_view' },
+  get_employment_details: { moduleKey: 'client_management', permission: 'can_view' },
+  update_client_field: { moduleKey: 'client_management', permission: 'can_edit' },
+  create_client: { moduleKey: 'client_management', permission: 'can_edit' },
+  delete_client: { moduleKey: 'client_management', permission: 'can_delete' },
+  bulk_update_clients: { moduleKey: 'client_management', permission: 'can_edit' },
+  get_clients_by_pipeline_status: { moduleKey: 'client_management', permission: 'can_view', requiresSuperadmin: true },
+  get_clients_needing_follow_up: { moduleKey: 'client_management', permission: 'can_view', requiresSuperadmin: true },
+  get_commission_actuals: { moduleKey: 'cash_flow', permission: 'can_view' },
+  get_commission_forecast: { moduleKey: 'cash_flow', permission: 'can_view' },
+  get_pipeline_overview: { moduleKey: 'cash_flow', permission: 'can_view', requiresSuperadmin: true },
+  export_pipeline_data: { moduleKey: 'cash_flow', permission: 'can_view', requiresSuperadmin: true },
   send_email: { moduleKey: 'email_copilot', permission: 'can_edit' },
   get_client_emails: { moduleKey: 'email_copilot', permission: 'can_view' },
   search_emails: { moduleKey: 'email_copilot', permission: 'can_view' },
@@ -55,11 +55,11 @@ const REAL_MODULE_OVERRIDES: Record<string, Pick<ToolSecurityPolicy, 'moduleKey'
   generate_agreement: { moduleKey: 'agreements', permission: 'can_edit' },
   get_agreement_details: { moduleKey: 'agreements', permission: 'can_view' },
   get_client_agreements: { moduleKey: 'agreements', permission: 'can_view' },
-  get_user_list: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_user_permissions: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_audit_trail: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_error_logs: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
-  get_error_summary: { moduleKey: 'platform_administration', permission: 'can_view', requiresSuperadmin: true },
+  get_user_list: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_user_permissions: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_audit_trail: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_error_logs: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
+  get_error_summary: { moduleKey: 'user_management', permission: 'can_view', requiresSuperadmin: true },
 };
 export const TOOL_SECURITY_POLICIES:Record<string,ToolSecurityPolicy>={
   'add_additional_contact':{moduleKey:'ai_dashboard',permission:'can_edit',allowedActorTypes:['human']},
@@ -404,6 +404,45 @@ function looksLikeResourceId(key: string): boolean {
   return /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_id$/.test(key);
 }
 
+/**
+ * Map an AI tool to its TRUE business module (registered dashboard_modules key)
+ * so tool authorization is scoped to the actual capability rather than the
+ * generic `ai_dashboard` gate. Ordered keyword match, most specific first; an
+ * unrecognized tool returns null and keeps the tool's declared module (the
+ * deny-by-default `ai_dashboard` for the un-remapped set), which stays
+ * superadmin-only until an admin grants it. Every returned key MUST exist in
+ * dashboard_modules.
+ */
+export function resolveToolBusinessModule(name: string): string | null {
+  const n = name.toLowerCase();
+  const has = (...s: string[]) => s.some((x) => n.includes(x));
+  if (has('game_plan')) return 'game_plans';
+  if (has('agreement')) return 'agreements';
+  if (has('email')) return 'email_copilot';
+  if (has('checklist')) return 'checklists';
+  if (has('reminder', 'follow_up')) return 'reminders';
+  if (has('chart')) return 'charts';
+  if (has('depreciation')) return 'depreciation_comps';
+  if (has('borrowing')) return 'borrowing_capacity';
+  if (has('report_qa')) return 'report_qa';
+  if (has('playbook', 'memory', 'semantic', 'scheduled_task', 'proactive_insight', 'system_health')) return 'agent';
+  if (has('portal')) return 'client_portal_admin';
+  if (has('listing')) return 'listings';
+  if (has('conversation')) return 'conversations';
+  if (has('appointment', 'outlook', 'calendar', 'free_slot', 'prep_block')) return 'calendar';
+  if (has('call_')) return 'call_logs';
+  if (has('cloudflare')) return 'cloudflare';
+  if (has('depreciation_comp')) return 'depreciation_comps';
+  if (has('cash_flow', 'commission', 'pipeline', 'revenue', 'clawback', 'equity_position')) return 'cash_flow';
+  if (has('checklist_template', 'template')) return 'templates';
+  if (has('investment_report', 'marketing_report', 'auto_report', 'report_details', 'report')) return 'reports';
+  if (has('build_progress', 'builder_invoice', 'build_payment')) return 'client_management';
+  // client + deal + financial-position sub-data all live under client management
+  if (has('client', 'deal', 'employment', 'income', 'expense', 'asset', 'liabilit',
+          'contact', 'portfolio', 'settlement', 'lead_source', 'document_readiness')) return 'client_management';
+  return null; // unrecognized → keep declared module (stays restricted)
+}
+
 // Tools that MUST have a caller-supplied step-up signal. Derived by prefix so
 // the 217-row policy table doesn't have to be re-audited; explicit policy
 // requiresStepUp:true still wins.
@@ -495,6 +534,11 @@ async function auditToolDecision(sb: any, userId: string, tool: string, decision
 export async function authorizeAgentTool(sb: any, name: string, args: Record<string, any>, userId: string, ctx: AgentToolAuthzContext): Promise<void> {
   const basePolicy = TOOL_SECURITY_POLICIES[name];
   const policy = basePolicy ? { ...basePolicy, ...(REAL_MODULE_OVERRIDES[name] || {}) } : null;
+  // Scope any still-generic `ai_dashboard` tool to its true business module.
+  if (policy && policy.moduleKey === 'ai_dashboard') {
+    const businessModule = resolveToolBusinessModule(name);
+    if (businessModule) policy.moduleKey = businessModule;
+  }
   if (!policy) throw new AgentToolAuthzError('policy_denied', `No policy registered for tool '${name}'`);
   if (!policy.allowedActorTypes.includes(ctx.actorType)) {
     throw new AgentToolAuthzError('actor_denied', `Tool '${name}' cannot be invoked by actor '${ctx.actorType}'`);

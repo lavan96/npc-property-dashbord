@@ -8527,10 +8527,14 @@ Deno.serve(async (req) => {
       const directActionPermission: 'can_view' | 'can_edit' | 'can_delete' = /^(create-|delete-|rename-|confirm-|share-|index-|memory-feedback$|update-|prune-)/.test(String(body.action || ''))
         ? (String(body.action || '').startsWith('delete-') ? 'can_delete' : 'can_edit')
         : 'can_view';
+      // Gate agent access on the registered `agent` module (deny-by-default).
+      // `ai_dashboard` is not a registered module, so it denied everyone except
+      // superadmins; `agent` makes agent access grantable to scoped staff while
+      // per-tool authorization additionally requires the tool's business module.
       const dashboardPermission = await requireModulePermission(
         sb,
         { userId, authMethod: 'human' },
-        'ai_dashboard',
+        'agent',
         directActionPermission,
       );
       if (!dashboardPermission.ok) {
