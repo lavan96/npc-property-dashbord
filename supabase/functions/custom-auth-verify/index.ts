@@ -1,7 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
-import { extractSessionToken, verifyAuth, verifySession, createCorsHeaders } from "../_shared/auth.ts"
+import { extractSessionToken, verifySession, createCorsHeaders } from "../_shared/auth.ts"
 import { generateSupabaseJWT } from "../_shared/jwt.ts"
-import { hashSessionToken, isSessionHashConfigured, computeIdleExpiry } from "../_shared/sessionHash.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -34,81 +33,12 @@ Deno.serve(async (req) => {
       sessionToken = null;
     }
 
-    // Helper: attempt JWT-based fallback authentication when session token is missing or invalid
-    const tryJwtFallback = async (reason: string) => {
-      console.log(`[custom-auth-verify] ${reason}, attempting JWT fallback...`);
-
-      const { error: jwtError, userId: jwtUserId, authMethod } = await verifyAuth(
-        supabase,
-        req.headers,
-        {}
-      );
-
-      if (jwtError || !jwtUserId || authMethod !== 'jwt') {
-        console.log('[custom-auth-verify] JWT fallback failed:', jwtError || 'no valid JWT');
-        return null;
-      }
-
-      const { data: jwtUser } = await supabase
-        .from('custom_users')
-        .select('id, username, role, is_active')
-        .eq('id', jwtUserId)
-        .maybeSingle();
-
-      if (!jwtUser || !jwtUser.is_active) {
-        console.log('[custom-auth-verify] JWT user not found or inactive');
-        return null;
-      }
-
-      const newSessionToken = crypto.randomUUID();
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-
-      const newTokenHash = isSessionHashConfigured() ? await hashSessionToken(newSessionToken) : null;
-      await supabase.from('user_sessions').insert({
-        user_id: jwtUser.id,
-        session_token: newSessionToken,
-        token_hash: newTokenHash,
-        idle_expires_at: computeIdleExpiry().toISOString(),
-        expires_at: expiresAt.toISOString(),
-      });
-
-      const { data: jwtUserRoles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', jwtUser.id);
-
-      const jwtRoles = jwtUserRoles?.map((r) => r.role) || [];
-
-      let freshAccessToken: string | null = null;
-      try {
-        freshAccessToken = await generateSupabaseJWT(jwtUser.id, 86400, {
-          roles: jwtRoles,
-          userMetadata: { username: jwtUser.username, custom_role: jwtUser.role },
-        });
-      } catch (e) {
-        console.error('[custom-auth-verify] JWT generation failed during fallback:', e);
-      }
-
-      console.log('[custom-auth-verify] Created fresh session via JWT fallback for:', jwtUser.username);
-
-      return {
-        valid: true,
-        user: { id: jwtUser.id, username: jwtUser.username, role: jwtUser.role },
-        roles: jwtRoles,
-        access_token: freshAccessToken,
-        session_token: newSessionToken,
-      };
-    };
-
+    // WP-11B/C: the JWT-based session-recreation fallback has been REMOVED.
+    // Minting a fresh session from a still-valid access-token JWT undermined
+    // logout / server-side revocation (a revoked session could be resurrected
+    // until the 24h JWT expired). Verification now relies solely on the
+    // `__Host-session_token` cookie.
     if (!sessionToken) {
-      const fallbackResult = await tryJwtFallback('No session token');
-      if (fallbackResult) {
-        return new Response(JSON.stringify(fallbackResult), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
       return new Response(
         JSON.stringify({ error: 'Session token is required', valid: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -121,15 +51,7 @@ Deno.serve(async (req) => {
     // idle-expired session cannot be re-validated here.
     const sessionResult = await verifySession(supabase, sessionToken);
     if (sessionResult.error || !sessionResult.userId) {
-      // Session token was provided but is invalid/expired/revoked — try JWT
-      // fallback before giving up.
-      const fallbackResult = await tryJwtFallback('Stale/invalid session token');
-      if (fallbackResult) {
-        return new Response(JSON.stringify(fallbackResult), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      // Invalid / expired / revoked cookie session — no JWT recreation.
       return new Response(
         JSON.stringify({ error: 'Invalid or expired session', valid: false }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

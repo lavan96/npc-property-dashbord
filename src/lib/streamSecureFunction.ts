@@ -15,7 +15,6 @@ const SUPABASE_URL = "https://dduzbchuswwbefdunfct.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkdXpiY2h1c3d3YmVmZHVuZmN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0NDM4NzksImV4cCI6MjA3MTAxOTg3OX0.eSYU6fxIc3tBQuGLsdBRff0alBMkNfvv7OpW0efNjxk";
 
 const ACCESS_TOKEN_KEY = "supabase_access_token";
-const SESSION_TOKEN_KEY = "session_token";
 
 function readToken(key: string): string | null {
   try {
@@ -43,7 +42,9 @@ export async function* streamSecureFunction(
   body: Record<string, any>,
   options: StreamOptions = {},
 ): AsyncGenerator<StreamEvent, void, unknown> {
-  const sessionToken = readToken(SESSION_TOKEN_KEY);
+  // WP-11B/C cookie-only: authenticate via the HttpOnly session cookie
+  // (`credentials: 'include'`) plus the access-token JWT Bearer. No raw session
+  // token is read from storage or sent in the body/headers.
   let accessToken = readToken(ACCESS_TOKEN_KEY);
   if (!accessToken) {
     try {
@@ -61,10 +62,9 @@ export async function* streamSecureFunction(
       "Accept": "text/event-stream",
       "apikey": SUPABASE_ANON_KEY,
       "Authorization": `Bearer ${bearerToken}`,
-      ...(sessionToken ? { "x-session-token": sessionToken } : {}),
     },
     credentials: "include",
-    body: JSON.stringify({ ...body, session_token: sessionToken }),
+    body: JSON.stringify(body),
     signal: options.signal,
   });
 

@@ -1323,9 +1323,9 @@ export default function ReportQA() {
       // Ground retrieval and fallback context only in the reports selected for this chat.
       const reportsToUse = selectedReports;
 
-      // Get session token with dual-storage fallback (sessionStorage → localStorage)
-      const sessionToken = sessionStorage.getItem('session_token') || localStorage.getItem('session_token');
-      // Prefer real access token over anon key for Bearer header
+      // WP-11B/C cookie-only: report-qa uses wildcard CORS (no cookies), so it
+      // authenticates via the access-token JWT Bearer (verifyAuth JWT path).
+      // The raw session token is no longer read or sent.
       const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
       const bearerToken = accessToken || SUPABASE_KEY;
 
@@ -1337,7 +1337,6 @@ export default function ReportQA() {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${bearerToken}`,
-          ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
         },
         credentials: 'omit', // Avoid CORS issues with wildcard origins
         body: JSON.stringify({

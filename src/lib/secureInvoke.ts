@@ -30,28 +30,10 @@ export function isAuthExhausted(): boolean {
   return _globalAuthExhausted;
 }
 
-// Matches src/hooks/useAuth.tsx
+// Matches src/hooks/useAuth.tsx. WP-11B/C cookie-only: the staff session token
+// is no longer read from JS storage — the HttpOnly `__Host-session_token` cookie
+// is the sole carrier, so only the access-token (RLS/realtime JWT) key remains.
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
-const SESSION_TOKEN_KEY = 'session_token';
-
-const COMMAND_CENTRE_MESSAGING_FUNCTIONS = new Set([
-  'staff-client-portal-messages',
-  'finance-portal-messages',
-]);
-
-// Template-builder endpoints read the session token from the request BODY
-// (shared extractSessionToken), so the custom `x-session-token` header is
-// redundant for them — and a custom header forces a CORS preflight that hard-
-// fails ("Failed to fetch") against any function deployment whose CORS
-// allowlist predates the header. Token-in-body keeps the preflight to plain
-// authorization/apikey/content-type, which every deployment accepts.
-const BODY_TOKEN_FUNCTIONS = new Set([
-  'template-import-pdf',
-  'template-design-agent',
-  'render-source',
-  'import-from-url',
-  'pdf-parse-dispatch',
-]);
 
 /** Human-readable guidance for auth failures from secured edge functions. */
 export function describeAuthError(message: string | undefined | null): string | null {
@@ -89,22 +71,17 @@ function clearStoredToken(key: string): void {
   try { localStorage.removeItem(key); } catch { /* ignore */ }
 }
 
-function getSessionToken(): string | null {
-  return getStoredToken(SESSION_TOKEN_KEY);
-}
-
 function getAccessToken(): string | null {
   return getStoredToken(ACCESS_TOKEN_KEY);
 }
 
 /**
- * Attempt to refresh the stored Supabase access token by calling
- * custom-auth-verify with the existing session_token. Returns the new
- * access token on success, or null when no refresh is possible.
+ * Attempt to refresh the stored Supabase access token by re-verifying the
+ * HttpOnly `__Host-session_token` cookie (WP-11B/C cookie-only — no raw session
+ * token is read from or written to JS storage). Returns the new access token on
+ * success, or null when no refresh is possible (e.g. cookie absent/expired).
  */
 async function tryRefreshAccessToken(): Promise<string | null> {
-  const sessionToken = getSessionToken();
-  if (!sessionToken) return null;
   try {
     const resp = await fetch(`${SUPABASE_URL}/functions/v1/custom-auth-verify`, {
       method: 'POST',
@@ -112,20 +89,14 @@ async function tryRefreshAccessToken(): Promise<string | null> {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'x-session-token': sessionToken,
       },
       credentials: 'include',
-      body: JSON.stringify({ session_token: sessionToken }),
+      body: JSON.stringify({}),
     });
     if (!resp.ok) return null;
     const json = await resp.json().catch(() => null) as any;
     if (json?.valid && json?.access_token) {
       try { sessionStorage.setItem(ACCESS_TOKEN_KEY, json.access_token); } catch { /* ignore */ }
-      try { localStorage.setItem(ACCESS_TOKEN_KEY, json.access_token); } catch { /* ignore */ }
-      if (json?.session_token) {
-        try { sessionStorage.setItem(SESSION_TOKEN_KEY, json.session_token); } catch { /* ignore */ }
-        try { localStorage.setItem(SESSION_TOKEN_KEY, json.session_token); } catch { /* ignore */ }
-      }
       return json.access_token as string;
     }
   } catch (err) {
@@ -143,7 +114,6 @@ export async function invokeSecureFunction<T = any>(
   options?: { timeoutMs?: number; _isRetry?: boolean; stepUpCapability?: string }
 ): Promise<InvokeResult<T>> {
   try {
-    const sessionToken = getSessionToken();
     let accessToken = getAccessToken();
     // Native Supabase Auth fallback: users signed in through supabase-js keep
     // their JWT in the client's own storage, not under our custom keys — for
@@ -156,9 +126,6 @@ export async function invokeSecureFunction<T = any>(
     }
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
 
-    const isCommandCentreMessagingFunction = COMMAND_CENTRE_MESSAGING_FUNCTIONS.has(functionName);
-    const tokenInBodyOnly = BODY_TOKEN_FUNCTIONS.has(functionName);
-
     // WP-11C: attach a live step-up token when the caller declares a capability.
     let stepUpToken: string | null = null;
     if (options?.stepUpCapability) {
@@ -168,18 +135,13 @@ export async function invokeSecureFunction<T = any>(
       } catch { /* module optional at boot */ }
     }
 
-    const requestBody = body
-      ? {
-        ...body,
-        session_token: sessionToken,
-        ...(isCommandCentreMessagingFunction ? { command_centre_session_token: sessionToken } : {}),
-        ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
-      }
-      : {
-        session_token: sessionToken,
-        ...(isCommandCentreMessagingFunction ? { command_centre_session_token: sessionToken } : {}),
-        ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
-      };
+    // WP-11B/C cookie-only: the staff session travels solely in the HttpOnly
+    // `__Host-session_token` cookie (`credentials: 'include'`). No raw session
+    // token is read from storage or attached to the body/headers.
+    const requestBody = {
+      ...(body ?? {}),
+      ...(stepUpToken ? { step_up_token: stepUpToken } : {}),
+    };
 
     const controller = new AbortController();
     const timeoutMs = options?.timeoutMs || 60000;
@@ -191,10 +153,6 @@ export async function invokeSecureFunction<T = any>(
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${bearerToken}`,
-        ...(sessionToken && !tokenInBodyOnly ? {
-          'x-session-token': sessionToken,
-          ...(isCommandCentreMessagingFunction ? { 'x-command-centre-session-token': sessionToken } : {}),
-        } : {}),
         ...(stepUpToken ? { 'x-step-up-token': stepUpToken } : {}),
       },
       credentials: 'include',
@@ -227,7 +185,6 @@ export async function invokeSecureFunction<T = any>(
         status: response.status,
         data,
         hasAccessToken: Boolean(accessToken),
-        hasSessionToken: Boolean(sessionToken),
       });
 
       const message = String(data?.error || data?.message || '').toLowerCase();
@@ -252,9 +209,8 @@ export async function invokeSecureFunction<T = any>(
       if (isAuthFailure) {
         markAuthFailure();
         if (isAuthExhausted()) {
-          console.warn('[secureInvoke] Clearing stale tokens after repeated auth failures');
+          console.warn('[secureInvoke] Clearing stale access token after repeated auth failures');
           clearStoredToken(ACCESS_TOKEN_KEY);
-          clearStoredToken(SESSION_TOKEN_KEY);
         }
       }
 
@@ -312,8 +268,11 @@ export async function invokeSecureFunction<T = any>(
 
 
 /**
- * Check if the user has an active session token or access token stored.
+ * Best-effort check for an active session. The staff session lives in an
+ * HttpOnly cookie that JS cannot read, so this reflects only whether a
+ * (tab-scoped) access token is present; the authoritative check is a
+ * cookie-authenticated custom-auth-verify call.
  */
 export function hasActiveSession(): boolean {
-  return Boolean(getSessionToken() || getAccessToken());
+  return Boolean(getAccessToken());
 }

@@ -207,8 +207,10 @@ Deno.serve(async (req) => {
           role: user.role
         },
         roles,
-        access_token: accessToken,  // Supabase-compatible JWT
-        session_token: sessionToken, // Include for sessionStorage fallback (cross-origin cookie issues)
+        access_token: accessToken,  // Supabase-compatible JWT for direct RLS/realtime
+        // WP-11B/C cookie-only: the raw session token is NEVER returned to
+        // JavaScript. It is delivered solely as the HttpOnly `__Host-session_token`
+        // cookie (Set-Cookie below), so it cannot be exfiltrated or replayed.
         expires_at: expiresAt.toISOString()
       }),
       { 
