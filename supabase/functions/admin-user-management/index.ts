@@ -1506,6 +1506,7 @@ Deno.serve(async (req: Request) => {
         console.error('Failed to update custom_users role:', userError);
       }
 
+      await revokeUserSessions(user_id, 'privilege_change:demoted_from_superadmin');
       console.log(`User ${user_id} demoted from superadmin by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User demoted from superadmin' }),
