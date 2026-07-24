@@ -550,8 +550,12 @@ export function createSessionCookie(
   //  - strict Origin allow-listing in createCorsHeaders
   //  - required apikey header (not possible in CSRF form posts)
   // to preserve CSRF protection.
-  // Path=/: cookie available for all paths
-  return `session_token=${options?.clear ? '' : sessionToken}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}; Expires=${expires}; Path=/`;
+  // Path=/: cookie available for all paths.
+  // WP-11B: cookie name is `__Host-session_token` (host-prefixed per RFC 6265bis).
+  //         The prefix forces Secure, Path=/, and forbids Domain — browsers
+  //         reject the Set-Cookie if any of those invariants is violated,
+  //         which prevents cookie-jar contamination from sibling subdomains.
+  return `__Host-session_token=${options?.clear ? '' : sessionToken}; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}; Expires=${expires}; Path=/`;
 }
 
 /**
