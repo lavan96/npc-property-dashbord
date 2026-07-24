@@ -19,7 +19,8 @@
  * issues/revokes proofs.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createSessionCookie } from '../_shared/auth.ts';
+import { rotateSession } from '../_shared/sessionRotate.ts';
 import { verifyPassword } from '../_shared/password.ts';
 import { generateStepUpToken, hashStepUpToken, resolveActiveStaffSession } from '../_shared/stepUp.ts';
 import { createEncryptedTotpSecret, verifyEncryptedTotp } from '../_shared/totp.ts';
