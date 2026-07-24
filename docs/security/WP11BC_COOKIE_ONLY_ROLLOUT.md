@@ -182,3 +182,30 @@ receivers:
 
 All three functions have been redeployed. The legacy `session_token` cookie
 fallback and body-token fallbacks remain in place until the Phase 4 soak.
+
+## Phase 4 sunset (2026-07-24)
+
+The dual-read soak window is closed. The legacy `session_token` cookie name
+and every non-cookie carrier that was tagged `[wp11c.legacy_fallback]` during
+Phase 3 have been removed from `supabase/functions/_shared/auth.ts`:
+
+- `extractSessionToken` now reads **only** the `__Host-session_token`
+  HttpOnly cookie. The `session_token` cookie-name fallback, the
+  `x-command-centre-session-token` / `x-session-token` headers, the
+  `body.session_token` / `body.command_centre_session_token` fields, and the
+  opaque `Authorization: Bearer <token>` (non-JWT) legacy path have all been
+  deleted. The function still accepts the `body` argument for signature
+  compatibility but ignores it.
+- `createClearSessionCookies()` now emits a single expired `__Host-session_token`
+  Set-Cookie header. The stray legacy-name expiry is no longer written on
+  logout.
+
+The plaintext `user_sessions.session_token` DB-column dual-read in
+`verifySession` remains (that is a WP-11A storage-migration concern, not a
+cookie-name concern) and will be retired in a follow-up when the hashed
+column reaches 100% coverage.
+
+Any request that still relies on a legacy carrier will now receive
+`401 Authentication required`. Ops should monitor for a sustained spike in
+those responses across the staff-endpoint fleet; a spike indicates a caller
+was missed during the Phase 2 frontend cutover.

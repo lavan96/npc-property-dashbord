@@ -269,30 +269,34 @@ export async function signInternalRequest(
  * Verify an internal signed request. `rawBody` must be the exact request body
  * string.
  *
- * WP-12 hardening:
- *   - Signed envelope is the primary path; keyed by `X-Internal-Key-Id` against
- *     BOTH the current and previous secret to support overlap rotation.
- *   - `allowedCallers` enforces a per-receiver caller allowlist so a valid
- *     signature from an unrelated function is still denied.
- *   - Legacy static-secret and service-role-Bearer fallbacks remain accepted
- *     during the migration window, but the env flag `INTERNAL_STRICT_SIGNED=true`
- *     (or per-call `strict: true`) forces them off globally.
+ * WP-12 Phase C: strict signed is now HARD-LOCKED. The legacy static-secret
+ * and service-role-Bearer trust paths have been removed entirely — every
+ * internal call MUST present a valid HMAC-signed envelope. The
+ * `allowLegacyStaticSecret` / `allowLegacyServiceRoleKey` / `strict` options
+ * and the `INTERNAL_STRICT_SIGNED` env flag are retained as accepted-but-
+ * ignored parameters for API compatibility; enabling a legacy fallback is
+ * impossible.
  */
 export async function verifyInternal(
   supabase: any,
   req: Request,
   rawBody: string,
   options: {
+    /** @deprecated WP-12 Phase C — ignored; strict signed is hard-locked. */
     allowLegacyStaticSecret?: boolean;
+    /** @deprecated WP-12 Phase C — ignored; strict signed is hard-locked. */
     allowLegacyServiceRoleKey?: boolean;
     allowedCallers?: string[];
+    /** @deprecated WP-12 Phase C — ignored; strict signed is hard-locked. */
     strict?: boolean;
   } = {},
 ): Promise<AuthContext> {
-  const strictEnv = (Deno.env.get('INTERNAL_STRICT_SIGNED') || '').trim().toLowerCase() === 'true';
-  const strict = options.strict === true || strictEnv;
-  const allowLegacyStaticSecret = !strict && options.allowLegacyStaticSecret !== false;
-  const allowLegacyServiceRoleKey = !strict && options.allowLegacyServiceRoleKey !== false;
+  // WP-12 Phase C: guard against a caller that still expects the legacy paths
+  // to be reachable. `true` here is a coding bug — the CI gate blocks it in
+  // source, and we log-and-continue at runtime so the strict path still wins.
+  if (options.allowLegacyStaticSecret === true || options.allowLegacyServiceRoleKey === true) {
+    console.warn('[auth_v2] verifyInternal: legacy-fallback option requested but ignored (WP-12 Phase C hard-lock)');
+  }
   const allowedCallers = options.allowedCallers && options.allowedCallers.length > 0
     ? new Set(options.allowedCallers)
     : null;
@@ -306,49 +310,7 @@ export async function verifyInternal(
     return null;
   };
 
-  // Deprecated static-secret shortcut (retained ONLY during rollout).
   const keys = loadInternalKeys();
-  const presentedInternal = (req.headers.get('x-internal-edge-secret') || '').trim();
-  const authHeader = req.headers.get('authorization') || '';
-  const bearerForInternal = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (allowLegacyStaticSecret && keys.length > 0 && (presentedInternal || bearerForInternal)) {
-    for (const { secret } of keys) {
-      if ((presentedInternal && constantTimeEqual(secret, presentedInternal)) ||
-          (bearerForInternal && constantTimeEqual(secret, bearerForInternal))) {
-        console.warn('[auth_v2] deprecated static internal secret accepted; migrate caller to signed envelope');
-        const caller = req.headers.get('x-internal-caller') || 'internal_service';
-        const denied = enforceCallerAllowlist(caller);
-        if (denied) return denied;
-        return ctx({
-          ok: true,
-          authType: 'internal_service',
-          actorId: caller,
-          username: 'system',
-          roles: [],
-          method: 'internal_hmac',
-          errorCode: null,
-        });
-      }
-    }
-  }
-
-  // Legacy service-role Bearer fallback (retired under strict mode).
-  const serviceRoleKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
-  if (allowLegacyServiceRoleKey && serviceRoleKey && bearerForInternal && constantTimeEqual(serviceRoleKey, bearerForInternal)) {
-    console.warn('[auth_v2] deprecated service-role HTTP credential accepted; migrate caller to signed envelope');
-    const caller = req.headers.get('x-internal-caller') || 'service_role';
-    const denied = enforceCallerAllowlist(caller);
-    if (denied) return denied;
-    return ctx({
-      ok: true,
-      authType: 'internal_service',
-      actorId: 'service_role',
-      username: 'system',
-      roles: [],
-      method: 'service_role_key',
-      errorCode: null,
-    });
-  }
 
   // Preferred: signed envelope.
   const timestamp = req.headers.get('x-internal-timestamp');
