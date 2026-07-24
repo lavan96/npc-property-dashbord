@@ -451,6 +451,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // WP-11B/C Phase 3: rotate the staff session on successful step-up so the
+    // pre-elevation cookie can no longer be replayed. Bind the step-up proof to
+    // the newly minted session id.
+    let boundSessionId = staffSession.id;
+    let setCookieHeader: string | null = null;
+    if (assuranceLevel >= 2) {
+      const rot = await rotateSession(admin, staffSession.id, 'step_up');
+      if (rot.ok && rot.newSessionId && rot.newSessionToken && rot.expiresAt) {
+        boundSessionId = rot.newSessionId;
+        setCookieHeader = createSessionCookie(rot.newSessionToken, rot.expiresAt);
+        try {
+          await admin.from('security_events').insert({ action: 'session.rotated', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { reason: 'step_up', capability, old_session_id: staffSession.id, new_session_id: rot.newSessionId } });
+        } catch { /* ignore */ }
+      } else {
+        console.warn('[security-step-up] session rotation failed:', rot.error);
+      }
+    }
+
     const token = generateStepUpToken(32);
     const tokenHash = await hashStepUpToken(auth.userId, capability, token);
     const expiresAt = new Date(Date.now() + STEP_UP_TTL_MS).toISOString();
@@ -459,7 +477,7 @@ Deno.serve(async (req) => {
       user_id: auth.userId,
       capability,
       token_hash: tokenHash,
-      bound_session_id: staffSession.id,
+      bound_session_id: boundSessionId,
       method,
       assurance_level: assuranceLevel,
       ip_address: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
@@ -472,7 +490,9 @@ Deno.serve(async (req) => {
       await admin.from('security_events').insert({ action: 'step_up.granted', decision: 'allow', actor_type: 'human', actor_id: auth.userId, metadata_redacted: { capability, method } });
     } catch { /* ignore */ }
 
-    return j({ success: true, token, expires_at: expiresAt, capability });
+    const responseHeaders: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+    if (setCookieHeader) responseHeaders['Set-Cookie'] = setCookieHeader;
+    return new Response(JSON.stringify({ success: true, token, expires_at: expiresAt, capability }), { status: 200, headers: responseHeaders });
   } catch (e: any) {
     return new Response(JSON.stringify({ success: false, error: e?.message ?? 'error' }), {
       status: 500,
