@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
-import { extractSessionToken, verifyAuth, createCorsHeaders } from "../_shared/auth.ts"
+import { extractSessionToken, verifyAuth, verifySession, createCorsHeaders } from "../_shared/auth.ts"
 import { generateSupabaseJWT } from "../_shared/jwt.ts"
+import { hashSessionToken, isSessionHashConfigured, computeIdleExpiry } from "../_shared/sessionHash.ts"
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -63,9 +64,12 @@ Deno.serve(async (req) => {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
 
+      const newTokenHash = isSessionHashConfigured() ? await hashSessionToken(newSessionToken) : null;
       await supabase.from('user_sessions').insert({
         user_id: jwtUser.id,
         session_token: newSessionToken,
+        token_hash: newTokenHash,
+        idle_expires_at: computeIdleExpiry().toISOString(),
         expires_at: expiresAt.toISOString(),
       });
 
@@ -111,25 +115,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if session exists and is valid
-    const { data: session, error: sessionError } = await supabase
-      .from('user_sessions')
-      .select(`
-        *,
-        custom_users:user_id (
-          id,
-          username,
-          role,
-          is_active
-        )
-      `)
-      .eq('session_token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-
-    if (sessionError || !session || !session.custom_users?.is_active) {
-      // Session token was provided but is invalid/expired — try JWT fallback before giving up
-      const fallbackResult = await tryJwtFallback('Stale session token');
+    // WP-11A: verify through the hardened shared lifecycle — hash-first lookup,
+    // revocation check, and idle-expiry (not just absolute expiry). This closes
+    // the "verify checks only absolute expiry" gap and ensures a revoked or
+    // idle-expired session cannot be re-validated here.
+    const sessionResult = await verifySession(supabase, sessionToken);
+    if (sessionResult.error || !sessionResult.userId) {
+      // Session token was provided but is invalid/expired/revoked — try JWT
+      // fallback before giving up.
+      const fallbackResult = await tryJwtFallback('Stale/invalid session token');
       if (fallbackResult) {
         return new Response(JSON.stringify(fallbackResult), {
           status: 200,
@@ -142,22 +136,35 @@ Deno.serve(async (req) => {
       )
     }
 
+    const { data: customUser } = await supabase
+      .from('custom_users')
+      .select('id, username, role, is_active')
+      .eq('id', sessionResult.userId)
+      .maybeSingle()
+
+    if (!customUser || !customUser.is_active) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session', valid: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Fetch user roles from user_roles table
     const { data: userRoles } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', session.custom_users.id)
+      .eq('user_id', customUser.id)
 
     const roles = userRoles?.map(r => r.role) || []
 
     // Generate fresh Supabase-compatible JWT for RLS
     let accessToken: string | null = null;
     try {
-      accessToken = await generateSupabaseJWT(session.custom_users.id, 86400, {
+      accessToken = await generateSupabaseJWT(customUser.id, 86400, {
         roles: roles,
         userMetadata: {
-          username: session.custom_users.username,
-          custom_role: session.custom_users.role,
+          username: customUser.username,
+          custom_role: customUser.role,
         },
       });
     } catch (jwtError) {
@@ -166,20 +173,20 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        valid: true, 
+      JSON.stringify({
+        valid: true,
         user: {
-          id: session.custom_users.id,
-          username: session.custom_users.username,
-          role: session.custom_users.role
+          id: customUser.id,
+          username: customUser.username,
+          role: customUser.role
         },
         roles,
         access_token: accessToken,  // Supabase-compatible JWT for direct queries
         session_token: sessionToken // Fallback token for secure function calls when JWT is unavailable
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
 

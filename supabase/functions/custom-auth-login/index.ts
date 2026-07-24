@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0'
 import { verifyPassword, isLegacyPassword, hashPassword } from "../_shared/password.ts"
 import { createCorsHeaders, createSessionCookie } from "../_shared/auth.ts"
 import { generateSupabaseJWT } from "../_shared/jwt.ts"
+import { hashSessionToken, isSessionHashConfigured, computeIdleExpiry } from "../_shared/sessionHash.ts"
 
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -142,12 +143,19 @@ Deno.serve(async (req) => {
     const expiresAt = new Date()
     expiresAt.setHours(expiresAt.getHours() + 24) // 24 hour session
 
-    // Create session
+    // Create session. WP-11A: store the peppered HMAC hash + idle-expiry
+    // alongside the token so a DB dump cannot be replayed as a live cookie and
+    // idle-timeout is enforced from issuance. (Plaintext column is still written
+    // during the dual-read migration window; it is dropped once every reader
+    // uses the hash path.)
+    const tokenHash = isSessionHashConfigured() ? await hashSessionToken(sessionToken) : null;
     const { error: sessionError } = await supabase
       .from('user_sessions')
       .insert({
         user_id: user.id,
         session_token: sessionToken,
+        token_hash: tokenHash,
+        idle_expires_at: computeIdleExpiry().toISOString(),
         expires_at: expiresAt.toISOString()
       })
 
