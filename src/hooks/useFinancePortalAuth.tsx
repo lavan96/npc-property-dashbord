@@ -172,11 +172,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
 
   const checkSession = async () => {
     try {
-      const sessionToken = getStoredValue(FINANCE_SESSION_KEY);
-      if (!sessionToken) {
-        setLoading(false);
-        return;
-      }
+      // WP-11B/C — cookie is authoritative; ask the server unconditionally.
       const { data, error } = await invokeFinanceFunction('finance-portal-verify');
       if (error || !data?.valid) {
         clearAuthState();
@@ -193,6 +189,7 @@ export function FinancePortalAuthProvider({ children }: { children: ReactNode })
       setLoading(false);
     }
   };
+
 
   const refreshUser = useCallback(async () => {
     const sessionToken = getStoredValue(FINANCE_SESSION_KEY);
