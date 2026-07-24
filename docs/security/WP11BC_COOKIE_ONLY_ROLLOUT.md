@@ -153,3 +153,32 @@ rg -n "fetch\\(.+functions/v1" src | rg -v "credentials:"
   with attributes `HttpOnly`, `Secure`, `SameSite=None`, `Path=/`, no
   `Domain`. If `Domain` is present or the prefix is stripped, the browser
   rejected the cookie — inspect the server response.
+
+## Phase 3 wire-up (2026-07-24)
+
+Session rotation on privilege elevation is now live in three high-blast-radius
+receivers:
+
+- **`security-step-up`** — on any successful challenge that reaches
+  `assurance_level >= 2` (password + TOTP, password + WebAuthn, or
+  password + recovery code), the pre-step-up staff session is rotated via
+  `rotateSession(..., 'step_up')`. The new `__Host-session_token` cookie is
+  emitted in the same response and the step-up proof is bound to the freshly
+  minted `bound_session_id`. Old row is soft-revoked with
+  `revocation_reason='rotated:step_up'`.
+- **`admin-user-management` → `update_own_credentials`** — after a successful
+  password change, the caller's session is rotated (`'password_change'`) and
+  the new cookie ships in the response. Username-only edits do not rotate.
+- **`admin-user-management` privilege changes** — `update_permissions`,
+  `assign_role`, `remove_role`, `set_aml_roles`, `promote_to_superadmin`,
+  `demote_from_superadmin` now invoke `revokeUserSessions(target_user_id, …)`
+  before returning success, forcing the target user to re-login and pick up
+  the new grants. `reset_user_password` continues to hard-delete sessions
+  (unchanged).
+- **`finance-portal-change-password`** — the local `extractSessionToken` was
+  hardened to prefer cookies (`finance_session` / `__Host-finance_session`),
+  and every non-cookie path now emits a `[wp11c.legacy_fallback]` warning so
+  we can measure residual usage before Phase 4 sunsetting.
+
+All three functions have been redeployed. The legacy `session_token` cookie
+fallback and body-token fallbacks remain in place until the Phase 4 soak.
