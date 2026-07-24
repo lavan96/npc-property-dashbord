@@ -19,7 +19,6 @@
  * the ceiling. Circuit-breaker migration remains a separate provider task.
  */
 
-const _breaker = new Map<string, { failures: number; openedAt: number }>();
 async function consumeQuota(supabase: any, key: string, opts: { limit: number; windowMs: number }): Promise<{ ok: boolean; retryAfterMs: number }> {
   const { data, error } = await supabase.rpc('security_consume_rate_limit', { p_key: key, p_max: opts.limit, p_window_seconds: Math.max(1, Math.ceil(opts.windowMs / 1000)) });
   if (error || !data?.[0]) return { ok: false, retryAfterMs: 1000 };
@@ -31,47 +30,17 @@ export async function enforceKeyQuota(supabase: any, key: string, scope: string,
 
 export async function enforceGlobalDailyQuota(supabase: any, scope: string, limit: number) { return consumeQuota(supabase, `public:global:${scope}:daily`, { limit, windowMs: 24 * 60 * 60 * 1000 }); }
 
-// ---------------------------------------------------------------- Circuit breaker
-export function enforceGlobalCircuitBreaker(scope: string, opts: { failureThreshold: number; openMs: number }): { ok: boolean; reason?: string } {
-  const now = Date.now();
-  const s = _breaker.get(scope);
-  if (!s) return { ok: true };
-  if (s.openedAt + opts.openMs < now) {
-    _breaker.delete(scope);
-    return { ok: true };
-  }
-  if (s.failures >= opts.failureThreshold) {
-    return { ok: false, reason: 'circuit_open' };
-  }
-  return { ok: true };
-}
-
-export function recordProviderFailure(scope: string, opts: { failureThreshold: number; openMs: number }): void {
-  const s = _breaker.get(scope) ?? { failures: 0, openedAt: Date.now() };
-  s.failures += 1;
-  if (s.failures >= opts.failureThreshold) s.openedAt = Date.now();
-  _breaker.set(scope, s);
-}
-
-export function recordProviderSuccess(scope: string): void {
-  _breaker.delete(scope);
-}
-
-// ---------------------------------------------------------------- Usage reserve/commit
-const _reservations = new Map<string, number>();
-export function reserveUsage(scope: string, dailyLimit: number, amount = 1): { ok: boolean; remaining: number } {
-  const key = `reserve:${scope}:${new Date().toISOString().slice(0, 10)}`;
-  const current = _reservations.get(key) ?? 0;
-  if (current + amount > dailyLimit) return { ok: false, remaining: Math.max(0, dailyLimit - current) };
-  _reservations.set(key, current + amount);
-  return { ok: true, remaining: dailyLimit - (current + amount) };
-}
-export function releaseUsage(scope: string, amount = 1): void {
-  const key = `reserve:${scope}:${new Date().toISOString().slice(0, 10)}`;
-  const current = _reservations.get(key) ?? 0;
-  _reservations.set(key, Math.max(0, current - amount));
-}
-export function commitUsage(_scope: string, _amount = 1): void { /* reservation is already deducted */ }
+// ---------------------------------------------------------------- Circuit breaker / reservations
+// SEC-MED: the former in-memory circuit-breaker (`_breaker`) and usage-reservation
+// (`_reservations`) helpers were process-local — under horizontal scaling each
+// isolate kept its own counters, so neither the breaker nor the daily reservation
+// held globally. They have been REMOVED (they had no remaining consumers). Every
+// paid-provider path now uses shared atomic storage:
+//   - Circuit breaker: provider_circuit_is_open / provider_circuit_record_failure
+//     / provider_circuit_record_success RPCs (see google-places-autocomplete).
+//   - Global daily / per-scope quotas: enforceGlobalDailyQuota / enforce*Quota
+//     above (security_consume_rate_limit RPC).
+// Do NOT reintroduce instance-local counters for cross-instance limits.
 
 // ---------------------------------------------------------------- Env / flags
 export function killSwitchActive(name: string): boolean {
