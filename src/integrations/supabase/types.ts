@@ -20080,7 +20080,7 @@ export type Database = {
           revocation_reason: string | null
           revoked_at: string | null
           rotated_from_session_id: string | null
-          session_token: string
+          session_token: string | null
           token_hash: string | null
           user_agent: string | null
           user_id: string
@@ -20096,7 +20096,7 @@ export type Database = {
           revocation_reason?: string | null
           revoked_at?: string | null
           rotated_from_session_id?: string | null
-          session_token: string
+          session_token?: string | null
           token_hash?: string | null
           user_agent?: string | null
           user_id: string
@@ -20112,7 +20112,7 @@ export type Database = {
           revocation_reason?: string | null
           revoked_at?: string | null
           rotated_from_session_id?: string | null
-          session_token?: string
+          session_token?: string | null
           token_hash?: string | null
           user_agent?: string | null
           user_id?: string
