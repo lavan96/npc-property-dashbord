@@ -60,42 +60,31 @@ const SESSION_TOKEN_KEY = 'session_token';
 const AUTH_VERSION = 4;
 const AUTH_VERSION_KEY = 'auth_version';
 
+// WP-11B/C — cookie-only staff sessions.
+//
+// Access-token JWT: kept in tab-scoped `sessionStorage` ONLY (no localStorage
+// mirror). It survives reloads within the same tab but not durable exfil.
+// Session token: no longer persisted — the browser holds it as the HttpOnly
+// `__Host-session_token` cookie, which every edge-function fetch attaches via
+// `credentials: 'include'`. An in-memory copy is kept for legacy header
+// fallbacks (`x-session-token`) so cookie-blocked environments still work.
+let inMemorySessionToken: string | null = null;
+
 const getStoredValue = (key: string): string | null => {
-  try {
-    return sessionStorage.getItem(key) || localStorage.getItem(key);
-  } catch {
-    try {
-      return localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  }
+  if (key === SESSION_TOKEN_KEY) return inMemorySessionToken;
+  try { return sessionStorage.getItem(key); } catch { return null; }
 };
 
 const persistStoredValue = (key: string, value: string) => {
-  try {
-    sessionStorage.setItem(key, value);
-  } catch {
-    // ignore
-  }
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // ignore
-  }
+  if (key === SESSION_TOKEN_KEY) { inMemorySessionToken = value; return; }
+  try { sessionStorage.setItem(key, value); } catch { /* ignore */ }
 };
 
 const clearStoredValue = (key: string) => {
-  try {
-    sessionStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
+  if (key === SESSION_TOKEN_KEY) { inMemorySessionToken = null; return; }
+  try { sessionStorage.removeItem(key); } catch { /* ignore */ }
+  // Best-effort scrub any legacy localStorage mirror from earlier builds.
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
 };
 
 /**
@@ -106,18 +95,18 @@ function enforceAuthVersion(): void {
   try {
     const stored = localStorage.getItem(AUTH_VERSION_KEY);
     const storedVersion = stored ? parseInt(stored, 10) : 0;
-    
+
     if (storedVersion !== AUTH_VERSION) {
       console.log(`[Auth] Version mismatch (stored=${storedVersion}, current=${AUTH_VERSION}). Clearing stale tokens.`);
-      // Clear all auth-related storage
       clearStoredValue(ACCESS_TOKEN_KEY);
       clearStoredValue(SESSION_TOKEN_KEY);
       try { sessionStorage.removeItem('current_user'); } catch { /* ignore */ }
-      
-      // Stamp the new version
+      // Wipe any legacy localStorage mirrors from pre-WP-11B builds.
+      try { localStorage.removeItem(ACCESS_TOKEN_KEY); } catch { /* ignore */ }
+      try { localStorage.removeItem(SESSION_TOKEN_KEY); } catch { /* ignore */ }
+
       localStorage.setItem(AUTH_VERSION_KEY, String(AUTH_VERSION));
-      
-      // Also clear any stale service worker caches to ensure fresh assets
+
       if ('caches' in window) {
         caches.keys().then(names => {
           names.forEach(name => caches.delete(name));
@@ -125,31 +114,28 @@ function enforceAuthVersion(): void {
       }
     }
   } catch (e) {
-    // Storage unavailable — continue without version check
     console.warn('[Auth] Version check failed:', e);
   }
 }
 
 /**
- * Invoke edge function with credentials for HttpOnly cookies
+ * Invoke edge function with `credentials: 'include'` so the browser sends the
+ * HttpOnly `__Host-session_token` cookie. Legacy header/body fallbacks are
+ * preserved only for the in-memory session token during rollout.
  */
 async function invokeEdgeFunction(
-  functionName: string, 
+  functionName: string,
   body?: Record<string, any>
 ): Promise<{ data: any; error: any }> {
   try {
-    // Get session token from storage for authentication fallback
     const sessionToken = getStoredValue(SESSION_TOKEN_KEY);
-    
-    // Prefer stored access token (real user JWT) over anon key
     const accessToken = getStoredValue(ACCESS_TOKEN_KEY);
     const bearerToken = accessToken || SUPABASE_ANON_KEY;
-    
-    // Include session token in body as fallback if cookies fail
-    const requestBody = body 
-      ? { ...body, session_token: sessionToken }
-      : { session_token: sessionToken };
-    
+
+    const requestBody = body
+      ? { ...body, ...(sessionToken ? { session_token: sessionToken } : {}) }
+      : (sessionToken ? { session_token: sessionToken } : {});
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
       method: 'POST',
       headers: {
@@ -158,16 +144,16 @@ async function invokeEdgeFunction(
         'Authorization': `Bearer ${bearerToken}`,
         ...(sessionToken ? { 'x-session-token': sessionToken } : {}),
       },
-      credentials: 'omit',
+      credentials: 'include',
       body: JSON.stringify(requestBody),
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       return { data, error: { message: data.error || `HTTP ${response.status}`, status: response.status } };
     }
-    
+
     return { data, error: null };
   } catch (error: any) {
     return { data: null, error: { message: error.message || 'Network error' } };
