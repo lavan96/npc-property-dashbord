@@ -55,13 +55,16 @@ export function useAuthenticatedSupabase() {
 
 /**
  * Get an authenticated Supabase client outside of React components.
- * Uses the stored access token from sessionStorage.
- * 
+ * WP-11B/C — reads the short-lived access-token JWT from tab-scoped
+ * `sessionStorage` only; the legacy `localStorage` fallback has been removed
+ * so the token no longer survives tab close or leak into durable storage.
+ *
  * Note: Prefer useAuthenticatedSupabase hook inside React components.
  */
 export function getAuthenticatedSupabaseClient(): SupabaseClient<Database> {
-  const accessToken = sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token');
-  
+  let accessToken: string | null = null;
+  try { accessToken = sessionStorage.getItem('supabase_access_token'); } catch { /* ignore */ }
+
   if (accessToken) {
     return createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: {
