@@ -45,18 +45,33 @@ const FINANCE_AUTHED_AT_KEY = 'finance_portal_authed_at';
 // fully recognised downstream.
 const AUTH_GRACE_MS = 15_000;
 
+// WP-11B/C — finance portal session token lives only in the HttpOnly
+// `__Host-finance_session_token` cookie once the login response sets it.
+// We keep an in-memory copy for legacy header/body fallbacks during rollout;
+// no localStorage/sessionStorage mirror is persisted.
+let inMemoryFinanceSessionToken: string | null = null;
+let inMemoryFinanceAuthedAt = 0;
+
 const getStoredValue = (key: string): string | null => {
-  try { return sessionStorage.getItem(key) || localStorage.getItem(key); }
-  catch { try { return localStorage.getItem(key); } catch { return null; } }
+  if (key === FINANCE_SESSION_KEY) return inMemoryFinanceSessionToken;
+  if (key === FINANCE_AUTHED_AT_KEY) return inMemoryFinanceAuthedAt ? String(inMemoryFinanceAuthedAt) : null;
+  try { return sessionStorage.getItem(key); } catch { return null; }
 };
 const persistStoredValue = (key: string, value: string) => {
+  if (key === FINANCE_SESSION_KEY) { inMemoryFinanceSessionToken = value; return; }
+  if (key === FINANCE_AUTHED_AT_KEY) { inMemoryFinanceAuthedAt = Number(value) || Date.now(); return; }
   try { sessionStorage.setItem(key, value); } catch {}
-  try { localStorage.setItem(key, value); } catch {}
 };
 const clearStoredValue = (key: string) => {
+  if (key === FINANCE_SESSION_KEY) { inMemoryFinanceSessionToken = null; return; }
+  if (key === FINANCE_AUTHED_AT_KEY) { inMemoryFinanceAuthedAt = 0; return; }
   try { sessionStorage.removeItem(key); } catch {}
   try { localStorage.removeItem(key); } catch {}
 };
+// Best-effort scrub of legacy persistent mirrors from pre-WP-11B builds.
+try { localStorage.removeItem(FINANCE_SESSION_KEY); sessionStorage.removeItem(FINANCE_SESSION_KEY); } catch {}
+try { localStorage.removeItem(FINANCE_AUTHED_AT_KEY); sessionStorage.removeItem(FINANCE_AUTHED_AT_KEY); } catch {}
+
 const markAuthed = () => persistStoredValue(FINANCE_AUTHED_AT_KEY, String(Date.now()));
 const recentlyAuthed = (): boolean => {
   const ts = Number(getStoredValue(FINANCE_AUTHED_AT_KEY) || 0);
@@ -71,8 +86,7 @@ async function invokeFinanceFunction(
     const sessionToken = getStoredValue(FINANCE_SESSION_KEY);
     const requestBody = {
       ...(body || {}),
-      finance_session_token: sessionToken,
-      session_token: sessionToken,
+      ...(sessionToken ? { finance_session_token: sessionToken, session_token: sessionToken } : {}),
     };
 
     const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
@@ -83,7 +97,7 @@ async function invokeFinanceFunction(
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         ...(sessionToken ? { 'x-finance-session-token': sessionToken } : {}),
       },
-      credentials: 'omit',
+      credentials: 'include',
       body: JSON.stringify(requestBody),
     });
 
@@ -93,9 +107,6 @@ async function invokeFinanceFunction(
         ? data.error.message
         : data?.error || data?.message || data?.details || `HTTP ${response.status}`;
       const msgStr = String(errorMessage);
-      // Auto-clear stale finance portal session on 401 from any function except
-      // login/verify itself, so the user is redirected to the login screen
-      // rather than seeing a cryptic "Invalid session" inside a tab.
       const isAuthLikeFn = functionName === 'finance-portal-login'
         || functionName === 'finance-portal-verify'
         || functionName === 'finance-portal-forgot-password'
@@ -107,10 +118,6 @@ async function invokeFinanceFunction(
         !recentlyAuthed() &&
         /invalid session|session expired|invalid or expired session/i.test(msgStr)
       ) {
-        // Re-verify before tearing down the session. A single 401 from a
-        // background widget is not enough evidence that the session is gone —
-        // it can be a race, a transient backend issue, or a function-specific
-        // bug. Only clear + redirect when finance-portal-verify confirms.
         try {
           const verifyResp = await fetch(`${SUPABASE_URL}/functions/v1/finance-portal-verify`, {
             method: 'POST',
@@ -120,13 +127,11 @@ async function invokeFinanceFunction(
               'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
               'x-finance-session-token': sessionToken,
             },
-            credentials: 'omit',
+            credentials: 'include',
             body: JSON.stringify({ finance_session_token: sessionToken, session_token: sessionToken }),
           });
           const verifyData = await verifyResp.json().catch(() => ({}));
           if (verifyResp.ok && verifyData?.valid) {
-            // Session is fine — keep it and mark recently authed to suppress
-            // further redirects from the same race.
             markAuthed();
           } else {
             try { clearStoredValue(FINANCE_SESSION_KEY); } catch {}
@@ -149,6 +154,7 @@ async function invokeFinanceFunction(
     return { data: null, error: { message: error.message || 'Network error' } };
   }
 }
+
 
 export function FinancePortalAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FinancePortalUser | null>(null);
