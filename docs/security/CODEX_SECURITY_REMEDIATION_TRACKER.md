@@ -192,7 +192,7 @@
     {
       "finding_id": "WP-12-INTERNAL-CALL-SIGNED-MIGRATION-PHASE-B",
       "severity": "high",
-      "file_or_function": "supabase/functions/_shared/internalCall.ts; supabase/functions/_shared/auth_v2.ts (signInternalRequest, verifyInternal); supabase/functions/_shared/requestSecurity.ts (verifySignedInternal); scripts/security/check-internal-legacy-fallback.mjs; agent-task-runner; build-conversations-export-worker; ghl-marketing-dump-worker; enrich-lead-attributions; email-sync-cron; auto-report-webhook; migration-dispatcher; ai-dashboard-agent; report-qa; security-step-up; verify-internal; invoke-secure-function",
+      "file_or_function": "supabase/functions/_shared/internalCall.ts; supabase/functions/_shared/auth_v2.ts (signInternalRequest, verifyInternal); supabase/functions/_shared/requestSecurity.ts (verifySignedInternal); scripts/security/check-internal-legacy-fallback.mjs; agent-task-runner; build-conversations-export-worker; ghl-marketing-dump-worker; enrich-lead-attributions; email-sync-cron; auto-report-webhook; migration-dispatcher; ai-dashboard-agent; report-qa; security-step-up; verify-internal; invoke-secure-function; ghl-migrate-bookings-worker; ghl-migrate-calendar-groups-worker; ghl-migrate-calendars-worker; ghl-migrate-contacts-worker; ghl-migrate-conversations-replay-worker; ghl-migrate-conversations-reset-phantoms; ghl-migrate-conversations-worker; ghl-migrate-notes-worker; ghl-migrate-opportunities-worker; ghl-migrate-workflow-enrollments-worker; ghl-migrate-workflow-reenroll-worker; ghl-migrate-workflows-snapshot-worker",
       "owner": "security-remediation-program",
       "pr_or_commit": null,
       "source_fixed": true,
