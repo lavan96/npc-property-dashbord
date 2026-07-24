@@ -908,6 +908,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      await revokeUserSessions(user_id, `privilege_change:role_removed:${role}`);
       console.log(`Role ${role} removed from user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Role removed' }),
