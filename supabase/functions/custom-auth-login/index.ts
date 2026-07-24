@@ -153,8 +153,12 @@ Deno.serve(async (req) => {
       .from('user_sessions')
       .insert({
         user_id: user.id,
-        session_token: sessionToken,
         token_hash: tokenHash,
+        // WP-11A: store ONLY the peppered hash when it is available so no
+        // replayable plaintext token is at rest. The plaintext column is written
+        // solely as a fallback when the pepper is unconfigured (readers do a
+        // hash-first, plaintext-fallback lookup, so both states resolve).
+        ...(tokenHash ? {} : { session_token: sessionToken }),
         idle_expires_at: computeIdleExpiry().toISOString(),
         expires_at: expiresAt.toISOString()
       })

@@ -78,7 +78,6 @@ export async function rotateSession(
 
     const insertRow: Record<string, unknown> = {
       user_id: old.user_id,
-      session_token: newToken,
       expires_at: cappedExpiresAt.toISOString(),
       idle_expires_at: idleExpiresAt.toISOString(),
       ip_address: old.ip_address,
@@ -86,8 +85,12 @@ export async function rotateSession(
       rotated_from: oldSessionId,
       rotation_reason: reason,
     };
+    // WP-11A: store only the peppered hash when available; write plaintext solely
+    // as a fallback when the pepper is unconfigured (hash-first readers resolve both).
     if (isSessionHashConfigured()) {
       insertRow.token_hash = await hashSessionToken(newToken);
+    } else {
+      insertRow.session_token = newToken;
     }
 
     const { data: inserted, error: insErr } = await supabase

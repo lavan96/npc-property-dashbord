@@ -63,6 +63,38 @@ export function isSessionHashConfigured(): boolean {
 }
 
 /**
+ * Resolve a `user_sessions` row from a raw token using the hash column first and
+ * the legacy plaintext `session_token` column only as a transitional fallback.
+ * This is the single lookup path every reader should use so that hash-only
+ * sessions (no plaintext at rest) are found everywhere. Returns the row or null.
+ *
+ * @param select  columns to select (must include what the caller needs; keep
+ *                `id` so callers can act by primary key).
+ * @param applyFilters  optional callback to add extra `.eq()/.gt()` filters to
+ *                each candidate query (e.g. expiry / portal_scope).
+ */
+export async function resolveUserSessionRow(
+  supabase: any,
+  token: string | null | undefined,
+  select = 'id, user_id, expires_at, token_hash, revoked_at, idle_expires_at',
+  applyFilters?: (q: any) => any,
+): Promise<any | null> {
+  if (!token) return null;
+  const withFilters = (q: any) => (applyFilters ? applyFilters(q) : q);
+  const hash = isSessionHashConfigured() ? await hashSessionToken(token) : null;
+  if (hash) {
+    const { data } = await withFilters(
+      supabase.from('user_sessions').select(select).eq('token_hash', hash),
+    ).maybeSingle();
+    if (data) return data;
+  }
+  const { data } = await withFilters(
+    supabase.from('user_sessions').select(select).eq('session_token', token),
+  ).maybeSingle();
+  return data ?? null;
+}
+
+/**
  * Compute idle-expiry for a session. Defaults to 30 minutes but callers may
  * override for long-running finance/admin sessions.
  */
