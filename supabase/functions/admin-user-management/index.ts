@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
 import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createSessionCookie } from "../_shared/auth.ts";
 import { resolveUserSessionRow } from "../_shared/sessionHash.ts";
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { rotateSession } from "../_shared/sessionRotate.ts";
 import { requireStepUp } from "../_shared/stepUp.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
@@ -93,6 +94,11 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for header-only (no-cookie) callers.
+  const csrf = enforceCsrf(req);
+  if (!csrf.ok) return csrfDenied(corsHeaders, csrf);
 
   try {
     const supabase = createClient(
