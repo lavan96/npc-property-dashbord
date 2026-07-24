@@ -30,7 +30,7 @@ legacy dual-read window still open on the receivers).
    - Flipped from `credentials: 'omit'` to `credentials: 'include'` so
      every staff edge-function call participates in the cookie session.
 
-
+## What shipped in earlier passes (Phase 1 / backend)
 
 1. `supabase/functions/_shared/auth.ts`
    - `extractSessionToken()` now prefers `__Host-session_token` and falls back
@@ -45,6 +45,7 @@ legacy dual-read window still open on the receivers).
 2. `scripts/security/wp15-negative-tests.mjs` — runnable NT-05/06/07/09/09b/11
    harness against the deployed environment. Writes JSONL evidence under
    `docs/security/wp15-evidence/<date>/negative-tests.jsonl`.
+
 
 ## Remaining WP-11B/C work (frontend + login issuers)
 
