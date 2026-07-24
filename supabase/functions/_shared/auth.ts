@@ -100,15 +100,21 @@ export async function verifySession(
       return { error: 'Session revoked or expired', userId: null, username: null };
     }
 
-    // WP-11A: lazily backfill token_hash + last_used_at + idle_expires_at.
+    // WP-11A: lazily backfill token_hash + last_used_at, and SLIDE the
+    // idle-expiry forward on every successful verify. Previously idle_expires_at
+    // was only set when null, which effectively pinned the idle deadline to
+    // 30 minutes after login and killed active sessions.
     try {
-      const patch: Record<string, unknown> = { last_used_at: new Date().toISOString() };
+      const patch: Record<string, unknown> = {
+        last_used_at: new Date().toISOString(),
+        idle_expires_at: computeIdleExpiry().toISOString(),
+      };
       if (hash && (matchedByPlaintext || !session.token_hash)) patch.token_hash = hash;
-      if (!session.idle_expires_at) patch.idle_expires_at = computeIdleExpiry().toISOString();
       await supabase.from('user_sessions').update(patch).eq('id', session.id);
     } catch (bfErr) {
       console.log('[verifySession] Backfill non-fatal error:', (bfErr as Error).message);
     }
+
 
     // Optionally fetch username for logging
     const { data: user } = await supabase
