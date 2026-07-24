@@ -398,60 +398,53 @@ export function extractSessionToken(
     console.log('[extractSessionToken] No cookie header found');
   }
 
+  // WP-11B/C Phase 3: every non-cookie source is a *legacy fallback* that must
+  // be driven to zero before Phase 4 removes it. Tag the log line so ops can
+  // aggregate `[wp11c.legacy_fallback]` counts per source and per function.
+
   // Check explicit Command Centre session header before generic portal headers.
   // This prevents staff dashboard calls from being misclassified by portal-specific
   // endpoints that also accept their own session-token headers.
   const commandCentreSessionHeader = headers.get('x-command-centre-session-token');
   if (isValidToken(commandCentreSessionHeader)) {
-    console.log('[extractSessionToken] Found session_token in x-command-centre-session-token header');
+    console.warn('[wp11c.legacy_fallback] source=x-command-centre-session-token');
     return commandCentreSessionHeader;
-  } else {
-    console.log('[extractSessionToken] No valid x-command-centre-session-token header found');
   }
 
   // Check custom session header (reliable fallback for cross-origin)
   const sessionHeader = headers.get('x-session-token');
   if (isValidToken(sessionHeader)) {
-    console.log('[extractSessionToken] Found session_token in x-session-token header');
+    console.warn('[wp11c.legacy_fallback] source=x-session-token');
     return sessionHeader;
-  } else {
-    console.log('[extractSessionToken] No valid x-session-token header found');
   }
 
   // Check explicit Command Centre body parameter before legacy generic body support.
   if (isValidToken(body?.command_centre_session_token)) {
-    console.log('[extractSessionToken] Found session_token in command_centre_session_token body field');
+    console.warn('[wp11c.legacy_fallback] source=body.command_centre_session_token');
     return body!.command_centre_session_token!;
-  } else {
-    console.log('[extractSessionToken] No valid command_centre_session_token in body');
   }
 
   // Check body parameter (legacy support)
   if (isValidToken(body?.session_token)) {
-    console.log('[extractSessionToken] Found session_token in body');
+    console.warn('[wp11c.legacy_fallback] source=body.session_token');
     return body!.session_token!;
-  } else {
-    console.log('[extractSessionToken] No valid session_token in body');
   }
 
-  // Check Authorization header LAST (only if it doesn't look like a JWT)
-  // JWTs have 3 parts separated by dots (header.payload.signature)
-  // Session tokens are typically UUIDs or random strings without dots
+  // Check Authorization header LAST (only if it doesn't look like a JWT).
+  // JWTs have 3 parts separated by dots; session tokens are opaque.
   const authHeader = headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    // If it doesn't look like a JWT (no dots), treat it as a session token
-    if (!token.includes('.')) {
-      console.log('[extractSessionToken] Found non-JWT token in Authorization header, treating as session token');
+    if (token && !token.includes('.')) {
+      console.warn('[wp11c.legacy_fallback] source=authorization_bearer');
       return token;
-    } else {
-      console.log('[extractSessionToken] Authorization header contains JWT, not treating as session token');
     }
   }
 
   console.log('[extractSessionToken] No session token found in any location');
   return null;
 }
+
 
 /**
  * Create CORS headers with credentials support for cookies
