@@ -383,6 +383,27 @@ const RESOURCE_ARG_KEYS = new Set<string>([
   ...Object.keys(CUSTOM_OWNERSHIP_RESOLVERS),
 ]);
 
+/**
+ * Snake_case `*_id` argument keys that are NOT ownership-scoped resources and so
+ * are exempt from the fail-closed unknown-id guard below (message/tool-call refs,
+ * child ids resolved via their parent, external provider ids, and the caller's
+ * own identity). Any NEW `*_id` argument a tool accepts must either be given an
+ * ownership resolver (RESOURCE_ARG_KEYS) or be listed here — otherwise the guard
+ * rejects it. Deny-by-default for identifiers.
+ */
+const NON_OWNERSHIP_ID_ARGS = new Set<string>([
+  'tool_call_id', 'message_id', 'source_message_id', 'branch_from_message_id',
+  'parent_message_id', 'library_image_id', 'source_report_id', 'source_conversation_id',
+  'template_id', 'target_user_id', 'user_id', 'thread_id', 'place_id', 'external_id',
+  'contact_id', 'ghl_contact_id', 'ghl_conversation_id', 'mailbox_id', 'subscription_id',
+  'envelope_id', 'session_id', 'task_id', 'run_id', 'job_id', 'request_id', 'correlation_id',
+]);
+
+/** True for a snake_case argument key that names a single resource identifier. */
+function looksLikeResourceId(key: string): boolean {
+  return /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_id$/.test(key);
+}
+
 // Tools that MUST have a caller-supplied step-up signal. Derived by prefix so
 // the 217-row policy table doesn't have to be re-audited; explicit policy
 // requiresStepUp:true still wins.
@@ -526,6 +547,17 @@ export async function authorizeAgentTool(sb: any, name: string, args: Record<str
     return;
   }
   if (superadmin) { await auditToolDecision(sb, userId, name, 'allow', resourceIds); return; }
+  // Fail closed on identifiers we cannot ownership-resolve. Any snake_case
+  // `*_id` argument must be either an ownership resource (RESOURCE_ARG_KEYS) or
+  // an explicitly-listed non-ownership id (NON_OWNERSHIP_ID_ARGS). An unknown
+  // `*_id` means a tool can accept a resource reference that escapes the
+  // ownership loop below — reject rather than trust it.
+  for (const key of Object.keys(args || {})) {
+    if (!looksLikeResourceId(key)) continue;
+    if (RESOURCE_ARG_KEYS.has(key) || NON_OWNERSHIP_ID_ARGS.has(key)) continue;
+    await auditToolDecision(sb, userId, name, 'deny', resourceIds, 'unresolvable_resource_id');
+    throw new AgentToolAuthzError('resource_denied', `Tool '${name}' received an unrecognized resource id '${key}'`);
+  }
   // Use policy.resolveResource if provided, otherwise scan args for known keys.
   const explicit = policy.resolveResource?.(args);
   if (explicit) {
