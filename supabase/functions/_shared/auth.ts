@@ -377,13 +377,21 @@ export function extractSessionToken(
   // Helper: reject falsy, "null", "undefined", empty strings
   const isValidToken = (t: any): t is string => 
     typeof t === 'string' && t.length > 0 && t !== 'null' && t !== 'undefined';
-  // Check Cookie header first (HttpOnly cookie - primary method)
+  // Check Cookie header first (HttpOnly cookie - primary method).
+  // WP-11B: prefer `__Host-session_token` (RFC 6265 host-prefix, Secure, Path=/,
+  // no Domain attribute) over the legacy `session_token` cookie. Both are
+  // parsed during the dual-read migration window; the __Host- form is emitted
+  // by createSessionCookie() so new logins land on the hardened cookie.
   const cookieHeader = headers.get('cookie');
   if (cookieHeader) {
     const cookies = parseCookies(cookieHeader);
     console.log('[extractSessionToken] Cookie header found, parsed cookies:', Object.keys(cookies));
+    if (isValidToken(cookies['__Host-session_token'])) {
+      console.log('[extractSessionToken] Found session_token in __Host- cookie');
+      return cookies['__Host-session_token'];
+    }
     if (isValidToken(cookies['session_token'])) {
-      console.log('[extractSessionToken] Found session_token in cookie');
+      console.log('[extractSessionToken] Found session_token in legacy cookie');
       return cookies['session_token'];
     }
   } else {
