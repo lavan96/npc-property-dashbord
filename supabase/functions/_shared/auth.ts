@@ -372,77 +372,21 @@ export function parseCookies(cookieHeader: string | null): Record<string, string
  */
 export function extractSessionToken(
   headers: Headers,
-  body?: { session_token?: string | null; command_centre_session_token?: string | null }
+  // Body is accepted for signature compatibility but ignored — WP-11B/C Phase 4
+  // sunsets every non-cookie carrier.
+  _body?: { session_token?: string | null; command_centre_session_token?: string | null }
 ): string | null {
-  // Helper: reject falsy, "null", "undefined", empty strings
-  const isValidToken = (t: any): t is string => 
+  const isValidToken = (t: any): t is string =>
     typeof t === 'string' && t.length > 0 && t !== 'null' && t !== 'undefined';
-  // Check Cookie header first (HttpOnly cookie - primary method).
-  // WP-11B: prefer `__Host-session_token` (RFC 6265 host-prefix, Secure, Path=/,
-  // no Domain attribute) over the legacy `session_token` cookie. Both are
-  // parsed during the dual-read migration window; the __Host- form is emitted
-  // by createSessionCookie() so new logins land on the hardened cookie.
+
+  // WP-11B/C Phase 4: the `__Host-session_token` HttpOnly cookie is the SOLE
+  // carrier for staff sessions. The legacy `session_token` cookie name and
+  // every header/body/authorization fallback that was tagged as
+  // `[wp11c.legacy_fallback]` during the Phase 3 soak has been removed.
   const cookieHeader = headers.get('cookie');
-  if (cookieHeader) {
-    const cookies = parseCookies(cookieHeader);
-    console.log('[extractSessionToken] Cookie header found, parsed cookies:', Object.keys(cookies));
-    if (isValidToken(cookies['__Host-session_token'])) {
-      console.log('[extractSessionToken] Found session_token in __Host- cookie');
-      return cookies['__Host-session_token'];
-    }
-    if (isValidToken(cookies['session_token'])) {
-      console.log('[extractSessionToken] Found session_token in legacy cookie');
-      return cookies['session_token'];
-    }
-  } else {
-    console.log('[extractSessionToken] No cookie header found');
-  }
-
-  // WP-11B/C Phase 3: every non-cookie source is a *legacy fallback* that must
-  // be driven to zero before Phase 4 removes it. Tag the log line so ops can
-  // aggregate `[wp11c.legacy_fallback]` counts per source and per function.
-
-  // Check explicit Command Centre session header before generic portal headers.
-  // This prevents staff dashboard calls from being misclassified by portal-specific
-  // endpoints that also accept their own session-token headers.
-  const commandCentreSessionHeader = headers.get('x-command-centre-session-token');
-  if (isValidToken(commandCentreSessionHeader)) {
-    console.warn('[wp11c.legacy_fallback] source=x-command-centre-session-token');
-    return commandCentreSessionHeader;
-  }
-
-  // Check custom session header (reliable fallback for cross-origin)
-  const sessionHeader = headers.get('x-session-token');
-  if (isValidToken(sessionHeader)) {
-    console.warn('[wp11c.legacy_fallback] source=x-session-token');
-    return sessionHeader;
-  }
-
-  // Check explicit Command Centre body parameter before legacy generic body support.
-  if (isValidToken(body?.command_centre_session_token)) {
-    console.warn('[wp11c.legacy_fallback] source=body.command_centre_session_token');
-    return body!.command_centre_session_token!;
-  }
-
-  // Check body parameter (legacy support)
-  if (isValidToken(body?.session_token)) {
-    console.warn('[wp11c.legacy_fallback] source=body.session_token');
-    return body!.session_token!;
-  }
-
-  // Check Authorization header LAST (only if it doesn't look like a JWT).
-  // JWTs have 3 parts separated by dots; session tokens are opaque.
-  const authHeader = headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    if (token && !token.includes('.')) {
-      console.warn('[wp11c.legacy_fallback] source=authorization_bearer');
-      return token;
-    }
-  }
-
-  console.log('[extractSessionToken] No session token found in any location');
-  return null;
+  if (!cookieHeader) return null;
+  const cookies = parseCookies(cookieHeader);
+  return isValidToken(cookies['__Host-session_token']) ? cookies['__Host-session_token'] : null;
 }
 
 
