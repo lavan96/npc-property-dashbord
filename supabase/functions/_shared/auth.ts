@@ -146,16 +146,16 @@ export async function verifyAuth(
   headers: Headers,
   body?: { session_token?: string; command_centre_session_token?: string }
 ): Promise<SessionValidationResult> {
-  // DIAGNOSTIC: Log all headers for debugging
+  // DIAGNOSTIC: presence-only. WP-11A/P1-LOG: never log previews of credential
+  // material (Authorization prefix, Cookie preview, token prefix) — those leak
+  // exploitable bytes of a session cookie/JWT into logs.
   const authHeader = headers.get('authorization');
   const cookieHeader = headers.get('cookie');
   const commandCentreSessionHeader = headers.get('x-command-centre-session-token');
   const sessionHeader = headers.get('x-session-token');
   console.log('[verifyAuth] Headers check:', {
     hasAuthHeader: !!authHeader,
-    authHeaderPrefix: authHeader?.substring(0, 20) + '...',
     hasCookieHeader: !!cookieHeader,
-    cookieHeaderPreview: cookieHeader ? cookieHeader.substring(0, 50) + '...' : null,
     hasCommandCentreSessionHeader: !!commandCentreSessionHeader,
     hasSessionHeader: !!sessionHeader,
     hasBody: !!body,
@@ -287,8 +287,8 @@ export async function verifyAuth(
   // This is the primary authentication method for the custom auth system
   console.log('[verifyAuth] Attempting session token extraction...');
   const sessionToken = extractSessionToken(headers, body);
-  console.log('[verifyAuth] Session token extracted:', sessionToken ? sessionToken.substring(0, 8) + '...' : 'null');
-  
+  console.log('[verifyAuth] Session token extracted:', sessionToken ? 'present' : 'null');
+
   if (!sessionToken) {
     console.log('[verifyAuth] No session token found - returning authentication required');
     return { error: 'Authentication required', userId: null, username: null };
@@ -394,14 +394,21 @@ export function extractSessionToken(
  * Create CORS headers with credentials support for cookies
  * Uses dynamic origin for security
  *
- * Allowed origins are sourced from the `ALLOWED_ORIGINS` environment variable
- * (comma-separated list of fully-qualified URLs). Lovable platform domains
- * (`*.lovable.app`, `*.lovableproject.com`) and `localhost` are always
- * allowed for preview/development.
+ * SECURITY (SEC5-CORS): this response carries `Access-Control-Allow-Credentials:
+ * true`, so the reflected origin must be an EXACT, fully-qualified match — never
+ * a shared hosting suffix. Suffix trust for `*.lovable.app` /
+ * `*.lovableproject.com` was removed: a hostile page on any such subdomain could
+ * otherwise read a credentialed response (staff-session exfiltration chain).
  *
- * SAFETY FALLBACK: If `ALLOWED_ORIGINS` is unset, we fall back to the
- * legacy production origin so existing deployments never break. Set
- * `ALLOWED_ORIGINS` once and remove the fallback in a future migration.
+ * Allowed origins come from `ALLOWED_ORIGINS` (comma-separated, fully-qualified
+ * URLs) plus localhost for development. Preview deployments must be listed by
+ * full URL in `ALLOWED_ORIGINS`. As a deliberate, auditable escape hatch,
+ * setting `CORS_ALLOW_LOVABLE_PREVIEW=true` re-enables the Lovable suffix match
+ * for non-production preview environments — it is OFF by default so production
+ * is exact-origin without any configuration.
+ *
+ * SAFETY FALLBACK: If `ALLOWED_ORIGINS` is unset, we fall back to the legacy
+ * production origin so existing deployments never break. Set `ALLOWED_ORIGINS`.
  */
 
 const LEGACY_FALLBACK_ORIGINS = [
@@ -423,6 +430,21 @@ function parseAllowedOrigins(): string[] {
   return LEGACY_FALLBACK_ORIGINS;
 }
 
+/**
+ * Opt-in, non-production escape hatch for Lovable preview iframes. OFF unless
+ * `CORS_ALLOW_LOVABLE_PREVIEW=true` is explicitly set. Production leaves this
+ * unset, so suffix origins are NOT trusted for credentialed responses.
+ */
+function lovablePreviewSuffixAllowed(origin: string): boolean {
+  if ((Deno.env.get('CORS_ALLOW_LOVABLE_PREVIEW') || '').trim().toLowerCase() !== 'true') return false;
+  try {
+    const host = new URL(origin).hostname;
+    return host.endsWith('.lovable.app') || host.endsWith('.lovableproject.com');
+  } catch {
+    return false;
+  }
+}
+
 export function createCorsHeaders(origin: string | null = null): Record<string, string> {
   const allowedOrigins = [
     ...parseAllowedOrigins(),
@@ -430,12 +452,13 @@ export function createCorsHeaders(origin: string | null = null): Record<string, 
     'http://localhost:8080',
   ];
 
-  // Lovable preview iframes run on *.lovable.app and *.lovableproject.com.
-  // These are platform infrastructure and are always allowed.
+  // Exact-origin allowlist only. Suffix matching is gated behind an explicit,
+  // default-off preview flag (see lovablePreviewSuffixAllowed). A disallowed
+  // origin gets a mismatched ACAO (allowedOrigins[0]) that the browser refuses
+  // to expose to the caller.
   const allowedOrigin = origin && (
     allowedOrigins.includes(origin) ||
-    origin.endsWith('.lovable.app') ||
-    origin.endsWith('.lovableproject.com')
+    lovablePreviewSuffixAllowed(origin)
   ) ? origin : allowedOrigins[0];
 
   return {
