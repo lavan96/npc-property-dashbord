@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createCorsHeaders, verifyAuth, createUnauthorizedResponse } from "../_shared/auth.ts";
+import { verifyInternal } from "../_shared/auth_v2.ts";
 import { authorizeAgentTool, AgentToolAuthzError, type AgentToolAuthzContext } from "../_shared/agentToolAuthz.ts";
 import { requireModulePermission } from "../_shared/authz.ts";
 import { logApiUsage, estimateCost, extractOpenAIUsage } from "../_shared/logApiUsage.ts";
@@ -8473,7 +8474,48 @@ Deno.serve(async (req) => {
 
   try {
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const body = await req.json().catch(() => ({}));
+    // Capture the exact raw body once: the internal HMAC signature binds the
+    // body hash, so verifyInternal needs the byte-identical request body.
+    const rawBody = await req.text().catch(() => '');
+    let body: any = {};
+    try { body = rawBody ? JSON.parse(rawBody) : {}; } catch { body = {}; }
+
+    // ── Internal service action: execute-tool ────────────────────────────────
+    // SECURITY (Critical/P0.2): execute-tool is an inter-function call from
+    // agent-task-runner, NOT a human request. It is authenticated ONLY by a
+    // valid HMAC-signed envelope (verifyInternal) with a receiver-side caller
+    // allowlist — never the legacy static-secret/service-role trust and never a
+    // body-supplied caller identity. The impersonated user is validated against
+    // the scheduled-task's authoritative owner.
+    if (body.action === 'execute-tool') {
+      const internalAuth = await verifyInternal(sb, req, rawBody, { allowedCallers: ['agent-task-runner'] });
+      if (!internalAuth.ok) {
+        return new Response(JSON.stringify({ error: 'Forbidden: valid internal signature required', code: internalAuth.errorCode }), {
+          status: 403, headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+      // Caller identity is the VERIFIED HMAC caller, never body.internal_caller.
+      const internalCaller = internalAuth.actorId || 'agent-task-runner';
+      const targetUserId = typeof body.user_id === 'string' ? body.user_id : null;
+      if (!targetUserId) {
+        return new Response(JSON.stringify({ error: 'user_id required' }), { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } });
+      }
+      // Defense-in-depth: when a task id is supplied, confirm the target user is
+      // that scheduled task's authoritative owner (not merely a signed claim).
+      if (typeof body.task_id === 'string' && body.task_id) {
+        const { data: taskRow } = await sb.from('agent_scheduled_tasks').select('id, user_id').eq('id', body.task_id).maybeSingle();
+        if (!taskRow || taskRow.user_id !== targetUserId) {
+          return new Response(JSON.stringify({ error: 'Forbidden: target user is not the task owner' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
+        }
+      }
+      const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId, {
+        actorType: 'internal',
+        stepUpVerified: true,
+        internalCaller,
+      });
+      return new Response(JSON.stringify({ success: true, result: toolResult }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
     const { error: authErr, userId, username } = await verifyAuth(sb, req.headers, body);
     if (authErr) return createUnauthorizedResponse(authErr, cors);
 
@@ -8577,29 +8619,10 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: true }), { headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       case 'execute-tool': {
-        // Service-to-service call from agent-task-runner for scheduled task execution.
-        // SECURITY (Critical 5): trust is derived ONLY from the verified auth
-        // method (exact service-role-key match or a cryptographically verified
-        // service_role JWT). The previous `|| body.source === 'scheduled_task'`
-        // let any authenticated human claim service identity and then execute a
-        // tool AS ANOTHER USER via body.user_id. A request-body field is never a
-        // trust signal; caller-provided user_id is honoured only for verified
-        // service callers.
-        const { authMethod } = await verifyAuth(sb, req.headers, body);
-        const isService = authMethod === 'service_role';
-        if (!isService) {
-          return new Response(JSON.stringify({ error: 'Forbidden: service calls only' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
-        }
-        const targetUserId = body.user_id || userId!;
-        // WP-05B: verified service-role callers (agent-task-runner et al.)
-        // act as 'internal'. Ownership check is bypassed but actor-type,
-        // step-up, and any WP-05C internal-caller allowlist still apply.
-        const toolResult = await executeTool(sb, body.tool_name, body.tool_args || {}, targetUserId, {
-          actorType: 'internal',
-          stepUpVerified: true,
-          internalCaller: body.internal_caller || 'service_role',
-        });
-        return new Response(JSON.stringify({ success: true, result: toolResult }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+        // Unreachable: execute-tool is handled at the top of the request via
+        // verifyInternal (HMAC) before the human auth gate. Kept as a defensive
+        // guard so a future refactor can't silently fall through to a weaker path.
+        return new Response(JSON.stringify({ error: 'Forbidden: internal signature required' }), { status: 403, headers: { ...cors, 'Content-Type': 'application/json' } });
       }
       // ============= Phase 5: Memory analytics, insights feed, skills, evals =============
       case 'memory-analytics': {
