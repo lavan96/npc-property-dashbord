@@ -273,21 +273,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Helper to verify any authenticated user (not just superadmin)
+    // Helper to verify any authenticated user (not just superadmin).
+    // Returns the active session id so callers can rotate it on privilege
+    // elevation (WP-11B/C Phase 3).
     const verifySession = async (sessionToken: string) => {
       if (!sessionToken) {
-        return { error: 'Session token required', user: null };
+        return { error: 'Session token required', user: null, sessionId: null };
       }
 
       const { data: session, error: sessionError } = await supabase
         .from('user_sessions')
-        .select('user_id, expires_at')
+        .select('id, user_id, expires_at, revoked_at')
         .eq('session_token', sessionToken)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .is('revoked_at', null)
+        .maybeSingle();
 
       if (sessionError || !session) {
-        return { error: 'Invalid or expired session', user: null };
+        return { error: 'Invalid or expired session', user: null, sessionId: null };
       }
 
       const { data: user } = await supabase
@@ -296,7 +299,21 @@ Deno.serve(async (req: Request) => {
         .eq('id', session.user_id)
         .single();
 
-      return { error: null, user };
+      return { error: null, user, sessionId: session.id as string };
+    };
+
+    // WP-11B/C Phase 3: revoke every active session belonging to the target
+    // user so a privilege change forces a fresh login with the new grants.
+    const revokeUserSessions = async (targetUserId: string, reason: string) => {
+      try {
+        await supabase
+          .from('user_sessions')
+          .update({ revoked_at: new Date().toISOString(), revocation_reason: reason })
+          .eq('user_id', targetUserId)
+          .is('revoked_at', null);
+      } catch (e) {
+        console.warn('[admin-user-management] revokeUserSessions failed:', (e as Error).message);
+      }
     };
 
     // Actions that require authentication but NOT superadmin
