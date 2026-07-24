@@ -529,7 +529,7 @@ Deno.serve(async (req: Request) => {
 
     // Update own credentials (username and/or password)
     if (action === 'update_own_credentials') {
-      const { error: sessionError, user: currentUser } = await verifySession(session_token);
+      const { error: sessionError, user: currentUser, sessionId: currentSessionId } = await verifySession(session_token);
       if (sessionError || !currentUser) {
         return new Response(
           JSON.stringify({ success: false, error: sessionError || 'Not authenticated' }),
