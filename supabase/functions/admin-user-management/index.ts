@@ -1449,6 +1449,7 @@ Deno.serve(async (req: Request) => {
         .update({ role: 'super_admin', updated_at: new Date().toISOString() })
         .eq('id', user_id);
 
+      await revokeUserSessions(user_id, 'privilege_change:promoted_superadmin');
       console.log(`User ${user_id} promoted to superadmin by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User promoted to superadmin' }),
