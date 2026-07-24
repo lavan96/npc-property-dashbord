@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { hashPassword, verifyPassword } from "../_shared/password.ts";
 import { validatePasswordStrength } from "../_shared/passwordValidation.ts";
-import { verifyAuth, createUnauthorizedResponse, createCorsHeaders } from "../_shared/auth.ts";
+import { verifyAuth, createUnauthorizedResponse, createCorsHeaders, createSessionCookie } from "../_shared/auth.ts";
+import { rotateSession } from "../_shared/sessionRotate.ts";
 import { requireStepUp } from "../_shared/stepUp.ts";
 import { getBrandConfig } from "../_shared/brand-config.ts";
 import { reserveSeat, commitSeat, releaseSeat } from "../_shared/missionControlSeats.ts";
@@ -272,21 +273,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Helper to verify any authenticated user (not just superadmin)
+    // Helper to verify any authenticated user (not just superadmin).
+    // Returns the active session id so callers can rotate it on privilege
+    // elevation (WP-11B/C Phase 3).
     const verifySession = async (sessionToken: string) => {
       if (!sessionToken) {
-        return { error: 'Session token required', user: null };
+        return { error: 'Session token required', user: null, sessionId: null };
       }
 
       const { data: session, error: sessionError } = await supabase
         .from('user_sessions')
-        .select('user_id, expires_at')
+        .select('id, user_id, expires_at, revoked_at')
         .eq('session_token', sessionToken)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .is('revoked_at', null)
+        .maybeSingle();
 
       if (sessionError || !session) {
-        return { error: 'Invalid or expired session', user: null };
+        return { error: 'Invalid or expired session', user: null, sessionId: null };
       }
 
       const { data: user } = await supabase
@@ -295,7 +299,21 @@ Deno.serve(async (req: Request) => {
         .eq('id', session.user_id)
         .single();
 
-      return { error: null, user };
+      return { error: null, user, sessionId: session.id as string };
+    };
+
+    // WP-11B/C Phase 3: revoke every active session belonging to the target
+    // user so a privilege change forces a fresh login with the new grants.
+    const revokeUserSessions = async (targetUserId: string, reason: string) => {
+      try {
+        await supabase
+          .from('user_sessions')
+          .update({ revoked_at: new Date().toISOString(), revocation_reason: reason })
+          .eq('user_id', targetUserId)
+          .is('revoked_at', null);
+      } catch (e) {
+        console.warn('[admin-user-management] revokeUserSessions failed:', (e as Error).message);
+      }
     };
 
     // Actions that require authentication but NOT superadmin
@@ -511,7 +529,7 @@ Deno.serve(async (req: Request) => {
 
     // Update own credentials (username and/or password)
     if (action === 'update_own_credentials') {
-      const { error: sessionError, user: currentUser } = await verifySession(session_token);
+      const { error: sessionError, user: currentUser, sessionId: currentSessionId } = await verifySession(session_token);
       if (sessionError || !currentUser) {
         return new Response(
           JSON.stringify({ success: false, error: sessionError || 'Not authenticated' }),
@@ -605,10 +623,31 @@ Deno.serve(async (req: Request) => {
       if (updates.username) changedFields.push('username');
       if (updates.password_hash) changedFields.push('password');
 
+      // WP-11B/C Phase 3: rotate the caller's session after a password change
+      // so the old cookie cannot be replayed. Username changes alone do not
+      // cross a privilege boundary and skip rotation.
+      const responseHeaders: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+      let rotatedToken: string | undefined;
+      let rotatedExpiresAt: string | undefined;
+      if (updates.password_hash && currentSessionId) {
+        const rot = await rotateSession(supabase, currentSessionId, 'password_change');
+        if (rot.ok && rot.newSessionToken && rot.expiresAt) {
+          responseHeaders['Set-Cookie'] = createSessionCookie(rot.newSessionToken, rot.expiresAt);
+          rotatedToken = rot.newSessionToken;
+          rotatedExpiresAt = rot.expiresAt.toISOString();
+        } else {
+          console.warn('[admin-user-management] session rotation failed:', rot.error);
+        }
+      }
+
       console.log(`User ${currentUser.username} updated their credentials: ${changedFields.join(', ')}`);
       return new Response(
-        JSON.stringify({ success: true, message: `Updated: ${changedFields.join(', ')}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          message: `Updated: ${changedFields.join(', ')}`,
+          ...(rotatedToken ? { session_token: rotatedToken, session_expires_at: rotatedExpiresAt } : {}),
+        }),
+        { status: 200, headers: responseHeaders }
       );
     }
 
@@ -811,6 +850,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      await revokeUserSessions(user_id, 'privilege_change:permissions_updated');
       console.log(`Permissions updated for user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Permissions updated' }),
@@ -838,6 +878,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      await revokeUserSessions(user_id, `privilege_change:role_assigned:${role}`);
       console.log(`Role ${role} assigned to user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Role assigned' }),
@@ -867,6 +908,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      await revokeUserSessions(user_id, `privilege_change:role_removed:${role}`);
       console.log(`Role ${role} removed from user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Role removed' }),
@@ -905,6 +947,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
+      await revokeUserSessions(user_id, 'privilege_change:aml_roles_updated');
       console.log(`AML roles updated for user ${user_id} by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'AML roles updated', aml_roles: (updatedRoles ?? []).map((row: any) => row.role_name ?? row.role) }),
@@ -1406,6 +1449,7 @@ Deno.serve(async (req: Request) => {
         .update({ role: 'super_admin', updated_at: new Date().toISOString() })
         .eq('id', user_id);
 
+      await revokeUserSessions(user_id, 'privilege_change:promoted_superadmin');
       console.log(`User ${user_id} promoted to superadmin by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User promoted to superadmin' }),
@@ -1462,6 +1506,7 @@ Deno.serve(async (req: Request) => {
         console.error('Failed to update custom_users role:', userError);
       }
 
+      await revokeUserSessions(user_id, 'privilege_change:demoted_from_superadmin');
       console.log(`User ${user_id} demoted from superadmin by ${adminUser.username}`);
       return new Response(
         JSON.stringify({ success: true, message: 'User demoted from superadmin' }),
