@@ -623,10 +623,31 @@ Deno.serve(async (req: Request) => {
       if (updates.username) changedFields.push('username');
       if (updates.password_hash) changedFields.push('password');
 
+      // WP-11B/C Phase 3: rotate the caller's session after a password change
+      // so the old cookie cannot be replayed. Username changes alone do not
+      // cross a privilege boundary and skip rotation.
+      const responseHeaders: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+      let rotatedToken: string | undefined;
+      let rotatedExpiresAt: string | undefined;
+      if (updates.password_hash && currentSessionId) {
+        const rot = await rotateSession(supabase, currentSessionId, 'password_change');
+        if (rot.ok && rot.newSessionToken && rot.expiresAt) {
+          responseHeaders['Set-Cookie'] = createSessionCookie(rot.newSessionToken, rot.expiresAt);
+          rotatedToken = rot.newSessionToken;
+          rotatedExpiresAt = rot.expiresAt.toISOString();
+        } else {
+          console.warn('[admin-user-management] session rotation failed:', rot.error);
+        }
+      }
+
       console.log(`User ${currentUser.username} updated their credentials: ${changedFields.join(', ')}`);
       return new Response(
-        JSON.stringify({ success: true, message: `Updated: ${changedFields.join(', ')}` }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          message: `Updated: ${changedFields.join(', ')}`,
+          ...(rotatedToken ? { session_token: rotatedToken, session_expires_at: rotatedExpiresAt } : {}),
+        }),
+        { status: 200, headers: responseHeaders }
       );
     }
 
