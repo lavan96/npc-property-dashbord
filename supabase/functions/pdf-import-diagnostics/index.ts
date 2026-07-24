@@ -27,6 +27,7 @@ import {
   createForbiddenResponse,
 } from '../_shared/auth.ts';
 
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
@@ -134,6 +135,11 @@ Deno.serve(async (req) => {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(cors, __csrf);
 
   try {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);

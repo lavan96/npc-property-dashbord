@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 import { verifyAuth, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { logApiUsage, extractOpenAIUsage } from '../_shared/logApiUsage.ts';
 import { createUsageTrackingStream } from '../_shared/streamUsageLogger.ts';
@@ -1122,6 +1123,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");

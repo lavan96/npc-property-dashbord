@@ -10,6 +10,7 @@ import {
   createUnauthorizedResponse,
   createForbiddenResponse,
 } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { PROMPT_CATALOG, getPromptCatalogEntry } from '../_shared/engine-prompts.ts';
 import { COMPASS_40_SECTIONS } from '../_shared/compassSectionRegistry.ts';
 import { FIN_SECTION_ORDER, PLDD_SECTION_ORDER } from '../_shared/reportSplitRegistry.ts';
@@ -28,6 +29,11 @@ Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const url = Deno.env.get('SUPABASE_URL')!;

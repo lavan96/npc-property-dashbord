@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { verifyAuth, createUnauthorizedResponse, createForbiddenResponse, createCorsHeaders } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { isSuperadmin, logSecurityEvent } from '../_shared/auth_v2.ts';
 import { checkPermission, checkModuleView } from '../_shared/permissions.ts';
 import { authorizeObjectAccess, authorizedBindingsForList, createStorageBinding, deleteStorageBinding, rollbackStorageObject, BUCKET_SENSITIVITY } from '../_shared/storageAuthz.ts';
@@ -126,6 +127,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

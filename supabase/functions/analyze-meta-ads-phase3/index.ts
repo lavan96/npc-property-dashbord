@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { callLLMRaw } from '../_shared/llmRouter.ts';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -351,6 +352,11 @@ Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = createCorsHeaders(origin);
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

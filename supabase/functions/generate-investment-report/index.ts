@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 import { verifyAuth, createCorsHeaders, createUnauthorizedResponse } from '../_shared/auth.ts';
+import { enforceCsrf, csrfDenied } from '../_shared/csrfGuard.ts';
 import { logApiUsage } from '../_shared/logApiUsage.ts';
 import { getBrandConfig } from '../_shared/brand-config.ts';
 import { withReportMetering, resolveUserId, buildIdempotencyKey } from '../_shared/reportMetering.ts';
@@ -1755,6 +1756,11 @@ const __investmentReportHandler = async (req: Request): Promise<Response> => {
     console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for internal-pipeline callers (HMAC/internal secret, no session cookie).
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     console.log('Starting investment report generation...');

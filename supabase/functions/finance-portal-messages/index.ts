@@ -19,6 +19,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.55.0";
 import { verifyAuth, createCorsHeaders } from "../_shared/auth.ts";
 
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 const BUCKET = 'finance-portal-messages';
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const SIGNED_URL_TTL = 60 * 10;
@@ -127,6 +128,11 @@ Deno.serve(async (req) => {
   };
 
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(corsHeaders, __csrf);
 
   try {
     const supabase = createClient(

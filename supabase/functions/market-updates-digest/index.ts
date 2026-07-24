@@ -6,6 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { consumeRateLimit, verifyRequiredCronSecret, securityJsonError } from "../_shared/requestSecurity.ts";
 import { verifyAuth } from "../_shared/auth.ts";
+import { enforceCsrf, csrfDenied } from "../_shared/csrfGuard.ts";
 import { requireModulePermission } from '../_shared/authz.ts';
 
 const cors = {
@@ -178,6 +179,11 @@ function fallbackDigest(period: Period, updates: any[], grouped: Record<string, 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+
+  // SEC5-CSRF: reject cross-site cookie-authenticated mutations (exact-origin).
+  // No-op for GET/HEAD/OPTIONS and any request without the session cookie.
+  const __csrf = enforceCsrf(req);
+  if (!__csrf.ok) return csrfDenied(cors, __csrf);
   // WP-03: strict cron auth via constant-time helper. Admin manual trigger
   // still allowed via authenticated Bearer (verifyAuth) — attacker-controlled
   // headers alone can no longer reach the AI generation path.

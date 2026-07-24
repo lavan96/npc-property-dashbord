@@ -108,6 +108,7 @@ jobs:
         run: |
           node scripts/security/check-agent-tool-policies.mjs
           node scripts/security/check-agent-bulk-ceilings.mjs
+          node scripts/security/check-csrf-coverage.mjs
           node scripts/security/check-step-up-default.mjs
           node scripts/security/check-step-up-mfa-fail-closed.mjs
           node scripts/security/check-totp-enrollment-client-storage.mjs
